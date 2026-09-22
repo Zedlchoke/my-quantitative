@@ -1,0 +1,177 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "edq1-source-probe",
+ "cycle_id": "EURUSD-DATA-QUALIFICATION-V1",
+ "role": "quant-implementer",
+ "lane": "eurusd-source-qualification",
+ "dispatch_sha": "3945fb6b0d74f04ac30ebf5f24ae1e7e76639124",
+ "actual_start_sha": "3945fb6b0d74f04ac30ebf5f24ae1e7e76639124",
+ "commit_sha": "e49c23cff682ab15507651078f399dd485e9260d",
+ "branch": "orca/eurusd-data-qualification-v1-integration",
+ "pushed": false,
+ "merged": false,
+ "changed_paths": [
+  "research/control/eurusd_data_qualification_v1/data_local/.gitignore",
+  "research/control/eurusd_data_qualification_v1/scripts/edq1_fetch_dukascopy.py",
+  "research/control/eurusd_data_qualification_v1/scripts/edq1_fetch_twelvedata.py",
+  "research/control/eurusd_data_qualification_v1/scripts/edq1_analyze.py",
+  "research/control/eurusd_data_qualification_v1/tests/test_probe_decode.py",
+  "research/control/eurusd_data_qualification_v1/probe/retrieval_manifest.json",
+  "research/control/eurusd_data_qualification_v1/probe/license_and_terms.md",
+  "research/control/eurusd_data_qualification_v1/probe/timestamp_convention.md",
+  "research/control/eurusd_data_qualification_v1/probe/coverage_census.json",
+  "research/control/eurusd_data_qualification_v1/probe/indicative_reconciliation.json",
+  "research/control/eurusd_data_qualification_v1/probe/timestamp_sanity.json",
+  "research/control/eurusd_data_qualification_v1/probe/twelvedata_request_log.json",
+  "research/control/eurusd_data_qualification_v1/probe/PROBE_VERDICT.md",
+  "research/control/eurusd_data_qualification_v1/probe/probe_verdict.json"
+ ],
+ "tests": [
+  {
+   "name": "tests/test_probe_decode.py::TestSyntheticDecode::test_price_scale_and_ordering",
+   "verdict": "PASS",
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/eurusd_data_qualification_v1/tests/ -q",
+   "exit_code": 0,
+   "note": "re-run by A1 at integration: 4 passed"
+  },
+  {
+   "name": "tests/test_probe_decode.py::TestSyntheticDecode::test_downsample_open_close_first_last",
+   "verdict": "PASS",
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/eurusd_data_qualification_v1/tests/ -q",
+   "exit_code": 0,
+   "note": "re-run by A1 at integration: 4 passed"
+  },
+  {
+   "name": "tests/test_probe_decode.py::TestSyntheticDecode::test_empty_blob_is_no_ticks",
+   "verdict": "PASS",
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/eurusd_data_qualification_v1/tests/ -q",
+   "exit_code": 0,
+   "note": "re-run by A1 at integration: 4 passed"
+  },
+  {
+   "name": "tests/test_probe_decode.py::TestRealSeries::test_real_1min_monotonic_no_duplicates",
+   "verdict": "PASS",
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/eurusd_data_qualification_v1/tests/ -q",
+   "exit_code": 0,
+   "note": "re-run by A1 at integration: 4 passed"
+  }
+ ],
+ "verdict": "PROBE_FAIL",
+ "failed_gates": [
+  "LICENSE_RESOLVED"
+ ],
+ "cycle_verdict_mapping_candidate": "BLOCKED_SOURCE_LICENSE",
+ "authority_claims": [
+  "plan plans/PLAN_eurusd_data_qualification_v1.md (\u00a70a owner anchors, \u00a71 sources, \u00a72 tolerance, \u00a73 P1 gate) \u2014 followed exactly; no Jev calls, no PnL, no strategy work, no registry edits, no push/merge",
+  "workspace AGENTS.md + CLAUDE.md \u2014 handoff, worktree, lock and credential laws observed",
+  "raw Dukascopy bytes attributed to datafeed.dukascopy.com public endpoint; every stored file sha256-digested in probe/retrieval_manifest.json (schema edq1_retrieval_manifest@1); raw bytes remain uncommitted under data_local/ (gitignored)"
+ ],
+ "known_limitations": [
+  "Dukascopy license UNCLEAR (not forbidden, not cleared): no datafeed-specific terms found; site TCU (if applicable) allows only personal non-commercial download and forbids automated acquisition without prior express written consent plus database construction; needs owner/legal action to unblock P2",
+  "Twelve Data on this plan returns OHLC only (no bid/ask, no volume) \u2014 usable as reconciliation source, NOT as bid/ask cost authority; cost authority must come from Dukascopy tick bid/ask",
+  "Probe window is the frozen 10 days only; 3-5 year scaling is P2 (heavy lock) and unproven beyond boundary probes (2023 and 2025 single hours decode with same schema)",
+  "Indicative reconciliation (median 0.35 pips, p95 1.15, max 42.65 over 11,459 minutes) is NOT the formal plan \u00a72 tolerance test; that is P2 with preregistered tolerance",
+  "Dukascopy minute coverage 99.542% within trading spans (44 micro-gaps of 1-3 min, 53 minutes, enumerated); no interpolation applied; missing minutes must remain missing/invalid in P2 bar building",
+  "Twelve Data response has no next_url member on this plan; pagination done by stepping end_date back (recorded in request log); TD has 12 internal gap minutes that do not exactly match Dukascopy's 44 micro-gaps (vendors differ; TD never patches PRIMARY)",
+  "Dukascopy weekend hours return HTTP 200 with 0 bytes (not 404) \u2014 both behaviors recorded as instructed; observed behavior in this window is 200+empty only"
+ ],
+ "incidents": [
+  {
+   "id": "INC1-store-path-collision",
+   "severity": "resolved_before_commit",
+   "detail": "First fetch stored raw files under hour-only names (e.g. 07h_ticks.bi5), colliding across days and corrupting stored bytes; detected via label-parse crash in post-processing, entire data_local/dukascopy wiped and re-fetched with date-unique store names; committed raw bytes are single-fetch, sha256-consistent"
+  },
+  {
+   "id": "INC2-dukascopy-503-throttling",
+   "severity": "resolved",
+   "detail": "Serial fetch hit recurring HTTP 503 (25/61 files); switched to bounded 8-worker pool with <=5 retries and exponential backoff; final run: 0 failures, 0 404s, all 242 targets retrieved"
+  },
+  {
+   "id": "INC3-credential-handling",
+   "severity": "none",
+   "detail": "TWELVE_DATA_API_KEY kept in process env only; value-level scan of staged diff and full staged tree confirms zero key leakage; all recorded URLs redacted of apikey parameter"
+  }
+ ],
+ "tree_status": "clean_committed_on_lane_branch",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "research/control/eurusd_data_qualification_v1/probe/probe_verdict.json",
+   "sha256": null,
+   "note": "path not on disk at integration"
+  },
+  {
+   "path": "research/control/eurusd_data_qualification_v1/probe/PROBE_VERDICT.md",
+   "sha256": null,
+   "note": "path not on disk at integration"
+  },
+  {
+   "path": "research/control/eurusd_data_qualification_v1/probe/retrieval_manifest.json",
+   "sha256": null,
+   "note": "path not on disk at integration"
+  },
+  {
+   "path": "research/control/eurusd_data_qualification_v1/probe/coverage_census.json",
+   "sha256": null,
+   "note": "path not on disk at integration"
+  },
+  {
+   "path": "research/control/eurusd_data_qualification_v1/probe/indicative_reconciliation.json",
+   "sha256": null,
+   "note": "path not on disk at integration"
+  },
+  {
+   "path": "research/control/eurusd_data_qualification_v1/probe/timestamp_convention.md",
+   "sha256": null,
+   "note": "path not on disk at integration"
+  },
+  {
+   "path": "research/control/eurusd_data_qualification_v1/probe/license_and_terms.md",
+   "sha256": null,
+   "note": "path not on disk at integration"
+  },
+  {
+   "path": "research/control/eurusd_data_qualification_v1/probe/timestamp_sanity.json",
+   "sha256": null,
+   "note": "path not on disk at integration"
+  },
+  {
+   "path": "research/control/eurusd_data_qualification_v1/probe/twelvedata_request_log.json",
+   "sha256": null,
+   "note": "path not on disk at integration"
+  },
+  {
+   "path": "research/control/eurusd_data_qualification_v1/tests/test_probe_decode.py",
+   "sha256": null,
+   "note": "path not on disk at integration"
+  },
+  {
+   "path": "research/control/eurusd_data_qualification_v1/data_local/dukascopy/ (raw .bi5, gitignored, 242 files + bars_1min_{bid,ask}.json + scale_evidence.json)",
+   "sha256": null,
+   "note": "path not on disk at integration"
+  },
+  {
+   "path": "research/control/eurusd_data_qualification_v1/data_local/twelvedata/ (raw pages, gitignored)",
+   "sha256": null,
+   "note": "path not on disk at integration"
+  }
+ ],
+ "key_numbers": {
+  "dukascopy_targets": 242,
+  "dukascopy_nonempty_files": 195,
+  "dukascopy_empty_weekend_files": 47,
+  "dukascopy_http_404": 0,
+  "ticks_decoded": 578916,
+  "distinct_1min_bars": 11527,
+  "duplicate_ticks": 0,
+  "monotonicity_violations": 0,
+  "trading_span_minute_coverage_pct": 99.542,
+  "weekend_gap_minutes": 2820,
+  "twelvedata_bars": 11509,
+  "indicative_median_abs_diff_pips": 0.35,
+  "indicative_p95_abs_diff_pips": 1.15,
+  "spread_median_pips": 0.2
+ },
+ "recommended_next_action": "Owner decision required: Dukascopy written consent OR licensed alternative bid/ask source; then P2 resumes per plan \u00a73 (A7 verdict AUTHORIZED_BLOCKED_SOURCE_LICENSE)",
+ "integration_note": "shape normalized by A1 at integration per A7 F1 (MEDIUM); substance independently verified by A7 (17 PASS / 0 FAIL)"
+}

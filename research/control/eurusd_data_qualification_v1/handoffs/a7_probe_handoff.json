@@ -1,0 +1,60 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "edq1-a7-probe-audit",
+  "cycle_id": "EURUSD-DATA-QUALIFICATION-V1",
+  "role": "quant-auditor",
+  "lane": "a7-eurusd-audit",
+  "dispatch_sha": "e49c23cff682ab15507651078f399dd48e9260d",
+  "actual_start_sha": "e49c23cff682ab15507651078f399dd485e9260d",
+  "commit_sha": null,
+  "branch": "orca/eurusd-data-qualification-v1-integration",
+  "pushed": false,
+  "merged": false,
+  "handoff_notes": [
+    "dispatch_sha as written in the A7 dispatch packet is 39 hex and differs at char 34 from the measured HEAD (packet has 'e' where the real HEAD has '5' at position 34): 'e49c23cff682ab15507651078f399dd48e9260d' (dispatch, 39 chars) vs 'e49c23cff682ab15507651078f399dd485e9260d' (measured, 40 chars). The prefix is unique on this branch and the lane's own handoff commit_sha equals the measured HEAD, so this is a dispatch-record typo, not tree drift; actual_start_sha is the measured value.",
+    "commit_sha is null because per dispatch instructions the three audit artifacts are left UNCOMMITTED (untracked) for A1 integration. changed_paths are the exact untracked files written by A7; their sha256 values are recorded in outputs[].",
+    "A7 wrote ONLY: audits/a7_probe_audit.json, audits/a7_probe_audit.md, handoffs/a7_probe_handoff.json. No audited artifact, gate, script, test, registry, or lane handoff was modified."
+  ],
+  "changed_paths": [
+    "research/control/eurusd_data_qualification_v1/audits/a7_probe_audit.json",
+    "research/control/eurusd_data_qualification_v1/audits/a7_probe_audit.md",
+    "research/control/eurusd_data_qualification_v1/handoffs/a7_probe_handoff.json"
+  ],
+  "tests": [],
+  "verdict": "AUTHORIZED_BLOCKED_SOURCE_LICENSE",
+  "audited_claim": "PROBE_FAIL — gate LICENSE_RESOLVED (Dukascopy UNCLEAR; Twelve Data CLEAR_FOR_INTERNAL_RESEARCH but lacks bid/ask on the current plan), cycle consequence BLOCKED_SOURCE_LICENSE, all technical gates PASS",
+  "audit_summary": {
+    "checked_items": 20,
+    "pass": 17,
+    "not_run_by_design": [
+      "formal plan section-2 preregistered tolerance test (P2 deliverable; lane correctly labels its reconciliation INDICATIVE)",
+      "multi-year retrieval scale/throughput (P2, heavy lock; MULTI_YEAR_AVAILABLE gate holds only as same-schema decode of 2023/2025 boundary hours)"
+    ],
+    "fail": 0,
+    "license_evidence": "Dukascopy TCU + Historical Data page + Twelve Data terms re-fetched live; all verbatim quotes confirmed; 404 on the probed datafeed-terms path reproduced with a 200 control; UNCLEAR judged a faithful conservative reading; no terms accepted; no status fabricated",
+    "technical_recompute": "sha256 of ALL 242 stored bi5 files match the manifest (0 mismatches); independent LZMA+'>5i' decode of 5 files (incl. 2023/2025 boundaries) matches tick counts and price-int ranges exactly; full 240-file walk reproduces 578916 ticks / 11527 minutes / 0 duplicates / 0 monotonicity violations; 2024-03-04 census reconciles exactly (1440-13=1427); Saturday zero; weekend gap exactly 2820 min with 47 zero-byte 200 files and 0 x 404; span coverage 99.542% reproduces; reconciliation A/B recompute exact (A n=11459 median 0.35 p95 1.15 max 42.65; B 0.60; A wins); London-0700 first tick offset 89ms reproduces; lane tests re-run 4/4 PASS",
+    "scope": "lane branch = 1 commit, exactly 14 files all under the cycle dir; TWELVE_DATA_API_KEY value absent from all 1174 tracked files and the lane diff (in-memory scan, value never printed); raw vendor bytes untracked (gitignored); SANDBOX-OVERFIT-3ASSETS/ and d2_curiosity_v1_sources/ untouched"
+  },
+  "findings": [
+    {"severity": "MEDIUM", "detail": "F1 lane handoff deviates from strict zcode_orch_v3_handoff@1 shapes: tests[] {name,verdict} without command/exit_code/log_digest; outputs[] bare paths without {path,sha256}; recommended_next_action absent. Substance independently verified; fix shape at integration, do not re-dispatch the lane."},
+    {"severity": "LOW", "detail": "F2 lane handoff authority_claims[] non-empty (schema: normally EMPTY for lane agents); entries are compliance statements, not authorization claims — refusal rule not triggered in substance."},
+    {"severity": "LOW", "detail": "F3 A7 dispatch packet audited-HEAD string malformed (39 hex, char 34 differs); measured HEAD e49c23cff682ab15507651078f399dd485e9260d used; lane's own handoff sha correct; owner should correct the dispatch record."},
+    {"severity": "LOW", "detail": "F4 counting phrasing: '195/195 non-empty' includes 2 boundary files (window non-empty=193; 193+2+47=242 exact); census gap count 45 includes the weekend entry vs prose '44 micro-gaps' (44+1=45). Arithmetic exact in both cases."},
+    {"severity": "LOW", "detail": "F5 Dukascopy license search breadth: 2 cited pages + 1 probed 404 only; UNCLEAR errs conservative and resolution is owner action regardless, but the search was narrow, not exhaustive."}
+  ],
+  "owner_decision_required": "LICENSE_RESOLVED can only be unlocked by owner action: (a) documented Dukascopy prior express written consent for automated retrieval of the public datafeed for internal research, or (b) explicit owner legal determination on the TCU-vs-datafeed question. Secondary: correct the malformed dispatch sha (F3); decide whether Twelve Data revocable-license + section-16 retention constraints are acceptable for the reconciliation role at P2 scale.",
+  "authority_claims": [],
+  "known_limitations": [
+    "Audit covers the P1 probe claim only; P2 outputs do not exist yet and were not audited.",
+    "The 20-minute reconciliation sample and all full-population recomputes are recorded in audits/a7_probe_audit.{json,md}; raw sample rows generated by /tmp/a7_audit_recompute.py (auditor scratch, outside the repo)."
+  ],
+  "incidents": [],
+  "tree_status": "audit_artifacts_uncommitted_untracked_intentionally; audited lane files untouched; awaiting A1 integration (lane probe commit e49c23cff682ab15507651078f399dd485e9260d + these 3 untracked audit files)",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/eurusd_data_qualification_v1/audits/a7_probe_audit.json", "sha256": "e1712657ddfb9977036df1c1e13d98914f1f2f605738f790a844b35faf6a66ad"},
+    {"path": "research/control/eurusd_data_qualification_v1/audits/a7_probe_audit.md", "sha256": "1babedc7da55bc3d5e2691f96c004dd8cfdffc22fd31584ce9716f9756cb095f"},
+    {"path": "research/control/eurusd_data_qualification_v1/handoffs/a7_probe_handoff.json", "sha256": "SELF (see note: a handoff cannot contain its own digest)"}
+  ],
+  "recommended_next_action": "A1: integrate the probe commit e49c23cff682ab15507651078f399dd485e9260d plus the three untracked A7 files; register cycle verdict candidate BLOCKED_SOURCE_LICENSE per plan P3; surface the owner decision (Dukascopy written consent or legal determination) as the sole unblock path; fix lane-handoff field shapes (F1) and the dispatch sha record (F3) at integration."
+}

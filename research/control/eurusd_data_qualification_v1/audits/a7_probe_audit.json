@@ -1,0 +1,163 @@
+{
+  "schema": "edq1_a7_probe_audit@1",
+  "auditor": "A7",
+  "cycle_id": "EURUSD-DATA-QUALIFICATION-V1",
+  "audited_head": "e49c23cff682ab15507651078f399dd485e9260d",
+  "audited_branch": "orca/eurusd-data-qualification-v1-integration",
+  "claim_under_audit": "PROBE_FAIL — gate LICENSE_RESOLVED (Dukascopy UNCLEAR; Twelve Data CLEAR_FOR_INTERNAL_RESEARCH but lacks bid/ask on the current plan), cycle consequence BLOCKED_SOURCE_LICENSE, all technical gates PASS.",
+  "method_note": "Fresh-context audit. Dukascopy TCU, Dukascopy Historical Data page and Twelve Data terms re-fetched live and quoted strings compared verbatim. sha256 recomputed for ALL 242 stored .bi5 files with an independent hasher. bi5 decoding re-done with an independently written LZMA+struct('>5i') decoder (not the lane's code), including a full 240-file tick walk. Coverage, reconciliation and timestamp claims recomputed from raw bytes. Tests re-run with the repo-root venv. Credential scan performed in-memory; the secret value was never printed.",
+  "checked": [
+    {
+      "item": "audited_head_and_branch",
+      "method": "git rev-parse HEAD + branch; compared to dispatch string",
+      "result": "PASS",
+      "evidence": "HEAD = e49c23cff682ab15507651078f399dd485e9260d on orca/eurusd-data-qualification-v1-integration. Dispatch string was e49c23cff682ab15507651078f399dd48e9260d = 39 hex, differs at char 34 ('e' vs '5'); unique-commit prefix matches; lane handoff commit_sha is correct and resolves. Dispatch typo, not tree drift (finding F3)."
+    },
+    {
+      "item": "dukascopy_tcu_verbatim_quotes",
+      "method": "Fetched https://www.dukascopy.com/swiss/english/legal-pages/terms-of-use/ live; string-compared all six quoted clauses",
+      "result": "PASS",
+      "evidence": "All six quotes appear verbatim, including the Restrictions-on-Use non-commercial clause, the copy/reproduce prohibition with personal non-commercial download carve-out, the 'construct a database of any kind' clause, the scraper/robot clause ending '...without the prior express written consent of DUKASCOPY' (page's own sic wording 'automate device' preserved by the lane), the License clause ('licensed to you by DUKASCOPY ONLY for your own personal, non-commercial use'), and the Disclaimer clause. TCU defines and governs 'the WEBSITE' (www.dukascopy.com) and never names datafeed.dukascopy.com — exactly as the lane stated."
+    },
+    {
+      "item": "dukascopy_historical_page_quotes",
+      "method": "Fetched https://www.dukascopy.com/swiss/english/marketwatch/historical/ live; string-compared",
+      "result": "PASS",
+      "evidence": "All three quotes verbatim ('provides historical price data for variety of financial instruments...', \"It is free through Dukascopy's Historical Data Export tool\", Backtesting FAQ line). Page is descriptive; contains no license grant and no mention of the datafeed host — matches the lane's characterization."
+    },
+    {
+      "item": "dukascopy_dedicated_terms_404",
+      "method": "curl HTTP status of .../marketwatch/historical/datafeed/ plus a control URL",
+      "result": "PASS",
+      "evidence": "404 reproduced on 2026-09-22; control terms-of-use URL returns 200 from the same network, so the 404 is real, not a network artifact."
+    },
+    {
+      "item": "twelvedata_terms_verbatim_quotes",
+      "method": "Fetched https://twelvedata.com/terms live; string-compared",
+      "result": "PASS",
+      "evidence": "All quoted clauses verbatim: §2.1 license grant ('limited, revocable, non-exclusive, non-transferable, non-sublicensable'), §1 'Internal Use' definition, §2.2(a) 'Access, receive, process, and store Data solely for Internal Use', §2.3(b) redistribution prohibition, §2.3(g) storage-beyond-permitted-timeframes prohibition, §2.3(l) Free-Tier-commercial prohibition, §16.2 post-termination 30-day deletion, §6.1 rights retention."
+    },
+    {
+      "item": "license_status_fidelity_and_no_terms_acceptance",
+      "method": "Judged whether UNCLEAR / CLEAR_FOR_INTERNAL_RESEARCH follow from the verified quotes; inspected both fetch scripts for any account, consent or click-through action",
+      "result": "PASS",
+      "evidence": "UNCLEAR is a faithful, conservative reading: if the TCU applies, automated acquisition needs prior express written consent and database construction is forbidden; if it does not apply, no license governs the bytes at all — either branch leaves clearance unresolved, so 'applicability unstated' is neither over- nor under-statement. No license status fabricated. No terms accepted: both fetchers perform unauthenticated GETs only with a self-identifying User-Agent; the license record explicitly states the lane does not accept terms on anyone's behalf. Twelve Data CLEAR_FOR_INTERNAL_RESEARCH follows from the Internal Use clauses for this cycle's no-redistribution internal analysis, with free-tier and deletion constraints disclosed."
+    },
+    {
+      "item": "manifest_sha256_vs_raw_bytes",
+      "method": "Recomputed sha256 and byte count of ALL 242 stored files (240 window + 2 boundary) with an independent hasher; compared to retrieval_manifest.json",
+      "result": "PASS",
+      "evidence": "242/242 sha256 match, 0 byte-count mismatches (exceeds the required 3-file spot check)."
+    },
+    {
+      "item": "independent_bi5_decode",
+      "method": "Own decoder: lzma.FORMAT_AUTO decompress + struct '>5i' 20-byte records; decoded 3 window files (20240305_07h, 20240306_04h, 20240312_10h) and both boundary files",
+      "result": "PASS",
+      "evidence": "Tick counts match manifest exactly: 2660, 1161, 2350, 3629 (2023), 5092 (2025). Price-int ranges match manifest exactly. Decoded prices: window files 1.08414–1.09345 (inside the claimed 1.08–1.10 EURUSD Mar-2024 band), 2023 boundary 1.08244–1.08375, 2025 boundary 1.15253–1.15475 — all plausible for their dates. Scale int/1e5 confirmed independently."
+    },
+    {
+      "item": "full_tick_walk_totals",
+      "method": "Full 240-file tick walk with own code: totals, duplicates, monotonicity",
+      "result": "PASS",
+      "evidence": "578,916 ticks and 11,527 distinct minutes reproduce exactly; 0 exact-duplicate ticks (same ts+bid+ask); 0 monotonicity violations."
+    },
+    {
+      "item": "coverage_census_day_math",
+      "method": "Recomputed per-day census for 2024-03-04 from decoded ticks; cross-checked against the census gap list",
+      "result": "PASS",
+      "evidence": "2024-03-04: my recompute 1427 minutes / 57,947 ticks = census exactly; expected 1440 − 13 enumerated missing minutes = 1427 — exact reconciliation. Saturday 2024-03-09 absent from per-day census (0 minutes, 0 ticks). All 9 trading days present match census values."
+    },
+    {
+      "item": "weekend_and_dst_behavior",
+      "method": "Recomputed weekend gap from tick stream; counted empty files",
+      "result": "PASS",
+      "evidence": "Last tick Fri 2024-03-08T21:59Z, first tick Sun 2024-03-10T21:00Z, gap 2820 min = exactly 47 h; 47 zero-byte HTTP-200 files spanning 2024-03-08T22:00Z→2024-03-10T20:00Z; 0 HTTP 404s. DST shift visible: Fri close ≈22:00Z (5pm EST) vs Sun open 21:00Z (5pm EDT) — consistent with a UTC index, as claimed."
+    },
+    {
+      "item": "trading_span_coverage",
+      "method": "Recomputed span math: 14400 calendar − 2820 weekend = 11580 span minutes; 11527 with ticks",
+      "result": "PASS",
+      "evidence": "99.542% reproduces exactly. Micro-gap recount: 44 gaps of 1–3 minutes totalling 53 minutes, max 3 consecutive — reproduces (the census array holds 45 entries because it also contains the single 2820-min weekend entry; reconciles exactly)."
+    },
+    {
+      "item": "indicative_reconciliation_consistency",
+      "method": "Full independent recompute of the A/B bar-convention test from bars derived from my own tick walk vs data_local/twelvedata/values_1min.json, plus a seeded 20-minute sample",
+      "result": "PASS",
+      "evidence": "Hypothesis A (open-labeled): n=11459, median 0.35 pips, p95 1.15, max 42.65 — exact match. Hypothesis B: median 0.60 — exact match. A wins on median and p95 — confirms open-time labeling. 20-minute sample (audit log /tmp/a7_audit_recompute.py output, rows quoted in a7_probe_audit.md) shows |Δ| 0.0–1.15 pips, consistent with the distribution. TD inventory confirmed: 11,509 values, 0 duplicates, fields exactly {datetime, open, high, low, close} — no bid/ask, no volume on this plan."
+    },
+    {
+      "item": "timestamp_convention_claims",
+      "method": "Decoded 20240305_07h_ticks.bi5 independently; checked offset ranges in all decoded files",
+      "result": "PASS",
+      "evidence": "First tick offset 89 ms → absolute 2024-03-05T07:00:00.089Z, bid 1.08468 / ask 1.08470 — reproduces timestamp_sanity.json exactly. All offsets within [0, 3600000). TD request pacing: 3 requests 12.2 s and 9.1 s apart — within the stated ≤8/min; all recorded URLs have apikey stripped."
+    },
+    {
+      "item": "tests_independently_rerun",
+      "method": "Repo-root venv pytest on tests/test_probe_decode.py",
+      "result": "PASS",
+      "evidence": "4/4 PASS (2 synthetic decode tests, 1 empty-blob test, 1 real-series monotonic/no-duplicate test)."
+    },
+    {
+      "item": "scope_no_strategy_pnl_jev_surface",
+      "method": "git diff --name-status dispatch_sha..HEAD; content grep of lane files",
+      "result": "PASS",
+      "evidence": "Lane branch adds exactly one commit (e49c23c) touching exactly 14 files, all under research/control/eurusd_data_qualification_v1/. No backtest/strategy/risk imports, no orders/broker surface, no JEV-REGIME-ROUTER-V1 reference in code. SANDBOX-OVERFIT-3ASSETS/ and d2_curiosity_v1_sources/ are untouched by every commit in this worktree's history."
+    },
+    {
+      "item": "credential_law",
+      "method": "In-memory scan: TWELVE_DATA_API_KEY value read from root .env (never printed), byte-compared against all 1,174 git-tracked files and the lane diff; regex scan for apikey=/sk-/Bearer credential shapes",
+      "result": "PASS",
+      "evidence": "Key value present in .env (32 chars) but absent from every tracked file and from the lane diff; no 'apikey=<value>' query strings anywhere in the diff; recorded request URLs are redacted. data_local/.gitignore ('*' rule) keeps all vendor bytes untracked: git ls-files of the cycle dir = 14 files, none under data_local/ except .gitignore itself."
+    },
+    {
+      "item": "lane_handoff_validity",
+      "method": "Schema check against zcode_orch_v3_handoff@1 (structured-handoff skill) + git cat-file",
+      "result": "PASS",
+      "evidence": "Required identity fields present and valid: dispatch_sha == actual_start_sha (3945fb6b0d74f04ac30ebf5f24ae1e7e76639124, 40-hex, resolves and is an ancestor of HEAD); commit_sha e49c23cff682ab15507651078f399dd485e9260d resolves to the lane commit; tree_status honest. Field-shape deviations found (findings F1, F2) — substance independently verified, verdict unaffected."
+    },
+    {
+      "item": "formal_section2_tolerance_test",
+      "method": "Presence check",
+      "result": "NOT_RUN",
+      "evidence": "The formal preregistered §2 reconciliation test is a P2 deliverable (plan §3); the lane labels its reconciliation 'INDICATIVE ONLY'. Correctly scoped — absence is not a defect of the P1 claim and must not be inferred as PASS."
+    },
+    {
+      "item": "multiyear_scale_feasibility",
+      "method": "Evidence review + own decode of both boundary files",
+      "result": "NOT_RUN",
+      "evidence": "3–5 year retrieval scale/throughput is P2 (heavy lock). The MULTI_YEAR_AVAILABLE gate PASS is supportable only as 'same schema decodes plausible 2023 and 2025 hours' (verified); it does not evidence multi-year retrieval feasibility. The lane discloses this limitation; noted so the gate is not over-read."
+    }
+  ],
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "detail": "F1: Lane handoff (handoffs/lane_source_probe_handoff.json) deviates from the strict zcode_orch_v3_handoff@1 field shapes: tests[] entries carry {name, verdict} without command/exit_code/log_digest, outputs[] are bare path strings without {path, sha256}, and recommended_next_action is absent. Substance independently verified by A7 (tests re-run 4/4 PASS; outputs exist and are digested in retrieval_manifest.json), so the verdict is unaffected — but the Lead's orchestrator_validate_handoff may flag it; fix shape at integration, do not re-dispatch the lane for it."
+    },
+    {
+      "severity": "LOW",
+      "detail": "F2: authority_claims[] is non-empty in a lane handoff (schema notes 'normally EMPTY for lane agents'). The three entries are compliance statements ('followed plan §…; no Jev calls, no PnL, no registry edits, no push'), not authorization claims, so the refusal rule for lane authority claims is not triggered in substance."
+    },
+    {
+      "severity": "LOW",
+      "detail": "F3: The A7 dispatch packet names audited HEAD 'e49c23cff682ab15507651078f399dd48e9260d' — 39 hex, differing at char 34 from the real HEAD e49c23cff682ab15507651078f399dd485e9260d. Prefix is unique on this branch; lane's own handoff commit_sha is correct; measured HEAD used throughout this audit. Dispatch record typo for the owner to correct."
+    },
+    {
+      "severity": "LOW",
+      "detail": "F4: Counting phrasing in the verdict artifacts: '195/195 non-empty files decode' includes the 2 boundary files (window non-empty = 193, matching scale_evidence.json files_with_ticks=193; 193+2+47=242 reconciles exactly), and gap_census count=45 includes the weekend 2820-min entry while the prose says '44 micro-gaps' (44 micro + 1 weekend = 45). Arithmetic reconciles in both cases; phrasing only."
+    },
+    {
+      "severity": "LOW",
+      "detail": "F5: Dukascopy license search breadth: two cited pages plus one probed 404 path are recorded; no other candidate terms locations (e.g. JForex/data-licensing pages) were probed. The UNCLEAR status errs conservative (safe direction), a missed blanket-clearance page is unlikely given the TCU written-consent clause for automated acquisition, and resolution is owner action regardless — recorded so the owner knows the search was narrow, not exhaustive."
+    }
+  ],
+  "verdict": "AUTHORIZED_BLOCKED_SOURCE_LICENSE",
+  "verdict_rationale": "Plan §1 requires the Dukascopy license be resolvable; UNCLEAR ⇒ CANDIDATE_NOT_AUTHORIZED ⇒ the verdict cannot be QUALIFIED. Plan §3 P1: license unresolved is a PROBE_FAIL trigger and 'PROBE_FAIL stops the cycle at the matching BLOCKED_* verdict' — the matching enum is BLOCKED_SOURCE_LICENSE. No reading justifies stage 2: plan §0a forbids full-history while license is unclear, and proceeding without Dukascopy would be fatal anyway since Twelve Data has no bid/ask on this plan (BLOCKED_COST_AUTHORITY would follow). All technical claims re-verified from bytes: every number in the claim reproduces exactly. Findings are phrasing/shape-level; none breaks the claim.",
+  "refusals": [],
+  "owner_decision_required": "The cycle cannot unblock itself: LICENSE_RESOLVED requires either (a) documented Dukascopy prior express written consent for automated retrieval of the public datafeed for internal research, or (b) an explicit owner legal determination that the site TCU does not govern datafeed.dukascopy.com (or that personal-non-commercial reading covers this use). Technical evidence is probe-grade and P2 can start immediately upon either. Secondary owner items: correct the malformed dispatch sha (F3); decide whether Twelve Data's revocable license + §16 retention constraints are acceptable for the reconciliation role at P2 scale (bar retention currently is raw pages under gitignored data_local/).",
+  "artifacts_written": [
+    "research/control/eurusd_data_qualification_v1/audits/a7_probe_audit.json",
+    "research/control/eurusd_data_qualification_v1/audits/a7_probe_audit.md",
+    "research/control/eurusd_data_qualification_v1/handoffs/a7_probe_handoff.json"
+  ],
+  "written_at_utc": "2026-09-22T08:27:57Z"
+}
