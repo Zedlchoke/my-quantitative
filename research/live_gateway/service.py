@@ -106,6 +106,7 @@ class GatewayService:
         self.symbols: List[str] = []
         self._latency_acc: List[int] = []
         self._quote_last_publish: Dict[str, int] = {}
+        self._ws_session: Optional[aiohttp.ClientSession] = None
 
     # ------------------------------------------------------------------
     def surface_state(self) -> str:
@@ -262,13 +263,16 @@ class GatewayService:
             raise
 
     def _connect_ws(self, url: str):
-        assert self.session is not None, "session required for live ws"
-        # NO client-side heartbeat (Amendment 1 ops fix 2026-09-22):
-        # measured — connections WITH aiohttp heartbeat=20 get killed by
-        # the venue/path (0 msgs + instant reconnect loops) while the
-        # same streams without it flow thousands of frames/8s. Server
-        # pings are still answered automatically (autoping).
-        return self.session.ws_connect(url)
+        # Amendment 1 ops fix (2026-09-22, measured twice): the quote
+        # WS needs a DEDICATED ClientSession with NO client heartbeat —
+        # connections from the REST-shared session (and/or with
+        # heartbeat=20) receive zero payloads and reconnect-loop, while
+        # the identical 3-stream URL from a fresh dedicated session
+        # flows thousands of frames/8s (4126 measured concurrently with
+        # a failing gateway connection). Server pings are auto-answered.
+        if self._ws_session is None or self._ws_session.closed:
+            self._ws_session = aiohttp.ClientSession()
+        return self._ws_session.ws_connect(url)
 
     # ------------------------------------------------------------------
     async def heartbeat_loop(self) -> None:
@@ -514,6 +518,10 @@ class GatewayService:
         if self.session is not None:
             with contextlib.suppress(Exception):
                 await self.session.close()
+        if self._ws_session is not None:
+            with contextlib.suppress(Exception):
+                await self._ws_session.close()
+            self._ws_session = None
 
 
 def build_app(service: GatewayService) -> web.Application:
