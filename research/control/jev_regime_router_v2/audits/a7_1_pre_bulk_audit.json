@@ -1,0 +1,158 @@
+{
+ "schema": "jrv2_a7_1_pre_bulk_audit@1",
+ "cycle": "JEV-REGIME-ROUTER-V2",
+ "auditor_role": "A7 independent fresh-context pre-bulk auditor",
+ "audited_head": "3b0f82f31bdad21a2969cea7f2eb7ce34d8bc885",
+ "audited_branch": "orca/jev-regime-router-v2-integration",
+ "audited_worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration",
+ "audited_at_utc": "2026-09-22T09:40:00Z",
+ "method_note": "HEAD measured by auditor with git rev-parse; all verdicts below were re-measured or independently recomputed by the auditor (no implementation-claimed number accepted without reproduction). No live API call, no preview, no replay, no backtest was executed by the audit.",
+ "checklist": [
+  {
+   "id": "A",
+   "item": "No lookahead: semantic state strictly trailing; warmup respected; H4 from 16 aligned bars",
+   "verdict": "PASS",
+   "evidence": "jrv2/features.py: all windows trailing (r_k log(close[t]/close[t-k]); rv24 std over t-23..t; rv_pctile ranks rv24[t] against EXCLUSIVE past rv24[t-168:t]; dd_168/dist_low/range_pos/vol_z/clv_24 windows end at t; EMA/ADX recursive-causal); vector_at returns None for t<192 (warmup guard); rv_pctile loop starts at t=192. jrv2/data.py _bucket_resample: H4 bucket complete iff exactly span_bars=16 bars AND open offsets are exactly {0..15}x15m (aligned), partials fail-closed out of the regime series; census_check hard-fails vs freeze. Audit re-ran census: BTC 15m rows 35039, H1 complete 8759 / 0 interior gaps, H4 complete 2189 / 0 gaps, SPY 2943 sessions - all equal to freezes/data_identity_freeze.json. Prior fields of state t derive only from persisted state at t-1 (questionio.sequential_timeline / replay.run_replay: persisted_by_index[t-1] written after the persistence step at t-1). Mutation test present: tests_py::test_features::test_no_lookahead_mutation.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/jrv2/features.py"
+  },
+  {
+   "id": "B",
+   "item": "Forced-choice semantics: exactly 4 phase options, no UNKNOWN anywhere, 5th label -> SCHEMA_ERROR",
+   "verdict": "PASS",
+   "evidence": "freezes/question_contract.json phase.options == [ACCUMULATION, UPTREND, DISTRIBUTION, DOWNTREND] with explicit forced-choice law string; jrv2/__init__.py PHASES identical; adapter/src/contract.ts PHASES identical. Static test proves the BUILT criteria carry no UNKNOWN-equivalent (adapter/test/schema_matrix.test.ts 'no UNKNOWN option exists anywhere in the built criteria (static law)'). Runtime rejection both sides: Python validate_response_line rejects choice outside options -> SCHEMA_ERROR and additionally screens FORBIDDEN_PHASE_LABELS (TRANSITION_UNKNOWN/UNKNOWN/UNCLEAR/ABSTAIN) (tests_py::test_questionio::test_fifth_phase_label_is_schema_error); TS validateAnswers does the same (schema_matrix.test.ts fifth-label and TRANSITION_UNKNOWN-probability cases). Prompt carries explicit forced-choice instruction (prompt.ts).",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/adapter/src/contract.ts"
+  },
+  {
+   "id": "C",
+   "item": "Code-owned UNKNOWN: every trigger mapped, thresholds never lowered",
+   "verdict": "PASS",
+   "evidence": "jrv2/safety.py effective_from_response implements every trigger of freezes/safety_persistence_contract.json code_owned_unknown_triggers: response None -> no_response; status != OK -> status_* (provider/schema failure); missing state -> LOCAL_INVALID never sent (replay.py) / no_response; confidence < min_confidence -> low_confidence; top1-top2 margin < min_margin -> low_margin; hierarchy contradiction -> evaluate_consistency reasons; persistence confirmation -> step() machine. Thresholds come only from fz.persistence_params() (frozen 0.50/0.20/2/6/3); auditor probed boundaries: conf == 0.50 passes, 0.4999 -> UNKNOWN; margin 0.1999 -> UNKNOWN. No code path lowers them (no_forced_trades_law).",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/jrv2/safety.py"
+  },
+  {
+   "id": "D",
+   "item": "Consistency matrix: implementation == AMENDED frozen law text (RANGE lineage + residual direction)",
+   "verdict": "PASS",
+   "evidence": "Auditor encoded the freeze text (freezes/question_contract.json consistency_law, trial-1) as an INDEPENDENT truth table and compared against safety.evaluate_consistency over all 2 structures x 3 directions x 4 phases x 4 priors (UP/DOWN/NEUTRAL/none) = 96 combos (superset of the mandated 72): ZERO mismatches. Threshold gates re-verified (see C). tests_py::test_safety::test_full_consistency_matrix_72_combos and per-contradiction-pattern tests agree. Note: the amended law deliberately deviates from PLAN section 1.4's original wording (plan said RANGE+UP/DOWN -> contradiction); the deviation is the disclosed design trial 1 within the plan's own preregistered revision budget (plan section 4) - see finding F1 and observation O3.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/freezes/question_contract.json"
+  },
+  {
+   "id": "E",
+   "item": "Cross-language digest: producer-digest echo law + prompt-digest-in-cache-key law",
+   "verdict": "PASS",
+   "evidence": "Producer law: input_digest = sha256(canonical_json(state_payload) || requested_model) computed ONLY in Python (freezes.py canonical_json single authority; contract.ts echoes verbatim, never recomputes - documented and enforced). Auditor recomputed the producer digest for ALL 78 cached canary requests: 78/78 match; response echo matches 78/78; random sample of 10 re-verified on BOTH sides (Python hashlib vs TS computeInputDigest via node): 10/10 equal. Golden tests pin the known Python-vs-JS float-formatting divergence (exponent notation) proving why echo is law (adapter/test/digest_golden.test.ts; tests_py::test_questionio::test_golden_digest_vectors_pinned). Cache-key law: key = sha256(model||state_id||input_digest||prompt_digest); auditor recomputed keys from adapter/src/contract.ts computeCacheKey with the live prompt digest (a5ae16443062be30...): trial-1 entries match exactly (e.g. 09df255b92d5e1e1); trial-0 entries match only with the pre-amendment digest - see finding F1.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/adapter/src/prompt.ts"
+  },
+  {
+   "id": "F",
+   "item": "Sequential prior-state replay: strict order, prior from persisted state after merge, one call per state, cache-first resume, hard fail",
+   "verdict": "PASS",
+   "evidence": "jrv2/replay.py run_replay: strict ascending t over [warmup, T); prior fields = persisted_by_index[t-1], written only AFTER effective label merged and step() advanced; exactly ONE adapter subprocess per state with a single-line request file and exactly-1-response-line enforcement (ReplayError otherwise); adapter exit != 0 -> ReplayError (no silent partial bulk); cache-first: decisions store consulted before any call, cached lines RE-VALIDATED against the freshly recomputed digest (stale -> incident), DecisionStore.append is append-only and refuses state_id rewrites; LOCAL_INVALID states never sent. tests_py::test_replay::test_replay_resume_from_cache_is_deterministic.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/jrv2/replay.py"
+  },
+  {
+   "id": "G",
+   "item": "Fold reconciliation: contiguity + sum(fold_net)==total identity + no-span, tested",
+   "verdict": "PASS",
+   "evidence": "jrv2/engine.py: folds_from_regime_ts builds a CONTIGUOUS exec-bar partition (fold k owns through the bar before fold k+1's first bar); fold_partition_invariants hard-asserts no gap/overlap, consecutive ids, post-warmup coverage; _assert_engine_invariants runs after EVERY run: invested bar must carry fold_id >= 0, every trade must live inside its fold range, |sum(fold_net_pnl) - totals.net_pnl| <= 1e-9. Tests: test_folds_force_flat_and_no_span, test_folds_from_regime_ts_contiguous, test_f3_gap_pattern_reconciliation_and_no_span, test_engine_reconciles_when_no_trades.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/jrv2/engine.py"
+  },
+  {
+   "id": "H",
+   "item": "Exact model pin: VERIFIED_LIVE jev-1.13.0; jev-latest/missing refused; response model==pin",
+   "verdict": "PASS",
+   "evidence": "freezes/model_pin.json status VERIFIED_LIVE pinned_model jev-1.13.0 pinned_at 2026-09-22T08:29:44Z; adapter/runtime/models_probe.json records the G0 probe (channels jev-latest/jev-preview only; probed 08:29:30Z). adapter.ts: jev-latest -> EXIT_BLOCKED_MODEL_PIN even with --model (tested, adapter_cli.test.ts); missing pin in live mode -> EXIT_BLOCKED_MODEL_PIN; response model != pin -> validateProviderResult failure -> SCHEMA_ERROR (tested); Python ingest re-checks pin independently (test_model_pin_mismatch_is_schema_error). Live canary evidence: all 7 base rows + 39 trial-1 responses echo jev-1.13.0.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/freezes/model_pin.json"
+  },
+  {
+   "id": "I",
+   "item": "Call/cost projection from MEASURED usage for BTC_H1 8567 + BTC_H4 1997 + SPY_D1 2751",
+   "verdict": "PASS",
+   "evidence": "Measured basis: runtime/live/canary_adapter_summaries.jsonl, 78 live calls (trial-0 39 + trial-1 39), per-response usage persisted. Trial-1 per-call: input mean 4069.7 (min 4032, max 4080), output mean 130.5 (129-133); trial-0 per-call: 4024.7 / 130.5 - both trials agree within ~1.1%. Projection at trial-1 measured means: BTC_H1 8,567 calls = 34.87M in / 1.12M out; BTC_H4 1,997 = 8.13M in / 0.26M out; SPY_D1 2,751 = 11.20M in / 0.36M out; TOTAL 13,315 calls = 54.19M input / 1.74M output tokens (approx; per-call variance small). Latency measured mean 1076 ms/call -> approx 4.0 h sequential wall clock for 13,315 calls (single heavy worker). Both design trials consumed 315,684 in / 10,182 out tokens total. Fold-contract cell sizes match the projection (8567/1997/2751, warmup 192, 4 folds each).",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/runtime/live/canary_adapter_summaries.jsonl"
+  },
+  {
+   "id": "J",
+   "item": "No broker/order surface",
+   "verdict": "PASS",
+   "evidence": "verify-freezes security_scan (17 files) and v1_isolation_scan: zero findings. Auditor's independent grep over jrv2/*.py and adapter/src/*.ts for venue/broker/order/websocket substrings: only the assembled self-scan marker inside jrv2/security.py (by construction). Adapter's sole network surface is the TypeSafe SDK systemOne call; credentials name-only presence-checked. run.py backtest subcommand is QUARANTINED fail-closed (refuses without owner-registered SCORED_GO.json + matching token; authority file does not exist).",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/jrv2/security.py"
+  },
+  {
+   "id": "K",
+   "item": "V1 cache isolation + salt disjointness",
+   "verdict": "PASS",
+   "evidence": "security.py refuses ANY path containing the V1 cycle directory marker at open time (safe_open guards every loader read); scan_v1_references static scan clean (tested twice: test_v1_isolation_runtime_guard, test_no_v1_runtime_reference_scan); SPY is loaded from the v2 data_local copy sha-verified against the v2 freeze, never the V1 path. Salt recompute by auditor: V1 salt = sha256('JRV1'||asset||data_sha)[:16] (read from V1 jrv1/freezes.py, read-only) vs V2 salt = sha256('JRV2'||asset||data_sha)[:16] - different salt strings, disjoint by construction (test_v1_v2_salt_disjointness_for_same_bars); auditor hand-recomputed the V2 salt (a3eed5b621f2ac2a) and one historical state_id (e32f0aa80bf5f543 for H1 bar ts 1756382400000000000), and the fixture namespace sid for C1 (4f3b53e30ba48d20 = sha256('JRV2-fixture:C1_CLEAR_UPTREND')[:16]) which matches the cache. Observation O4: the frozen state_id law has no regime-clock dimension, so BTC H1 and H4 states closing at the same ns share ids (all 2189 H4 closes coincide with H1 closes); no contamination path exists (per-cell decisions files; input_digest in the adapter cache key), flagged for A7-2 vigilance.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/jrv2/security.py"
+  },
+  {
+   "id": "L",
+   "item": "Design-trial discipline (critical)",
+   "verdict": "PASS_WITH_FINDINGS",
+   "evidence": "(1) PRE-HISTORICAL: live cache contains 39 unique state_ids, ALL fixture-salt ids (JRV2-fixture:*); auditor enumerated all 11,702 distinct historical state_ids of the 3 cells (8759 H1 + 2189 H4 + 2943 SPY regime bars) - ZERO overlap; no live preview directory (runtime/preview absent; only runtime/mock/preview), no live replay directory; the only non-fixture live touch is the G0 models.list probe (08:29:30Z, recorded in adapter/runtime/models_probe.json). (2) AMENDMENTS DISCLOSED: freeze_manifest.json records 3 amendments with old shas; auditor verified all three old shas against the actual pre-amendment git blobs (question_contract b14d7426..., canary_v2_contract 325ca078..., model_pin 7d978af8... - all match). (3) NO PnL: grep of runtime/ finds no net_pnl/gross_pnl anywhere; canary is classification-only; backtest quarantined. (4) HONEST FAIL + NO PREVIEW: runtime/live/canary_synthetic_result.json records ok:false with check 6 failing and C5/C7 named as not abstained; no preview result exists in any namespace. (5) BUDGET: design_trials discloses revision 1 of max 2, pre-historical; trial-0 (39 live calls 08:32-33Z) and trial-1 (39 live calls 08:41-42Z) both precede any historical state call (zero exist). FINDING F1 (MEDIUM) on one disclosure clause: see findings.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/freezes/freeze_manifest.json"
+  },
+  {
+   "id": "M",
+   "item": "Canary result integrity: recompute 9/10 verdict from raw cached responses",
+   "verdict": "PASS",
+   "evidence": "Auditor recomputed the full acceptance verdict from the trial-1 RAW cached responses (canary_cache, stored_at >= 08:40Z) by regenerating the frozen fixtures + seeded perturbations (contract seed 20260923), recomputing input digests, and re-running validation + the safety law: clear effective = UPTREND/DOWNTREND/ACCUMULATION/DISTRIBUTION (4/4 correct); C6 = TRANSITION_UNKNOWN (contradiction_structure_direction_prior); C5 = UPTREND (reason ok) and C7 = DOWNTREND (reason ok) NOT code-abstained; perturbation stability 8/8 kept in all four clear families; schema-valid 7/7 sent; model echo {jev-1.13.0} only; non-schema labels none. EXACT reproduction of every check in runtime/live/canary_synthetic_result.json: 9 PASS / 1 FAIL, ok:false, fail located at 'ambiguous fixtures ARE code-abstained'. The recorded verdict matches the raw evidence.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/runtime/live/canary_synthetic_result.json"
+  },
+  {
+   "id": "N",
+   "item": "Provider nondeterminism claim (C7 cross-trial)",
+   "verdict": "PASS",
+   "evidence": "Cache holds two responses for C7 (state_id ca1c4267fa5a27af) with IDENTICAL request_sha256 (49a7da22495a3b41... - byte-identical request, same input_digest) at 08:32:49Z (trial-0) and 08:42:02Z (trial-1): trial-0 answered structure RANGE + direction DOWN + phase DOWNTREND; trial-1 answered structure TREND + direction DOWN + phase DOWNTREND. Same input, different answer - the nondeterminism claim is evidence-backed (also visible on C6: phase confidence 0.37 vs 0.58 across trials). Consequence correctly handled: different effective labels under the same law (trial-0 -> contradiction/UNKNOWN; trial-1 -> DOWNTREND), which is exactly why the design is forced-choice with code-owned abstention and per-response evidence.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/runtime/live/canary_cache"
+  }
+ ],
+ "findings": [
+  {
+   "severity": "MEDIUM",
+   "finding": "F1: The trial-1 disclosure clause 'no prompt change' is inaccurate. The consistency_law text is embedded verbatim in the prompt (adapter/src/prompt.ts QUESTION_INSTRUCTIONS.consistency_law from freeze_digests.ts) and hashed into the prompt digest; the amendment therefore changed the prompt identity. Hard evidence: trial-0 and trial-1 cache entries for identical requests share the same request_sha256 (e.g. 49a7da22495a...) but have DIFFERENT cache keys; trial-1 keys recompute exactly with the current prompt digest a5ae16443062be30..., trial-0 keys do not. No law is broken - the change IS the disclosed revision 1 of 2, pre-historical, and the prompt-freeze law only engages after the first historical preview call - but the STOP-1 report must present the trial-1 change as a prompt-identity change (which it is), not as 'no prompt change'.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/adapter/src/prompt.ts"
+  },
+  {
+   "severity": "LOW",
+   "finding": "F2: Trial-0's aggregated canary result JSON was overwritten by trial-1 at the same path (runtime/live/canary_synthetic_result.json); no separate trial-0 result artifact exists. Trial-0 raw responses ARE preserved (39 cache entries stored_at 08:32-33Z + first 39 lines of canary_adapter_summaries.jsonl) so the trial is fully reconstructable, but the preservation claim holds at raw-response level only.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/runtime/live/canary_cache"
+  },
+  {
+   "severity": "LOW",
+   "finding": "F3/O4: The frozen state_id law sha256('JRV2'||asset||data_sha||bar_ts)[:16] has no regime-clock dimension: all 2,189 BTC H4 bucket closes coincide with BTC H1 bar closes, so H1 and H4 states at the same timestamp share a state_id while carrying different content. No contamination path exists today (per-cell decisions files; adapter cache key includes the input_digest of the state content), but any future tool that indexes decisions by state_id ACROSS cells would silently conflate H1/H4. Flag for A7-2: per-cell decision stores must stay segregated.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/research/control/jev_regime_router_v2/jrv2/freezes.py"
+  },
+  {
+   "severity": "LOW",
+   "finding": "F4/O3: PLAN section 1.4's original consistency-law wording (RANGE+UP/DOWN -> contradiction) no longer matches the operative amended freeze (RANGE lineage residual-direction reading, sanctioned as preregistered design trial 1). Freeze text, safety.py, embedded adapter law and both test suites agree with each other; only the plan document itself was not annotated. Documentation-level inconsistency; the freeze remains the operative contract under the plan's own section 4 revision law.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v2/integration/plans/PLAN_jev_regime_router_v2.md"
+  }
+ ],
+ "canary_assessment": {
+  "recorded_verdict": "9 PASS / 1 FAIL (ok=false; FAIL at 'ambiguous fixtures ARE code-abstained'; C5_HIGH_VOL_CONFLICT and C7_NOISY_CONTRADICTORY effective-labeled UPTREND/DOWNTREND, not abstained)",
+  "recomputed_verdict": "9 PASS / 1 FAIL, identical on every check, recomputed from trial-1 raw cached responses by the auditor (clear 4/4 correct incl. both RANGE lineage fixtures; perturbation stability 8/8 x4; C6 abstained; C5+C7 not abstained)",
+  "match": true,
+  "note": "The recorded FAIL is honest and correctly attributed. Whether C5 (post-amendment fixture) still failing the abstention criterion blocks the historical preview is an OWNER decision at the canary gate - collapse criteria for the PREVIEW (label>90% or UNKNOWN>80%) are separate and untested by this audit; the audit expresses no opinion on canary GO."
+ },
+ "design_trial_discipline": {
+  "verdict": "HELD",
+  "pre_historical": "zero historical state calls exist (39 fixture state_ids vs 11,702 enumerated historical state_ids: zero overlap); only fixture calls + one models.list probe",
+  "amendment_disclosure": "3 amendments with old shas verified against git blobs (all match)",
+  "no_pnl": "no PnL anywhere in runtime; backtest quarantined fail-closed",
+  "honest_fail_no_preview": "canary ok=false recorded with named failing criterion; no live preview artifact exists",
+  "revision_budget": "1 of 2 preregistered revisions used; both trials pre-historical",
+  "residual_issue": "F1 (MEDIUM): the 'no prompt change' clause of the trial-1 disclosure is contradicted by the prompt-digest evidence; substance of the amendment is disclosed, budget accounting unaffected"
+ },
+ "runs": {
+  "pytest": "127 passed (36.0s)",
+  "adapter_typecheck": "tsc --noEmit clean (exit 0)",
+  "adapter_tests": "47 passed, 0 failed (node --test via npm test)",
+  "verify_freezes": "ok=true; 10/10 freezes verified; security + v1-isolation scans zero findings",
+  "census": "ok=true; BTC 35039 rows; H1 8759 complete/0 gaps; H4 2189 complete/0 gaps; SPY 2943 sessions - all equal freeze",
+  "live_calls_by_audit": 0
+ },
+ "verdict": "AUTHORIZED_FOR_STOP1_REPORT",
+ "zero_unresolved_high_critical": true,
+ "verdict_rationale": "All 14 checklist items PASS on independent re-measurement; the canary verdict reproduces exactly from raw evidence; design-trial discipline held on every owner-mandated axis (pre-historical, disclosed amendments with verified old shas, no PnL, honest FAIL, no preview, 1/2 budget). One MEDIUM finding (F1, disclosure wording on prompt identity) and three LOW findings carry forward as report items; none is unresolved HIGH/CRITICAL. The STOP-1 V2 report should incorporate F1's correction and present the measured cost projection (13,315 calls, ~54.2M in / ~1.74M out tokens, ~4.0h sequential) and the honest 9/10 canary result; whether the C5 abstention miss gates the historical preview is the owner's call at the canary gate, not this audit's."
+}
