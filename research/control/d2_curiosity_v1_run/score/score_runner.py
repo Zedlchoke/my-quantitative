@@ -1,8 +1,9 @@
 """D2-CURIOSITY-V1 scored orchestrator (run ONLY after the owner GO).
 
 Phases (per plan §6 E/R):
-  P0  env verify: branch, HEAD contains the freeze commits, tree clean
-      (engines/ + contracts committed), no S1 path reachable
+  P0  env verify: branch + clean tracked tree (engines/, contracts and
+      this runner committed); S1 denial enforced inside every engine
+      loader (denied paths raise before IO)
   P1  machine-wide heavy lock acquire + heartbeat
   P2  contracts load + cells_registry intact + data-gate per-family status
       re-read (families not BINDABLE_NOW are NOT_RUN_DATA_BLOCKED —
@@ -149,10 +150,36 @@ def _metrics_from_rows(rows, folds_list, tier_bps_per_fill):
     }
 
 
-def _pin_for(binding, needle):
+def _pin_for(binding, needle, sub_hint=None):
+    """Flat 64-hex digest for the CONSUMED artifact, fail-closed.
+
+    Binding reports may carry observed_sha256 as a flat hex string or a
+    NESTED dict of per-artifact digests (FXNG3 v2 form); extract the
+    sub-digest matching sub_hint (or the unique value), and REFUSE
+    anything that is not a 64-hex digest (A7 r2 F8)."""
+    import re as _re
+    def _flat(v):
+        if isinstance(v, str):
+            return v if _re.fullmatch(r"[0-9a-f]{64}", v) else None
+        if isinstance(v, dict):
+            if sub_hint:
+                for k, x in v.items():
+                    if sub_hint in str(k):
+                        return _flat(x)
+            vals = [_flat(x) for x in v.values()]
+            vals = [x for x in vals if x]
+            return vals[0] if len(vals) == 1 else None
+        return None
     for inp in binding.get("inputs", []):
         if needle in str(inp.get("input", "")):
-            return inp.get("observed_sha256") or inp.get("pinned_sha256")
+            got = _flat(inp.get("observed_sha256")) or \
+                _flat(inp.get("pinned_sha256"))
+            if got is None:
+                raise RuntimeError(
+                    f"binding pin for {needle!r} is not a flat 64-hex "
+                    "digest (sub_hint="
+                    f"{sub_hint!r}) — fail-closed (A7 F8)")
+            return got
     return None
 
 
@@ -298,6 +325,31 @@ def score_cng2(contracts) -> dict:
     m["turnover"] = {"fills": 2 * len(funded)}
     m["decision_rows_digest"] = canon_digest(
         [[r[c] for c in eng.DECISION_ROW_COLUMNS] for r in rows])
+    # descriptive control arms (A7 r2 F4a): same panels/funding, frozen
+    # arm rules — DESCRIPTIVE_ONLY, never fold evidence
+    eng.ALLOW_SCORE = True
+    try:
+        for arm_name, builder in (
+                ("CTL-SHIFTBOUNDMINUS2H",
+                 eng.build_ctl_shiftboundminus2h_decisions),
+                ("CTL-FUNDLEVEL", eng.build_ctl_fundlevel_decisions)):
+            arows = [dict(zip(eng.DECISION_ROW_COLUMNS, r))
+                     if not isinstance(r, dict) else r
+                     for r in builder(panels, funding)["rows"]]
+            af = [r for r in arows if r.get("net") is not None
+                  and r.get("entry") is not None]
+            m.setdefault("control_arms_DESCRIPTIVE_ONLY", {})[arm_name] = {
+                "n": len(af), "net": round(sum(r["net"] for r in af), 6)}
+    finally:
+        eng.ALLOW_SCORE = False
+    if ks:
+        import datetime as _dt
+        d0 = _dt.datetime.fromisoformat(str(ks[0]).replace("Z", "+00:00"))
+        d1 = _dt.datetime.fromisoformat(str(ks[-1]).replace("Z", "+00:00"))
+        yrs = max((d1 - d0).total_seconds() / (365.25 * 86400), 1e-9)
+        m["cagr_on_unit_notional"] = round(
+            (1.0 + m["net_pnl"]) ** (1.0 / yrs) - 1.0, 8)
+        m["span"] = [str(ks[0]), str(ks[-1])]
     return m
 
 
@@ -309,10 +361,14 @@ def score_fxng3(contracts) -> dict:
                "CANCPIALLMINMEI_derived_events.json")
     bars_path = (_RUN / "data" / "fxng3" / "twelvedata_repull" /
                  "USDCAD_1day_repull.json")
-    ev = eng.load_events(ev_path,
-                         expected_sha256=_pin_for(binding, "CANCPIALLMINMEI"))
-    bars = eng.load_bars(bars_path,
-                         expected_sha256=_pin_for(binding, "USDCAD"))
+    ev = eng.load_events(
+        ev_path,
+        expected_sha256=_pin_for(binding, "CANCPIALLMINMEI",
+                                 sub_hint="derived restricted-event"))
+    bars = eng.load_bars(
+        bars_path,
+        expected_sha256=_pin_for(binding, "USDCAD",
+                                 sub_hint="assembled repull"))
     grid = eng.build_grid(bars)
     eng.ALLOW_SCORE = True
     try:
