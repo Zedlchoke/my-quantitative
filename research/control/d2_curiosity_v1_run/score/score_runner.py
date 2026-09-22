@@ -349,8 +349,13 @@ def score_cng2(contracts) -> dict:
         d0 = _dt.datetime.fromisoformat(str(ks[0]).replace("Z", "+00:00"))
         d1 = _dt.datetime.fromisoformat(str(ks[-1]).replace("Z", "+00:00"))
         yrs = max((d1 - d0).total_seconds() / (365.25 * 86400), 1e-9)
-        m["cagr_on_unit_notional"] = round(
-            (1.0 + m["net_pnl"]) ** (1.0 / yrs) - 1.0, 8)
+        base = 1.0 + m["net_pnl"]
+        if base > 0:
+            m["cagr_on_unit_notional"] = round(base ** (1.0 / yrs) - 1.0, 8)
+        else:
+            m["cagr_on_unit_notional"] = None
+            m["cagr_note"] = ("undefined: total-loss domain "
+                              "(1 + net <= 0)")
         m["span"] = [str(ks[0]), str(ks[-1])]
     return m
 
@@ -395,8 +400,13 @@ def score_fxng3(contracts) -> dict:
         import datetime as _dt
         yrs = max((_dt.date.fromisoformat(y1) -
                    _dt.date.fromisoformat(y0)).days / 365.25, 1e-9)
-        m["cagr_on_unit_notional"] = round(
-            ((1.0 + m["net_pnl"]) ** (1.0 / yrs) - 1.0), 8)
+        base = 1.0 + m["net_pnl"]
+        if base > 0:
+            m["cagr_on_unit_notional"] = round(base ** (1.0 / yrs) - 1.0, 8)
+        else:
+            m["cagr_on_unit_notional"] = None
+            m["cagr_note"] = ("undefined: total-loss domain "
+                              "(1 + net <= 0)")
         m["span"] = [y0, y1]
     m["decision_rows_digest"] = canon_digest(rows)
     try:
