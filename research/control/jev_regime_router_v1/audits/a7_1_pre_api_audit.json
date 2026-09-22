@@ -1,0 +1,128 @@
+{
+ "audited_at_utc": "2026-09-22T04:12:25Z",
+ "audited_head": "7c83d563d34f6b8c65fed0922eed560e5bcd1ded",
+ "branch": "orca/jev-regime-router-v1-integration",
+ "checklist": [
+  {
+   "evidence": "Clocks verified in code: jrv1/data.py h1_resample (complete iff exactly 4 bars at :00/:15/:30/:45, OHLCV aggregation, partial hour INVALID fail-closed; census re-measured at audit: 35039 rows, 0 interior gaps, 8759 complete H1 hours, 2 partial edge hours == freeze); jrv1/engine.py targets_from_regime (governing decision = latest regime close STRICTLY BEFORE exec open; stale >2 periods -> FLAT); SPY decision at completed session close, fill next session open (data.py ts_close=midnight+1d; engine next-open fills). Folds: fold_contract 4 chronological per asset, warmup 192; fold decision counts recomputed from frozen SPY cache bytes (688/688/688/687=2751) and BTC census (8759-192=8567) — exact match. Force-flat at fold-end exec close implemented (engine step 5). FAIL on one sub-item: positions are NOT prevented from spanning fold boundaries — exec bars between fold spans are not fold-gated and can open positions that carry into the next fold (see finding F3).",
+    "id": "A_plan_conformance",
+   "margin_to_fail": "violated: plan §2.4 'positions never span boundaries'",
+   "verdict": "FAIL"
+  },
+  {
+   "evidence": "jrv1/features.py read line-by-line vs freezes/feature_contract.json: every window is close[t-w+1:t+1] / rv24[t-168:t] (exclusive of current); EMA/ATR/ADX/RSI/BOLL in jrv1/indicators.py are recursive-from-first-bar or SMA-seeded, causal; no centered window, no whole-sample statistic; warmup exactly 192 (vector_at returns None for t<192); non-finite -> vector None -> LOCAL_INVALID, never sent (state_payload raises; sequential_timeline never calls provider). Mutation golden test test_no_lookahead_mutation perturbs bars t+1.. and asserts vector_at(t) unchanged; independently re-derived rv_pctile hand check (168/168 flat-window case) agrees with implementation. No counterexample input found where a future bar changes a past feature.",
+   "id": "B_feature_causality",
+   "margin_to_fail": "no lookahead channel found; note rv24/vol_z use population std (ddof=0), contract-silent (LOW F8)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "C_anonymization",
+   "evidence": "Payload path: features.state_payload returns ONLY {feature_vector[16], prior_regime}; adapter contract.ts validateRequestLine rejects any other state shape (exact 16 finite numbers + label|null prior); request lines inspected (runtime/requests_btcusdt.jsonl): no symbol, no absolute dates, no prices, no events; state_id = sha256(asset_salt||bar_close_ns)[:16] with asset_salt=sha256('JRV1'||asset||data_sha256)[:16] (freezes.py) — opaque. TS side sends only req.state to client.systemOne. Tests: test_state_anonymization (forbidden substrings, price repr scan, payload keys, state_id hex), test_prior_regime_shift.",
+   "margin_to_fail": "no leak found in any request-building path",
+   "verdict": "PASS"
+  },
+  {
+   "id": "D_regime_definitions",
+   "evidence": "On-disk freezes/regime_label_contract.json sha256 = 04a12cd3…b814 == manifest == embedded digest in adapter/src/freeze_digests.ts (byte-verified at audit); EMBEDDED_REGIME_LABEL_CONTRACT definitions compared token-by-token against the freeze file: verbatim equal (5 labels exact); prompt built from the EMBEDDED copy only (prompt.ts), never a re-read; free-text regime rejected -> SCHEMA_ERROR -> TRANSITION_UNKNOWN (contract.ts LABEL_SET; decisions.py). Definitions are outcome-blind (past structure only; rule 'never future price direction' embedded). Adapter refuses to run on digest mismatch (exit 5).",
+   "margin_to_fail": "sha equality and verbatim equality both hold exactly",
+   "verdict": "PASS"
+  },
+  {
+   "id": "E_pins",
+   "evidence": "package.json dependency '@typesafe-ai/sdk': '0.6.0' (exact, no range); package-lock lockfileVersion 3 has exactly one spec occurrence '0.6.0' and node_modules entry version 0.6.0. adapter.ts: pin = --model else model_pin.json; pin null OR 'jev-latest' on live path -> BLOCKED_MODEL_PIN exit 3 unless --mock (lines 227-235); response model must equal pin (validateProviderAnswer) and Python side re-checks (validate_response_line model_pin_mismatch). maxRetries=0 + timeout=10000 on both client construction and the single systemOne call site; retry_scan.test.ts source-scan recomputed by running the suite (57/57 pass) — every maxRetries occurrence is exactly 0 and exactly one systemOne call site exists. models_probe.ts writes {models,...} list, selects nothing. model_pin.json status CANDIDATE_UNVERIFIED, pinned_model null (verified).",
+   "margin_to_fail": "all pin laws hold exactly at HEAD",
+   "verdict": "PASS"
+  },
+  {
+   "id": "F_credential_safety",
+   "evidence": "Only reads of TYPESAFE_API_KEY are name-only presence checks (adapter.ts constructClient, models_probe.ts); the SDK receives no key string (env fallback). test/redaction.test.ts injects a sentinel and asserts absence from all output; test/credential.test.ts: live path without key -> exit 4 BLOCKED_CREDENTIAL, no fabricated rows; helpers.ts strips TYPESAFE_API_KEY from child env. Namespace-wide grep for key-like patterns (sk-..., api_key=...) found only marked test-only dummy/sentinel literals in adapter/test/. TYPESAFE_API_KEY currently UNSET in env. No key material in any committed file.",
+   "margin_to_fail": "zero occurrences of key material",
+   "verdict": "PASS"
+  },
+  {
+   "id": "G_synthetic_fixtures",
+   "evidence": "freezes/synthetic_canary_fixtures.json: 6 fixtures with frozen acceptable sets; frozen in commit 4377c700 (2026-09-22T09:41:26+07:00) which predates every runtime artifact (earliest runtime mtime 10:53:20+07 — smoke, mock cache, requests). Zero live calls exist: 0 cache entries with mode 'live' (all 25 in runtime/jev_cache_mock are mock), TYPESAFE_API_KEY UNSET. Mock canary path exercises schema + UNKNOWN handling (run_canaries; FIX6 -> LOCAL_INVALID, never sent; mock rule re-derived by hand: FIX1->UPTREND, FIX2->DOWNTREND, FIX3->ACCUMULATION, FIX4->DISTRIBUTION, FIX5->TRANSITION_UNKNOWN — all within frozen acceptable sets; smoke canaries ok:true).",
+   "margin_to_fail": "temporal ordering proven by commit time + git content (fixtures unchanged since 4377c700: git diff 4377c700..HEAD -- freezes/ is empty)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "H_cost_call_estimate",
+   "evidence": "Recomputed from primary data: BTC 8759 complete H1 - 192 warmup = 8567 (census re-measured from parquet bytes at audit); SPY 2943 sessions - 192 = 2751 (recomputed from frozen cache bytes, per-fold counts 688/688/688/687 exact). Total billable states = 11,318. Fold contract internally consistent (sums exact). Sample real request line: state JSON = 386 bytes (~96 tokens); prompt = role/rules + 5 label definitions appearing twice (instructions + choice options) ~ 255 tokens => estimated ~430 input tokens/call + minimal output; the plan's 1200-1800 input tokens/call is a conservative CEILING, consistent as an upper bound. INCONSISTENCY: plan §9 prose states '≈8,568 H1 states - 192 ≈ 8,376' and 'total ≈ 11,100' — contradicting the frozen fold_contract (8,567 and 11,318); see finding F4 (MEDIUM).",
+   "margin_to_fail": "projection prose understates the frozen count by 218 calls (~2%)",
+   "verdict": "PASS_WITH_FINDING"
+  },
+  {
+   "id": "I_incident_jrv1_1",
+   "evidence": "Git forensics (commit times +07:00): 4377c700 09:41 freezes; 5bed953d 10:09 lane-ts; 1928f272 10:52 lane-py; 255fcc7c 10:52 handoff; 7c83d563 10:55 INCIDENTS.md ONLY. git diff --name-only 255fcc7c..HEAD = INCIDENTS.md (1 file, +51). git diff 4377c700..HEAD over freezes/ = EMPTY. Runtime mtimes of the 5 ungated computations: smoke_result.json (btc+spy) 10:53:20, backtest_spy_A/B/C 10:54:49 — ALL AFTER every freeze/prompt/mapping/persistence/feature file was committed and unchanged. Freeze sha-chain re-verified at audit time (12/12 MATCH). Working tree clean at HEAD. Therefore no frozen decision input existed in mutable state after any real-data arm output existed; contamination is chronologically impossible. Verdict: NOT-CONTAMINATED (process-discipline breach confirmed as disclosed; 5 ungated aggregate figures existed in runtime/ (gitignored) and on A1's terminal; the 12 scored cells remain to be computed under phase E lock).",
+   "margin_to_fail": "whole-commit + mtime + sha-chain triple evidence",
+   "verdict": "NOT_CONTAMINATED"
+  },
+  {
+   "id": "J_tests",
+   "evidence": "pytest tests_py -q: 95 passed, 6 warnings (numpy RuntimeWarnings in degenerate-fixture paths only), 0 failed (re-run at audit). adapter: npm run typecheck clean; npm test: 57 pass, 0 fail. Golden spot-checks recomputed independently (not self-consistency): (1) persistence — hand-traced test_first_switch_needs_confirm_and_dwell (switch exactly at bar 7: dwell 7>=6, streak 2>=2) and test_cooldown_bars_failed_candidates (barred 8,9,10; eligible again 11) match persistence.py step() semantics and the frozen algorithm text; (2) cost debit — hand arithmetic on the rising-series round trip: qty=980.39215686, fees=5e-4*q*(102+129)=113.235294, slip=22.647059, gross=26470.588235, net=26334.705882, equity_end=126334.705882 — matches engine accounting (entry notional+entry costs debited once; exit credits notional minus exit-side costs only); (3) feature value — rv_pctile hand case: rank of positive rv24 among 168 flat-zero past values = 168/168 = 1.0, equals implementation count_nonzero(past<cur)/168.",
+   "margin_to_fail": "all three hand recomputations agree exactly",
+   "verdict": "PASS"
+  },
+  {
+   "id": "K_dishonesty_scan",
+   "evidence": "Engine fills: entries/exits fill at NEXT exec open (no same-open flip, no signal-bar-close fill); stop evaluated only on bars after entry, fills at stop price with slip debited once; costs booked once per fill (equity identity test at rel 1e-12). Funding: charged at every 8h boundary while held on signed notional; longs pay, shorts receive (direction-signed), charged once per boundary via funding_up_to cursor; ref price = latest bar close rather than boundary price (LOW F6). SPY short path unreachable: mapping freeze DOWNTREND/SPY=FLAT + TREND_SHORT entry exists but targets can only produce it via mapping (BTC only); no borrow surface. S1: safe_open/assert_safe_path deny /S1 and s1_* components (tested). Broker/order APIs: scan_package_source finds none; namespace grep none. Metric divide-by-zero: sharpe/sortino/pf/margin_to_fail return NaN/inf/None, never silent 0. Seeds (F 20260901..+21, stability 20260922) are constants, not data-derived. Arm F null: segment permutation + identity-anchored relabeling with frozen tolerances; Q-11 non-movement sets null_invalid_flag and is DISCLOSED (not hidden) — fail-disclosed per contract. REMAINING FAIL: fold-gap position span (finding F3).",
+   "margin_to_fail": "one structural defect (F3); rest clean",
+   "verdict": "FAIL"
+  }
+ ],
+ "findings": [
+  {
+   "finding": "CRITICAL F1 — Cross-language input_digest canonicalization divergence. adapter_contract §5a requires input_digest = sha256(canonical_json(state)||requested_model) computed IDENTICALLY on both sides. Python canonical_json (json.dumps sort_keys, separators) renders floats <1e-4 in exponent form (e.g. -8.779711216487518e-05) while TS canonicalJson (JSON.stringify) renders the same double as -0.00008779711216487518; exponent formatting also differs where both use exponents (Python '1e-07' vs JS '1e-7'). MEASURED at audit on the 25 real prepared request lines: 10/25 (40%) input_digests DIFFER between the Python and TypeScript implementations. At bulk, every such state's adapter response would be rejected by validate_response_line (input_digest_mismatch -> SCHEMA_ERROR -> TRANSITION_UNKNOWN) AFTER the billable call was made — silently converting ~40% of the bulk budget into forced-UNKNOWN decisions. Existing tests cannot catch it: all TS test vectors use values >= 1e-4. ACTION (before any live call, i.e. before bulk and ideally before STOP-1 GO): pin canonicalization to a single authority — e.g. quantize feature_vector to a fixed decimal grid in the payload before digesting on both sides, or have the request line carry the Python-computed input_digest and the adapter echo/compare it. Add a cross-language round-trip golden test with real-magnitude values (<1e-4).",
+   "evidence_path": "research/control/jev_regime_router_v1/jrv1/freezes.py (canonical_json), adapter/src/contract.ts (canonicalJson), runtime/requests_btcusdt.jsonl (measured 10/25 mismatch)",
+   "requires_action_before": "bulk"
+  },
+  {
+   "finding": "HIGH F2 — prior_regime (f17) sequential dependency has no implemented bulk mechanism that satisfies both the one-call-per-state law and the §5a digest identity. f17 = persisted regime in force at t-1, which depends on prior decisions, which depend on the calls. The only implemented bulk-preparation path (run.py prepare-requests) walks the timeline with an empty/partial cache in non-strict mode, so request lines carry PROVISIONAL priors (measured: null then TRANSITION_UNKNOWN for the whole 25-line file). At scoring, sequential_timeline strict recomputes priors from the cache; wherever the true prior differs from the sent prior, input_digest mismatches and the cached (billable) decision is coerced to SCHEMA_ERROR -> TRANSITION_UNKNOWN — i.e. a naive batch bulk fail-closes to ~all-UNKNOWN. The alternative fixpoint loop (re-prepare after ingest, re-call changed states) is IMPOSSIBLE with the current store: DecisionStore/ingest-responses refuse any second line for an existing state_id (duplicate incident), so a changed-digest line can never be scored. The only correct design left is a strict sequential per-state loop (prepare 1 state -> call -> ingest -> persist -> next), which nothing implements or tests. ACTION (before bulk): implement + golden-test the sequential per-state replay loop (or an owner-approved equivalent) and demonstrate digest identity end-to-end on a mock pass.",
+   "evidence_path": "research/control/jev_regime_router_v1/jrv1/run.py (cmd_prepare_requests), jrv1/decisions.py (sequential_timeline strict/non-strict, DecisionStore.append), runtime/requests_btcusdt.jsonl (provisional priors visible)",
+   "requires_action_before": "bulk"
+  },
+  {
+   "finding": "HIGH F3 — Fold-gap trading violates the plan §2.4 embargo law ('positions never span boundaries'). Engine fold spans are a < ts_open <= b (engine.folds_from_regime_ts) over the frozen fold_contract boundaries, which are non-adjacent (BTC: fold1 end 09:00Z, fold2 start 10:00Z; SPY: end date d, next start date d+1(sessions), so each boundary leaves BTC 4 exec bars / SPY 1 session in NO fold; verified numerically on the frozen calendar: sessions 2018-07-02, 2021-03-26, 2023-12-19 belong to no fold). targets are computed for ALL exec bars without fold gating, and the engine can open a position from the fold-end bar's close signal into a gap bar (open of the next bar), which then spans into the next fold with no boundary event. PROVEN with an in-memory synthetic run at audit: trade entry_bar=11 (gap), exit_bar=25 (fold-1 end, reason fold_flat, fold_id=1); sum(fold_net_pnl) = -60.0601 != totals.net_pnl = -19.9600 — fold attribution does not reconcile with totals whenever gap trading occurs. Consequence: per-fold series (inputs to the concentration kill <=0.50, margin-to-fail P-2, DSR/PBO) silently omit or misattribute gap PnL. ACTION (before scored phase E; recommended before STOP-1): fold-gate the engine (no position may be opened or held on exec bars outside a fold; entry signal suppressed at fold-end bars; gap bars forced FLAT), and add a reconciliation assertion sum(fold_net_pnl) == totals.net_pnl to the runner.",
+   "evidence_path": "research/control/jev_regime_router_v1/jrv1/engine.py (folds_from_regime_ts, run steps 5-7, targets_from_regime), freezes/fold_contract.json (non-adjacent boundaries); synthetic proof run recorded in a7_1_pre_api_audit.md",
+   "requires_action_before": "scored"
+  },
+  {
+   "finding": "MEDIUM F4 — Plan §9 projection prose contradicts the frozen fold contract: plan says 'BTCUSDT ≈ 8,568 H1 decision states − 192 warmup ≈ 8,376; total ≈ 11,100' but the frozen, data-verified numbers are BTC 8,567, SPY 2,751, total 11,318 (recomputed from parquet + cache bytes at audit). The STOP-1 report must quote the freeze numbers; cost projections based on the plan prose understate the bulk by ~2%.",
+   "evidence_path": "plans/PLAN_jev_regime_router_v1.md §9 vs freezes/fold_contract.json",
+   "requires_action_before": "stop1"
+  },
+  {
+   "finding": "LOW F5 — Arm A (BUY_HOLD) benchmark enters at the SECOND exec bar open of each fold, not the first: the entry signal is set at the fold-start bar's close (engine step 7) and fills at the next open. Causal and conservative, but engine.py's docstring ('enters TREND_LONG at the first exec bar open of each fold') is wrong; fix the docstring or the signal timing before phase E.",
+   "evidence_path": "jrv1/engine.py (run step 7 BUY_HOLD branch vs module docstring)",
+   "requires_action_before": "scored"
+  },
+  {
+   "finding": "LOW F6 — BTC funding is charged at 8h boundaries using the most recent bar close as reference price rather than the boundary-time price; deterministic and identical across arms, but the approximation is not stated in cost_contract.json. Disclose in the freeze notes or STOP-1 report.",
+   "evidence_path": "jrv1/engine.py (_charge_funding_until, run step 4)",
+   "requires_action_before": "scored"
+  },
+  {
+   "finding": "LOW F7 — Adapter cache hits are replayed without re-checking response.model == pin (adapter.ts pushes cached rows verbatim); the pin law is re-enforced on the Python side at scoring (fail-closed SCHEMA_ERROR), but a pin change between cache write and scoring would silently void cached billable decisions. Acceptable while the pin is single-use per cycle; note it in the bulk runbook.",
+   "evidence_path": "adapter/src/adapter.ts (cache-hit branch)",
+   "requires_action_before": "bulk"
+  },
+  {
+   "finding": "LOW F8 — rv24 and vol_z use population std (numpy default ddof=0); feature_contract.json does not pin the ddof convention. Consistent across all arms, so no bias; record the convention in the freeze text at the next lawful touch (or accept as-is and disclose in STOP-1).",
+   "evidence_path": "jrv1/features.py (np.std calls) vs freezes/feature_contract.json f11/f15",
+   "requires_action_before": "scored"
+  }
+ ],
+ "incidents_assessment": {
+  "assessment": "NOT-CONTAMINATED. The five ungated real-data arm computations (arm D BTC+SPY via smoke; arms A/B/C SPY via explicit backtest) ran 10:53:20-10:54:49+07:00, strictly AFTER the last commit that touched any freeze, prompt, mapping, persistence or feature definition (lane/landing commits <= 10:52:42+07; git diff 255fcc7c..HEAD contains only INCIDENTS.md; git diff 4377c700..HEAD over freezes/ is empty; 12/12 manifest digests re-verified at audit). It was therefore chronologically impossible for any observed arm output to have altered a frozen decision input. The breach is confirmed as a process-discipline violation exactly as disclosed; the 5 ungated aggregate figures enter the OBSERVED counter; the 12 scored cells remain uncomputed pending phase E.",
+  "incident": "INCIDENT-JRV1-1",
+  "residual_risk": "The ungated SPY/BTC aggregate net-PnL figures remain in A1's context and in gitignored runtime/ artifacts. Mitigation already in place: scored-phase recomputation under lock is authoritative; smoke namespace is kill-only (P-15). No further action required for A7-1."
+ },
+ "schema": "jrv1_a7_1_pre_api_audit@1",
+ "scope": "A7-1 pre-API audit per plan §9: plan conformance, feature causality, anonymization, regime definitions, exact model/package pins, fixtures, API-key safety, call/cost estimate, incident independence. Artifacts-only audit; no implementation was modified.",
+ "tests_run": {
+  "npm_test": "57 pass / 0 fail (node --test), npm run typecheck clean",
+  "pytest": "95 passed / 0 failed / 6 warnings"
+ },
+ "verdict": "REFUSED_WITH_ACTIONS",
+ "zero_unresolved_high_critical": false
+}
