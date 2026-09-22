@@ -355,7 +355,7 @@ def cmd_canary_synthetic(fz: Freezes, args) -> dict:
     from jrv2.canary import run_canary_synthetic
 
     result = run_canary_synthetic(
-        fz, MockProvider(requested_model) if not live else _LiveProvider(),
+        fz, MockProvider(requested_model) if not live else _LiveProvider(fz, requested_model),
         requested_model, pinned_model, mock=not live,
     )
     sub = "mock" if not live else "live"
@@ -373,9 +373,58 @@ def cmd_canary_synthetic(fz: Freezes, args) -> dict:
     return result
 
 
-class _LiveProvider:  # pragma: no cover - never constructed in this lane
-    def __call__(self, sid, state):
-        raise SystemExit("LIVE provider surface is not available in this lane (mock only)")
+class _LiveProvider:  # A1 integration commit (post-lane, pin frozen at G0)
+    """Live provider = one TS-adapter subprocess per state (same discipline as
+    the sequential replay loop: maxRetries 0, cache-first via the adapter's own
+    append-only cache, adapter summary JSON preserved as cost evidence)."""
+
+    def __init__(self, fz, requested_model: str) -> None:
+        import json as _json  # noqa: F401
+        self.model = requested_model
+        rt = runtime_dir(fz)
+        self.cache = rt / "live" / "canary_cache"
+        self.tmp = rt / "live" / "canary_tmp"
+        for d in (self.cache, self.tmp):
+            d.mkdir(parents=True, exist_ok=True)
+        self.adapter_ts = fz.cycle_dir / "adapter" / "src" / "adapter.ts"
+        self.summaries = rt / "live" / "canary_adapter_summaries.jsonl"
+
+    def __call__(self, sid: str, state: dict) -> dict:
+        import json as _json
+
+        from .questionio import QUESTION_IO_SCHEMA, build_request_line
+        from .replay import _invoke_adapter, safe_open
+
+        line = build_request_line(sid, state, self.model)
+        req = self.tmp / "req_1line.jsonl"
+        out = self.tmp / "resp_1line.jsonl"
+        with safe_open(req, "w") as f:
+            f.write(_json.dumps(line, sort_keys=True) + "\n")
+        if out.exists():
+            out.unlink()
+        stdout = _invoke_adapter(
+            NODE_BIN, self.adapter_ts, req, out, self.cache, False, self.model
+        )
+        s = (stdout or "").strip()
+        if s:
+            with safe_open(self.summaries, "a") as f:
+                f.write(s.split("\n")[0].strip() + "\n")
+        rows = [ln for ln in out.read_text().split("\n") if ln.strip()]
+        if len(rows) != 1:
+            return {
+                "schema": QUESTION_IO_SCHEMA,
+                "state_id": sid,
+                "status": "PROVIDER_ERROR",
+                "error_class": "BAD_ADAPTER_OUTPUT",
+                "answers": None,
+                "model": None,
+                "request_id": None,
+                "usage": None,
+                "input_digest": line["input_digest"],
+                "prior_direction": state.get("prior_direction"),
+                "latency_ms": 0.0,
+            }
+        return _json.loads(rows[0])
 
 
 def cmd_preview(fz: Freezes, args) -> dict:

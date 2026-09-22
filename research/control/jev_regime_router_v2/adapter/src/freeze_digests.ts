@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 export const EMBEDDED_FREEZE_SHA256: Readonly<Record<string, string>> = {
   // prompt-relevant contracts (question options + semantic state schema)
   "question_contract.json":
-    "b14d7426c916d19b66d35b60e4266548143dfbb07b6953422dbbeaecd92622e2",
+    "14c770c6bbdf493f0d7cf12b4b9cc031865e916d5be72bd4a657a15bba5fd4b6",
   "semantic_state_contract.json":
     "82184f1e73882535c906cf2e6bc57389e897b9ddb6f5826785f898d10698defc",
 };
@@ -33,16 +33,16 @@ export const EMBEDDED_QUESTION_CONTRACT: {
       type: "choice",
     },
   },
+  // DESIGN TRIAL #1 (revised law; freeze amended, digest re-pinned)
   consistency_law: [
     "TREND + UP -> UPTREND",
     "TREND + DOWN -> DOWNTREND",
-    "RANGE + NEUTRAL + prior_direction DOWN -> ACCUMULATION",
-    "RANGE + NEUTRAL + prior_direction UP -> DISTRIBUTION",
-    "RANGE + NEUTRAL + prior_direction NEUTRAL -> contradiction (UNKNOWN)",
     "TREND + NEUTRAL -> contradiction (UNKNOWN)",
-    "RANGE + UP -> contradiction (UNKNOWN)",
-    "RANGE + DOWN -> contradiction (UNKNOWN)",
-    "phase != structure x direction expectation -> contradiction (UNKNOWN)",
+    "RANGE + phase UPTREND/DOWNTREND -> contradiction (UNKNOWN)",
+    "RANGE lineage: prior DOWN + direction DOWN|NEUTRAL -> ACCUMULATION; prior UP + direction UP|NEUTRAL -> DISTRIBUTION",
+    "RANGE residual contradictions: prior DOWN + direction UP -> contradiction; prior UP + direction DOWN -> contradiction",
+    "RANGE + prior NEUTRAL/none -> contradiction (UNKNOWN)",
+    "phase != expected phase -> contradiction (UNKNOWN)",
     "phase ACCUMULATION requires prior_direction DOWN; phase DISTRIBUTION requires prior_direction UP; else contradiction (UNKNOWN)",
   ],
   io_schema: "jrv2_question_io@1",

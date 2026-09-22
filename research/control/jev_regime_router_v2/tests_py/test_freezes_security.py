@@ -192,12 +192,16 @@ def test_question_contract_forced_choice(fz):
     assert fz.question_contract["io_schema"] == "jrv2_question_io@1"
 
 
-def test_model_pin_candidate_state(fz):
-    """The pin is CANDIDATE_UNVERIFIED until G0; live paths must refuse."""
+def test_model_pin_state(fz):
+    """CANDIDATE_UNVERIFIED (null pin) until G0; VERIFIED_LIVE thereafter.
+    The G0 freeze landed 2026-09-22: pin = jev-1.13.0 (expected value)."""
     pin = fz.model_pin
-    assert pin["status"] == "CANDIDATE_UNVERIFIED"
-    assert pin["pinned_model"] is None
-    assert pin["expected"] == "jev-1.13.0"
+    if pin["status"] == "CANDIDATE_UNVERIFIED":
+        assert pin["pinned_model"] is None
+        assert pin["expected"] == "jev-1.13.0"
+    else:
+        assert pin["status"] == "VERIFIED_LIVE"
+        assert pin["pinned_model"] == "jev-1.13.0"
 
 
 def test_canonical_json_is_sorted_and_compact():

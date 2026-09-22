@@ -1,0 +1,134 @@
+{
+ "actual_start_sha": "c5374fbfed6dfec14b0ea058fedc940cebf4ad7c",
+ "authority_claims": [],
+ "changed_paths": [
+  "research/control/jev_regime_router_v2/jrv2/__init__.py",
+  "research/control/jev_regime_router_v2/jrv2/arms.py",
+  "research/control/jev_regime_router_v2/jrv2/canary.py",
+  "research/control/jev_regime_router_v2/jrv2/data.py",
+  "research/control/jev_regime_router_v2/jrv2/deterministic.py",
+  "research/control/jev_regime_router_v2/jrv2/engine.py",
+  "research/control/jev_regime_router_v2/jrv2/features.py",
+  "research/control/jev_regime_router_v2/jrv2/freezes.py",
+  "research/control/jev_regime_router_v2/jrv2/indicators.py",
+  "research/control/jev_regime_router_v2/jrv2/metrics.py",
+  "research/control/jev_regime_router_v2/jrv2/mock_adapter.py",
+  "research/control/jev_regime_router_v2/jrv2/questionio.py",
+  "research/control/jev_regime_router_v2/jrv2/replay.py",
+  "research/control/jev_regime_router_v2/jrv2/run.py",
+  "research/control/jev_regime_router_v2/jrv2/safety.py",
+  "research/control/jev_regime_router_v2/jrv2/security.py",
+  "research/control/jev_regime_router_v2/jrv2/strategies.py",
+  "research/control/jev_regime_router_v2/adapter/package.json",
+  "research/control/jev_regime_router_v2/adapter/package-lock.json",
+  "research/control/jev_regime_router_v2/adapter/tsconfig.json",
+  "research/control/jev_regime_router_v2/adapter/src/adapter.ts",
+  "research/control/jev_regime_router_v2/adapter/src/contract.ts",
+  "research/control/jev_regime_router_v2/adapter/src/freeze_digests.ts",
+  "research/control/jev_regime_router_v2/adapter/src/mock.ts",
+  "research/control/jev_regime_router_v2/adapter/src/prompt.ts",
+  "research/control/jev_regime_router_v2/adapter/test/adapter_cli.test.ts",
+  "research/control/jev_regime_router_v2/adapter/test/client_fake_fetch.test.ts",
+  "research/control/jev_regime_router_v2/adapter/test/credential_redaction_retry.test.ts",
+  "research/control/jev_regime_router_v2/adapter/test/digest_golden.test.ts",
+  "research/control/jev_regime_router_v2/adapter/test/helpers.ts",
+  "research/control/jev_regime_router_v2/adapter/test/mock_canary.test.ts",
+  "research/control/jev_regime_router_v2/adapter/test/schema_matrix.test.ts",
+  "research/control/jev_regime_router_v2/tests_py/conftest.py",
+  "research/control/jev_regime_router_v2/tests_py/test_arms.py",
+  "research/control/jev_regime_router_v2/tests_py/test_cli_laws.py",
+  "research/control/jev_regime_router_v2/tests_py/test_data_btc.py",
+  "research/control/jev_regime_router_v2/tests_py/test_engine.py",
+  "research/control/jev_regime_router_v2/tests_py/test_features.py",
+  "research/control/jev_regime_router_v2/tests_py/test_freezes_security.py",
+  "research/control/jev_regime_router_v2/tests_py/test_mock_canary.py",
+  "research/control/jev_regime_router_v2/tests_py/test_questionio.py",
+  "research/control/jev_regime_router_v2/tests_py/test_replay.py",
+  "research/control/jev_regime_router_v2/tests_py/test_safety.py"
+ ],
+ "commit_sha": "e483f0d5170777f703f13faa074948bb82591445",
+ "cycle_id": "JEV-REGIME-ROUTER-V2",
+ "dispatch_sha": "c5374fbfed6dfec14b0ea058fedc940cebf4ad7c",
+ "known_limitations": [
+  "Lanes boundaries honored: this lane implemented + tested + bounded-mock-ran only. NO live provider call was made anywhere (model_pin.json remains CANDIDATE_UNVERIFIED, pinned_model null; live replay/preview/canary paths refuse without a G0-frozen pin). NO real-data arm backtest was executed: the backtest CLI is QUARANTINED and refuses fail-closed (exit 20) unless an owner-registered SCORED_GO.json authority pins the --scored-go-token sha256; that authority file does not exist.",
+  "V1 code isolation: V1 SOURCE was read to adapt it (required); no V1 runtime/cache/decision artifact is read by v2 code at runtime. jrv2.security.assert_safe_path hard-refuses any path containing the V1 cycle directory name; scan_v1_references statically proves no jrv2 source references one (both live-enforced and test-pinned). V2 state_id salts are sha256('JRV2'||asset||data_sha)[:16] - provably disjoint from the V1 salt family (test_v1_v2_salt_disjointness_for_same_bars).",
+  "SPY snapshot: v2 reads its OWN data_local/SPY.json.gz copy (byte-identical to the V1 frozen snapshot, sha256 3fd229f9a1b0188fd6037a9d642b144e85a596c4ac4fb9d5f00c7c97cced3803 verified against the freeze); data_local/ is gitignored (machine-local data law, same as V1) so the copy exists on this machine only; the freeze's SPY.file field is lineage disclosure, never a runtime path.",
+  "Bin boundary convention is documented in-code as left-closed half-open [t_i, t_{i+1}) uniformly (exact-threshold resolves to the higher label); the semantic_state_contract notes express drawdown as '<=-0.20 deep' - the code convention places dd_168 == -0.20 exactly in mild, consistent with the plan text 'deep(<-.20)'. Tests pin the code convention; no freeze bytes were altered to resolve the note's ambiguity.",
+  "Adapter request validation enforces the named-state schema as a WHITELIST SUBSET (every bin/numeric key must be a known name, non-empty); full 9-bin + 14-numeric completeness is the producer's law (features.py always emits the full schema for real bars). This is required because the frozen canary fixtures carry reduced named states (8 bins + 3 raw numerics) by freeze design.",
+  "Mock-mode preview/canary numbers are plumbing evidence only (namespace MOCK): preview --mock measured effective shares {DOWNTREND 0.27, UPTREND 0.23, TRANSITION_UNKNOWN 0.25, ACCUMULATION 0.16, DISTRIBUTION 0.09} over the 100 preregistered BTC_H1 indices - no collapse fired under the mock rule; this says NOTHING about live model behavior (that measurement is the scored-phase canary/preview after G0).",
+  "Perturbation stability under the deterministic mock is 8/8 per clear family by construction (fixture raw numerics are returns only, which feed no bins, so recomputed bins are invariant); the >= 6/8 criterion is implemented and measured but only exercises real discriminating power on live responses.",
+  "usage tokens in mock responses are deterministic synthetic values (persisted per response as the schema requires); live cost/latency measurement remains a G0/canary-phase deliverable."
+ ],
+ "lane": "lane-impl",
+ "outputs": {
+  "cells_implemented": ["BTC_H1", "BTC_H4", "SPY_D1"],
+  "design": {
+   "cache_key": "sha256(model||state_id||input_digest||prompt_digest) (V1 amendment_2 law carried into V2)",
+   "forced_choice": "one systemOne call per state with THREE typed questions (structure 2-choice, direction 3-choice, phase 4-choice); the question builder contains NO fifth option; static tests in both languages assert no UNKNOWN/TRANSITION_UNKNOWN option exists in the built criteria; provider answers carrying one are SCHEMA_ERROR -> code-owned UNKNOWN",
+   "io_schema": "jrv2_question_io@1",
+   "safety": "effective regime = provider ok AND phase_conf>=0.50 AND phase_margin>=0.20 AND hierarchy consistent (TREND+UP->UPTREND; TREND+DOWN->DOWNTREND; RANGE+NEUTRAL+prior DOWN->ACCUMULATION / prior UP->DISTRIBUTION / prior NEUTRAL->contradiction; TREND+NEUTRAL, RANGE+UP/DOWN->contradiction; phase-vs-structure x direction mismatch -> contradiction; ACC requires prior DOWN, DIST requires prior UP) else TRANSITION_UNKNOWN; then the V1 persistence machine (0.50/0.20/confirm 2/dwell 6/cooldown 3) over effective labels",
+   "state_id": "salt=sha256('JRV2'||asset||data_sha)[:16]; state_id=sha256(salt||str(bar_ts))[:16]",
+   "states": "named semantic state: 9 bins from frozen thresholds + 14 named raw numerics + prior_structure/prior_direction from persisted effective regime"
+  },
+  "runtime_evidence": {
+   "canary_synthetic_mock": "runtime/mock/canary_synthetic_result.json (ok=true, 10/10 criteria, mock namespace)",
+   "preview_mock": "runtime/mock/preview/BTC_H1/ (100 states, no collapse, mock namespace)",
+   "replay_mock_bounded": "runtime/mock/replay/BTC_H4/ (40 states, 0 incidents, mock namespace)"
+  }
+ },
+ "role": "quant-implementer",
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "JEV-REGIME-ROUTER-V2/lane-impl",
+ "tests": [
+  {
+   "command": ".venv/bin/python -m pytest -q (cwd research/control/jev_regime_router_v2/tests_py)",
+   "exit_code": 0,
+   "result": "127 passed, 1 warning (benign numpy scalar-divide warning in the constant-volume vol_z test path)",
+   "scope": "V1 golden semantics carried over (no-lookahead mutation, PIT, trailing windows, digest-echo goldens incl. exponent-notation vectors, sequential prior replay + resume determinism via REAL TS adapter subprocess, fold partition contiguity + reconciliation identity + no-span, next-bar fill, cost-once, funding signed, S1 denial, venue scan, freeze-digest assertions) PLUS V2: forced-choice schema (fifth label / UNKNOWN phase -> SCHEMA_ERROR), full 2x3x4x3=72-combo consistency matrix against an independent hand-derived table, each code-owned UNKNOWN trigger independently (low conf, low margin, every contradiction pattern incl. prior-direction rules, provider/schema error, stale/missing state), no-double-abstention static checks (py+ts), confirm-arm 5x5 trade/flat matrix, semantic bin boundary tests, perturbation determinism + 8/8 stability, preview sampling rule reproduces frozen preview_indices, V1 isolation (runtime guard + static scan + salt disjointness), usage persisted per response, H1/H4 census + resample correctness on synthetic grids AND vs the real freeze (8759/2189/2943)"
+  },
+  {
+   "command": "npm run typecheck (tsc --noEmit, cwd adapter)",
+   "exit_code": 0,
+   "result": "clean",
+   "scope": "adapter strict typecheck"
+  },
+  {
+   "command": "node --test (cwd adapter)",
+   "exit_code": 0,
+   "result": "47 tests, 47 pass, 0 fail",
+   "scope": "forced-choice static laws (3 questions exactly, phase = exactly 4 options, no UNKNOWN anywhere in built criteria), SCHEMA_ERROR material for fifth label/UNKNOWN/free-text/missing question/bad probs, model-pin drift, usage-persisted law, cross-language digest goldens (Python literals pinned; naive JS recomputation proven divergent; echo path proven immune), mock-canary fixture agreement via adapter subprocess, cache replay no-recall, duplicate skip, freeze gate on tampered COPY (real freezes never touched), credential/redaction laws (sentinel value never in artifacts; no live path ever triggered by tests), maxRetries-0 + 10s-timeout source pins, injected-fetch client tests (pin equality, error mapping, exactly one transport call)"
+  },
+  {
+   "command": "python jrv2/run.py verify-freezes",
+   "exit_code": 0,
+   "result": "10/10 freeze digests verified + venue scan clean + V1-isolation scan clean",
+   "scope": "freeze authority"
+  },
+  {
+   "command": "python jrv2/run.py census",
+   "exit_code": 0,
+   "result": "BTC H1 8759 complete (partials 1@2025-08-20T02:00Z, 2@2026-08-20T02:00Z), BTC H4 2189 complete (partials 5@2025-08-20T00:00Z, 10@2026-08-20T00:00Z), 0 interior gaps, SPY 2943 sessions - all equal to the freeze",
+   "scope": "data census, 3 cells vs freeze"
+  },
+  {
+   "command": "python jrv2/run.py canary-synthetic --mock",
+   "exit_code": 0,
+   "result": "ok=true; 10/10 preregistered criteria PASS with measured numbers (7 sent / 1 not-sent; usage 336+83 tokens recorded)",
+   "scope": "synthetic canary acceptance, MOCK namespace"
+  },
+  {
+   "command": "python jrv2/run.py preview --mock",
+   "exit_code": 0,
+   "result": "100/100 preregistered BTC_H1 states sampled by the frozen rule via the real adapter subprocess; collapse checks ran with measured numbers (max label 0.27 <= 0.90; UNKNOWN 0.25 <= 0.80) - no collapse; classification-only, no PnL",
+   "scope": "canary historical preview machinery, MOCK namespace"
+  },
+  {
+   "command": "python jrv2/run.py replay --cell BTC_H4 --mock --limit 40",
+   "exit_code": 0,
+   "result": "40/40 states sent through the real TS adapter, 0 incidents, 0 digest mismatches, cache-first resume proven in tests",
+   "scope": "strict sequential replay on real BTC_H4 states, MOCK namespace"
+  }
+ ],
+ "tree_status": "clean (implementation commit e483f0d5170777f703f13faa074948bb82591445 contains code+tests by explicit pathspec; zero modified tracked files; this handoff artifact is intentionally untracked at the exact handoff_path per the one-commit law, mirroring the V1 landing pattern)",
+ "workers": 0
+}

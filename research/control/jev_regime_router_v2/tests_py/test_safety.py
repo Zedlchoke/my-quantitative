@@ -35,10 +35,13 @@ PRIORS = ("UP", "DOWN", "NEUTRAL")
 def _independent_expected(structure, direction, phase, prior):
     """Independent re-derivation of the freeze consistency_law, verbatim
     from question_contract.json (test authority — NOT the implementation)."""
+    # DESIGN TRIAL #1 law: RANGE lineage + residual direction
     rules = [
         ("TREND", "UP", "UPTREND", None),
         ("TREND", "DOWN", "DOWNTREND", None),
+        ("RANGE", "DOWN", "ACCUMULATION", "DOWN"),
         ("RANGE", "NEUTRAL", "ACCUMULATION", "DOWN"),
+        ("RANGE", "UP", "DISTRIBUTION", "UP"),
         ("RANGE", "NEUTRAL", "DISTRIBUTION", "UP"),
     ]
     for s, d, ph, pd in rules:
@@ -64,22 +67,24 @@ def test_full_consistency_matrix_72_combos():
                     assert ok == want, (s, d, ph, pd, reason, want)
                     if ok:
                         n_ok += 1
-    # exactly 4 consistent rows: TREND+UP+UPTREND(*3 priors),
-    # TREND+DOWN+DOWNTREND(*3), RANGE+NEUTRAL+ACC(prior DOWN),
-    # RANGE+NEUTRAL+DIST(prior UP)
-    assert n_ok == 3 + 3 + 1 + 1
+    # trial #1 law: TREND rows ignore prior (3+3); RANGE phases accept
+    # residual-or-neutral direction with matching lineage (2+2)
+    assert n_ok == 3 + 3 + 2 + 2
 
 
 def test_each_contradiction_pattern_fires_independently():
     # TREND + NEUTRAL
     assert not evaluate_consistency("TREND", "NEUTRAL", "UPTREND", "UP")[0]
     assert evaluate_consistency("TREND", "NEUTRAL", "UPTREND", "UP")[1] == "contradiction_structure_direction_prior"
-    # RANGE + UP
-    assert not evaluate_consistency("RANGE", "UP", "UPTREND", "UP")[0]
-    # RANGE + DOWN
-    assert not evaluate_consistency("RANGE", "DOWN", "DOWNTREND", "DOWN")[0]
-    # RANGE + NEUTRAL + prior NEUTRAL
-    assert not evaluate_consistency("RANGE", "NEUTRAL", "ACCUMULATION", "NEUTRAL")[0]
+    # trial #1: RANGE residual-direction contradictions
+    assert not evaluate_consistency("RANGE", "UP", "UPTREND", "UP")[0]          # trend phase in range
+    assert not evaluate_consistency("RANGE", "DOWN", "DOWNTREND", "DOWN")[0]    # trend phase in range
+    assert not evaluate_consistency("RANGE", "UP", "ACCUMULATION", "DOWN")[0]   # wrong residual for lineage
+    assert not evaluate_consistency("RANGE", "DOWN", "DISTRIBUTION", "UP")[0]   # wrong residual for lineage
+    assert not evaluate_consistency("RANGE", "NEUTRAL", "ACCUMULATION", "NEUTRAL")[0]  # lineage unknown
+    # residual-direction consistencies (trial #1 additions)
+    assert evaluate_consistency("RANGE", "DOWN", "ACCUMULATION", "DOWN")[0]
+    assert evaluate_consistency("RANGE", "UP", "DISTRIBUTION", "UP")[0]
     # phase disagreeing with structure x direction
     assert not evaluate_consistency("TREND", "UP", "DOWNTREND", "UP")[0]
     assert evaluate_consistency("TREND", "UP", "DOWNTREND", "UP")[1] == "phase_disagrees_with_structure_direction"

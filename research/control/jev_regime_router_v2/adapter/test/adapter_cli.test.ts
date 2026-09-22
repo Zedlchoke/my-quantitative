@@ -4,10 +4,12 @@
 // persisted per response, redaction-safe stdout.
 
 import { test } from "node:test";
+import { readPinnedModel } from "../src/adapter.ts";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  FREEZES_DIR,
   hex16,
   listDir,
   makeRequestLine,
@@ -136,14 +138,27 @@ test("freeze gate (unit): verifyFreezeDigests fires on a tampered COPY (real fre
   assert.match(bad.mismatches[0], /question_contract\.json/);
 });
 
-test("model pin law: live mode without any pin is BLOCKED_MODEL_PIN (exit 3)", () => {
+test("model pin law: null pin is BLOCKED_MODEL_PIN (unit) and post-G0 no-arg resolves to the frozen pin", () => {
+  // unit branch (pre-G0 shape): readPinnedModel over a temp dir with a null pin
+  const tmp = tmpDir();
+  writeFileSync(join(tmp, "model_pin.json"), JSON.stringify({ status: "CANDIDATE_UNVERIFIED", pinned_model: null }));
+  assert.equal(readPinnedModel(tmp), null);
+  // post-G0 (freeze VERIFIED_LIVE since 2026-09-22): no --model resolves to
+  // the pinned model, so the next gate is the credential check (exit 4 here,
+  // key stripped) — NOT a pin refusal
   const dir = tmpDir();
   const requests = writeRequests(dir, [makeRequestLine({ requestedModel: "jev-canary-x" })]);
   const r = runAdapter([
     "--requests", requests, "--out", join(dir, "out.jsonl"), "--cache", join(dir, "cache"),
   ]);
-  assert.equal(r.status, 3);
-  assert.match(r.stderr, /BLOCKED_MODEL_PIN/);
+  const pinFile = JSON.parse(readFileSync(join(FREEZES_DIR, "model_pin.json"), "utf8"));
+  if (pinFile.pinned_model === null) {
+    assert.equal(r.status, 3);
+    assert.match(r.stderr, /BLOCKED_MODEL_PIN/);
+  } else {
+    assert.equal(r.status, 4);
+    assert.match(r.stderr, /BLOCKED_CREDENTIAL/);
+  }
 });
 
 test("model pin law: jev-latest is FORBIDDEN even with --model", () => {

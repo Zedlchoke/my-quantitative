@@ -9,15 +9,20 @@ effective regime algorithm (safety_persistence_contract.json):
   consistent (question_contract consistency_law, incl. prior-direction
   rules) -> phase label; else TRANSITION_UNKNOWN.
 
-consistency law (question_contract.json, verbatim):
-  TREND + UP -> UPTREND
-  TREND + DOWN -> DOWNTREND
-  RANGE + NEUTRAL + prior DOWN -> ACCUMULATION
-  RANGE + NEUTRAL + prior UP -> DISTRIBUTION
-  RANGE + NEUTRAL + prior NEUTRAL (or none) -> contradiction
-  TREND + NEUTRAL / RANGE + UP / RANGE + DOWN -> contradiction
-  phase != expected phase -> contradiction
+consistency law (question_contract.json, verbatim — DESIGN TRIAL #1 revision
+2026-09-22, canary-informed, pre-historical, within the preregistered
+2-revision budget; trial #0 evidence preserved in runtime/live/):
+  TREND + UP -> UPTREND                 TREND + DOWN -> DOWNTREND
+  TREND + NEUTRAL -> contradiction      RANGE + phase UPTREND/DOWNTREND -> contradiction
+  RANGE lineage law (residual-direction reading, Wyckoff):
+    prior DOWN  + direction DOWN or NEUTRAL -> ACCUMULATION
+    prior UP    + direction UP   or NEUTRAL -> DISTRIBUTION
+    prior DOWN  + direction UP                 -> contradiction
+    prior UP    + direction DOWN               -> contradiction
+    prior NEUTRAL/none (any direction)         -> contradiction
   phase ACCUMULATION requires prior DOWN; DISTRIBUTION requires prior UP.
+Trial #0 lesson: the model reads range phases with a residual direction
+(RANGE+DOWN+ACCUMULATION); demanding NEUTRAL mislabeled correct answers.
 
 Confidence/margin thresholds are NEVER lowered to force trades
 (no_forced_trades_law).
@@ -51,7 +56,12 @@ DIRECTIONAL = PHASES  # effective labels eligible for persistence
 
 def expected_phase(structure: str, direction: str, prior_direction: str) -> str | None:
     """Expected phase from structure x direction x prior, or None on
-    structural contradiction (before phase is even consulted)."""
+    structural contradiction (before phase is even consulted).
+
+    DESIGN TRIAL #1 (revised law): a RANGE inherits its lineage from the
+    prior direction and may carry a RESIDUAL direction of the same sign
+    (downside pressure weakening = DOWN residual inside ACCUMULATION) or
+    NEUTRAL; the opposite residual contradicts the lineage."""
     if structure not in STRUCTURES or direction not in DIRECTIONS:
         return None
     if structure == "TREND":
@@ -60,15 +70,13 @@ def expected_phase(structure: str, direction: str, prior_direction: str) -> str 
         if direction == "DOWN":
             return "DOWNTREND"
         return None  # TREND + NEUTRAL -> contradiction
-    # RANGE
-    if direction in ("UP", "DOWN"):
-        return None  # RANGE + UP/DOWN -> contradiction
+    # RANGE: lineage law
     pd = prior_direction if prior_direction in ("UP", "DOWN", "NEUTRAL") else "NEUTRAL"
     if pd == "DOWN":
-        return "ACCUMULATION"
+        return "ACCUMULATION" if direction in ("DOWN", "NEUTRAL") else None
     if pd == "UP":
-        return "DISTRIBUTION"
-    return None  # RANGE + NEUTRAL + prior NEUTRAL/none -> contradiction
+        return "DISTRIBUTION" if direction in ("UP", "NEUTRAL") else None
+    return None  # prior NEUTRAL/none: lineage unknown -> contradiction
 
 
 def phase_prior_consistent(phase: str, prior_direction: str) -> bool:
