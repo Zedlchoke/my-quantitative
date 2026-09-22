@@ -64,7 +64,7 @@ def _invoke_adapter(
     cache_dir: Path,
     mock: bool,
     requested_model: str,
-) -> None:
+) -> str:
     cmd = [
         node_bin,
         str(adapter_ts),
@@ -88,6 +88,11 @@ def _invoke_adapter(
             f"adapter exited {proc.returncode} for request {request_file.name}; "
             f"aborting replay (no silent partial). stderr tail:\n{tail}"
         )
+    # amendment_2 (cost evidence law): the adapter's stdout JSON summary (it
+    # carries input token usage and per-run counters) is preserved verbatim —
+    # one append-only line per adapter invocation. Runtime evidence only;
+    # neither the request/response line schemas nor the cache law change.
+    return proc.stdout
 
 
 def run_replay(
@@ -131,6 +136,8 @@ def run_replay(
 
     request_file = tmp_dir / "req_1line.jsonl"
     out_file = tmp_dir / "resp_1line.jsonl"
+    summaries_path = decisions_path.parent / f"adapter_summaries_{asset}.jsonl"
+    n_summaries = 0
 
     warmup = fz.feature_contract["warmup_regime_bars"]
     rows: list[dict] = []
@@ -211,10 +218,17 @@ def run_replay(
                 f.write(json.dumps(line, sort_keys=True) + "\n")
             if out_file.exists():
                 out_file.unlink()
-            _invoke_adapter(
+            adapter_stdout = _invoke_adapter(
                 node_bin, adapter_ts, request_file, out_file, adapter_cache_dir,
                 mock, requested_model,
             )
+            summary_text = (adapter_stdout or "").strip()
+            if summary_text:
+                for chunk in summary_text.split("\n"):
+                    if chunk.strip():
+                        with safe_open(summaries_path, "a") as f:
+                            f.write(chunk.strip() + "\n")
+                        n_summaries += 1
             with safe_open(out_file, "rb") as f:
                 out_lines = [ln for ln in f.read().decode("utf-8").split("\n") if ln.strip()]
             if len(out_lines) != 1:
@@ -258,6 +272,8 @@ def run_replay(
         "n_cached": n_cached,
         "n_local_invalid": n_local_invalid,
         "n_incidents": len(incidents),
+        "n_adapter_summaries": n_summaries,
+        "adapter_summaries_path": str(summaries_path),
         "digest_mismatches": sum(1 for i in incidents if i["type"] == "input_digest_mismatch"),
         "cache_incidents": [
             {"state_id": i.get("state_id"), "type": i.get("type")} for i in new_incidents

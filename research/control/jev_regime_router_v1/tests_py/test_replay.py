@@ -262,3 +262,28 @@ def test_replay_cli_flags_parse():
     )
     assert args.asset == "btcusdt" and args.limit == 40
     assert args.mock and args.start_after_warmup
+
+
+def test_replay_captures_adapter_summaries(fz, tmp_path):
+    """amendment_2 cost-evidence law: every adapter invocation's stdout JSON
+    summary (input token usage + counters) is appended, one line per call,
+    to adapter_summaries_<asset>.jsonl. Cache hits invoke no adapter and add
+    no summary line."""
+    bars = _bars_60_states()
+    res = _run_replay(tmp_path, bars, fz, limit=10)
+    assert res["n_sent"] == 10
+    assert res["n_adapter_summaries"] == 10
+    sp = Path(res["adapter_summaries_path"])
+    assert sp.exists()
+    lines = [ln for ln in sp.read_text().split("\n") if ln.strip()]
+    assert len(lines) == 10
+    summaries = [json.loads(ln) for ln in lines]
+    assert all(s["schema"] == "jrv1_replay_summary@1" or "n_requests" in s for s in summaries)
+    assert all(s["n_requests"] == 1 and s["n_emitted"] == 1 for s in summaries)
+
+    # resume: the 10 cached states add ZERO new summaries (no adapter calls)
+    res2 = _run_replay(tmp_path, bars, fz)
+    assert res2["n_cached"] == 10 and res2["n_sent"] == 50
+    assert res2["n_adapter_summaries"] == 50
+    lines2 = [ln for ln in sp.read_text().split("\n") if ln.strip()]
+    assert len(lines2) == 60
