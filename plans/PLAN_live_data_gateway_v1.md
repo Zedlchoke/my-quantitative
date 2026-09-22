@@ -1,5 +1,36 @@
 # PLAN LIVE-DATA-GATEWAY-V1 — local single-owner market-data gateway (platform cycle)
 
+> **AMENDMENT 1 (owner order 2026-09-22, verbatim "1" accepting the
+> REST-mark option)** — measured-cause amendment. Root cause measured
+> 2026-09-22 across BOTH machine egress paths (Cloudflare-WARP
+> 104.28.205.71 AND direct-VN 1.55.12.188): the venue payload-
+> suppresses the futures `markPrice` stream (0 frames in ~15 probes,
+> every name variant, incl. after a 5-min rest) while OTHER futures
+> streams flow freely on the same IP in the same minute (bookTicker
+> 6,542 frames/10s BTC, 3,946 ETH; trade 189/10s) and futures REST is
+> HTTP 200. Conclusion: `markPrice@1s` is venue-unavailable to this
+> machine regardless of IP — not a rate-limit ban (REST clean), not
+> probe churn (post-rest silent), not regional futures blocking
+> (bookTicker/trade flow). AMENDED LAW:
+> - §4 live WS surface becomes `bookTicker` on BTCUSDT/ETHUSDT/SOLUSDT
+>   (venue-liveness monitor + real-time quote display ONLY — best
+>   bid/ask/last are DISPLAY/diagnostic fields, never a mark source);
+> - mark/index/funding come from REST `premiumIndex` polled through the
+>   full §5 law at a 5 s cadence (cache TTL 5 s stays); mark freshness
+>   honesty: `canonical_current` true only when the cached mark is
+>   ≤ 30 s old (6 missed polls); STALE after 30 s (was 10 s on the 1 s
+>   stream); GAP_DETECTED now describes WS-quote silence > 10 s;
+> - §9.2A leg A becomes REST-vs-REST: gateway cached mark vs canary
+>   direct `premiumIndex`, aligned iff |Δprovider_ts| ≤ 6 s (5 s cache
+>   + 1 s margin); all other thresholds UNCHANGED (presence ≥ 99%,
+>   ≥ 99.9% within 5 bps, zero > 50 bps, ≥ 24 h, ≥ 1000 comparisons);
+>   the 2026-09-21/22 leg-A evidence under the old WS law is retained
+>   as the environment-block record (5% aligned; WS suppressed);
+> - all other sections unchanged; goals 1/2/4/5/6 unimpaired; goal 3
+>   "near-real-time" = 5–30 s freshness, honestly labeled.
+> A7 delta audit of this amendment: `plans/audits_live_data_gateway_v1/`
+> (a7_amend1_r1). GO phrase and cutover law unchanged.
+
 > Status: `A7 PLAN AUDIT r1 AUTHORIZED_WITH_FINDINGS (0 CRITICAL / 0
 > HIGH / 5 MEDIUM / 6 LOW) — ALL 11 FINDINGS REMEDIATED IN-PLAN
 > PRE-REGISTRATION` (FND-1 canary direct-leg pacing law frozen;
