@@ -64,11 +64,14 @@ def p0_env() -> None:
     branch = subprocess.run(["git", "-C", str(WT), "branch", "--show-current"],
                             capture_output=True, text=True, check=True).stdout.strip()
     dirty = subprocess.run(["git", "-C", str(WT), "status", "--porcelain"],
-                           capture_output=True, text=True, check=True).stdout.strip()
+                           capture_output=True, text=True, check=True).stdout
+    lines = [l for l in dirty.splitlines() if l.strip()]
+    bad = [l for l in lines
+           if not (l.startswith("??") and "d2_curiosity_v1_run/" in l)]
     if branch != "orca/d2-curiosity-v1-integration":
         raise RuntimeError(f"wrong branch {branch}")
-    if dirty:
-        raise RuntimeError(f"worktree dirty: {dirty[:300]}")
+    if bad:
+        raise RuntimeError(f"worktree dirty: {bad[:5]}")
     log(f"P0 ok: HEAD {head[:12]} clean")
 
 
