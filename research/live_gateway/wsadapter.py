@@ -61,7 +61,10 @@ class BinanceStream:
         streams = "/".join(
             f"{sym.lower()}@{self.stream_name}" for sym in self.symbols
         )
-        return f"{self.ws_base}/stream?streams={streams}"
+        # WS_BASE already ends with /stream — do NOT append
+        # another one (the doubled path handshakes then clean-closes,
+        # which cost a full debugging round 2026-09-22)
+        return f"{self.ws_base}?streams={streams}"
 
     def stop(self) -> None:
         self._stop = True
