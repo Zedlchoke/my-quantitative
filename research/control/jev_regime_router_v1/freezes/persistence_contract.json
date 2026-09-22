@@ -1,0 +1,23 @@
+{
+ "algorithm": [
+  "state := UNKNOWN initially (and after warmup)",
+  "each regime bar: raw = top1 label if (confidence>=min_confidence and p1-p2>=min_margin and status==OK) else UNKNOWN-candidate",
+  "if raw != current regime: candidate(raw) counter++ ; if counter>=confirm_bars and bars_in_current>=min_dwell: switch (candidate must equal raw on each of the confirm bars, else reset)",
+  "on switch: bars_in_current=0; failed candidates enter cooldown (label barred from candidacy for cooldown bars)",
+  "any error/LOCAL_INVALID -> treated as UNKNOWN-candidate (never auto-switch on errors)",
+  "output regime label per bar = persisted state"
+ ],
+ "applies_to": [
+  "JEV classifier (arm E)",
+  "deterministic router (arm D)"
+ ],
+ "params": {
+  "confirm_bars": 2,
+  "cooldown": 3,
+  "min_confidence": 0.5,
+  "min_dwell": 6,
+  "min_margin": 0.2
+ },
+ "rationale_outcome_blind": "chosen from regime semantics + synthetic fixtures: a 5-class probability vector needs a majority belief (0.50) separated from the runner-up (0.20 margin); 2-bar confirmation kills single-bar flapping; 6-bar dwell (BTC 6h / SPY 6 sessions) prevents whipsaw regime changes; 3-bar cooldown bars a rejected candidate from immediate re-candidacy. NO PnL was computed when choosing these numbers.",
+ "schema": "jrv1_persistence_contract@1"
+}

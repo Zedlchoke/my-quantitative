@@ -1,0 +1,48 @@
+{
+ "mapping": {
+  "ACCUMULATION": {
+   "BTCUSDT": "MR_LONG",
+   "SPY": "MR_LONG"
+  },
+  "DISTRIBUTION": {
+   "BTCUSDT": "FLAT",
+   "SPY": "FLAT"
+  },
+  "DOWNTREND": {
+   "BTCUSDT": "TREND_SHORT",
+   "SPY": "FLAT"
+  },
+  "TRANSITION_UNKNOWN": {
+   "BTCUSDT": "FLAT",
+   "SPY": "FLAT"
+  },
+  "UPTREND": {
+   "BTCUSDT": "TREND_LONG",
+   "SPY": "TREND_LONG"
+  }
+ },
+ "mapping_rationale": "code-owned, frozen before any outcome; DISTRIBUTION flat everywhere (short-side MR lacks frozen authority for SPY by F6 long-only law; one uniform mapping, no asset-specific post-hoc additions); SPY DOWNTREND flat by the same long-only law; BTC DOWNTREND short is supported by its symmetric cost contract",
+ "position_sizing": "notional fraction 1.0 of current equity per position; one position at a time; no leverage anywhere",
+ "regime_change_rule": "on persisted regime change, position reconciles to the new regime's strategy target at next execution bar open",
+ "remapping_law": "this file's sha256 is asserted by the runner at start; changing it after ANY outcome is a cycle violation",
+ "schema": "jrv1_regime_strategy_mapping_freeze@1",
+ "strategies": {
+  "FLAT": "no position; open position exits at next execution bar open when the active regime maps away",
+  "MR_LONG": {
+   "ancestry": "strategy_mean_reversion.py (RSI 30/55, BOLL 20/2, 2*ATR stop; wide-stop doctrine NOTES 4.2)",
+   "entry": "RSI14<30 and close<BOLL(20,2.0) lower, flat",
+   "exit": "close>=BOLL mid | RSI14>55 | 96 execution bars max hold | intrabar stop entry-2*ATR14 | regime off | fold force-flat"
+  },
+  "TREND_LONG": {
+   "ancestry": "strategy.py ema_atr / strategy_trend_pullback.py lineage",
+   "entry": "close>EMA20 and EMA20>EMA50 (execution clock), flat",
+   "exit": "close<EMA20 | intrabar stop entry-3*ATR14 | regime turns this strategy off | fold force-flat"
+  },
+  "TREND_SHORT": {
+   "entry": "close<EMA20 and EMA20<EMA50, flat",
+   "exit": "close>EMA20 | intrabar stop entry+3*ATR14 | regime off | fold force-flat",
+   "funding": "signed, charged per 8h boundary on open notional",
+   "instrument": "BTCUSDT only"
+  }
+ }
+}

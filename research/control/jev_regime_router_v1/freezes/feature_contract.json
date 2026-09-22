@@ -1,0 +1,113 @@
+{
+ "causality_law": "completed bars only; strictly trailing windows; no centered window; no future normalization; no whole-sample statistics",
+ "features": [
+  {
+   "def": "log(close_t/close_{t-1})",
+   "id": "f01",
+   "name": "r1"
+  },
+  {
+   "def": "log(close_t/close_{t-4})",
+   "id": "f02",
+   "name": "r4"
+  },
+  {
+   "def": "log(close_t/close_{t-12})",
+   "id": "f03",
+   "name": "r12"
+  },
+  {
+   "def": "log(close_t/close_{t-24})",
+   "id": "f04",
+   "name": "r24"
+  },
+  {
+   "def": "log(close_t/close_{t-72})",
+   "id": "f05",
+   "name": "r72"
+  },
+  {
+   "def": "(EMA12_t/EMA12_{t-12}-1)/12",
+   "id": "f06",
+   "name": "ema_slope_fast"
+  },
+  {
+   "def": "(EMA48_t/EMA48_{t-48}-1)/48",
+   "id": "f07",
+   "name": "ema_slope_slow"
+  },
+  {
+   "def": "(close/EMA50-1)/(ATR14/close)",
+   "id": "f08",
+   "name": "dist_ema"
+  },
+  {
+   "def": "Wilder ADX(14)",
+   "id": "f09",
+   "name": "adx14"
+  },
+  {
+   "def": "ATR14/close",
+   "id": "f10",
+   "name": "atr_pct"
+  },
+  {
+   "def": "rank of rv24_t among its trailing 168 PAST values (exclusive) /168; rv24 = std of last 24 log returns",
+   "id": "f11",
+   "name": "rv_pctile"
+  },
+  {
+   "def": "close/max(close,168)-1",
+   "id": "f12",
+   "name": "dd_168"
+  },
+  {
+   "def": "close/min(close,168)-1",
+   "id": "f13",
+   "name": "dist_low"
+  },
+  {
+   "def": "(close-min24)/(max24-min24)-0.5; 0.0 if max24==min24",
+   "id": "f14",
+   "name": "range_pos"
+  },
+  {
+   "def": "(v/mean168-1)/(std168/mean168)",
+   "id": "f15",
+   "name": "vol_z"
+  },
+  {
+   "def": "mean over last 24 bars of (close-low)/(high-low), zero-range bars dropped; fail-closed if all 24 zero-range",
+   "id": "f16",
+   "name": "clv_24"
+  },
+  {
+   "def": "one-hot(5) of persisted regime in force at t-1; all-zero before first persisted state",
+   "id": "f17",
+   "name": "prior_regime"
+  }
+ ],
+ "regime_clock": {
+  "BTCUSDT": "H1 (resampled from 15m per data identity law)",
+  "SPY": "D1 session bars"
+ },
+ "schema": "jrv1_feature_contract@1",
+ "state_payload_law": {
+  "forbidden_anywhere": [
+   "symbol",
+   "absolute dates",
+   "absolute prices/volumes",
+   "calendar features",
+   "session/day-of-week (NOT preregistered)",
+   "strategy PnL / future returns / fold verdicts",
+   "event names"
+  ],
+  "non_finite_features": "state NOT sent; decision locally TRANSITION_UNKNOWN (status LOCAL_INVALID)",
+  "state_id": "sha256(asset_salt||bar_ts)[:16]; asset_salt=sha256('JRV1'||asset||data_sha256)[:16]; opaque",
+  "state_object": {
+   "feature_vector": "f01..f16 plain numbers",
+   "prior_regime": "label string or null"
+  }
+ },
+ "warmup_regime_bars": 192
+}
