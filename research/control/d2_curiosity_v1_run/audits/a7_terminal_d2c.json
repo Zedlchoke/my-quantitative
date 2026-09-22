@@ -1,0 +1,138 @@
+{
+ "schema": "a7_terminal_d2c@1",
+ "cycle_id": "D2-CURIOSITY-V1",
+ "cycle_class": "NON_GOVERNING_DIAGNOSTIC",
+ "audit": "A7 independent fresh-context TERMINAL audit (plan phase R) — post-scoring adjudication of the GO'd atomic job, the two mid-run fixes, reproduction, metrics, vocabulary, trial accounting and old-verdict immutability",
+ "audited_utc": "2026-09-22T04:21:05Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration",
+ "branch": "orca/d2-curiosity-v1-integration",
+ "head_audited": "84eaf6b196dec41dfb9cdee6f9b833de66ff29d4",
+ "audit_only": true,
+ "method": "read-only recomputation + git forensics; no heavy lock acquired (locks inspect read-only: FREE_PROVEN, no foreign worker); no engine, contract, data or run artifact modified by this audit",
+ "files_written_by_this_audit": ["research/control/d2_curiosity_v1_run/audits/a7_terminal_d2c.json"],
+
+ "go_law": {
+  "finding": "LAWFUL",
+  "evidence": [
+   "Gate-before-GO ordering established by git commit times on this branch: 1a3ec56c (gate commit carrying audits/a7_prelaunch_d2c_r3.json verdict AUTHORIZED_PRELAUNCH and the message 'STOPPED AT OWNER GO GATE waiting for exact phrase') at 2026-09-22T04:08:33Z precedes the first GO'd attempt (score_run_log.txt first line P0 ok at 04:09:30Z).",
+   "Runner consumes the owner phrase mechanically: main() refuses to start unless env D2C_GO_PHRASE equals exactly 'GO D2 CURIOSITY V1 THREE DIAGNOSTIC CELLS' (score_runner.py GO gate, P-8); both logged attempts passed this gate (P0 lines exist), so a correct phrase was presented at run time; summary records go_phrase_state=CONSUMED_AT_GATE.",
+   "The early owner phrase of 2026-09-22 predating the gate died unconsumed per P-8 (disclosed in the 1a3ec56c gate commit); no artifact records it as consumed. Owner-GO freshness after the gate is evidenced by the run log executing the phrase-gated runner post-1a3ec56c plus the scored commit 84eaf6b1; the chat transcript itself is outside this audit's artifact reach.",
+   "Zero outcome artifacts existed at the gate: git ls-tree 1a3ec56c shows no score_run_log.txt / score_summary.json tracked; both were first written by the GO'd attempts and committed only in 84eaf6b1."
+  ]
+ },
+
+ "midrun_fixes_adjudication": {
+  "finding": "LAWFUL — outcome-neutral deterministic recompute after a crash-before-persistence; the disclosed partial leak had zero actionable use",
+  "timeline": [
+   "Attempt 1 (04:09:30Z, HEAD 1a3ec56c): FXNG3 scored (slot 1/3), CNG2 crashed inside score_cng2's CAGR block (round(complex) TypeError, caught per-cell -> NOT_ADJUDICABLE recorded in-memory), then reproduce() re-ran score_cng2 and the same crash propagated UNCAUGHT -> process died BEFORE the atomic summary write. Log shows no 'summary written' line for attempt 1; P0 at that commit refused ANY dirt, and no summary existed to leave behind. Verified: the runner at 1a3ec56c contains the unguarded round((1.0+net)**(1/yrs)-1.0, 8) at both CAGR sites.",
+   "Fix 6320fa2d (04:10:00Z): CAGR total-loss domain guard at BOTH CAGR sites — base>0 -> same formula; else cagr=None + disclosed note. Touches ONLY score/score_runner.py (14+/4-). No numeric parameter is introduced: the branch condition is the mathematical domain boundary (1+net<=0), not a tunable.",
+   "Fix f82121a7 (04:10:18Z): P0 tolerates the lane's own UNTRACKED runtime artifacts (score_run_log/score_summary) left by attempt 1; tracked modifications and any untracked file outside d2_curiosity_v1_run/ still refuse. Touches ONLY score/score_runner.py (6+/3-). Digest-pinned loads (every data input) close the residual hole an untracked lane file could otherwise open.",
+   "Attempt 2 (04:10:18Z, HEAD f82121a7): both cells re-scored in ONE process under one heavy-lock window; summary written atomically 04:10:20Z; committed 84eaf6b1 04:10:34Z."
+  ],
+  "outcome_neutrality": [
+   "Both fix diffs verified by full read: neither touches engines/, the four frozen contracts, sources/, data, costs, signal, folds, universe, direction or thresholds. git diff --name-only 1a3ec56c..f82121a7 => score_runner.py only. Engines byte-identical from 51547179 (r2-audited) through 84eaf6b1; contracts byte-identical since freeze commit 9f14a73a.",
+   "The CAGR guard changes only the representation of an undefined CAGR (crash -> null + note); gross/costs/net/PF/win-rate/folds/verdict are computed before and untouched by it; the per-cell verdict derives from the net sign alone, so the guard cannot alter any verdict. For FXNG3 (net=+0.1067>0) the guard is inert and returns the same number attempt 1 computed.",
+   "This is NOT the forbidden 'rerun for bad results': the rerun recovered persistence of a crashed atomic job with unchanged frozen inputs and deterministic code; the bad outcome (CNG2 NET_NEGATIVE) was nonetheless re-computed, persisted and reported. No result-shopping channel exists: nothing was altered that could improve a number.",
+   "DISCLOSED PARTIAL LEAK ADJUDICATED: attempt 1's crash inference (CNG2 net < -1.0 from the complex domain, before persistence, disclosed in the 6320fa2d message) could not be acted on — every input it might influence (construction, costs, folds, universe, direction, thresholds) was frozen in commits that predate ANY outcome and verified byte-unchanged; the only decisions the leak could touch were whether to re-run (done, for persistence) or to suppress CNG2 (not done — NET_NEGATIVE reported honestly). Zero actionable contamination."
+  ],
+  "residual_honesty_note": "Attempt 1's FXNG3 metrics were fully computed but never persisted, and attempt 1's CNG2 metrics died inside the CAGR block; therefore 'attempt-1 numbers equal attempt-2 numbers' is verifiable only structurally (same pinned bytes, same engine code, deterministic aggregation), not by cross-attempt artifact diff. The structural case is airtight (all loads digest-pinned; engines byte-identical; aggregation code unchanged by the fixes except the inert-for-FXNG3 guard)."
+ },
+
+ "atomicity": {
+  "finding": "PASS",
+  "evidence": [
+   "Each attempt scored both cells inside a single process under a single heavy-lock window (score_run_log.txt: acquire -> slot 1/3 -> slot 2/3 -> [summary] -> release; no invocation boundary between cells).",
+   "No cross-cell state channel: each family imports its own engine module; the ALLOW_SCORE sanctioned setter is per-engine-module and restored in finally; contracts are loaded once before the cell loop and passed read-only; scoring functions write nothing except the final atomic summary (tmp + os.replace).",
+   "The only changes between the two attempts are the two fix commits, both confined to score_runner.py (verified above) — no parameter, engine or contract change between cells in either attempt."
+  ]
+ },
+
+ "reproduction": {
+  "finding": "PASS with one LOW nuance",
+  "evidence": [
+   "Mechanism: reproduce() re-runs score_cng2/score_fxng3 in-process on the same digest-pinned bound bytes and requires decision_rows_digest equality; summary reproduction.reproduced=true and the two detail digests equal the per-cell decision_rows_digest fields (verified: df1cdf81… for CNG2, 09909cf5… for FXNG3).",
+   "Digest logic verified: canon_digest = sha256 over canonical JSON (sort_keys, tight separators, ensure_ascii=False, default=str); CNG2 rows hashed as column-ordered lists (DECISION_ROW_COLUMNS), FXNG3 rows as key-sorted dicts — both order-stable and deterministic."
+  ],
+  "nuance_F_T1_LOW": "The runner docstring and plan P4 promise 'byte-identical decision rows + identical metric JSON'; the implemented assertion covers the decision-rows digest only. Metric-JSON identity holds implicitly (deterministic aggregation over identical rows through unchanged code) and both re-runs computed full metrics, but it is not explicitly asserted. Non-blocking; recommend aligning the docstring or asserting a metrics digest in any future re-bind."
+ },
+
+ "metrics_recompute": {
+  "finding": "PASS — every checked number reproduced exactly",
+  "recomputed": [
+   "FXNG3: net 0.149872-0.0432=0.106672 EXACT; tier1 net+0.5*costs=0.128272 EXACT (tier1 scale 1.5/3.0=0.5, ladder law of cost_contract); costs 144 fills x 3 bps unit-notional = 0.0432 EXACT; cost_share 0.288246 and net_to_gross 0.711754 EXACT; expectancy 0.106672/72=0.00148156 EXACT; fold n 8+47+17=72 and fold nets sum to net within 1e-6 (6dp fold rounding); exposure 360=72x5; CAGR independently recomputed from span 2018-10-10..2024-05-24 = 0.01819609 EXACT.",
+   "CNG2: net 1.9003-9.1896=-7.2893 EXACT; tier1 -7.2893+0.5*9.1896=-2.6945 EXACT (tier1 constants 5+2=7 vs 10+4=14 bps per fill, ratio 0.5, per the pre-registered cost_contract constants); costs 6564 fills x 14 bps = 9.1896 EXACT; tier2 RT 28.0=(10+4)x2 EXACT vs contract; cost_share 4.835868 / net_to_gross -3.835868 consistent (1-share) EXACT; expectancy -0.00222099 EXACT; calendar thirds n 1092+1095+1095=3282 and net sum -7.2893 EXACT; CAGR correctly null with the total-loss-domain note under the new guard.",
+   "PF: exact values are row-level (digest-covered) and not recomputable from the summary alone; directionally consistent — FXNG3 PF_net 1.288145>1 and PF_gross 1.428447>1 with positive net and positive gross; CNG2 PF_net 0.509237<1 with negative net while PF_gross 1.225877>1 with positive gross sum — internally coherent, no impossibility.",
+   "Table readiness: every evaluation_contract report_table_columns value is present per cell (gross_pnl_pre_cost, costs, net_pnl, return_pct_on_unit_notional_base, profit_factor_net(+gross basis), max_drawdown_on_cumulative_position_marks, n_trades, positive_folds, verdict); the human table itself is A1's deliverable per plan section 7.",
+   "Benchmarks/controls present and labelled DESCRIPTIVE_ONLY: FXNG3 buy-and-hold USDCAD (72 rows); CNG2 CTL-SHIFTBOUNDMINUS2H and CTL-FUNDLEVEL with n=3282 each; CNG2 folds NULL with folds_note, calendar thirds labelled DESCRIPTIVE_ONLY — matching the three_cell_contract and evaluation_contract law."
+  ]
+ },
+
+ "vocabulary_and_trial_accounting": {
+  "finding": "LAWFUL",
+  "evidence": [
+   "Forbidden-language scan of score_summary.json + score_run_log.txt: the only occurrences of 'D2 PASS'/'survivor'/'validated edge'/'production-ready' are the summary's forbidden_language declaration array (echoing the evaluation_contract guard list) — a meta-declaration, never used as verdict or result language. No 'promotable' anywhere.",
+   "All three cell verdicts are legal vocabulary: FXNG3 NET_POSITIVE, CNG2 NET_NEGATIVE, SFNG2 NOT_RUN_DATA_BLOCKED(reason); cycle-level label NON_GOVERNING_DIAGNOSTIC / NO PROMOTION / old D2 verdicts immutable on every result.",
+   "Old D2 verdicts preserved byte-equal between source_identity_freeze.json and score_summary.json (verified dict equality on all three verbatim strings).",
+   "SLOT ADJUDICATION — NOT_RUN_DATA_BLOCKED consumes 0 slots: LAWFUL. The plan's own law consumes a slot when a cell's SCORED COMPUTATION STARTS and forbids force-fill; SFNG2's computation never started (data gate NEEDS_DEDICATED_LANE -> runner's family_bindable false -> blocked before any engine call, log line 'NOT_RUN_DATA_BLOCKED (no slot consumed)'), and the frozen data_binding_law step 4 forbids improvised substitutes — forcing a third cell would have violated fail-closed, not honoured it. This was pre-ruled in the prelaunch r1 audit and carries. Budget '2/3' with one lawfully-unconsumed slot is the honest terminal state.",
+   "Counter-restart nuance (recorded, not a violation): attempt 1 started the same two cells (counter 1/3, 2/3) and attempt 2 re-counted them; the final summary's observed_diagnostic_slots=2 counts the two DISTINCT observed cells. No third cell was ever consumed, no slot was reassigned to a different cell, and the double-start is the disclosed crash-recovery recompute — consistent with 'slots never reassigned'."
+  ]
+ },
+
+ "old_verdicts_immutability": {
+  "finding": "PASS",
+  "evidence": [
+   "Full cycle range (e7413f83~1..84eaf6b1) touches NOTHING outside research/control/d2_curiosity_v1_run/, plans/ (the D2C plan + the registry trio ACTIVE_CYCLES.json / CYCLE_REGISTRY.json / CYCLE_REGISTRY.events.jsonl) — no old cycle's control directory, ledger, denominator or verdict file was written.",
+   "plans/ registry writes in the window are sanctioned shared-registry operations via researchctl made during the owner session that opened the cycle (1dd3bbab STOCKS-SEARCH-V1 halt reconciliation = the opening instruction itself; e81f9df7 LIVE-DATA-GATEWAY leg-B phase note) — both fully disclosed in their commit messages; neither rewrites an old verdict or denominator.",
+   "Heavy lock released cleanly both attempts; locks inspect at audit time: FREE_PROVEN, no foreign worker.",
+   "S1: engines deny any '/S1/' or 's1_' path at load (fail-closed, golden-tested); no S1 path appears in any lane artifact. SANDBOX-OVERFIT-3ASSETS: referenced only as an exclusion declaration in the freeze and audit artifacts; no read path anywhere in engines/runner."
+  ]
+ },
+
+ "findings": [
+  {
+   "id": "FT1",
+   "severity": "LOW",
+   "status": "RECORDED_NON_BLOCKING",
+   "area": "reproduction gate scope",
+   "finding": "P4 metric-JSON identity is implicit (determinism) but not asserted; only the decision-rows digest is compared. See reproduction.nuance."
+  },
+  {
+   "id": "FT2",
+   "severity": "MEDIUM",
+   "status": "RECORDED_PROCESS_GAP_FOR_OWNER",
+   "area": "cycle registry",
+   "finding": "D2-CURIOSITY-V1 has NO dedicated row in plans/CYCLE_REGISTRY.json, ACTIVE_CYCLES.json or CYCLE_REGISTRY.events.jsonl (the single 'D2-CURIOSITY' string in each is inside the STOCKS-SEARCH-V1 supersession note). The registry is the workspace's only writable cycle authority; the cycle's lifecycle (registered state, GO consumption, terminal state) was never registered. This does not corrupt any audited artifact — plan, contracts, run log and summary are complete and self-authenticating — but the terminal state currently lives only in commit messages and this control directory.",
+   "remediation": "Owner/lane registers the terminal row (lifecycle CLOSED/terminal, budget 2/3, go_phrase CONSUMED, head 84eaf6b1, terminal verdict DIAGNOSTIC_COMPLETE_NO_PROMOTION) via researchctl after this audit."
+  },
+  {
+   "id": "FT3",
+   "severity": "LOW",
+   "status": "RECORDED_METADATA_SLIP",
+   "area": "prelaunch r3 timestamp",
+   "finding": "a7_prelaunch_d2c_r3.json audited_utc=2026-09-22T05:55:00Z is chronologically inconsistent with its own commit (1a3ec56c at 04:08:33Z) and file mtime (04:04Z) — likely a local-time/UTC labelling slip. Ordering is not threatened: git commit times authoritatively place the gate BEFORE the first GO'd attempt. Recorded for metadata discipline only."
+  },
+  {
+   "id": "FT4",
+   "severity": "LOW",
+   "status": "RECORDED_DISCLOSED",
+   "area": "attempt-1 / attempt-2 comparability",
+   "finding": "Attempt-1 metrics were never persisted, so cross-attempt numeric identity is structural (pinned bytes + byte-identical engines + unchanged aggregation) rather than artifact-proven. Adjudicated sufficient: see midrun_fixes_adjudication.outcome_neutrality."
+  }
+ ],
+
+ "carried_conditions_for_final_report": [
+  "MaxDD column must be presented on its disclosed basis (cumulative position marks) — F4c carried from r3, MEDIUM-disclosed, non-blocking.",
+  "CNG2 CAGR renders as UNDEFINED (total-loss domain) — not 0 and not a crash; FXNG3 CAGR 1.819609% is a unit-notional diagnostic figure.",
+  "FXNG3 NET_POSITIVE is a DIAGNOSTIC observation on one 72-event cell with 1/3 positive folds and a descriptive benchmark — no acceptance battery exists in this cycle; it must not be phrased as edge.",
+  "Old D2 verdicts reprinted verbatim in the final report (source strings verified byte-equal in the summary).",
+  "Five-year-old explanation per evaluation_contract (which made money / which lost / which mimics / which is too thin / none promotable) remains A1's deliverable; all required inputs are present in the summary."
+ ],
+
+ "terminal_verdict_recommendation": {
+  "recommended": "DIAGNOSTIC_COMPLETE_NO_PROMOTION",
+  "basis": "The atomic scored job completed lawfully: 2/3 observed diagnostic slots consumed (FXNG3-A4-P1 NET_POSITIVE +0.106672 and CNG2-A5-P1 NET_NEGATIVE -7.2893 on unit notional at tier-2.0 PRIMARY), SFNG2-A4-P1 honestly NOT_RUN_DATA_BLOCKED with 0 slots under the frozen fail-closed data-binding law (pre-ruled lawful in prelaunch r1). No cell ended in an unresolved technical-failure state (the attempt-1 crash was deterministically recovered and disclosed), so DIAGNOSTIC_COMPLETE_TECHNICAL_FAILURE would misdescribe the terminal state. Per the plan's hard law this verdict carries ZERO promotion, zero old-verdict change, and the fixed vocabulary."
+ },
+
+ "verdict": "AUTHORIZED_TERMINAL",
+ "verdict_basis": "GO law held (r3 AUTHORIZED_PRELAUNCH committed at 04:08:33Z before the first GO'd attempt at 04:09:30Z; phrase consumed mechanically via D2C_GO_PHRASE; early GO died unconsumed). The two mid-run fixes are verified outcome-neutral, runner-only, disclosed, and sit strictly between a crash-before-persistence and a deterministic recompute; the disclosed partial leak (CNG2 net < -1.0) had zero actionable use against a fully frozen input set. Atomicity held (both cells per attempt in one process/one lock; no engine or contract byte changed from the audited prelaunch state through HEAD). Reproduction identical=True on verified canonical digests (LOW scope nuance FT1). Every independently recomputable metric matches exactly; all contract table inputs exist; benchmarks and controls are DESCRIPTIVE_ONLY and labelled. Vocabulary is clean; NOT_RUN_DATA_BLOCKED consumed 0 slots lawfully; budget 2/3 is honest. No write touched any old cycle's verdict, ledger or denominator. Findings FT1/FT3/FT4 LOW and FT2 MEDIUM are recorded, none blocking; FT2 (missing registry row) is referred to the owner. Terminal recommendation: DIAGNOSTIC_COMPLETE_NO_PROMOTION."
+}
