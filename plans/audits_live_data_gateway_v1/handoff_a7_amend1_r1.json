@@ -1,0 +1,53 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "ldgv1-a7-amend1-r1",
+  "cycle_id": "LIVE-DATA-GATEWAY-V1",
+  "role": "A7 independent fresh-context auditor (Amendment 1 delta audit, round amend1-r1)",
+  "lane": "a7-amend1-r1",
+  "branch": "orca/live-data-gateway-v1-integration (read-only audit; artifacts in root plans/)",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/live-data-gateway-v1/integration (read-only)",
+  "dispatch_sha": "c23b5e87f051ff8c6b14c21ced545001217955f5",
+  "actual_start_sha": "c23b5e87f051ff8c6b14c21ced545001217955f5",
+  "commit_sha": null,
+  "changed_paths": [
+    "plans/audits_live_data_gateway_v1/a7_amend1_r1.json",
+    "plans/audits_live_data_gateway_v1/handoff_a7_amend1_r1.json"
+  ],
+  "tests": [
+    {"name": "pytest tests/ -q -k ldgv1 (measured by auditor, root venv from worktree)", "result": "PASS", "detail": "74 passed, 0 failed, 1915 deselected in 9.00s at c23b5e87; arithmetic reconciles exactly (13 cache_persistence + 22 breaker_limiter + 10 a7r1_remediation + 10 service_api + 19 snapshot_ws_dashboard = 74). Claim 74/74 verified."},
+    {"name": "A: quote-never-mark code-path proof", "result": "PASS", "detail": "apply_quote touches only best_bid/best_ask/quote_ts_ms/quote_received_ms (snapshot.py:65-76); build_payload value/mark_price only from the mark clock (snapshot.py:200-232); on_ws_event bookTicker path never writes mark fields (service.py:123-171); stream subscribed on exactly QUOTE_SYMBOLS=('BTCUSDT','ETHUSDT','SOLUSDT') (service.py:52,240-247); live stream_url confirms 3-major bookTicker, 0 reconnects."},
+    {"name": "A: mark source = REST premiumIndex @5s through the full §5 law", "result": "PASS", "detail": "mark_poll_loop -> gate.fetch (cache TTL 5s, coalescer, breaker, min-gap/rpm/soft-1200/hard-1800 budgets) at service.py:410-477; live-measured 11.4-11.6 calls/min, used_weight_1m 110-120, hard_weight_stops 0 — matches claimed 12/min, ~120/min weight."},
+    {"name": "A: freshness law + canonical_current identity + ws-down disclosure", "result": "PASS", "detail": "STALE_AFTER_MS=30_000, GAP_MS=10_000; mark gap on MARK clock, quote gap >10s on quote clock; canonical_current = (status=='HEALTHY') at snapshot.py:232; the ws-down -> DISCONNECTED datum branch is deleted; surface_state() discloses ws-down (service.py:112-121). Residual defect A1-FND-1: GAP_DETECTED surface state has no heal path (see finding)."},
+    {"name": "A: canary leg A amended threshold + frozen thresholds + preserved old evidence", "result": "PASS", "detail": "ALIGN_WINDOW_MS=6_000 (canary.py:36); PASS_PRESENCE 0.99 / PASS_WITHIN_5BPS 0.999 / HARD_BPS 50.0 unchanged; old-law record preserved (leg_a_marks_ws_law_environment_block.jsonl: 2131 batches, 4.78% compared = the amendment's '5% aligned' claim); leg_b_history_pass_ws_law.jsonl = 10/10 windows digest-equal PASS."},
+    {"name": "B: debugging-trail reconciliation (doubled-/stream URL)", "result": "PASS_WITH_DISCLOSURES", "detail": "Bug introduced by e3a98deb url() edit (appended /stream onto WS_BASE already ending in /stream), fixed at c23b5e87; failure mode (handshake+clean close, no exception) consistent with run() code and with events.jsonl (quote_gap every 5s 02:14-02:25Z, marks HEALTHY throughout via REST poll, restart 55344->55713 at 02:25:30Z). Disclosures: intermediate causal claims in 681abb93/e133cb03 were confounded by the unresolved URL (self-corrected in c23b5e87) — A1-FND-3; be5ada3d 'surface in stream stats' claim unsupported (last_error never surfaced) — A1-FND-4; ws_freshness_probe removal undisclosed + dead counters — A1-FND-5."},
+    {"name": "D: live gateway checks", "result": "PASS", "detail": "/v1/prices/latest/BTCUSDT: mark 85712.778 from GET /fapi/v1/premiumIndex (provenance rest_premium_index), best_bid 85711.2 / best_ask 85711.3 present, status HEALTHY, canonical_current true, age 3.5s. /v1/status ws CONNECTED, messages 851,286 -> 2,087,229 during audit, reconnect_count 0. lsof: ONLY 127.0.0.1:8792 (pid 55713). Workers alive: decision 15315 (3d17h), valuation 81213 (~18h), XAUUSD 4755 (13h41m); canary driver 54479."},
+    {"name": "E: amended-law leg A evidence sanity", "result": "PASS", "detail": "34 batches / 170 rows: 97.1% compared overall, recent 6 batches 100% compared (30/30), bps median ~0.95-1.05, p95 5.8, max 18.7, ZERO >50 bps — matches 'recent batches ~100% compared, median ~1-2 bps'."},
+    {"name": "E: leg B retry loop", "result": "PASS_LIVE_DEMONSTRATED", "detail": "Driver (48 attempts, 1800s apart) observed live: attempt 1 rc=1 02:14:55Z (connection-refused, gateway mid-restart), attempt 2 rc=1 02:45:56Z (DirectLegAborted HTTP 429 -> fail-closed 120s abort per the frozen law), loop continues to attempt 3 ~03:15Z. Fail-closed law working as designed; not an audit failure."},
+    {"name": "F: drift check", "result": "PASS", "detail": "git diff a9cbddc7..c23b5e87 --name-status: exactly 7 files (4 gateway modules + 3 test files). Added-line scan for api_key/secret/token/order/broker/pnl/strategy/cost_model/universe/schedule: zero hits. Canary never reads scored PnL. No worker/dashboard/dependency changes."},
+    {"name": "G: amendment governance", "result": "PASS", "detail": "Owner order 2026-09-22 verbatim '1' documented in plan block + amendment commit 40892a4c (main, 09:07:06 +0700); implementation e3a98deb 09:14:42 AFTER it; this audit after both; GO phrase and cutover law untouched. Registry ACTIVE_LIGHT 0/0 (registry sha lags impl head by the 5 audit-window commits — updated at gate events, consistent with prior rounds; noted, not a finding)."},
+    {"name": "independent premise probe (auditor-added)", "result": "CORROBORATED", "detail": "Direct WS probe 2026-09-22 ~02:40Z, correct URL + dedicated session + NO client heartbeat: btcusdt@markPrice@1s = 0 frames in 10s (connection held open, no close); btcusdt@bookTicker flowed immediately on identical recipe. The amendment's venue-suppression premise is real and still current — the REST-mark switch is not built on a stale or self-inflicted artifact."}
+  ],
+  "authority_claims": [
+    "A7 audit-only mandate: wrote only the two artifacts under plans/audits_live_data_gateway_v1/; no code, plan, ledger, registry or worktree modifications",
+    "Read-only live verification (curl, lsof, ps, heartbeat/event/canary reads) plus two outbound venue WS probe connections (~02:40Z, 10s bounded, read-only public data, within canary pacing spirit) and one bounded wait to observe the leg B retry cadence",
+    "No push, no merge, no S1, no heavy lock acquisition, no worker interference, no gateway restart/stop during the audit"
+  ],
+  "known_limitations": [
+    "Canary G3 verdict explicitly NOT audited: amended-law leg A has ~18 min of rows at audit time; leg B new-law pass not yet achieved (attempt 1 connection-refused, attempt 2 HTTP-429 fail-closed abort); adjudication WAITING (24h window ~2026-09-23T02:16Z)",
+    "The original '~15 direct markPrice probes' of the amendment have no committed artifact; the premise was instead re-corroborated independently by this audit's own probe (A1-FND-7 recommends committing the environment-block record or its digest)",
+    "Gateway-side markPrice-era suppression evidence (40,020 gap_detected events across the suppressed era, correct pre-amendment URL verified in git history) is consistent with the amendment premise but cannot exclude every transient venue cause; owner's measured-cause call was accepted by order and stands",
+    "ws_breaker GAP_DETECTED stuck-state (A1-FND-1) was live-observed but not exploited end-to-end against a consumer; impact assessment is code+payload based (datum status/canonical_current unaffected)"
+  ],
+  "handoff": {
+    "verdict": "AUTHORIZED_WITH_FINDINGS",
+    "counts": {"critical": 0, "high": 0, "medium": 2, "low": 5},
+    "artifact": "plans/audits_live_data_gateway_v1/a7_amend1_r1.json",
+    "canary_adjudication": "WAITING",
+    "next_steps_for_owner": [
+      "Remediate A1-FND-1 (GAP_DETECTED heal) before G3 if practical — it corrupts the surface_state disclosure channel in steady state",
+      "Remediate A1-FND-2 (funding parse) or amend the plan wording so law and code agree",
+      "Commit the environment-block canary record (or digest) per A1-FND-7",
+      "Continue leg B retry loop; adjudicate at the 24h window with a7_amend1_r1 verdict on file"
+    ]
+  }
+}
