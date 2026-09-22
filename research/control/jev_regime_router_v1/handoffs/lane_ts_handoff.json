@@ -1,0 +1,74 @@
+{
+ "actual_start_sha": "4377c700e4e864e476d6e7e537e50cbbb0af48fc",
+ "authority_claims": [],
+ "changed_paths": [
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/.gitignore",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/package.json",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/package-lock.json",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/tsconfig.json",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/src/adapter.ts",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/src/contract.ts",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/src/freeze_digests.ts",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/src/mock.ts",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/src/models_probe.ts",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/src/prompt.ts",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/test/adapter_cli.test.ts",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/test/client_fake_fetch.test.ts",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/test/credential.test.ts",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/test/helpers.ts",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/test/redaction.test.ts",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/test/retry_scan.test.ts",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter/test/schema_matrix.test.ts",
+  "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/handoffs/lane_ts_handoff.json"
+ ],
+ "commit_sha": null,
+ "cycle_id": "JEV-REGIME-ROUTER-V1",
+ "dispatch_sha": "4377c700e4e864e476d6e7e537e50cbbb0af48fc",
+ "incidents": [],
+ "known_limitations": [
+  "commit_sha is null in this handoff because the handoff is committed inside the lane's single commit (a hash cannot contain itself); the commit sha is reported in the lane's final chat message and verifiable via git log on orca/jrv1-lane-ts.",
+  "No TYPESAFE_API_KEY exists in this lane (per dispatch), so the live provider path is implemented but NEVER exercised against the real API: every provider interaction is tested via injected fetch (TypeSafeClient config.fetch) or --mock. All 57 tests are network-free by construction (child adapter runs have TYPESAFE_API_KEY stripped from env in test/helpers.ts).",
+  "freezes/model_pin.json currently has pinned_model null (status CANDIDATE_UNVERIFIED): every live CLI run exits 3 BLOCKED_MODEL_PIN by design until the Lead's G0 canary freeze act fills the pin. The missing-pin refusal test self-skips once the pin is filled (the jev-latest refusal test then remains the pin-law guard).",
+  "Provider-error response rows carry no regime field (the dispatch enumerates error rows as {status, error_class, input_digest, latency_ms, request_id?}); consumers map any non-OK status to TRANSITION_UNKNOWN per the persistence_contract error law. plan §5 wording ('=> TRANSITION_UNKNOWN with status') is implemented at the consumer boundary, not by fabricating a regime on error rows.",
+  "models_probe.ts writes its probe output to adapter/runtime/models_probe.json (gitignored) because this lane's allowed paths exclude the control-level runtime/ directory; the Lead may relocate the artifact at G0. Probe accepts --out for relocation.",
+  "input_digest equality with the Python side requires the Python canonical_json to be json.dumps(..., sort_keys=True, separators=(',',':')) on the same parsed state; for all fixture-representable numeric values the RFC 8259 number serializations of JSON.stringify and Python's repr-based float formatting agree. Exotic exponent formats were not cross-validated (no lane-py contract available to this lane).",
+  "Cache-entry request_sha256/response_sha256 are informational integrity hashes over JSON.stringify serialization (insertion order); the authoritative cache key is the frozen sha256(model||state_id||input_digest), which is order-independent by construction.",
+  "The --mock classifier is a PLAUSIBILITY heuristic aligned with freezes/synthetic_canary_fixtures.json (all five sendable fixtures classify within their frozen acceptable sets); it is not a model and makes no predictive claim. Mock canaries validate plumbing only (P-15 kill-only law)."
+ ],
+ "lane": "lane-ts",
+ "outputs": [
+  {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter",
+   "role": "jrv1_typescript_adapter",
+   "summary": "TypeSafe AI adapter: CLI (node src/adapter.ts --requests --out --cache [--model] [--mock]) with sha256 freeze gate (embedded regime_label_contract digest 04a12cd38cf1... verified at startup, refusal exit 5), model-pin law (jev-latest/missing pin -> exit 3 BLOCKED_MODEL_PIN unless --mock), credential law (env name-only presence checks, BLOCKED_CREDENTIAL exit 4 with JSON summary, zero fabricated rows), jrv1_decision_io@1 validation on both sides, canonical_json + input_digest sha256(canonical_json(state)||requested_model), append-only per-state cache keyed sha256(model||state_id||input_digest) via O_EXCL creates (immutability tested), one-call-per-state_id duplicate detection (warn+skip), live path maxRetries 0 / timeout 10000 / APITimeoutError->TIMEOUT else PROVIDER_ERROR, response model==pin else SCHEMA_ERROR, 5-label probability validation (each>=0, sum 1+/-0.01), redaction-safe stdout summary, deterministic --mock seeded by input_digest hash (cents-exact probability vectors summing to 1.00), models_probe.ts (models.list() recorded without selection; BLOCKED_CREDENTIAL without key)."
+  },
+  {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/jev-regime-router-v1/lane-ts/research/control/jev_regime_router_v1/adapter",
+   "role": "test_suite_summary",
+   "summary": "57 node --test tests green: schema accept/reject matrix (free-text regime, missing probabilities, bad sum, wrong model vs pin, non-16hex state_id, bad feature_vector); digest determinism (canonical json sorted keys, key-order independence); cache immutability (byte-identical entries, second run cache-hits with latency 0 + cached flag); duplicate state_id detection (single response + stderr warnings); jev-latest and missing-pin refusal (exit 3, no out file); BLOCKED_CREDENTIAL path (unset/empty env in child, exit 4, no fabricated responses); mock determinism (byte-identical across runs) + fixture plausibility vs synthetic_canary_fixtures; redaction static scan (no credential literals/key-like material/apiKey in src) + dynamic sentinel scan of stdout/stderr/out/cache; retry source scan (maxRetries only as 0, single systemOne call site) + timeout 10000 asserted; client-path tests via injected fake fetch (request_id from x-typesafe-request-id, pin-equality, error mapping) — zero network."
+  }
+ ],
+ "recommended_next_action": "Integrate with lane-py boundary tests (jrv1_decision_io@1 JSONL) after the Lead fills freezes/model_pin.json at G0 canary; run models_probe.ts only when TYPESAFE_API_KEY exists; never run the live adapter path without the frozen pin.",
+ "role": "quant-implementer",
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "jrv1-lane-ts",
+ "tests": [
+  {
+   "command": "cd research/control/jev_regime_router_v1/adapter && npm run typecheck",
+   "exit_code": 0,
+   "summary": "tsc --noEmit clean (strict, NodeNext, allowImportingTsExtensions; typescript ^5.9.2 devDependency)"
+  },
+  {
+   "command": "cd research/control/jev_regime_router_v1/adapter && npm test",
+   "exit_code": 0,
+   "summary": "node --test: 57 tests, 57 pass, 0 fail, 0 skipped; network-free (injected fetch/mocks only, TYPESAFE_API_KEY stripped from child env)"
+  },
+  {
+   "command": "cd research/control/jev_regime_router_v1/adapter && npm install",
+   "exit_code": 0,
+   "summary": "@typesafe-ai/sdk 0.6.0 EXACT (lockfile resolved 0.6.0, no range); engines node>=20; node_modules/ + runtime/ + dist/ gitignored (verified via git check-ignore and git status --ignored)"
+  }
+ ],
+ "tree_status": "clean",
+ "workers": 0
+}
