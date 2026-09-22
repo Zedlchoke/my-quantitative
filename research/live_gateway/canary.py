@@ -85,9 +85,27 @@ class PacedDirectFetcher:
                 t for t in self.window if time.time() - t < 60.0
             ]
             if len(self.window) >= DIRECT_MAX_RPM:
-                raise DirectLegAborted(
-                    time.time() + 10.0, f"canary rpm cap {DIRECT_MAX_RPM}"
+                # PACE-WAIT, not abort (canary-pacing fix 2026-09-22):
+                # the frozen §9.2 law caps the direct leg at <=6
+                # requests/min — hitting the cap inside one multi-window
+                # pass must WAIT for the sliding window to drain, not
+                # kill the pass. ABORT stays reserved for 418-class
+                # venue responses (and an impossible-drain guard).
+                # +0.25 s margin: a bare 60.0 s wait races the clock
+                # (the oldest entry can measure 59.9999 and survive
+                # the strict < 60 filter — observed live 2026-09-22).
+                drain_wait = max(
+                    0.5, 60.0 - (time.time() - self.window[0]) + 0.25
                 )
+                time.sleep(drain_wait)
+                self._respect_abort()
+                self.window = [
+                    t for t in self.window if time.time() - t < 60.0
+                ]
+                if len(self.window) >= DIRECT_MAX_RPM:
+                    raise DirectLegAborted(
+                        time.time() + 10.0, "rpm window failed to drain"
+                    )
             self.last_request_at = time.time()
             self.window.append(self.last_request_at)
             try:

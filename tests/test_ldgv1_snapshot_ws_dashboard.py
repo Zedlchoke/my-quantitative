@@ -284,21 +284,80 @@ def test_canary_historical_equivalence_digest_and_numeric():
 
 
 def test_canary_direct_fetcher_pacing_and_abort():
-    import urllib.error
+    """Rpm-cap PACE-WAITs (canary-pacing fix 2026-09-22): a full
+    direct-leg window must WAIT for the sliding window to drain — the
+    rpm cap alone may never abort a pass; abort is reserved for
+    418-class venue responses."""
+    import io
+    import time as _time
+    from unittest import mock
 
     from research.live_gateway.canary import (
         DIRECT_MAX_RPM,
+        DirectLegAborted,
         PacedDirectFetcher,
     )
 
     fetcher = PacedDirectFetcher()
-    fetcher.last_request_at = __import__("time").time()  # simulate just-issued
-    # min gap: verify the cap logic directly
-    fetcher2 = PacedDirectFetcher()
-    fetcher2.window = [__import__("time").time()] * DIRECT_MAX_RPM
-    try:
-        fetcher2.get_json("https://example.invalid/x")
-        raised = False
-    except Exception as exc:  # noqa: BLE001
-        raised = "rpm cap" in str(exc)
-    assert raised
+    fetcher.last_request_at = _time.time() - 10.0  # min-gap satisfied
+    fetcher.window = [_time.time()] * DIRECT_MAX_RPM  # full, fresh
+    slept = []
+    real_time = _time.time  # capture BEFORE patching (the canary module
+    # imports the GLOBAL stdlib time module; patching time.time there
+    # would recurse into this lambda)
+
+    class _FakeResp(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    with mock.patch(
+        "research.live_gateway.canary.time.sleep",
+        side_effect=lambda s: slept.append(s),
+    ), mock.patch(
+        "research.live_gateway.canary.time.time",
+        side_effect=lambda: real_time() + 0.1,  # window stays FRESH:
+        # the cap check MUST fire and sleep out the drain wait
+    ), mock.patch(
+        "urllib.request.urlopen",
+        return_value=_FakeResp(b'[{"ok": true}]'),
+    ):
+        raised = None
+        try:
+            fetcher.get_json("https://example.invalid/x")
+        except DirectLegAborted as exc:
+            raised = exc
+    # pace-wait happened with the full ~59.9s drain...
+    assert slept and slept[0] > 50.0, "rpm cap must WAIT (drain), not abort"
+    # ...and if the window never drains the guard fires — but the OLD
+    # instant "canary rpm cap" abort is gone
+    assert raised is None or "rpm window failed to drain" in str(raised)
+    # 418-class abort law unchanged: a banned response still aborts
+    fetcher3 = PacedDirectFetcher()
+    with mock.patch("urllib.request.urlopen") as op:
+        op.side_effect = urllib_error_418()
+        try:
+            fetcher3.get_json("https://example.invalid/x")
+            raised = None
+        except DirectLegAborted as exc:
+            raised = exc
+    assert raised is not None and "418" in str(raised)
+
+
+def urllib_error_418():
+    import io
+    import urllib.error
+
+    class _Resp(io.BytesIO):
+        def __init__(self):
+            super().__init__(b"banned until 9999999999999")
+            self.headers = {"Retry-After": "60"}
+
+        def read(self, *a):
+            return b"banned until 9999999999999"
+
+    return urllib.error.HTTPError(
+        "url", 418, "I'm a teapot", {"Retry-After": "60"}, _Resp()
+    )
