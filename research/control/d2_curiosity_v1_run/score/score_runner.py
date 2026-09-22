@@ -149,77 +149,202 @@ def _metrics_from_rows(rows, folds_list, tier_bps_per_fill):
     }
 
 
+def _pin_for(binding, needle):
+    for inp in binding.get("inputs", []):
+        if needle in str(inp.get("input", "")):
+            return inp.get("observed_sha256") or inp.get("pinned_sha256")
+    return None
+
+
+def _maxdd(nets):
+    import math
+    peak = 0.0
+    dd = 0.0
+    eq = 0.0
+    for x in nets:
+        eq += x
+        peak = max(peak, eq)
+        dd = max(dd, peak - eq)
+    return round(dd, 6) if nets else None
+
+
+def _full_metrics(rows, gross_col_fn, folds_list, tier1_scale, tier2_bps_rt,
+                  span_note=None):
+    import math
+    nets = [r["net"] for r in rows]
+    n = len(rows)
+    gross_pre = [gross_col_fn(r) for r in rows]     # pre-cost net
+    cost_sum = sum(r["costs"] for r in rows)
+    net_sum = sum(nets)
+    gross_sum = sum(gross_pre)
+    wins = [x for x in nets if x > 0]
+    losses = [x for x in nets if x < 0]
+    gw = [g for g, x in zip(gross_pre, nets) if x > 0]
+    gl = [g for g, x in zip(gross_pre, nets) if x < 0]
+
+    def pf(xs):
+        tot = sum(xs)
+        if not xs or tot == 0:
+            return None
+        return round(tot, 6)
+    fold_rows = {}
+    for f in folds_list:
+        fr = [r for r in rows if r.get("fold") == f]
+        fold_rows[f] = ({"n": len(fr), "net": round(sum(r["net"] for r in fr), 6),
+                         "positive": sum(r["net"] for r in fr) > 0}
+                        if fr else {"n": 0, "net": None, "positive": None})
+    net_t1 = sum(r["net"] + r["costs"] - r["costs"] * tier1_scale for r in rows)
+    return {
+        "n_trades": n,
+        "gross_pnl_pre_cost": round(gross_sum, 6),
+        "costs": round(cost_sum, 6),
+        "net_pnl": round(net_sum, 6),
+        "net_pnl_tier_1.0": round(net_t1, 6),
+        "return_pct_on_unit_notional_base": round(net_sum, 6),
+        "profit_factor_net": (None if not wins or not losses else
+                              round(sum(wins) / abs(sum(losses)), 6)),
+        "profit_factor_gross_basis": (None if not gw or not gl else
+                                      round(sum(gw) / abs(sum(gl)), 6)),
+        "expectancy_per_trade": round(net_sum / n, 8) if n else None,
+        "win_rate": round(len(wins) / n, 6) if n else None,
+        "max_drawdown_on_cumulative_position_marks": _maxdd(nets),
+        "folds": fold_rows,
+        "positive_folds": sum(1 for f in fold_rows.values()
+                              if f["positive"] is True),
+        "cost_attribution": {
+            "cost_tier2_bps_round_trip": tier2_bps_rt,
+            "cost_share_of_gross": (round(cost_sum / abs(gross_sum), 6)
+                                    if gross_sum else None),
+            "net_to_gross_ratio": (round(net_sum / gross_sum, 6)
+                                   if gross_sum else None)},
+        "concentration": {
+            "largest_abs_position_share_of_sum_abs_net": (
+                round(max(abs(x) for x in nets) / sum(abs(x) for x in nets), 6)
+                if nets and sum(abs(x) for x in nets) else None),
+            "largest_abs_fold_net_share": (
+                round(max(abs(fv["net"]) for fv in fold_rows.values()
+                          if fv["net"] is not None) /
+                      sum(abs(fv["net"]) for fv in fold_rows.values()
+                          if fv["net"] is not None), 6)
+                if folds_list and any(fv["net"] is not None
+                                      for fv in fold_rows.values()) else None)},
+        "label": LABEL,
+    }
+
+
 def score_cng2(contracts) -> dict:
-    """GO-time scoring: build the anchor decision rows on the BOUND data
-    (per-row outcomes; this is the sanctioned scored computation), then
-    aggregate per the frozen evaluation contract."""
+    """GO-time scoring: anchor arm rows on the BOUND data (per-row
+    outcomes = the sanctioned scored computation), full evaluation-
+    contract aggregation. Universe coverage asserted (F7): a missing
+    symbol file is BLOCKED before any slot burns."""
     import cng2_engine as eng
-    eng.ALLOW_SCORE = True          # sanctioned setter at GO-time only
+    binding = json.loads((_RUN / "data" / "cng2" / "binding_report.json")
+                         .read_text())
+    panels = {}
+    funding = None
+    for sym in eng.UNIVERSE:
+        pin = _pin_for(binding, f"panel_{sym}")
+        cands = [p for p in binding.get("inputs", [])
+                 if f"panel_{sym}" in str(p.get("input", ""))]
+        path = None
+        for c in cands:
+            for ep in c.get("evidence_paths", []):
+                if Path(ep).exists():
+                    path = ep
+                    break
+        if path is None:
+            raise RuntimeError(f"CNG2 BLOCKED_DATA: panel for {sym} not "
+                               "resolvable to existing bound bytes")
+        panels.update(eng.load_panel(path, expected_sha256=pin))
+    fp = _RUN / "data" / "cng2" / "funding_history.json"
+    funding = eng.load_funding_series(
+        fp, expected_sha256=_pin_for(binding, "funding"))
+    missing = [s for s in eng.UNIVERSE if s not in panels]
+    if missing:
+        raise RuntimeError(f"CNG2 BLOCKED_DATA: universe missing {missing}")
+    eng.ALLOW_SCORE = True
     try:
-        panels = {s: eng.load_panel(_RUN / "data" / "cng2", s)
-                  for s in eng.UNIVERSE}
-        funding = {s: eng.load_funding_series(_RUN / "data" / "cng2", s)
-                   for s in eng.UNIVERSE}
-        rows = [dict(zip(eng.DECISION_ROW_COLUMNS, r))
-                for r in eng.build_anchor_decisions(panels, funding)]
+        ds = eng.build_anchor_decisions(panels, funding)
     finally:
         eng.ALLOW_SCORE = False
-    funded = [r for r in rows
-              if r.get("status") in ("OK", "FUNDED", None)
-              and r.get("net") is not None]
+    rows = [dict(zip(eng.DECISION_ROW_COLUMNS, r))
+            if not isinstance(r, dict) else r for r in ds["rows"]]
+    funded = [r for r in rows if r.get("net") is not None
+              and r.get("entry") is not None]
     t2 = eng.COST_TIERS["2.0"]
-    bps_rt = (t2["taker_bps_per_fill"] + t2["spread_bps_per_fill"]) * 2
-    m = _metrics_from_rows(funded, [], bps_rt)
+    t1 = eng.COST_TIERS["1.0"]
+    bps2 = (t2["taker_bps_per_fill"] + t2["spread_bps_per_fill"]) * 2
+    scale1 = (t1["taker_bps_per_fill"] + t1["spread_bps_per_fill"]) / \
+             (t2["taker_bps_per_fill"] + t2["spread_bps_per_fill"])
+    def g(r):
+        return r["gross_before_costs"] + r["transfer"]
+    m = _full_metrics(funded, g, [], scale1, bps2)
     ks = sorted({r["S"] for r in funded})
     thirds = {}
     if ks:
-        t1, t2k = ks[len(ks) // 3], ks[2 * len(ks) // 3]
-        for name, pred in (("T1", lambda s: s < t1),
-                           ("T2", lambda s: t1 <= s < t2k),
-                           ("T3", lambda s: s >= t2k)):
+        a, b = ks[len(ks) // 3], ks[2 * len(ks) // 3]
+        for name, pred in (("T1", lambda x: x < a),
+                           ("T2", lambda x: a <= x < b),
+                           ("T3", lambda x: x >= b)):
             sub = [r for r in funded if pred(r["S"])]
             thirds[name] = {"n": len(sub),
                             "net": round(sum(r["net"] for r in sub), 6)}
     m["descriptive_calendar_thirds_DESCRIPTIVE_ONLY"] = thirds
     m["folds_note"] = "NULL in source (pre-scoring D2 kill) — pool only"
-    m["status_counts"] = {st: sum(1 for r in rows
-                                  if r.get("status") == st)
-                          for st in sorted({r.get("status")
-                                            for r in rows})}
+    m["status_counts"] = {st: sum(1 for r in rows if r.get("status") == st)
+                          for st in sorted({r.get("status") for r in rows})}
+    m["exposure"] = {"funded_decisions": len(funded),
+                     "settlements_span": [ks[0], ks[-1]] if ks else None}
+    m["turnover"] = {"fills": 2 * len(funded)}
     m["decision_rows_digest"] = canon_digest(
         [[r[c] for c in eng.DECISION_ROW_COLUMNS] for r in rows])
-    m["benchmark_descriptive"] = None  # arms runnable post-GO; recorded
     return m
 
 
 def score_fxng3(contracts) -> dict:
     import fxng3_engine as eng
+    binding = json.loads((_RUN / "data" / "fxng3" / "binding_report.json")
+                         .read_text())
+    ev_path = (_RUN / "data" / "fxng3" / "fred_vintaged_repull" /
+               "CANCPIALLMINMEI_derived_events.json")
+    bars_path = (_RUN / "data" / "fxng3" / "twelvedata_repull" /
+                 "USDCAD_1day_repull.json")
+    ev = eng.load_events(ev_path,
+                         expected_sha256=_pin_for(binding, "CANCPIALLMINMEI"))
+    bars = eng.load_bars(bars_path,
+                         expected_sha256=_pin_for(binding, "USDCAD"))
+    grid = eng.build_grid(bars)
     eng.ALLOW_SCORE = True
     try:
-        ev = eng.load_events(_RUN / "data" / "fxng3" /
-                             "fred_vintaged_repull" /
-                             "CANCPIALLMINMEI_derived_events.json")
-        bars = eng.load_bars(_RUN / "data" / "fxng3" /
-                             "twelvedata_repull" / "USDCAD_1day_repull.json")
-        grid = eng.build_grid(bars)
         pos = eng.build_positions(ev, grid, bars)
     finally:
         eng.ALLOW_SCORE = False
-    rows = [dict(zip(eng.POSITION_ROW_COLUMNS, r)) if not isinstance(
-        r, dict) else r for r in pos]
-    measured = [r for r in rows if r.get("status") in ("OK", "MEASURED", None)
-                and r.get("net") is not None]
-    m = _metrics_from_rows(measured, ["F1", "F2", "F3"],
-                           eng.COST_TIERS["2.0"]["bps_per_side"] * 2)
-    m["status_counts"] = {st: sum(1 for r in rows
-                                  if r.get("status") == st)
-                          for st in sorted({r.get("status")
-                                            for r in rows})}
+    rows = [dict(zip(eng.POSITION_ROW_COLUMNS, r))
+            if not isinstance(r, dict) else r for r in pos["rows"]]
+    funded = [r for r in rows if r.get("net") is not None
+              and r.get("entry_open") is not None]
+    m = _full_metrics(funded, lambda r: r["gross"], ["F1", "F2", "F3"],
+                      1.5 / 3.0, eng.COST_TIERS["2.0"]["bps_per_side"] * 2)
+    m["status_counts"] = {st: sum(1 for r in rows if r.get("status") == st)
+                          for st in sorted({r.get("status") for r in rows})}
+    held = sum((r.get("hold_days") or 0) for r in funded)
+    m["exposure"] = {"held_grid_cells": held,
+                     "grid_days": len(grid)}
+    m["turnover"] = {"fills": 2 * len(funded)}
+    if funded:
+        y0 = min(str(r["D"]) for r in funded)[:10]
+        y1 = max(str(r["exit_day"]) for r in funded)[:10]
+        import datetime as _dt
+        yrs = max((_dt.date.fromisoformat(y1) -
+                   _dt.date.fromisoformat(y0)).days / 365.25, 1e-9)
+        m["cagr_on_unit_notional"] = round(
+            ((1.0 + m["net_pnl"]) ** (1.0 / yrs) - 1.0), 8)
+        m["span"] = [y0, y1]
     m["decision_rows_digest"] = canon_digest(rows)
     try:
-        m["benchmark_descriptive"] = eng.build_benchmark(pos)
-    except Exception as e:           # noqa: BLE001 — descriptive only
-        m["benchmark_descriptive"] = {"error": repr(e)}
+        m["benchmark_descriptive_DESCRIPTIVE_ONLY"] = eng.build_benchmark(pos)
+    except Exception as e:                    # noqa: BLE001
+        m["benchmark_descriptive_DESCRIPTIVE_ONLY"] = {"error": repr(e)}
     return m
 
 
@@ -280,11 +405,12 @@ def main() -> int:
                 results[fam] = m
             except Exception as e:                       # noqa: BLE001
                 import traceback
-                results[fam] = {"verdict": "TECHNICAL_FAILURE",
-                                "error": repr(e),
-                                "traceback_tail": traceback.format_exc()[-1500:],
-                                "label": LABEL}
-                log(f"{fam} TECHNICAL_FAILURE: {e!r}")
+                results[fam] = {
+                    "verdict": "NOT_ADJUDICABLE",
+                    "reason": f"technical failure at scoring: {e!r}",
+                    "traceback_tail": traceback.format_exc()[-1500:],
+                    "label": LABEL}
+                log(f"{fam} NOT_ADJUDICABLE (technical): {e!r}")
         rep = reproduce(results)
         summary = {
             "schema": "d2c_score_summary@1",
