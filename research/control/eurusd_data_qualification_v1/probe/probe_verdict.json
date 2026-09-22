@@ -1,0 +1,90 @@
+{
+  "schema": "edq1_probe_verdict@1",
+  "cycle_id": "EURUSD-DATA-QUALIFICATION-V1",
+  "lane": "eurusd-source-qualification",
+  "probe_stage": "P1_BOUNDED_PROBE",
+  "window_utc": ["2024-03-04T00:00:00Z", "2024-03-14T00:00:00Z"],
+  "verdict": "PROBE_FAIL",
+  "failed_gates": ["LICENSE_RESOLVED"],
+  "failure_detail": "Dukascopy public datafeed license status is UNCLEAR: no terms document found governing datafeed.dukascopy.com; the site Terms of Use (if applicable) permit download only for personal non-commercial use, forbid automated acquisition without prior express written consent, and forbid constructing databases. Twelve Data is CLEAR_FOR_INTERNAL_RESEARCH. Per plan §1 the Dukascopy source is CANDIDATE_NOT_AUTHORIZED until resolved; resolution requires owner/legal action (e.g. Dukascopy written consent), not engineering.",
+  "cycle_verdict_mapping_candidate": "BLOCKED_SOURCE_LICENSE",
+  "gates": [
+    {
+      "gate": "LICENSE_RESOLVED",
+      "verdict": "FAIL",
+      "evidence": "probe/license_and_terms.md",
+      "detail": "Dukascopy: UNCLEAR (no datafeed-specific terms found; TCU clauses quoted verbatim; applicability to datafeed host unstated). Twelve Data: CLEAR_FOR_INTERNAL_RESEARCH (Internal Use clause, terms quoted)."
+    },
+    {
+      "gate": "SCHEMA_DECODED",
+      "verdict": "PASS",
+      "evidence": "probe/retrieval_manifest.json; data_local/dukascopy/scale_evidence.json; tests/test_probe_decode.py",
+      "detail": "LZMA(FORMAT_AUTO) '>5i' 20-byte records decode on 195/195 non-empty files (47 empty=weekend, 0 HTTP 404, 0 failures, 242 targets). Point scale int/1e5 verified: window prices 1.08377-1.09815 match real EURUSD Mar-2024 range; same schema decodes 2023 and 2025 boundary files."
+    },
+    {
+      "gate": "TIMESTAMPS_UTC_UNAMBIGUOUS",
+      "verdict": "PASS",
+      "evidence": "probe/timestamp_convention.md; probe/timestamp_sanity.json; probe/indicative_reconciliation.json",
+      "detail": "Dukascopy: absolute time = UTC hour-file instant + offset_ms; first tick of London-0700 file = 2024-03-05T07:00:00.089Z; offsets within [0,3600000); 0 monotonicity violations; 0 duplicate ticks in 578916. Weekend gap measured Fri 21:59Z -> Sun 21:00Z (2820 min) with the 1-hour DST shift across 2024-03-10 visible. Twelve Data: minute labels UTC-aligned; bar-open labeling proven by alignment test (hypothesis A median 0.35 pips vs B 0.60 pips over 11459 compared minutes)."
+    },
+    {
+      "gate": "COVERAGE_CONTINUOUS_TRADING_HOURS",
+      "verdict": "PASS",
+      "evidence": "probe/coverage_census.json",
+      "detail": "Within measured trading spans: 11527/11580 minutes with ticks = 99.542%; 44 micro-gaps of 1-3 minutes (53 minutes total, max 3 consecutive), enumerated; clustered in rollover/thin Asia hours. Weekend closure 47h exactly matches real FX calendar (no 404s; server returns 0-byte 200). 0 duplicate minutes; 0 monotonicity violations. No interpolation used anywhere."
+    },
+    {
+      "gate": "FIELDS_SUFFICIENT_BIDASK",
+      "verdict": "PASS",
+      "source": "dukascopy",
+      "evidence": "probe/coverage_census.json (spread_evidence_pips)",
+      "detail": "Per-tick ask AND bid present. Spread min 0.1 pips, median 0.2 pips, 0 non-positive spreads in 578916 ticks. Volume ints are float32 bits: recorded as tick_activity_proxy ONLY, never 'volume'. Cost authority for a future cycle must come from this bid/ask."
+    },
+    {
+      "gate": "FIELDS_SUFFICIENT",
+      "verdict": "PASS",
+      "source": "twelvedata",
+      "evidence": "probe/indicative_reconciliation.json; probe/twelvedata_request_log.json",
+      "detail": "SUFFICIENT FOR RECONCILIATION ROLE ONLY: 1min OHLC, UTC, 11509 unique bars, 0 duplicates, 12 internal gaps. bid_ask_available=false and volume field absent on this plan -> Twelve Data CANNOT be a bid/ask cost authority; disclosed for cost-authority scoping (plan §4)."
+    },
+    {
+      "gate": "MULTI_YEAR_AVAILABLE",
+      "verdict": "PASS",
+      "evidence": "probe/retrieval_manifest.json (boundary entries)",
+      "detail": "boundary_2023-06-15T08: HTTP 200, 18148 bytes, 3629 ticks, sha256 df0e1e5f88c74731a9e35ebe8634ff9ef59af2104a7a1f2b7b66812431ce03f1, prices 1.08244-1.08375. boundary_2025-06-13T08: HTTP 200, 24358 bytes, 5092 ticks, sha256 2fa92c158d1a96b52320d3c096411ac1db86b1ef29b9cb570b5ed3de99616ea7, prices 1.15253-1.15475. Same schema+scale decode in both years."
+    }
+  ],
+  "indicative_reconciliation_summary": {
+    "note": "INDICATIVE ONLY; formal §2 tolerance test is P2.",
+    "compared_minutes": 11459,
+    "td_close_vs_duka_mid_close": {
+      "median_abs_pips": 0.35,
+      "p95_abs_pips": 1.15,
+      "max_abs_pips": 42.65
+    }
+  },
+  "retrieval_stats": {
+    "dukascopy_targets": 242,
+    "dukascopy_http_200_nonempty": 195,
+    "dukascopy_http_200_empty": 47,
+    "dukascopy_http_404": 0,
+    "dukascopy_failed": 0,
+    "ticks_decoded": 578916,
+    "distinct_1min_bars_dukascopy": 11527,
+    "twelvedata_values": 11509,
+    "twelvedata_pages": 3,
+    "twelvedata_requests_within_pace": true
+  },
+  "credential_handling": "TWELVE_DATA_API_KEY read from root .env into process env only; never printed/logged/committed; all recorded request URLs redacted of the apikey parameter.",
+  "artifacts": [
+    "probe/retrieval_manifest.json",
+    "probe/license_and_terms.md",
+    "probe/timestamp_convention.md",
+    "probe/coverage_census.json",
+    "probe/indicative_reconciliation.json",
+    "probe/timestamp_sanity.json",
+    "probe/twelvedata_request_log.json",
+    "probe/PROBE_VERDICT.md",
+    "tests/test_probe_decode.py"
+  ]
+}
