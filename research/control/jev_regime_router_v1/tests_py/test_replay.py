@@ -107,14 +107,21 @@ def test_replay_60_states_end_to_end_via_adapter_subprocess(fz, tmp_path):
     assert sorted(d["state_id"] for d in dec) == sorted(sids)
     cache_dir = tmp_path / "adapter_cache"
     assert len(list(cache_dir.glob("*.json"))) == 60
-    # every stored response echoes the producer digest (amendment_1) and the
-    # cache key is sha256(model || state_id || input_digest)
+    # every stored response echoes the producer digest (amendment_1); the
+    # cache key formula is the TS side's single authority (amendment_2 adds
+    # the prompt digest) — python matches via the stored entry fields instead
+    # of duplicating the formula.
+    cache_entries = []
+    for cf in cache_dir.glob("*.json"):
+        entry = json.loads(cf.read_text())
+        cache_entries.append(entry)
+    by_state = {e["state_id"]: e for e in cache_entries}
+    assert len(by_state) == 60
     for d in dec:
         assert len(d["input_digest"]) == 64
-        expect_key = hashlib.sha256(
-            (REPLAY_MOCK_MODEL + d["state_id"] + d["input_digest"]).encode()
-        ).hexdigest()
-        assert (cache_dir / f"{expect_key}.json").exists()
+        entry = by_state[d["state_id"]]
+        assert entry["input_digest"] == d["input_digest"]
+        assert entry["model"] == REPLAY_MOCK_MODEL
 
     # progress JSON emitted per 10 states (>= every 100 per law)
     assert progress_events, "progress events must be emitted"

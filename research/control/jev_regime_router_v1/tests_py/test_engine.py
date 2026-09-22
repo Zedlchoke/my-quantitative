@@ -377,5 +377,9 @@ def test_fold_contract_decision_boundaries_unchanged(fz):
         fz.manifest["files"]["fold_contract.json"]
         == "ac658c50a79e9f14e1d1cc92d39a1c9befc364434b8c87fe922dc9a7baaa39f7"
     )
-    # the amended manifest records the adapter_contract change and ONLY that
-    assert [a["file"] for a in fz.manifest["amended"]] == ["adapter_contract.json"]
+    # the amended manifest records only sanctioned amendments
+    # (remediation-r1 adapter_contract, G0 model_pin, amendment_2
+    # adapter_contract) — fold_contract must NEVER be amended
+    amended_files = [a["file"] for a in fz.manifest["amended"]]
+    assert "fold_contract.json" not in amended_files
+    assert set(amended_files) <= {"adapter_contract.json", "model_pin.json"}
