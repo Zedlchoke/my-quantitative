@@ -54,6 +54,7 @@ class BinanceStream:
     last_message_ms: Optional[int] = None
     messages_received: int = 0
     parse_errors: int = 0
+    last_error: Optional[str] = None
     _stop: bool = False
 
     def url(self) -> str:
@@ -80,8 +81,8 @@ class BinanceStream:
                         await self._handle(msg)
             except asyncio.CancelledError:
                 raise
-            except Exception:  # noqa: BLE001 - reconnect on any failure
-                pass
+            except Exception as exc:  # noqa: BLE001 - reconnect on any failure
+                self.last_error = repr(exc)[:200]
             if self._stop:
                 break
             self.state = "DISCONNECTED"
