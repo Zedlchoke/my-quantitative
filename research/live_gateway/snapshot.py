@@ -97,6 +97,23 @@ class SymbolDatum:
         self.gap_flagged = False
         self.source_kind = "rest"
 
+    def apply_rest_mark_full(
+        self,
+        provider_ts_ms: int,
+        mark: Optional[float],
+        index: Optional[float],
+        funding_rate: Optional[float],
+        next_funding_time_ms: Optional[int],
+        received_at_ms: int,
+    ) -> None:
+        """apply_rest_mark + funding fields (A7 amend1 FND-2: the
+        amendment law says funding comes from premiumIndex too)."""
+        self.apply_rest_mark(
+            provider_ts_ms, mark, index, funding_rate, received_at_ms
+        )
+        if next_funding_time_ms is not None:
+            self.next_funding_time_ms = next_funding_time_ms
+
     def apply_ws_event(
         self,
         event_e_ms: int,
