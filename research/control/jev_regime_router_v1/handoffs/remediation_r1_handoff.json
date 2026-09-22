@@ -1,0 +1,94 @@
+{
+ "actual_start_sha": "873634dc54b7df165da80db74220899a26fec007",
+ "authority_claims": [],
+ "changed_paths": [
+  "research/control/jev_regime_router_v1/freezes/adapter_contract.json",
+  "research/control/jev_regime_router_v1/freezes/freeze_manifest.json",
+  "research/control/jev_regime_router_v1/jrv1/decisions.py",
+  "research/control/jev_regime_router_v1/jrv1/engine.py",
+  "research/control/jev_regime_router_v1/jrv1/replay.py",
+  "research/control/jev_regime_router_v1/jrv1/run.py",
+  "research/control/jev_regime_router_v1/adapter/src/adapter.ts",
+  "research/control/jev_regime_router_v1/adapter/src/contract.ts",
+  "research/control/jev_regime_router_v1/adapter/test/adapter_cli.test.ts",
+  "research/control/jev_regime_router_v1/adapter/test/digest_golden.test.ts",
+  "research/control/jev_regime_router_v1/adapter/test/helpers.ts",
+  "research/control/jev_regime_router_v1/adapter/test/schema_matrix.test.ts",
+  "research/control/jev_regime_router_v1/tests_py/test_digest_echo.py",
+  "research/control/jev_regime_router_v1/tests_py/test_engine.py",
+  "research/control/jev_regime_router_v1/tests_py/test_replay.py",
+  "plans/PLAN_jev_regime_router_v1.md"
+ ],
+ "commit_sha": "b8fcd6e1f193b6f2609f25a15ba043737845ad1e",
+ "cycle_id": "JEV-REGIME-ROUTER-V1",
+ "dispatch_sha": "873634dc54b7df165da80db74220899a26fec007",
+ "findings_fixed": {
+  "F1_CRITICAL": "Producer-digest echo law: request lines now carry input_digest computed by the Python producer (sequential_timeline sink + replay); TS validateRequestLine REQUIRES a 64-hex input_digest and the adapter echoes it verbatim in every response and cache entry, never recomputing (computeInputDigest demoted to golden-test-only). Python ingest still recomputes from its own state and compares (authoritative). freezes/adapter_contract.json amended with amendment_1 (dated, reason: A7-1 F1 divergence measured 10/25, request_line+response_line schemas updated); freeze_manifest.json re-emitted with an append-only 'amended' list carrying the old sha256. Cross-language golden vectors (1e-05, 1.234e-07, 5e-06, 34.0) pinned with identical literal digests in BOTH suites: tests_py/test_digest_echo.py (producer strings + digest literals) and adapter/test/digest_golden.test.ts (proves old TS recompute differed AND the echo path is immune, end-to-end through the adapter subprocess incl. cache keys and cache replay). Proof test: adapter/test/digest_golden.test.ts 'golden: adapter ECHOES the producer digest' + 'golden: TS canonicalization DIVERGED from the producer for every vector'.",
+  "F2_HIGH": "Sequential replay loop implemented as jrv1/replay.py run_replay + `jrv1 replay --asset {btcusdt,spy} [--limit N] [--mock] [--start-after-warmup]`: strict in-order iteration; prior_regime = persisted regime recomputed after every merged response; ONE request line (with producer digest) per state; one TS-adapter subprocess per single state; ingest + persistence advance before the next state; cache-first resume from the decision cache; progress JSON per 100 states; hard fail (ReplayError, non-zero) on adapter non-zero exit. Batch prepare-requests now REFUSES bulk use with an error pointing to replay and gains --fixtures-only (frozen synthetic canaries, fixed priors from the freeze, no persistence dependency; FIX6 never serialized). Regression: tests_py/test_replay.py drives a 60-state synthetic OHLCV sequence through the REAL adapter subprocess asserting (a) exact prior chain, (b) 60 distinct state_ids each called exactly once (decision-cache lines == adapter-cache entries == 60), (c) resume after a limit-25 interrupt continues from cache with an identical final timeline vs an uninterrupted fresh run, (d) 0 incidents / 0 digest mismatches.",
+  "F3_HIGH": "Exec-bar fold partition made CONTIGUOUS (engine.folds_from_regime_ts): fold k starts at its first exec bar strictly after the frozen regime-span start (DECISION boundaries untouched; fold_contract.json byte-identical, digest pinned ac658c50... in tests) and owns exec bars through the bar immediately before fold k+1's first bar; last fold extends to the final exec bar; bars before the first fold stay tagged -1 (pre-warmup, excluded). Engine fold law: entry fills and entry signals refused on unassigned bars; in-loop hard assertion that no position is ever open on an unassigned bar; post-run invariants (_assert_engine_invariants): every invested bar carries a fold, every trade lives inside a single fold's range, and sum(fold_net_pnl) == totals.net_pnl within 1e-9. Partition-level fold_partition_invariants wired into run.py build_context (complete coverage from the first post-warmup governed exec bar). metrics.py consumed fold_id/fold_net via the engine result and needed no change; concentration metric unchanged. Regression: tests_py/test_engine.py::test_f3_gap_pattern_reconciliation_and_no_span reproduces the exact A7-1 gap pattern on synthetic BTC-like (several gap bars) and SPY-like (one gap session) grids, asserts reconciliation + no-span + full assignment + gap ownership by the previous fold, proves the old gapped partition now fails the partition invariant, and pins the frozen fold_contract bytes.",
+  "F4_MEDIUM": "plans/PLAN_jev_regime_router_v1.md §9: stale '≈ 8,568 − 192 ≈ 8,376 / ≈ 2,92x / total ≈ 11,100' replaced with the frozen exact numbers (BTCUSDT 8,567 + SPY 2,751 = 11,318 decision states = billable calls) and the sentence 'Amended 2026-09-22 remediation-r1 per A7-1 F4 (arithmetic correction only; no contract change)'. Nothing else in the plan changed."
+ },
+ "incidents": [],
+ "known_limitations": [
+  "The handoff artifact is written after the commit so its commit_sha is the measured one (lane_py precedent); it is the only untracked file in the tree.",
+  "adapter/node_modules was absent in this worktree; installed once via `npm ci` from the exact package-lock (0.6.0 pin untouched). Gitignored.",
+  "data_local/SPY.json.gz was absent in this worktree (gitignored); copied read-only from the integration worktree and sha256-verified against freezes/data_identity_freeze.json on both sides (3fd229f9a1b0188f...). The underlying SPY-SHA-MISMATCH-DISCLOSED snapshot disclosure is inherited unchanged.",
+  "Smoke (--asset btcusdt, --asset spy) executes arm D on real data; that output class is already disclosed under INCIDENT-JRV1-1. Per dispatch, NO PnL numbers from those runs are recorded in this handoff - only incident counts (0 and 0). Replay-based validation was preferred; smoke was run solely to confirm 0 incidents after the engine fold-law change.",
+  "replay live mode (no --mock) requires a pinned_model; model_pin.json is still CANDIDATE_UNVERIFIED, so only the mock path of replay is validated (mock namespace allowed). No external API calls were made.",
+  "Replay progress JSON emits at every 100 processed states; the mandated --limit 40 validation run therefore emits no progress line by law (the 60-state regression test uses progress_every=10 to exercise the callback).",
+  "A7-1 LOW findings F5 (arm A entry-timing docstring), F6 (funding reference price disclosure), F7 (adapter cache pin re-check note) and F8 (ddof convention) are explicitly OUT OF SCOPE for remediation-r1 and were not touched.",
+  "Replay --mock decision lines are written under runtime/mock/replay/<asset>/ (MOCK_SMOKE namespace, kill-only per P-15); the ingest-responses namespace guard gap already disclosed by lane_py remains open and is unchanged by this lane.",
+  "tools/build_freezes.py (which would regenerate the manifest without the 'amended' history) was intentionally NOT modified: the manifest is hand-amended append-only for amendment_1; the builder is not runnable in this lane (it is hardwired to the integration worktree)."
+ ],
+ "lane": "remediation-r1",
+ "outputs": [
+  "research/control/jev_regime_router_v1/jrv1/replay.py (new: strict sequential loop + fixture_request_lines)",
+  "research/control/jev_regime_router_v1/freezes/adapter_contract.json (amendment_1; new sha256 a1893fde70957dbe0044dd1e06a503222e6e336afc70641c4932fb4ad089b5cb)",
+  "research/control/jev_regime_router_v1/freezes/freeze_manifest.json (re-emitted digest + append-only 'amended' list with old sha256 334515b7...)",
+  "research/control/jev_regime_router_v1/runtime/mock/replay/btcusdt/ (gitignored MOCK_SMOKE replay artifacts: 40 decision lines + 40 adapter cache entries)",
+  "research/control/jev_regime_router_v1/runtime/smoke/{btcusdt,spy}/smoke_result.json (gitignored MOCK_SMOKE; counts only reported here)",
+  "research/control/jev_regime_router_v1/runtime/fixtures_requests.jsonl (gitignored fixtures-only request lines, 5)"
+ ],
+ "role": "quant-implementer",
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "jrv1-remediation-r1",
+ "tests": [
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/jev_regime_router_v1/tests_py -q",
+   "exit_code": 0,
+   "summary": "110 passed / 0 failed (95 old incl. the adapted folds_from_regime_ts test + 15 new: 6 digest-echo golden/law, 8 replay/prepare-requests, plus fold regression additions). Re-run at committed HEAD."
+  },
+  {
+   "command": "cd research/control/jev_regime_router_v1/adapter && npm run typecheck && npm test",
+   "exit_code": 0,
+   "summary": "tsc --noEmit clean; node --test 63 pass / 0 fail (57 existing adapted to the echo law + 6 new: 2 amendment_1 CLI law tests, 3 cross-language golden vectors, 1 schema digest-rejection matrix case). Re-run at committed HEAD."
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python jrv1/run.py verify-freezes",
+   "exit_code": 0,
+   "summary": "12/12 freezes sha256-verified against the AMENDED freeze_manifest (adapter_contract.json new digest a1893fde... with old 334515b7... preserved in the append-only 'amended' list); mapping digest 840cbe15... asserted; security self-scan findings []."
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python jrv1/run.py census --asset btcusdt && ... census --asset spy",
+   "exit_code": 0,
+   "summary": "census unchanged and equal to the freeze: BTCUSDT 35039 rows / 8759 complete H1 hours / 0 interior 15m gaps / same 2 partial edge hours; SPY 2943 sessions 2015-01-02..2026-09-16, file sha match."
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python jrv1/run.py replay --asset btcusdt --limit 40 --mock --start-after-warmup",
+   "exit_code": 0,
+   "summary": "MANDATED VALIDATION: real states, mock decisions via the REAL TS-adapter subprocess - 40/40 states sent (mock namespace MOCK_SMOKE), n_incidents=0, digest_mismatches=0, exact prior chain (state t prior == persisted after t-1), adapter_model mock-pin-1."
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python jrv1/run.py smoke --asset btcusdt && ... smoke --asset spy",
+   "exit_code": 0,
+   "summary": "0 incidents on both assets (8567 BTC / 2751 SPY decisions == fold_contract evaluable_decisions; canaries ok; namespace MOCK_SMOKE). PnL numbers deliberately not recorded (INCIDENT-JRV1-1 disclosure law). This run also exercised the amended fold partition + reconciliation invariants through arms E and D on all 11,318 real decisions without tripping an invariant."
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python jrv1/run.py prepare-requests --asset spy  (refusal) ;  ... prepare-requests --asset spy --fixtures-only",
+   "exit_code": 0,
+   "summary": "Bulk use REFUSED with exit 1 and a clear error pointing to `jrv1 replay` (A7-1 F2); --fixtures-only emits exactly 5 producer-digested request lines for the frozen canaries with fixed priors (FIX6 null-vector never serialized)."
+  }
+ ],
+ "tree_status": "clean: single commit b8fcd6e1f193b6f2609f25a15ba043737845ad1e on orca/jrv1-remediation-r1 (16 files, +1376/-69), base 873634dc54b7df165da80db74220899a26fec007 verified before commit; staged by explicit pathspec (no git add -A); not pushed; runtime/, data_local/ and adapter/node_modules/ gitignored; this handoff file is the only untracked path",
+ "workers": 0
+}
