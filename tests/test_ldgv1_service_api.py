@@ -103,16 +103,34 @@ def test_prices_latest_and_symbol_404(tmp_path):
         service = _make_service(
             tmp_path,
             ws_messages=[
+                # Amendment 1 live surface: bookTicker QUOTE event
                 {"stream": "x", "data": {
-                    "s": "BTCUSDT", "E": now_ms,
-                    "p": "27000.5", "i": "26999.9", "r": "0.0001",
-                    "T": now_ms + 800_000,
+                    "e": "bookTicker", "u": 1, "E": now_ms,
+                    "s": "BTCUSDT", "ps": "BTCUSDT",
+                    "b": "26999.9", "B": "1.0",
+                    "a": "27000.1", "A": "2.0",
                 }},
+            ],
+            transport_pages=[
+                # Amendment 1 mark source: REST premiumIndex poll
+                (200, {}, json.dumps([
+                    {"symbol": "BTCUSDT", "markPrice": "27000.5",
+                     "indexPrice": "26999.0", "time": now_ms},
+                ]).encode()),
             ],
         )
         await service.refresh_symbols()
         service._restart_stream()
-        await asyncio.sleep(0.05)  # let the stream task process messages
+        await asyncio.sleep(0.05)  # stream task processes the quote
+        await service.mark_poll_loop.__call__() if False else None
+        # run ONE manual poll pass (loop body, not the while-loop)
+        envelope = await service.gate.fetch("/fapi/v1/premiumIndex", {})
+        payload = envelope["payload"]
+        for entry in payload:
+            service.snapshot.datum(entry["symbol"]).apply_rest_mark(
+                int(entry["time"]), float(entry["markPrice"]),
+                float(entry.get("indexPrice") or 0) or None, None, now_ms,
+            )
         app = build_app(service)
         async with TestClient(TestServer(app)) as client:
             resp = await client.get("/v1/prices/latest")
@@ -121,12 +139,12 @@ def test_prices_latest_and_symbol_404(tmp_path):
             assert "BTCUSDT" in data
             payload = data["BTCUSDT"]
             assert payload["provider"] == "binance_fapi"
-            assert payload["value"] == 27000.5
+            assert payload["value"] == 27000.5          # mark from REST
+            assert payload["best_bid"] == 26999.9       # quote from WS
+            assert payload["best_ask"] == 27000.1
             assert payload["status"] == "HEALTHY"
             assert payload["canonical_current"] is True
-            assert payload["surface_state"] in (
-                "HEALTHY", "RECOVERING",
-            )
+            assert payload["provenance"] == "rest_premium_index"
             one = await client.get("/v1/prices/latest/BTCUSDT")
             assert one.status == 200
             missing = await client.get("/v1/prices/latest/NOPEUSDT")

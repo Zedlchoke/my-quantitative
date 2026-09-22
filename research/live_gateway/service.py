@@ -43,7 +43,14 @@ HEARTBEAT_INTERVAL_S = 15.0
 SYMBOL_REFRESH_S = 3600.0
 GAP_SCAN_S = 5.0
 RETENTION_SCAN_S = 3600.0
-WS_FRESHNESS_PROBE_S = 30.0
+#: Amendment 1 (2026-09-22): the venue suppresses the futures markPrice
+#: stream on every machine egress — marks come from REST premiumIndex
+#: through the full §5 law at a 5 s cadence (cache TTL 5 s); the WS
+#: surface is bookTicker on the 3 majors, QUOTE-ONLY (liveness +
+#: display; never a mark source).
+MARK_POLL_S = 5.0
+QUOTE_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
+QUOTE_PUBLISH_MIN_INTERVAL_MS = 1_000  # sample hot quotes to 1/s/symbol
 
 
 class GatewayService:
@@ -98,6 +105,7 @@ class GatewayService:
         self.shutdown_clean = False
         self.symbols: List[str] = []
         self._latency_acc: List[int] = []
+        self._quote_last_publish: Dict[str, int] = {}
 
     # ------------------------------------------------------------------
     def surface_state(self) -> str:
@@ -112,12 +120,61 @@ class GatewayService:
         return ws_state
 
     async def on_ws_event(self, data: dict, received_ms: int) -> None:
-        parsed = parse_mark_event(data)
-        if parsed is None or parsed["event_e_ms"] is None:
+        """Amendment 1: the WS surface is bookTicker (QUOTE-ONLY).
+        Quotes update the quote clock + (sampled 1/s/symbol) fanout and
+        raw store; they NEVER touch mark fields."""
+        from .wsadapter import parse_book_ticker_event
+
+        parsed = parse_book_ticker_event(data)
+        if parsed is None:
+            # tolerate a future venue policy change back to markPrice
+            mark_parsed = parse_mark_event(data)
+            if mark_parsed is None or mark_parsed["event_e_ms"] is None:
+                return
+            await self._apply_ws_mark(mark_parsed, received_ms)
             return
         symbol = parsed["symbol"]
+        if symbol not in QUOTE_SYMBOLS:
+            return
+        if self.ws_breaker.state == "GAP_DETECTED":
+            self.ws_breaker.observe_success()  # fresh quote heals
+        datum = self.snapshot.datum(symbol)
+        datum.apply_quote(
+            parsed["event_e_ms"], parsed["best_bid"], parsed["best_ask"],
+            received_ms,
+        )
+        latency_ms = received_ms - (parsed["event_e_ms"] or received_ms)
+        self._latency_acc.append(max(0, latency_ms))
+        last_pub = self._quote_last_publish.get(symbol, 0)
+        if received_ms - last_pub >= QUOTE_PUBLISH_MIN_INTERVAL_MS:
+            self._quote_last_publish[symbol] = received_ms
+            mid = None
+            if parsed["best_bid"] and parsed["best_ask"]:
+                mid = (parsed["best_bid"] + parsed["best_ask"]) / 2.0
+            event = {
+                "type": "quote",
+                "symbol": symbol,
+                "best_bid": parsed["best_bid"],
+                "best_ask": parsed["best_ask"],
+                "mid": mid,
+                "received_at_utc": ms_to_iso_z(received_ms),
+            }
+            self.fanout.publish(event)
+            self.raw.append_observation(
+                f"quote:{symbol}",
+                {
+                    "ts_utc": ms_to_iso_z(received_ms),
+                    "bid": parsed["best_bid"],
+                    "ask": parsed["best_ask"],
+                },
+            )
+
+    async def _apply_ws_mark(self, parsed: dict, received_ms: int) -> None:
+        """Legacy markPrice-stream path (unused under Amendment 1 until
+        the venue unsuppresses the stream)."""
+        symbol = parsed["symbol"]
         if symbol not in self.symbol_source.last_discovered:
-            return  # not in our universe: ignore
+            return
         datum = self.snapshot.datum(symbol)
         outcome = datum.apply_ws_event(
             parsed["event_e_ms"],
@@ -130,17 +187,11 @@ class GatewayService:
         self.counters.bump(f"ws_{outcome}")
         if outcome != "applied":
             return
-        latency_ms = received_ms - parsed["event_e_ms"]
-        self.counters.bump("ws_latency_samples")
-        self._latency_acc.append(max(0, latency_ms))
-        if self.ws_breaker.state == "GAP_DETECTED":
-            self.ws_breaker.observe_success()  # fresh message heals the gap
-        event = {
+        self.fanout.publish({
             "type": "mark",
             **{k: v for k, v in parsed.items()},
             "received_at_utc": ms_to_iso_z(received_ms),
-        }
-        self.fanout.publish(event)
+        })
         self.raw.append_observation(
             f"ws:{symbol}",
             {
@@ -185,8 +236,9 @@ class GatewayService:
     def _restart_stream(self) -> None:
         if self.stream is not None:
             self.stream.stop()
+        # Amendment 1: quote-only bookTicker surface on the 3 majors
         self.stream = BinanceStream(
-            symbols=self.symbols,
+            symbols=list(QUOTE_SYMBOLS),
             on_event=self.on_ws_event,
             connect_fn=self._connect_ws,
             rng=self.rng,
@@ -281,14 +333,26 @@ class GatewayService:
             flagged = self.snapshot.mark_gaps(self.symbols)
             for sym in flagged:
                 self.events.append(
-                    "gap_detected",
+                    "mark_gap_detected",
                     {"symbol": sym, "threshold_ms": 10000},
                 )
-                self.counters.bump("gap_detected")
-            if flagged and self.ws_breaker.state not in (
+                self.counters.bump("mark_gap_detected")
+            # quote-surface gap (Amendment 1): quote clock silent >10s
+            from .timeutils import default_now_ms as _now
+            _now_ms = _now()
+            quote_silent = [
+                sym for sym in QUOTE_SYMBOLS
+                if (d := self.snapshot.data.get(sym)) is None
+                or d.quote_ts_ms is None
+                or _now_ms - d.quote_ts_ms > 10_000
+            ]
+            if quote_silent and self.ws_breaker.state not in (
                 "RATE_LIMITED", "DISCONNECTED",
             ):
                 self.ws_breaker.state = "GAP_DETECTED"
+                self.events.append(
+                    "quote_gap_detected", {"symbols": quote_silent}
+                )
             try:
                 await asyncio.wait_for(
                     self._stopping.wait(), timeout=GAP_SCAN_S
@@ -334,21 +398,17 @@ class GatewayService:
                 continue
 
     # ------------------------------------------------------------------
-    async def ws_freshness_probe_loop(self) -> None:
-        """Plan §4: while the WS stream is degraded (silent/gapped),
-        ONE bounded REST freshness probe per 30 s through the full §5
-        law — zero probes while the stream is HEALTHY."""
+    async def mark_poll_loop(self) -> None:
+        """Amendment 1 mark source: REST premiumIndex through the FULL
+        §5 law every MARK_POLL_S (5 s; cache TTL 5 s -> each poll is a
+        bounded fresh fetch). The §5 budgets cap this at 12 calls/min,
+        weight ~120/min against the soft 1200 — and any 418/429 opens
+        the breaker exactly as frozen."""
         from .timeutils import default_now_ms as _now
 
         while not self._stopping.is_set():
             try:
-                stream_ok = (
-                    self.stream is not None
-                    and self.stream.state == "CONNECTED"
-                    and self.stream.last_message_ms is not None
-                    and (_now() - self.stream.last_message_ms) <= 10_000
-                )
-                if not stream_ok and self.symbols:
+                if self.symbols:
                     envelope = await self.gate.fetch(
                         "/fapi/v1/premiumIndex", {}
                     )
@@ -356,6 +416,7 @@ class GatewayService:
                     received = _now()
                     if isinstance(payload, list):
                         wanted = set(self.symbols)
+                        applied = 0
                         for entry in payload:
                             if not isinstance(entry, dict):
                                 continue
@@ -369,26 +430,39 @@ class GatewayService:
                                     if entry.get("markPrice") is not None
                                     else None
                                 )
+                                idx = (
+                                    float(entry["indexPrice"])
+                                    if entry.get("indexPrice") is not None
+                                    else None
+                                )
                             except (TypeError, ValueError, KeyError):
                                 continue
                             datum = self.snapshot.datum(sym)
                             datum.apply_rest_mark(
-                                ts_ms,
-                                mark,
-                                None,
-                                None,
-                                received,
+                                ts_ms, mark, idx, None, received,
                             )
-                        self.counters.bump("ws_freshness_probes_ok")
-            except Exception as exc:  # noqa: BLE001 - probe failure is data
-                self.counters.bump("ws_freshness_probes_failed")
+                            applied += 1
+                        self.counters.bump("mark_polls_ok")
+                        self.counters.bump("marks_applied", applied)
+                        if applied:
+                            self.raw.append_observation(
+                                "rest:premiumIndex_bulk",
+                                {
+                                    "ts_utc": ms_to_iso_z(received),
+                                    "applied": applied,
+                                    "digest": envelope["pages"][0][
+                                        "response_sha256"
+                                    ][:16],
+                                },
+                            )
+            except Exception as exc:  # noqa: BLE001 - poll failure is data
+                self.counters.bump("mark_polls_failed")
                 self.events.append(
-                    "ws_freshness_probe_error",
-                    {"error": repr(exc)[:300]},
+                    "mark_poll_error", {"error": repr(exc)[:300]}
                 )
             try:
                 await asyncio.wait_for(
-                    self._stopping.wait(), timeout=WS_FRESHNESS_PROBE_S
+                    self._stopping.wait(), timeout=MARK_POLL_S
                 )
             except asyncio.TimeoutError:
                 continue
@@ -409,7 +483,7 @@ class GatewayService:
                 self.symbol_refresh_loop,
                 self.gap_scan_loop,
                 self.retention_loop,
-                self.ws_freshness_probe_loop,
+                self.mark_poll_loop,
             )
         ]
         self.events.append(

@@ -46,6 +46,7 @@ class BinanceStream:
     )
     rng: Optional[random.Random] = None
     ws_base: str = WS_BASE
+    stream_name: str = "bookTicker"  # Amendment 1: quote-only surface
 
     state: str = "DISCONNECTED"  # DISCONNECTED|CONNECTING|CONNECTED
     reconnect_count: int = 0
@@ -57,9 +58,9 @@ class BinanceStream:
 
     def url(self) -> str:
         streams = "/".join(
-            f"{sym.lower()}@markPrice@1s" for sym in self.symbols
+            f"{sym.lower()}@{self.stream_name}" for sym in self.symbols
         )
-        return f"{self.ws_base}?streams={streams}"
+        return f"{self.ws_base}/stream?streams={streams}"
 
     def stop(self) -> None:
         self._stop = True
@@ -122,7 +123,11 @@ class BinanceStream:
 
 
 def parse_mark_event(data: dict) -> Optional[dict]:
-    """Normalize one markPrice stream event to gateway fields."""
+    """Normalize one markPrice stream event to gateway fields.
+
+    Amendment 1 (2026-09-22): this stream is venue-unavailable on this
+    machine (0 payload across every egress); retained for a future
+    venue policy change but NOT subscribed by default."""
     symbol = data.get("s")
     if not isinstance(symbol, str):
         return None
@@ -144,4 +149,30 @@ def parse_mark_event(data: dict) -> Optional[dict]:
         "next_funding_time_ms": (
             int(data["T"]) if data.get("T") is not None else None
         ),
+    }
+
+
+def parse_book_ticker_event(data: dict) -> Optional[dict]:
+    """Normalize one futures bookTicker event (Amendment 1 live
+    surface): best bid/ask + last-quantities, event fields e/s/u/b/a.
+    QUOTE-ONLY: never a mark source (plan §4 amended law)."""
+    symbol = data.get("s")
+    if not isinstance(symbol, str):
+        return None
+
+    def _f(name: str) -> Optional[float]:
+        raw = data.get(name)
+        try:
+            return float(raw) if raw is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    ts_ms = data.get("E") or data.get("T")
+    return {
+        "symbol": symbol,
+        "event_e_ms": int(ts_ms) if isinstance(ts_ms, (int, float)) else None,
+        "best_bid": _f("b"),
+        "best_ask": _f("a"),
+        "bid_qty": _f("B"),
+        "ask_qty": _f("A"),
     }

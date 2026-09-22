@@ -326,4 +326,4 @@ def test_one_upstream_connection_under_190_symbols():
 
     asyncio.run(main())
     assert len(calls) == 1  # ONE combined-stream connection
-    assert calls[0].count("@markPrice@1s") == 190
+    assert calls[0].count("@bookTicker") == 190

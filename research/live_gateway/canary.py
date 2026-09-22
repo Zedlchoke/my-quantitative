@@ -31,7 +31,9 @@ import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
 # ---- frozen thresholds (plan §9.2; DO NOT tune after any result) ----
-ALIGN_WINDOW_MS = 2_000
+#: Amendment 1 (2026-09-22): REST-vs-REST alignment — 5 s mark-poll
+#: cache + 1 s margin (was 2 s under the WS law the venue suppressed)
+ALIGN_WINDOW_MS = 6_000
 PASS_PRESENCE = 0.99
 PASS_WITHIN_5BPS = 0.999
 HARD_BPS = 50.0

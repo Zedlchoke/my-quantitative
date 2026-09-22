@@ -24,8 +24,12 @@ from typing import Any, Dict, List, Optional
 from .timeutils import NowMs, default_now_ms, ms_to_iso_z
 
 PROVIDER = "binance_fapi"
-STALE_AFTER_MS = 10_000
-GAP_MS = 10_000  # 1 s stream silent for >10 s = gap
+#: Amendment 1 (2026-09-22): marks come from REST premiumIndex at a 5 s
+#: cadence — STALE after 30 s (6 missed polls; was 10 s on the 1 s
+#: markPrice stream that the venue suppresses on this machine).
+STALE_AFTER_MS = 30_000
+#: mark silent > 10 s (2+ missed 5 s polls) = GAP_DETECTED
+GAP_MS = 10_000
 
 DATUM_STATUSES = (
     "HEALTHY",
@@ -44,14 +48,32 @@ class SymbolDatum:
     index_price: Optional[float] = None
     funding_rate: Optional[float] = None
     next_funding_time_ms: Optional[int] = None
-    provider_ts_ms: Optional[int] = None
+    provider_ts_ms: Optional[int] = None        # MARK clock (REST poll)
     received_at_ms: Optional[int] = None
-    last_event_e_ms: Optional[int] = None   # venue event time for dedup/order
+    last_event_e_ms: Optional[int] = None
     gap_flagged: bool = False
     duplicates_seen: int = 0
     out_of_order_seen: int = 0
     message_count: int = 0
-    source_kind: str = "ws"  # 'ws' | 'rest' (truth law: label the source)
+    source_kind: str = "rest"  # 'ws' | 'rest' (truth law: label source)
+    # quote surface (bookTicker, Amendment 1) — DISPLAY/diagnostic only
+    best_bid: Optional[float] = None
+    best_ask: Optional[float] = None
+    quote_ts_ms: Optional[int] = None
+    quote_received_ms: Optional[int] = None
+
+    def apply_quote(
+        self,
+        event_ts_ms: Optional[int],
+        best_bid: Optional[float],
+        best_ask: Optional[float],
+        received_at_ms: int,
+    ) -> None:
+        """Apply one bookTicker quote (quote clock only; NEVER the mark)."""
+        self.best_bid = best_bid
+        self.best_ask = best_ask
+        self.quote_ts_ms = event_ts_ms if event_ts_ms is not None else received_at_ms
+        self.quote_received_ms = received_at_ms
 
     def apply_rest_mark(
         self,
@@ -169,12 +191,10 @@ class SnapshotStore:
         age_s = max(0, age_ms / 1000.0)
         if surface_state == "RATE_LIMITED":
             status, reason = "RATE_LIMITED", "upstream rate limited"
-        elif not ws_connected:
-            status, reason = "DISCONNECTED", "ws disconnected"
         elif d.gap_flagged:
-            status, reason = "GAP_DETECTED", "inter-message gap >10s"
+            status, reason = "GAP_DETECTED", "mark poll gap >10s"
         elif age_ms > self.stale_after_ms:
-            status, reason = "STALE", f"no stream message for {age_s:.1f}s"
+            status, reason = "STALE", f"mark age {age_s:.1f}s (> {self.stale_after_ms // 1000}s)"
         else:
             status, reason = "HEALTHY", None
         return {
@@ -189,6 +209,11 @@ class SnapshotStore:
                 if d.next_funding_time_ms
                 else None
             ),
+            "best_bid": d.best_bid,
+            "best_ask": d.best_ask,
+            "quote_timestamp_utc": (
+                ms_to_iso_z(d.quote_ts_ms) if d.quote_ts_ms else None
+            ),
             "provider_timestamp_utc": ms_to_iso_z(d.provider_ts_ms),
             "received_at_utc": ms_to_iso_z(d.received_at_ms),
             "age_seconds": round(age_s, 3),
@@ -196,12 +221,12 @@ class SnapshotStore:
             "stale_reason": reason,
             "source": (
                 f"{symbol.lower()}@markPrice@1s"
-                if getattr(d, "source_kind", "ws") == "ws"
+                if getattr(d, "source_kind", "rest") == "ws"
                 else "GET /fapi/v1/premiumIndex"
             ),
             "surface_state": surface_state,
             "provenance": (
-                "ws_event" if getattr(d, "source_kind", "ws") == "ws"
+                "ws_event" if getattr(d, "source_kind", "rest") == "ws"
                 else "rest_premium_index"
             ),
             "canonical_current": status == "HEALTHY",

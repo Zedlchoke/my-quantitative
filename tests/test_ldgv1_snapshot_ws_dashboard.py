@@ -72,30 +72,39 @@ def test_parse_mark_event_fields():
 # ----------------------------------------------------------------------
 # staleness + last-known-value truth law
 # ----------------------------------------------------------------------
-def test_stale_after_10s_and_canonical_current_false():
+def test_stale_after_30s_and_canonical_current_false():
+    """Amendment 1: marks REST-polled at 5 s — STALE after 30 s."""
     clock = FakeClock()
     store = SnapshotStore(now_ms=clock)
     _apply(store, "BTCUSDT", clock(), 100.0, clock())
     payload = store.build_payload("BTCUSDT", "HEALTHY", ws_connected=True)
     assert payload["status"] == "HEALTHY"
     assert payload["canonical_current"] is True
-    clock.advance(11_000)
+    clock.advance(11_000)  # 2 missed polls: still fresh enough (<=30 s)
+    mid = store.build_payload("BTCUSDT", "HEALTHY", ws_connected=True)
+    assert mid["status"] == "HEALTHY"
+    clock.advance(20_000)  # 31 s total: STALE
     payload2 = store.build_payload("BTCUSDT", "HEALTHY", ws_connected=True)
     assert payload2["status"] == "STALE"
-    assert payload2["stale_reason"] and "no stream message" in payload2["stale_reason"]
+    assert payload2["stale_reason"] and "mark age" in payload2["stale_reason"]
     assert payload2["canonical_current"] is False
     # last-known value IS still served (dashboard law) but never current
     assert payload2["value"] == 100.0
 
 
-def test_disconnected_surface_forces_disconnected_datum():
+def test_ws_down_no_longer_invalidates_rest_mark():
+    """Amendment 1: the mark source is REST — a disconnected QUOTE
+    surface is disclosed via surface_state but the fresh REST mark
+    stays HEALTHY/canonical."""
     store = SnapshotStore(now_ms=FakeClock())
-    _apply(store, "BTCUSDT", 1_700_000_000_000, 100.0, 1_700_000_000_001)
+    clock_ms = 1_700_000_000_000
+    _apply(store, "BTCUSDT", clock_ms, 100.0, clock_ms + 1)
     payload = store.build_payload(
         "BTCUSDT", "DISCONNECTED", ws_connected=False
     )
-    assert payload["status"] == "DISCONNECTED"
-    assert payload["canonical_current"] is False
+    assert payload["status"] == "HEALTHY"
+    assert payload["canonical_current"] is True
+    assert payload["surface_state"] == "DISCONNECTED"
 
 
 def test_degraded_surface_serves_fresh_healthful_datum_with_surface_state():
@@ -122,7 +131,7 @@ def test_gap_detection_wall_clock():
     _apply(store, "BTCUSDT", clock(), 100.0, clock())
     flagged = store.mark_gaps(["BTCUSDT"])
     assert flagged == []  # fresh: no gap
-    clock.advance(15_000)  # silent > 10 s
+    clock.advance(15_000)  # 3 missed 5 s polls -> mark gap
     flagged = store.mark_gaps(["BTCUSDT"])
     assert flagged == ["BTCUSDT"]
     payload = store.build_payload("BTCUSDT", "HEALTHY", ws_connected=True)
