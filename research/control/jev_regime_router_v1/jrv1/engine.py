@@ -20,6 +20,12 @@ Pinned laws (each golden-tested):
   shorts receive (signed cost, can be a credit).
 - fold-terminal force-flat: position closed at the LAST exec bar close of the
   fold (costs debited); equity itself is continuous across folds.
+- fold law (A7-1 F3 amendment): the exec-bar fold partition is CONTIGUOUS —
+  every exec bar from the first fold's first bar onward belongs to exactly
+  one fold (folds_from_regime_ts); entry fills/signals are refused on
+  unassigned (pre-warmup) bars; no position ever spans a fold boundary; and
+  the runner asserts sum(fold_net_pnl) == totals.net_pnl within 1e-9 after
+  every run.
 - stale-data rejection: a governing decision older than 2 regime periods at
   an exec bar open maps to FLAT there.
 - BUY_HOLD (arm A): enters TREND_LONG at the first exec bar open of each
@@ -199,7 +205,9 @@ class Engine:
                 pending_exit = None
             elif pos is None and pending_entry is not None:
                 tgt = self.targets[i]
-                if tgt == pending_entry or tgt == BUY_HOLD:
+                # fold law (A7-1 F3): a position may only OPEN on an exec bar
+                # that belongs to a fold — never on unassigned bars
+                if (tgt == pending_entry or tgt == BUY_HOLD) and self.fold_id[i] >= 0:
                     pos = self._open_position(pending_entry, i, ts_o, o, cash)
                     cash -= pos.direction * pos.qty * o + pos.fees + pos.slip
                 pending_entry = None
@@ -230,6 +238,12 @@ class Engine:
             if pos is not None and i in self._fold_ends:
                 cash = self._close_position(pos, i, ts_c, c, "fold_flat", cash, trades)
                 pos = None
+            # fold law invariant (A7-1 F3): after the fold-flat step a
+            # position may exist ONLY on a bar that belongs to a fold — a
+            # position can never cross a fold boundary (hard fail, no warning)
+            assert pos is None or self.fold_id[i] >= 0, (
+                f"fold law violated: position open on unassigned exec bar {i}"
+            )
 
             # 6) mark equity -----------------------------------------------
             equity[i] = cash + (pos.direction * pos.qty * c if pos is not None else 0.0)
@@ -243,14 +257,21 @@ class Engine:
                 if tgt == BUY_HOLD:
                     if i in self._fold_starts:
                         pending_entry = TREND_LONG
-                elif tgt is not None and tgt != FLAT and _entry_signal(tgt, i, bars, self.x):
+                elif (
+                    tgt is not None
+                    and tgt != FLAT
+                    and self.fold_id[i] >= 0  # fold law: no entry signals on unassigned bars
+                    and _entry_signal(tgt, i, bars, self.x)
+                ):
                     pending_entry = tgt
             else:
                 held = i - pos.entry_bar + 1
                 if _exit_signal(pos.strategy, i, bars, self.x, held):
                     pending_exit = "strategy_exit"
 
-        return self._assemble(equity, invested, trades)
+        result = self._assemble(equity, invested, trades)
+        _assert_engine_invariants(result, self.folds)
+        return result
 
     # -- helpers -----------------------------------------------------------
 
@@ -384,12 +405,88 @@ def folds_from_regime_ts(
     exec_bars: Bars,
     fold_spans: list[tuple[int, int]],  # (start_ts, end_ts) inclusive, regime clock
 ) -> list[tuple[int, int, int]]:
-    """Exec-bar fold ranges: bars with start_ts < ts_open <= end_ts."""
+    """Exec-bar fold ranges as a CONTIGUOUS partition (amended A7-1 F3).
+
+    Fold k starts at its first exec bar strictly after the frozen regime-span
+    start (``start_k < ts_open <= end_k``, the DECISION boundary — frozen and
+    untouched), and now OWNS exec bars through the bar immediately preceding
+    fold k+1's first exec bar; the last fold extends to the final exec bar.
+    The frozen spans are non-adjacent (BTC 4 exec bars / SPY 1 session between
+    spans), which previously left those gap bars in NO fold so positions could
+    span boundaries and fold PnL did not reconcile with totals. With this
+    partition EVERY exec bar from the first fold's first bar onward belongs to
+    exactly one fold; bars BEFORE it stay unassigned (-1, pre-warmup tag).
+    Force-flat at each fold's LAST exec bar is unchanged.
+    """
     out = []
     ts = exec_bars.ts_open.tolist()
-    for fid, (a, b) in enumerate(fold_spans):
-        idx = [k for k, t in enumerate(ts) if a < t <= b]
-        if not idx:
+    starts: list[int | None] = []
+    for a, _b in fold_spans:
+        s = next((k for k, t in enumerate(ts) if a < t), None)
+        starts.append(s)
+    for fid, (_a, _b) in enumerate(fold_spans):
+        s = starts[fid]
+        if s is None:
             continue
-        out.append((fid, idx[0], idx[-1]))
+        e = len(ts) - 1  # last fold extends to the final exec bar
+        for nfid in range(fid + 1, len(fold_spans)):
+            if starts[nfid] is not None:
+                e = starts[nfid] - 1  # through the bar before the next fold's first bar
+                break
+        out.append((fid, s, e))
     return out
+
+
+def fold_partition_invariants(
+    folds: list[tuple[int, int, int]],
+    n_exec_bars: int,
+    first_required_bar: int | None = None,
+) -> None:
+    """Hard invariants of the exec-bar fold partition (A7-1 F3).
+
+    Raises AssertionError when:
+    - fold ranges overlap or are unordered;
+    - assignment is not contiguous from the first fold's start through the
+      last fold's end (every such bar in exactly one fold);
+    - ``first_required_bar`` (e.g. the first post-warmup exec bar) is not
+      covered — i.e. any exec bar after warmup would lack a fold index.
+    Bars before the first fold's start are the explicit pre-warmup tag (-1).
+    """
+    fs = sorted(folds)
+    for (f1, s1, e1), (f2, s2, e2) in zip(fs, fs[1:]):
+        assert s2 == e1 + 1, f"fold partition gap/overlap: fold {f1} ends {e1}, fold {f2} starts {s2}"
+        assert f2 == f1 + 1, f"fold ids not consecutive: {f1} -> {f2}"
+    for _fid, s, e in fs:
+        assert 0 <= s <= e < n_exec_bars, f"fold range [{s},{e}] outside exec grid"
+    if first_required_bar is not None and fs:
+        assert fs[0][1] <= first_required_bar, (
+            f"exec bar {first_required_bar} (post-warmup) before first fold start {fs[0][1]}"
+        )
+        assert fs[-1][2] >= first_required_bar
+
+
+def _assert_engine_invariants(res: EngineResult, folds: list[tuple[int, int, int]]) -> None:
+    """Runner invariants (A7-1 F3), hard-fail (never warn):
+
+    1. no position open crosses a fold boundary (every invested bar carries a
+       fold index; every trade lives inside a single fold's exec range);
+    2. sum(fold_net_pnl) == totals.net_pnl within 1e-9.
+    """
+    invested = res.invested
+    fold_id = res.fold_id
+    for i in range(len(invested)):
+        if invested[i] == 1.0:
+            assert fold_id[i] >= 0, f"position open on unassigned exec bar {i} (fold_id=-1)"
+    ranges = {fid: (s, e) for fid, s, e in folds}
+    for t in res.trades:
+        fid = t.fold_id
+        assert fid in ranges, f"trade exit assigned to unknown fold {fid}"
+        s, e = ranges[fid]
+        assert s <= t.entry_bar and t.exit_bar <= e, (
+            f"trade {t.entry_bar}..{t.exit_bar} spans outside fold {fid} range [{s},{e}]"
+        )
+    fold_sum = float(sum(res.fold_net_pnl))
+    total = float(res.totals["net_pnl"])
+    assert abs(fold_sum - total) <= 1e-9, (
+        f"fold attribution does not reconcile: sum(fold_net_pnl)={fold_sum!r} != totals.net_pnl={total!r}"
+    )

@@ -244,12 +244,19 @@ def test_decision_acts_on_bars_strictly_after_close():
 
 
 def test_folds_from_regime_ts():
+    """Contiguous partition (A7-1 F3): fold k STARTS at its first exec bar
+    strictly after the frozen span start (decision boundary — untouched) and
+    now OWNS exec bars through the bar immediately before fold k+1's first
+    bar; the last fold extends to the final exec bar."""
     bars = rising(30)
-    a = int(bars.ts_open[5])
-    b = int(bars.ts_open[19])
-    folds = folds_from_regime_ts(bars, [(a, b)])
-    assert folds[0][1] == 6  # first bar with open > a
-    assert folds[0][2] == 19
+    a1 = int(bars.ts_open[5])
+    a2 = int(bars.ts_open[22])
+    folds = folds_from_regime_ts(bars, [(a1, int(bars.ts_open[19])), (a2, int(bars.ts_open[27]))])
+    assert folds[0][1] == 6  # first bar with open > a1 (start semantics unchanged)
+    assert folds[1][1] == 23  # first bar with open > a2
+    assert folds[0][2] == 22  # fold 0 owns the former gap bars 20..22
+    assert folds[1][2] == 29  # last fold extends to the final exec bar
+    assert folds[0][2] + 1 == folds[1][1]  # contiguous: no gap, no overlap
 
 
 def test_buyhold_enters_first_fold_bar_exits_fold_end():
@@ -270,3 +277,105 @@ def test_zero_costs_still_entries():
     res = eng.run()
     assert res.trades[0].fees == 0.0 and res.trades[0].slip == 0.0
     assert res.totals["net_pnl"] == pytest.approx(res.totals["gross_pnl"], rel=1e-15)
+
+
+# ---- A7-1 F3 regression: non-adjacent fold spans (the exact gap pattern the
+# audit found: BTC 4 exec bars / SPY 1 session in no fold) -------------------
+
+
+def _two_fold_bars(n, step_ns):
+    """Rising exec series; fold spans leave a gap between them (non-adjacent)."""
+    from conftest import make_bars as _mb
+
+    return _mb(
+        100.0 + np.arange(n, dtype=float),
+        101.0 + np.arange(n, dtype=float),
+        99.0 + np.arange(n, dtype=float),
+        100.0 + np.arange(n, dtype=float),
+        np.linspace(1.0, 2.0, n),
+        step_ns=step_ns,
+    )
+
+
+def test_f3_gap_pattern_reconciliation_and_no_span():
+    """Synthetic 2-asset regression for the A7-1 F3 gap pattern.
+
+    Asset X: 15m exec grid with 5 gap bars between fold spans; asset Y: daily
+    grid with 1 gap session (SPY pattern: one session in no fold). Under the
+    AMENDED contiguous partition: every exec bar from the first fold bar is
+    assigned (gap bars owned by the PREVIOUS fold), no position spans a fold,
+    and sum(fold_net_pnl) == totals.net_pnl within 1e-9. The OLD (gapped)
+    partition is proven to violate the invariants — the audit's proof.
+    """
+    from jrv1.data import DAY, MIN15
+    from jrv1.engine import fold_partition_invariants, folds_from_regime_ts as ffrt
+
+    for step, gap_note in ((MIN15, "BTC-like: several exec bars in the gap"), (DAY, "SPY-like: one session in the gap")):
+        bars = _two_fold_bars(60, step)
+        spans = [
+            (int(bars.ts_open[5]), int(bars.ts_open[24])),
+            (int(bars.ts_open[30]), int(bars.ts_open[58])),
+        ]
+        first_gap = 25  # first bar with ts_open > span1 end (old law: unassigned)
+        next_start = 31  # first bar with ts_open > span2 start
+
+        folds_new = ffrt(bars, spans)
+        fold_partition_invariants(folds_new, len(bars.ts_close), first_required_bar=folds_new[0][1])
+        # start semantics (decision boundaries) unchanged; ends extended
+        assert folds_new[0][1] == 6 and folds_new[1][1] == next_start
+        assert folds_new[0][2] == next_start - 1  # gap bars owned by previous fold
+        assert folds_new[1][2] == 59  # last fold extends to the final exec bar
+        fold_id = np.full(len(bars.ts_close), -1, dtype=np.int64)
+        for fid, s, e in folds_new:
+            fold_id[s : e + 1] = fid
+        assert all(fold_id[k] == 0 for k in range(first_gap, next_start)), gap_note
+        assert all(fold_id[k] >= 0 for k in range(folds_new[0][1], len(bars.ts_close))), (
+            f"every exec bar from the first fold bar is assigned ({gap_note})"
+        )
+
+        targets = [TREND_LONG] * len(bars.ts_close)
+        res = Engine(bars, targets, folds_new, costs_btc()).run()
+        # reconciliation identity (the audit measured -60.06 != -19.96 under
+        # the old partition)
+        assert abs(sum(res.fold_net_pnl) - res.totals["net_pnl"]) <= 1e-9, gap_note
+        # no position spans a fold boundary
+        ranges = {fid: (s, e) for fid, s, e in folds_new}
+        for t in res.trades:
+            s, e = ranges[t.fold_id]
+            assert s <= t.entry_bar and t.exit_bar <= e, gap_note
+        assert all(res.fold_id[i] >= 0 for i in range(len(bars.ts_close)) if res.invested[i] == 1.0)
+
+        # OLD (gapped) partition is now REJECTED as a partition — the audit's
+        # finding was exactly this gap: fold 0 ended at bar 24 and fold 1
+        # started at 31, leaving bars 25..30 in no fold. The partition
+        # invariant (contiguity) hard-fails on it.
+        old_idx0 = [k for k, t in enumerate(bars.ts_open.tolist()) if spans[0][0] < t <= spans[0][1]]
+        old_idx1 = [k for k, t in enumerate(bars.ts_open.tolist()) if spans[1][0] < t <= spans[1][1]]
+        folds_old = [(0, old_idx0[0], old_idx0[-1]), (1, old_idx1[0], old_idx1[-1])]
+        assert folds_old[0][2] + 1 != folds_old[1][1], "old partition must be gapped for this fixture"
+        with pytest.raises(AssertionError, match="gap/overlap"):
+            fold_partition_invariants(folds_old, len(bars.ts_close), first_required_bar=folds_old[0][1])
+
+
+def test_engine_reconciles_when_no_trades():
+    bars = rising(20)
+    folds = [(0, 0, 9), (1, 10, 19)]
+    res = Engine(bars, [FLAT] * 20, folds, costs_btc()).run()
+    assert res.trades == []
+    assert abs(sum(res.fold_net_pnl)) <= 1e-9
+    assert res.totals["net_pnl"] == 0.0
+
+
+def test_fold_contract_decision_boundaries_unchanged(fz):
+    """Only the exec-bar partition changed; the frozen decision folds and the
+    fold_contract.json bytes are untouched (pre-remediation digest)."""
+    from jrv1.freezes import sha256_file
+
+    p = fz.freezes_dir / "fold_contract.json"
+    assert sha256_file(p) == fz.manifest["files"]["fold_contract.json"]
+    assert (
+        fz.manifest["files"]["fold_contract.json"]
+        == "ac658c50a79e9f14e1d1cc92d39a1c9befc364434b8c87fe922dc9a7baaa39f7"
+    )
+    # the amended manifest records the adapter_contract change and ONLY that
+    assert [a["file"] for a in fz.manifest["amended"]] == ["adapter_contract.json"]

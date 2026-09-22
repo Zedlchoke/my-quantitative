@@ -189,7 +189,7 @@ test("cache: existing entry not overwritten even when a new state joins the run"
   assert.equal(summary.n_cached, 1);
 });
 
-test("cache key is sha256(model || state_id || input_digest)", () => {
+test("cache key is sha256(model || state_id || input_digest) with the PRODUCER digest echoed", () => {
   const dir = tmpDir();
   const cache = join(dir, "cache");
   const req = writeRequests(dir, [makeRequestLine({ stateId: hex16(11), requestedModel: MODEL })]);
@@ -197,22 +197,56 @@ test("cache key is sha256(model || state_id || input_digest)", () => {
   assert.equal(r.status, 0);
   const lines = readFileSync(req, "utf8").trim().split("\n");
   const parsed = JSON.parse(lines[0]);
-  const inputDigest = sha256Hex(JSON.stringify(sortKeys(parsed.state)) + parsed.requested_model);
+  // amendment_1: the digest carried by the request line is used verbatim
+  const inputDigest = parsed.input_digest;
+  assert.match(inputDigest, /^[0-9a-f]{64}$/);
   const expected = sha256Hex(MODEL + parsed.state_id + inputDigest);
   assert.deepEqual(listDir(cache), [`${expected}.json`]);
 });
 
-function sortKeys(v: unknown): unknown {
-  if (Array.isArray(v)) return v.map(sortKeys);
-  if (typeof v === "object" && v !== null) {
-    const o: Record<string, unknown> = {};
-    for (const k of Object.keys(v as Record<string, unknown>).sort()) {
-      o[k] = sortKeys((v as Record<string, unknown>)[k]);
-    }
-    return o;
+test("amendment_1: request without input_digest is refused (LOCAL_INVALID, no call)", () => {
+  const dir = tmpDir();
+  const noDigest = JSON.parse(makeRequestLine({ stateId: hex16(41) }));
+  delete noDigest.input_digest;
+  const badDigest = JSON.parse(makeRequestLine({ stateId: hex16(42) }));
+  badDigest.input_digest = "not-a-digest";
+  const uppercase = JSON.parse(makeRequestLine({ stateId: hex16(43) }));
+  uppercase.input_digest = uppercase.input_digest.toUpperCase();
+  const req = writeRequests(dir, [JSON.stringify(noDigest), JSON.stringify(badDigest), JSON.stringify(uppercase)]);
+  const out = join(dir, "o.jsonl");
+  const r = runAdapter(["--requests", req, "--out", out, "--cache", join(dir, "c"), "--model", MODEL, "--mock"]);
+  assert.equal(r.status, 0);
+  const rows = readRows(out);
+  assert.equal(rows.length, 3);
+  for (const row of rows) {
+    assert.equal(row.status, "LOCAL_INVALID");
+    assert.equal(row.error_class, "REQUEST_SCHEMA");
   }
-  return v;
-}
+  const summary = JSON.parse(r.stdout.trim());
+  assert.equal(summary.n_local_invalid, 3);
+  assert.equal(listDir(join(dir, "c")).length, 0, "no cache entries without a valid producer digest");
+});
+
+test("amendment_1: response and cache entry echo the producer digest verbatim", () => {
+  const dir = tmpDir();
+  const producerDigest = "ab".repeat(32);
+  const req = writeRequests(dir, [
+    makeRequestLine({ stateId: hex16(44), requestedModel: MODEL, inputDigest: producerDigest }),
+  ]);
+  const out = join(dir, "o.jsonl");
+  const cache = join(dir, "cache");
+  const r = runAdapter(["--requests", req, "--out", out, "--cache", cache, "--model", MODEL, "--mock"]);
+  assert.equal(r.status, 0, r.stderr);
+  const rows = readRows(out);
+  assert.equal(rows[0].input_digest, producerDigest, "response must echo the producer digest");
+  const [entryFile] = listDir(cache);
+  const entry = JSON.parse(readFileSync(join(cache, entryFile), "utf8"));
+  assert.equal(entry.input_digest, producerDigest, "cache entry must carry the producer digest");
+  // the arbitrary 64-hex digest drives the cache key (echo, not recompute:
+  // a recompute from the state would have produced a different key)
+  const expectedKey = sha256Hex(MODEL + hex16(44) + producerDigest);
+  assert.equal(entryFile, `${expectedKey}.json`);
+});
 
 test("model pin: jev-latest refused with exit 3 even when a key would exist", () => {
   const dir = tmpDir();

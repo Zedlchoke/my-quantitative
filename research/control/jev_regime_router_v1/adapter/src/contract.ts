@@ -36,6 +36,17 @@ export const FEATURE_VECTOR_LENGTH = 16;
 
 // ---------------------------------------------------------------------------
 // canonical json + digests
+//
+// AMENDMENT 1 (adapter_contract.json amendment_1, A7-1 F1 — producer-digest
+// echo law): input_digest is computed ONLY by the producer (Python, from its
+// stored state + requested_model via its canonical_json). The request line
+// carries it; the adapter validates the 64-hex format and echoes it verbatim
+// in every response line and cache entry. The adapter MUST NOT recompute it:
+// canonicalJson/JSON.stringify renders doubles differently from Python
+// json.dumps (e.g. 1e-05 vs 0.00001, 1.234e-07 vs 1.234e-7, 34.0 vs 34),
+// which measured 10/25 digest mismatches on real request lines. The pure
+// functions below are retained ONLY for golden cross-language tests that
+// prove the old divergence and the echo path's immunity.
 // ---------------------------------------------------------------------------
 
 /** Recursively sort object keys; serialize with no whitespace. */
@@ -63,8 +74,10 @@ export function sha256Hex(s: string): string {
 }
 
 /**
- * input_digest per freeze: sha256(canonical_json(state) || requested_model).
- * `||` is plain string concatenation; identical on both sides of the boundary.
+ * LEGACY (golden tests only — never used to process a request):
+ * sha256(canonical_json(state) || requested_model) as the TS side used to
+ * recompute it before amendment_1. Kept so the cross-language golden vectors
+ * can prove the old divergence.
  */
 export function computeInputDigest(state: unknown, requestedModel: string): string {
   return sha256Hex(canonicalJson(state) + requestedModel);
@@ -84,6 +97,8 @@ export interface Jrv1Request {
   state_id: string;
   state: Jrv1State;
   requested_model: string;
+  /** producer-computed digest, echoed verbatim (amendment_1) */
+  input_digest: string;
 }
 
 // (object type alias — structurally assignable to the SDK's EntryType JSON shape)
@@ -97,6 +112,8 @@ export type RequestValidation =
   | { ok: false; reason: string };
 
 const HEX16 = /^[0-9a-f]{16}$/;
+/** amendment_1: the producer-computed input_digest is always 64 lowercase hex. */
+export const HEX64 = /^[0-9a-f]{64}$/;
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -112,6 +129,11 @@ export function validateRequestLine(raw: unknown): RequestValidation {
   }
   if (typeof raw.requested_model !== "string" || raw.requested_model.length === 0) {
     return { ok: false, reason: "requested_model must be a non-empty string" };
+  }
+  // amendment_1 (A7-1 F1): the producer-computed input_digest is REQUIRED.
+  // Missing or non-64-hex digests are refused — the adapter never recomputes.
+  if (typeof raw.input_digest !== "string" || !HEX64.test(raw.input_digest)) {
+    return { ok: false, reason: "input_digest must be producer-computed 64 lowercase hex chars" };
   }
   const st = raw.state;
   if (!isPlainObject(st)) return { ok: false, reason: "state must be an object" };
@@ -137,6 +159,7 @@ export function validateRequestLine(raw: unknown): RequestValidation {
       state_id: raw.state_id,
       state: { feature_vector: fv.slice() as number[], prior_regime: pr as RegimeLabel | null },
       requested_model: raw.requested_model,
+      input_digest: raw.input_digest,
     },
   };
 }

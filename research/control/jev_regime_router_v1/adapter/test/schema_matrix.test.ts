@@ -15,6 +15,7 @@ import {
 } from "../src/contract.ts";
 
 const GOOD_VECTOR = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+const GOOD_DIGEST = "cd".repeat(32); // producer-computed 64-hex (amendment_1)
 
 function goodRequest(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -22,6 +23,7 @@ function goodRequest(overrides: Record<string, unknown> = {}): Record<string, un
     state_id: "0123456789abcdef",
     state: { feature_vector: GOOD_VECTOR, prior_regime: null },
     requested_model: "jev-canary-x",
+    input_digest: GOOD_DIGEST,
     ...overrides,
   };
 }
@@ -37,6 +39,17 @@ test("request: valid line accepted", () => {
     assert.equal(v.request.state_id, "0123456789abcdef");
     assert.equal(v.request.state.feature_vector.length, 16);
     assert.equal(v.request.state.prior_regime, null);
+    assert.equal(v.request.input_digest, GOOD_DIGEST);
+  }
+});
+
+test("request: missing/invalid input_digest rejected (amendment_1 producer-digest law)", () => {
+  const missing = goodRequest();
+  delete missing.input_digest;
+  assert.equal(validateRequestLine(missing).ok, false);
+  for (const bad of ["", "abc", "AB".repeat(32), "cd".repeat(31) + "cg", 5, null]) {
+    const v = validateRequestLine(goodRequest({ input_digest: bad }));
+    assert.equal(v.ok, false, `input_digest ${JSON.stringify(bad)} must be rejected`);
   }
 });
 
@@ -179,7 +192,7 @@ test("canonical json: key order independence", () => {
   assert.equal(canonicalJson({ a: 1, b: { c: 2, d: 3 } }), canonicalJson({ b: { d: 3, c: 2 }, a: 1 }));
 });
 
-test("input digest: sha256(canonical_json(state) || requested_model)", () => {
+test("legacy digest formula (producer authority; golden-test only since amendment_1)", () => {
   const state = { feature_vector: GOOD_VECTOR, prior_regime: null };
   const expected = createHash("sha256")
     .update(canonicalJson(state) + "jev-canary-x", "utf8")
