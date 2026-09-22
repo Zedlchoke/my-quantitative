@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, writeFileSync, existsSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { computeInputDigest } from "../src/contract.ts";
 
 export const ADAPTER_TS = resolve(import.meta.dirname, "../src/adapter.ts");
 export const FREEZES_DIR = resolve(import.meta.dirname, "../../freezes");
@@ -44,16 +45,26 @@ export function makeRequestLine(opts?: {
   vector?: number[];
   prior?: string | null;
   requestedModel?: string;
+  /** producer-computed digest; computed here only because the test helper
+   *  plays the producer role (all default vectors avoid the float-format
+   *  divergence window; golden vectors carry explicit Python digests). */
+  inputDigest?: string;
 }): string {
+  const vector =
+    opts?.vector ?? [0.01, 0.02, 0.05, 0.11, 0.28, 0.004, 0.0025, 1.2, 34, 0.008, 0.62, -0.03, 0.3, 0.42, 0.35, 0.62];
+  const requestedModel = opts?.requestedModel ?? "jev-canary-x";
+  const inputDigest =
+    opts?.inputDigest ??
+    computeInputDigest({ feature_vector: vector, prior_regime: opts?.prior ?? null }, requestedModel);
   return JSON.stringify({
     schema: "jrv1_decision_io@1",
     state_id: opts?.stateId ?? hex16(1),
     state: {
-      feature_vector:
-        opts?.vector ?? [0.01, 0.02, 0.05, 0.11, 0.28, 0.004, 0.0025, 1.2, 34, 0.008, 0.62, -0.03, 0.3, 0.42, 0.35, 0.62],
+      feature_vector: vector,
       prior_regime: opts?.prior ?? null,
     },
-    requested_model: opts?.requestedModel ?? "jev-canary-x",
+    requested_model: requestedModel,
+    input_digest: inputDigest,
   });
 }
 

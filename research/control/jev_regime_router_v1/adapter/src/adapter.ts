@@ -4,13 +4,17 @@
 //        --cache <dir> [--model <pin>] [--mock]
 //
 // Laws implemented here (plans/PLAN_jev_regime_router_v1.md §5/§5a/§8,
-// freezes/adapter_contract.json):
+// freezes/adapter_contract.json incl. amendment_1):
 //   - freeze gate: refuses to run unless freezes/regime_label_contract.json
 //     sha256-matches the digest embedded in src/freeze_digests.ts
 //   - model pin: --model, else freezes/model_pin.json pinned_model;
 //     'jev-latest' or a missing pin is BLOCKED_MODEL_PIN (exit 3) unless --mock
 //   - credential: TYPESAFE_API_KEY from environment only (name-only presence
 //     checks; the value is never read into a string that could be logged)
+//   - amendment_1 (A7-1 F1 producer-digest echo law): the request line carries
+//     input_digest computed by the Python producer; the adapter validates the
+//     64-hex format and ECHOES it verbatim in every response and cache entry.
+//     The adapter NEVER recomputes it (single canonicalization authority).
 //   - call discipline: maxRetries 0, timeout 10000 ms, NO retries, NO re-asks,
 //     one call per state_id (duplicates warned + skipped)
 //   - cache: append-only per-state JSON entries keyed
@@ -30,7 +34,6 @@ import {
 import {
   DECISION_IO_SCHEMA,
   computeCacheKey,
-  computeInputDigest,
   sha256Hex,
   validateProviderAnswer,
   validateRequestLine,
@@ -195,14 +198,16 @@ export function classifyProviderError(err: unknown): ProviderErrorInfo {
 // main
 // ---------------------------------------------------------------------------
 
-function localInvalidRow(stateId: string, rawState: unknown, rawModel: unknown, errorClass: string): Jrv1Response {
-  const model = typeof rawModel === "string" ? rawModel : "";
+function localInvalidRow(stateId: string, rawDigest: unknown, errorClass: string): Jrv1Response {
+  // amendment_1: echo whatever digest string the request carried (never
+  // recompute); "" only when the request carried no string at all. Python
+  // ingest fail-closes any non-matching echo to SCHEMA_ERROR -> UNKNOWN.
   return {
     schema: DECISION_IO_SCHEMA,
     state_id: stateId,
     status: "LOCAL_INVALID",
     error_class: errorClass,
-    input_digest: computeInputDigest(rawState ?? null, model),
+    input_digest: typeof rawDigest === "string" ? rawDigest : "",
     latency_ms: 0,
   };
 }
@@ -263,7 +268,7 @@ export async function main(argv: readonly string[]): Promise<number> {
     try {
       raw = JSON.parse(line);
     } catch {
-      rows.push(localInvalidRow("", null, "", "UNPARSEABLE_LINE"));
+      rows.push(localInvalidRow("", "", "UNPARSEABLE_LINE"));
       nLocalInvalid++;
       continue;
     }
@@ -273,8 +278,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       rows.push(
         localInvalidRow(
           typeof o.state_id === "string" ? o.state_id : "",
-          o.state,
-          o.requested_model,
+          o.input_digest,
           "REQUEST_SCHEMA",
         ),
       );
@@ -291,7 +295,8 @@ export async function main(argv: readonly string[]): Promise<number> {
     }
     seenStateIds.add(req.state_id);
 
-    const inputDigest = computeInputDigest(req.state, req.requested_model);
+    // amendment_1: producer-computed digest, echoed verbatim — never recomputed
+    const inputDigest = req.input_digest;
     const key = computeCacheKey(model, req.state_id, inputDigest);
 
     // replay reads cache, never re-calls

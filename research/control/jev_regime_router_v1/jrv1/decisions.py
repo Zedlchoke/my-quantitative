@@ -1,12 +1,20 @@
 """Decision boundary for jrv1: cache reader, schema validation, merging.
 
-Boundary schema `jrv1_decision_io@1` (JSONL):
-- request line  {schema, state_id, state, requested_model}
+Boundary schema `jrv1_decision_io@1` (JSONL), amended per amendment_1
+(A7-1 F1, producer-digest echo law):
+- request line  {schema, state_id, state, requested_model, input_digest}
+  where input_digest is computed by the PRODUCER (Python) from its stored
+  state + requested_model via its canonical_json.
 - response line {schema, state_id, status, regime?, probabilities?,
   confidence?, model?, request_id?, input_digest, latency_ms, error_class?}
+  where input_digest is the VERBATIM ECHO of the request digest (TS never
+  recomputes it — a single canonicalization authority avoids the measured
+  cross-language float-formatting divergence).
 
-input_digest = sha256(canonical_json(state) || requested_model) — computed on
-BOTH sides; mismatch = SCHEMA_ERROR -> TRANSITION_UNKNOWN + incident.
+input_digest = sha256(canonical_json(state) || requested_model) — computed by
+the producer only; Python ingest recomputes from its own state (authoritative)
+and compares to the echoed digest; mismatch = SCHEMA_ERROR ->
+TRANSITION_UNKNOWN + incident.
 
 Validation law (violations are COUNTED and the decision becomes
 TRANSITION_UNKNOWN; never a crash, never a pass-through):
@@ -258,6 +266,7 @@ def sequential_timeline(
                     "state_id": sid,
                     "state": payload,
                     "requested_model": requested_model,
+                    "input_digest": digest,
                 }
             )
         line = provider(sid, payload)

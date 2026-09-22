@@ -405,12 +405,13 @@ single asset; reproduction matches; A7 terminal clean of unresolved
 HIGH/CRITICAL. Even then it is S0 research support ONLY — "không phải
 quyền paper/live".
 
-Projected bulk size (measured from data identity at freeze): BTCUSDT ≈
-8,568 H1 decision states − 192 warmup ≈ 8,376; SPY ≈ 2,92x − 192 ≈ 2,73x;
-total ≈ 11,100 states ≈ 11,100 billable calls, each ≈ 1,200–1,800 input
-tokens (state + frozen prompt) + minimal output. Canary ≤ 100 states
-measures REAL latency/failure/tokens/cost; owner decides bulk with the
-measured price in hand. No purchases by agents, ever.
+Projected bulk size (frozen exact numbers, freezes/fold_contract.json):
+BTCUSDT 8,567 + SPY 2,751 = 11,318 decision states ≈ 11,318 billable calls,
+each ≈ 1,200–1,800 input tokens (state + frozen prompt) + minimal output.
+Amended 2026-09-22 remediation-r1 per A7-1 F4 (arithmetic correction only; no
+contract change). Canary ≤ 100 states measures REAL latency/failure/tokens/
+cost; owner decides bulk with the measured price in hand. No purchases by
+agents, ever.
 
 ## 10. Evaluation contract (`freezes/evaluation_contract.json`)
 

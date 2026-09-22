@@ -6,15 +6,28 @@ Subcommands:
   build-states --asset [--limit N]   write runtime/states_<asset>.jsonl
   mock-decisions --asset [--limit N] SMOKE-namespace mock decisions JSONL
   smoke --asset [--limit N]          end-to-end MOCK pipeline (MOCK_SMOKE)
-  prepare-requests --asset --limit N request JSONL for the TS adapter lane
+  replay --asset [--limit N] [--mock]
+                                     STRICT SEQUENTIAL per-state bulk loop
+                                     (A7-1 F2): the ONLY legal bulk decision
+                                     mechanism — prior_regime recomputed from
+                                     persistence after every merged response,
+                                     one TS-adapter subprocess per state,
+                                     cache-first resume, progress JSON per
+                                     100 states, hard fail on adapter error.
+  prepare-requests --asset --fixtures-only
+                                     request JSONL for the FROZEN SYNTHETIC
+                                     CANARIES only (fixed priors, no
+                                     persistence dependency); bulk use is
+                                     REFUSED — provisional priors are
+                                     unsound (A7-1 F2), use replay instead.
   ingest-responses --asset --file    validate + append decisions JSONL
   backtest --asset --arm A|B|C|D|E|F [--decisions FILE] [--mock] [--cost-mult X]
   report --asset                     json-only summary of available artifacts
 
 All JSON output: sort_keys=True, indent=1. runtime/ artifacts are gitignored.
 Smoke/mock artifacts are always labeled namespace=MOCK_SMOKE and live under
-runtime/smoke/ or runtime/mock/ — they may KILL but never select (P-15) and
-are never evidence.
+runtime/smoke/, runtime/mock/ or runtime/replay/ — they may KILL but never
+select (P-15) and are never evidence.
 """
 
 from __future__ import annotations
@@ -49,15 +62,22 @@ from jrv1.decisions import (  # noqa: E402
     DecisionStore,
     sequential_timeline,
 )
-from jrv1.engine import CostModel, folds_from_regime_ts  # noqa: E402
+from jrv1.engine import (  # noqa: E402
+    CostModel,
+    fold_partition_invariants,
+    folds_from_regime_ts,
+)
 from jrv1.features import RegimeFeatures, build_states  # noqa: E402
 from jrv1.freezes import Freezes  # noqa: E402
 from jrv1.mock_adapter import MOCK_MODEL, MOCK_NAMESPACE, MockProvider  # noqa: E402
+from jrv1.replay import REPLAY_MOCK_MODEL, run_replay  # noqa: E402
 from jrv1.security import scan_package_source  # noqa: E402
 
 BTC_15M_PERIOD_NS = 15 * 60 * 1_000_000_000
 SPY_PERIOD_NS = DAY
 PERIODS_PER_YEAR = {"btcusdt": 365.25 * 24 * 4.0, "spy": 252.0}
+
+NODE_BIN = "/opt/homebrew/bin/node" if Path("/opt/homebrew/bin/node").exists() else "node"
 
 
 def jdump(path: Path, obj) -> None:
@@ -126,6 +146,21 @@ def build_context(fz: Freezes, asset: str, mult: float = 1.0) -> AssetContext:
     mapping = {label: m[asset_key] for label, m in raw_mapping.items()}
     spans = fold_spans_ns(fz, asset)
     folds_exec = folds_from_regime_ts(exec_bars, spans)
+    # A7-1 F3 partition invariants: contiguous, complete over every exec bar
+    # from the first governed (post-warmup) exec bar onward; gaps before
+    # warmup excluded. The first post-warmup decision closes at regime bar
+    # index `warmup`; every exec bar opening strictly after it must be folded.
+    warmup = fz.fold_contract[asset_key]["warmup_regime_bars"]
+    first_decision_ts = int(regime_bars.ts_close[warmup])
+    first_required = next(
+        (
+            i
+            for i, t in enumerate(exec_bars.ts_open.tolist())
+            if t > first_decision_ts
+        ),
+        len(exec_bars.ts_close),
+    )
+    fold_partition_invariants(folds_exec, len(exec_bars.ts_close), first_required)
     return AssetContext(
         asset=asset,
         exec_bars=exec_bars,
@@ -297,23 +332,87 @@ def run_canaries(fz: Freezes) -> dict:
 
 
 def cmd_prepare_requests(fz: Freezes, args) -> dict:
-    exec_bars, regime_bars, _, _ = load_asset(fz, args.asset)
-    feats = RegimeFeatures(regime_bars)
-    store = DecisionStore.load(runtime_dir(fz) / f"decisions_{args.asset}.jsonl")
-    sink: list = []
-    sequential_timeline(
-        args.asset, fz, regime_bars, feats, CacheProvider(store),
-        requested_model="UNPINNED", strict=False, request_sink=sink,
-    )
-    if args.limit:
-        sink = sink[: args.limit]
-    path = runtime_dir(fz) / f"requests_{args.asset}.jsonl"
+    # A7-1 F2: batch preparation carries PROVISIONAL priors (f17 depends on
+    # prior decisions, which depend on the calls) and is therefore UNSOUND for
+    # bulk. The only legal bulk mechanism is the strict sequential loop
+    # (`replay`). --fixtures-only serves the frozen synthetic canaries, whose
+    # priors are fixed by the freeze (no persistence dependency).
+    if not getattr(args, "fixtures_only", False):
+        raise SystemExit(
+            "REFUSED: batch prepare-requests is not a legal bulk mechanism "
+            "(A7-1 F2: prior_regime would be provisional and the fixpoint "
+            "re-call is impossible under one-call-per-state cache "
+            "immutability). Use `jrv1 replay --asset <asset> [--mock]` for "
+            "the strict sequential per-state loop, or pass --fixtures-only "
+            "for the frozen synthetic canaries."
+        )
+    requested_model = fz.model_pin.get("pinned_model") or "UNPINNED"
+    from jrv1.replay import fixture_request_lines
+
+    lines = fixture_request_lines(fz, requested_model)
+    path = runtime_dir(fz) / "fixtures_requests.jsonl"
     with open(path, "w", encoding="utf-8") as f:
-        for line in sink:
+        for line in lines:
             f.write(json.dumps(line, sort_keys=True) + "\n")
-    out = {"path": str(path), "n_requests": len(sink)}
+    out = {
+        "path": str(path),
+        "n_requests": len(lines),
+        "mode": "fixtures_only",
+        "note": "synthetic canary fixtures only; fixed priors per freeze; FIX6 (null vector) never serialized",
+    }
     print(json.dumps(out, sort_keys=True, indent=1))
     return out
+
+
+def cmd_replay(fz: Freezes, args) -> dict:
+    """Strict sequential per-state bulk loop (A7-1 F2) through the TS adapter.
+
+    --start-after-warmup is accepted explicitly and is always true: decision
+    states exist only from the frozen warmup boundary onward, and replay
+    iterates them STRICTLY in order.
+    """
+    _, regime_bars, _, _ = load_asset(fz, args.asset)
+    feats = RegimeFeatures(regime_bars)
+    pinned = fz.model_pin.get("pinned_model")
+    rt = runtime_dir(fz)
+    if args.mock:
+        requested_model = REPLAY_MOCK_MODEL
+        pinned_model = None
+        sub = rt / "mock" / "replay" / args.asset
+        namespace = MOCK_NAMESPACE
+    else:
+        if not pinned:
+            raise SystemExit(
+                "replay (live) requires a pinned_model in freezes/model_pin.json; "
+                "use --mock for mock-namespace validation"
+            )
+        requested_model = pinned
+        pinned_model = pinned
+        sub = rt / "replay" / args.asset
+        namespace = "EVIDENCE_CANDIDATE"
+
+    def progress(p: dict) -> None:
+        print(json.dumps(p, sort_keys=True))
+
+    res = run_replay(
+        fz,
+        args.asset,
+        regime_bars,
+        feats,
+        requested_model=requested_model,
+        pinned_model=pinned_model,
+        mock=args.mock,
+        decisions_path=sub / f"decisions_{args.asset}.jsonl",
+        adapter_cache_dir=sub / "adapter_cache",
+        tmp_dir=sub,
+        node_bin=NODE_BIN,
+        limit=args.limit,
+        progress=progress,
+    )
+    res["namespace"] = namespace
+    res["runtime_dir"] = str(sub)
+    print(json.dumps(res, sort_keys=True, indent=1))
+    return res
 
 
 def cmd_ingest_responses(fz: Freezes, args) -> dict:
@@ -437,10 +536,30 @@ def main(argv=None) -> int:
     pr = sub.add_parser("prepare-requests")
     pr.add_argument("--asset", required=True, choices=["btcusdt", "spy"])
     pr.add_argument("--limit", type=int, default=None)
+    pr.add_argument(
+        "--fixtures-only",
+        action="store_true",
+        help="emit request lines for the frozen synthetic canaries only "
+        "(fixed priors, no persistence dependency); bulk use is refused",
+    )
 
     ir = sub.add_parser("ingest-responses")
     ir.add_argument("--asset", required=True, choices=["btcusdt", "spy"])
     ir.add_argument("--file", required=True)
+
+    rp2 = sub.add_parser(
+        "replay",
+        help="strict sequential per-state bulk loop through the TS adapter (A7-1 F2)",
+    )
+    rp2.add_argument("--asset", required=True, choices=["btcusdt", "spy"])
+    rp2.add_argument("--limit", type=int, default=None)
+    rp2.add_argument("--mock", action="store_true")
+    rp2.add_argument(
+        "--start-after-warmup",
+        action="store_true",
+        help="explicit affirmation (always true): replay iterates decision "
+        "states strictly in order starting at the first post-warmup state",
+    )
 
     bt = sub.add_parser("backtest")
     bt.add_argument("--asset", required=True, choices=["btcusdt", "spy"])
@@ -462,6 +581,7 @@ def main(argv=None) -> int:
         "smoke": cmd_smoke,
         "prepare-requests": cmd_prepare_requests,
         "ingest-responses": cmd_ingest_responses,
+        "replay": cmd_replay,
         "backtest": cmd_backtest,
         "report": cmd_report,
     }[args.cmd]

@@ -1,4 +1,31 @@
 {
+ "amendment_1": {
+  "amended_at_utc": "2026-09-22T04:30:09Z",
+  "by": "remediation-r1",
+  "change": "producer-digest echo law: the request line carries input_digest computed by the producer (Python) from its stored state + requested_model via its canonical_json; the TS adapter validates the 64-hex format, echoes it verbatim in every response line and cache entry, and MUST NOT recompute it; Python ingest recomputes from its own state (authoritative) and compares to the echo - mismatch => SCHEMA_ERROR incident (as before, but now only one side ever formats floats)",
+  "reason": "A7-1 F1 (CRITICAL): cross-language float-formatting divergence measured 10/25 (40%) on real prepared request lines - Python json.dumps renders doubles as 1e-05/1.234e-07/5e-06/34.0 while TS JSON.stringify renders 0.00001/1.234e-7/0.000005/34, so the TS-side recompute produced different sha256 digests for the same state and would have fail-closed ~40% of billable calls to TRANSITION_UNKNOWN after the money was spent",
+  "request_line": {
+   "input_digest": "64 lowercase hex; REQUIRED; computed by the PRODUCER (Python) as sha256(canonical_json(state)||requested_model) via its own canonical_json (amendment_1)",
+   "requested_model": "str",
+   "schema": "jrv1_decision_io@1",
+   "state": "object(feature_vector[16], prior_regime)",
+   "state_id": "str16hex"
+  },
+  "response_line": {
+   "confidence": "float?",
+   "error_class": "str?",
+   "input_digest": "VERBATIM ECHO of the request line's producer-computed input_digest; the adapter MUST NOT recompute it; Python ingest recomputes from its own state (authoritative) and compares - mismatch => SCHEMA_ERROR incident (amendment_1)",
+   "latency_ms": "float",
+   "model": "str?",
+   "probabilities": "{label:float}?",
+   "regime": "label?",
+   "request_id": "str?",
+   "schema": "jrv1_decision_io@1",
+   "state_id": "str",
+   "status": "OK|TIMEOUT|PROVIDER_ERROR|SCHEMA_ERROR|LOCAL_INVALID"
+  },
+  "scope": "request_line and response_line schemas only; io_schema id, label vocabulary, status vocabulary, cache law, pin law and call discipline are unchanged"
+ },
  "auth": {
   "env": "TYPESAFE_API_KEY",
   "law": "environment only; never in prompts/logs/git/handoff/manifests; no browser execution (dangerouslyAllowBrowser stays false)"
@@ -19,6 +46,7 @@
   "status_without_key": "CANDIDATE_UNVERIFIED -> all live calls BLOCKED_CREDENTIAL"
  },
  "request_line": {
+  "input_digest": "64 lowercase hex; REQUIRED; computed by the PRODUCER (Python) as sha256(canonical_json(state)||requested_model) via its own canonical_json (amendment_1)",
   "requested_model": "str",
   "schema": "jrv1_decision_io@1",
   "state": "object(feature_vector[16], prior_regime)",
@@ -27,7 +55,7 @@
  "response_line": {
   "confidence": "float?",
   "error_class": "str?",
-  "input_digest": "sha256(canonical_json(state)||requested_model)",
+  "input_digest": "VERBATIM ECHO of the request line's producer-computed input_digest; the adapter MUST NOT recompute it; Python ingest recomputes from its own state (authoritative) and compares - mismatch => SCHEMA_ERROR incident (amendment_1)",
   "latency_ms": "float",
   "model": "str?",
   "probabilities": "{label:float}?",
