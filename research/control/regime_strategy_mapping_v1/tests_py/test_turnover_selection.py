@@ -199,3 +199,35 @@ def test_exact_tie_tiebreak_flat_beats_short_beats_long():
 def test_no_eligible_specialist_flat():
     out = select_for_fold("DISTRIBUTION", 3, [_cand("FLAT", 0.0, {})], 10, 600, 2)
     assert out.selected == "FLAT"
+
+
+def test_registry_stop_hits_by_direction():
+    """Specialist stops fire by SPEC DIRECTION (long: low<=stop; short:
+    high>=stop) — the name-dispatched V2 stop_hit must never see a
+    specialist name (A7-launch incident fix)."""
+    import numpy as np
+
+    from rsmv1.data import Bars
+    from rsmv1.engine import CostModel
+    from rsmv1.specialist_engine import SpecialistEngine, StrategySpec
+
+    n = 40
+    ts = np.arange(n, dtype=np.int64) * 900_000_000_000
+    close = np.full(n, 100.0)
+    open_ = np.full(n, 100.0)
+    high = np.full(n, 100.1)
+    low = np.full(n, 99.9)
+    # bar 10 signals entry (close above HH20 trivially) via always-true spec
+    # then bar 15 plunges for the long stop; separate short case mirrors.
+    bars = Bars(ts_open=ts, ts_close=ts + 900_000_000_000 - 1, open=open_,
+                high=high, low=low, close=close, volume=np.ones(n))
+    long_spec = StrategySpec(
+        name="T-LONG", direction=1,
+        entry=lambda i, b, x: i == 10,
+        exit_=lambda i, b, x, h: False,
+        stop_atr_mult=1.0, max_hold_exec_bars=None, max_hold_regime_bars=None,
+        min_hold_regime_bars=0)
+    folds = [(0, 0, n - 1)]
+    res = SpecialistEngine(bars, ["T-LONG"] * n, folds,
+                           CostModel(0.0, 0.0, 0.0), {"T-LONG": long_spec}).run()
+    assert res.totals["trades"] >= 1

@@ -23,8 +23,10 @@ import sys
 from pathlib import Path
 
 GO_PHRASE = "GO REGIME STRATEGY MAPPING V1 DISCOVERY BACKTEST"
-TOKEN_PATH = Path(__file__).resolve().parents[1] / "SCORED_GO.json"
+CYCLE_DIR = Path(__file__).resolve().parents[1]
+TOKEN_PATH = CYCLE_DIR / "SCORED_GO.json"
 EXIT_REFUSED = 20
+sys.path.insert(0, str(CYCLE_DIR))
 
 
 def _token_sha() -> str | None:

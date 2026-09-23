@@ -228,7 +228,17 @@ class SpecialistEngine(Engine):
                     cash = self._close_position(pos, i, ts_o, o, "regime_off", cash, trades)
                     pos = None
             if pos is not None and i > pos.entry_bar and np.isfinite(pos.stop):
-                if stop_hit(pos.strategy, float(bars.high[i]), float(bars.low[i]), pos.stop):
+                spec_here = self.specs.get(pos.strategy)
+                if spec_here is not None:
+                    hit = (
+                        float(bars.low[i]) <= pos.stop
+                        if spec_here.direction == 1
+                        else float(bars.high[i]) >= pos.stop
+                    )
+                else:
+                    hit = stop_hit(pos.strategy, float(bars.high[i]),
+                                   float(bars.low[i]), pos.stop)
+                if hit:
                     cash = self._close_position(
                         pos, i, ts_o, o, "stop", cash, trades, px_override=pos.stop
                     )
