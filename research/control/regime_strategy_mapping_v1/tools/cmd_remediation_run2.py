@@ -40,22 +40,40 @@ def main() -> int:
 
     from rsmv1.scored import (
         RELAXED_OUTER_FLOORS, CellCtx, V2_JEV_TRADE_PINS, _persist,
-        _run_engine, arm_c, arm_f, ControlMatchFailure,
+        _run_engine, arm_c, arm_d, arm_e, arm_f, ControlMatchFailure,
     )
     from rsmv1.strategies import FLAT
 
     out_root = CYCLE_DIR / "runtime" / "scored"
 
-    # 1) preserve run-1 C*/F* artifacts byte-exact
+    # 1) preserve run-1 C*/F*/D/E artifacts byte-exact (C*/F* invalid per
+    #    INC-1; D/E superseded: run-1 used the pre-INC-1b fixed-point
+    #    routing; the final report must use ONE routing law)
     RUN1_INVALID.mkdir(parents=True, exist_ok=True)
     for cell in ("BTC_H1", "BTC_H4", "SPY_D1"):
         src = out_root / cell
         dst = RUN1_INVALID / cell
         dst.mkdir(parents=True, exist_ok=True)
         for arm in CF_ARMS + ["F_EPISODE_SHUFFLED_MATCHED",
-                              "F_RELAXED_EPISODE_SHUFFLED_MATCHED"]:
-            if (src / arm).exists():
+                              "F_RELAXED_EPISODE_SHUFFLED_MATCHED",
+                              "D_SPARSE_JEV_RISK_OFF_VETO",
+                              "E_DETERMINISTIC_PLUS_JEV_VETO"]:
+            if not (src / arm).exists():
+                continue
+            t1 = src / arm / "tier_1.json"
+            is_run1 = True
+            if t1.exists():
+                try:
+                    if json.loads(t1.read_text()).get(
+                            "extra", {}).get("run_identity"):
+                        is_run1 = False
+                except Exception:
+                    pass
+            if is_run1:
                 shutil.move(str(src / arm), str(dst / arm))
+            else:
+                # earlier remediation output (deterministic rewrite coming)
+                shutil.rmtree(src / arm)
     shutil.copy(out_root / "scored_summary.json",
                 RUN1_INVALID / "scored_summary_run1.json")
 
@@ -125,6 +143,28 @@ def main() -> int:
                 "net": res.totals["net_pnl"],
                 "trades": res.totals["trades"],
                 "fold_nets": list(res.fold_net_pnl)}
+
+        # D/E recomputed under the FINAL (deferral) mechanism so the whole
+        # report uses one routing law (run-1 D/E superseded; A1/A2/B never
+        # touch route_arm and remain run-1 valid, byte-verified by repro).
+        for arm_name, fn in (
+                ("D_SPARSE_JEV_RISK_OFF_VETO", lambda t: arm_d(ctx, t)),
+                ("E_DETERMINISTIC_PLUS_JEV_VETO", lambda t: arm_e(ctx, t))):
+            res0, rep0 = fn(1.0)
+            de_tiers = {1.0: res0}
+            for tier in (1.5, 2.0):
+                r, _ = fn(tier)
+                de_tiers[tier] = r
+            for tier, res in sorted(de_tiers.items()):
+                _persist(out_root, cell, arm_name, tier, res,
+                         {"routing_report": rep0,
+                          "run_identity": "run2-remediation-INC-1b-deferral"})
+                cell_blk["arms"].setdefault(arm_name, {})[
+                    {1.0: "tier_1", 1.5: "tier_1p5", 2.0: "tier_2"}[tier]] = {
+                    "net": res.totals["net_pnl"],
+                    "trades": res.totals["trades"],
+                    "fold_nets": list(res.fold_net_pnl)}
+            observed2 += 1
 
         for arm_name, mapping_for_f in (
                 ("F_EPISODE_SHUFFLED_MATCHED", mapping),
