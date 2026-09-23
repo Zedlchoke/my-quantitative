@@ -70,15 +70,42 @@ def test_funding_sign_and_boundary_only():
 
 
 def test_scale_cap_and_zero_when_unknown():
-    close = np.full(10, 100.0)
+    close = np.full(400, 100.0)
     panel = make_panel(close)
-    dec = np.array([np.nan] * 10)
-    dec[3:] = 1.5  # would be leverage
-    dec = np.minimum(1.0, np.nan_to_num(dec))
-    assert dec.max() <= 1.0
-    folds = np.zeros(10, dtype=int)
+    folds = np.zeros(400, dtype=int)
+    # sig_vol_managed itself must cap: tiny rvol -> scale capped at 1.0 (no leverage)
+    rvol_tiny = np.full(400, 0.01)
+    base = np.ones(400)
+    dec = E.sig_vol_managed(base, rvol_tiny, 0.60)
+    assert dec.max() <= 1.0 and np.all(dec[np.isfinite(dec)] == 1.0)
+    # large rvol -> scaled down, and unknown rvol (nan) -> zero exposure
+    rvol_big = np.full(400, 2.0)
+    dec2 = E.sig_vol_managed(base, rvol_big, 0.60)
+    assert dec2.max() == pytest.approx(0.30, rel=1e-9)
+    rvol_nan = rvol_big.copy()
+    rvol_nan[:250] = np.nan
+    dec3 = E.sig_vol_managed(base, rvol_nan, 0.60)
+    assert np.all(dec3[np.isnan(rvol_nan)] == 0.0)
     res = E.simulate(dec, panel, folds)
     assert res.entries == 1
+
+
+def test_measured_funding_loader_and_law():
+    # the real staged Vision funding series (machine-local) must load and price
+    fr = E.load_funding_measured()
+    assert len(fr) > 7000 and fr["ms"].is_monotonic_increasing
+    assert (fr["rate"].abs() <= 0.05).all()  # clamp sanity (Binance cap 2%/8h... margin)
+    rng = np.random.default_rng(5)
+    close = 100 * np.exp(np.cumsum(rng.normal(0, 0.01, 300)))
+    panel = make_panel(close)
+    folds = np.zeros(300, dtype=int)
+    dec = np.ones(300)
+    rc = E.simulate(dec, panel, folds, tier=1.0, funding_law="constant")
+    rm = E.simulate(dec, panel, folds, tier=1.0, funding_law="measured", funding_df=fr)
+    assert rm.funding > 0  # long pays positive measured funding
+    assert rm.net == pytest.approx(rm.gross - rm.fees - rm.funding, rel=1e-9)
+    # measured law over 2020-2026 must charge ~7x more than the frozen constant
+    assert rm.funding > 5 * rc.funding
 
 
 def test_band_hysteresis_golden():
