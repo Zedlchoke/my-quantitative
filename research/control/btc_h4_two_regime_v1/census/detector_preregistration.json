@@ -1,0 +1,55 @@
+{
+  "schema": "trv1_detector_preregistration@1",
+  "cycle_id": "BTC-H4-TWO-REGIME-V1",
+  "preregistered_utc": "2026-09-23T15:40:00Z",
+  "authority": "plans/PLAN_btc_h4_two_regime_v1.md section 1 (commit 113e0c2d). The census script loads and hashes this file BEFORE computing any state; the sha256 at count time is recorded in detector_census.json.",
+  "panel": {
+    "loader": "PSV1 scored namespace cells.load_btc_h4 imported VERBATIM read-only (sys.dont_write_bytecode=True); warmup truncated per PSV1 convention (WARMUP=153 H4 bars)",
+    "staged_parquet": "/Users/hoangminhlong/my-quantitative/.worktrees/phase-strategy-v1/lane-btc-h4/research/control/phase_strategy_v1/lane_btc_h4/data_staging/scored_h4.parquet",
+    "manifest_path": "/Users/hoangminhlong/my-quantitative/.worktrees/phase-strategy-v1/integration/research/control/phase_strategy_v1/lane_btc_h4/data/manifest.json",
+    "expected_manifest_sha256": "3f1a668798c82fbfe7311fadf65a300a583043cdbeba226164bd28c81885b66d",
+    "runmax_scope": "running maximum of the H4 close computed over the FULL staged panel from 2020-01-01 (NO pre-2020 ATH anchor; disclosed in plan section 1.1)"
+  },
+  "constants": {
+    "DD_BEAR": -0.3,
+    "DD_RECOVER": -0.1,
+    "BULL_DWELL_BARS": 90,
+    "provenance": "DD_BEAR = PSV1 SPARSE_RISK_OFF frozen flat threshold (-30% drawdown); DD_RECOVER = PSV1 SPARSE_RISK_OFF frozen re-entry threshold (-10%); BULL_DWELL = 90 H4 bars = 15 days (round). All fixed before any state-conditional number exists; provenance plan section 1.2."
+  },
+  "state_machine": {
+    "initial_state": "UNCERTAIN",
+    "rules_in_order": [
+      "1) dd_t <= DD_BEAR                        -> BEAR (from ANY state, immediate)",
+      "2) state==BEAR and dd_t >= DD_RECOVER     -> UNCERTAIN (first recovery bar)",
+      "3) state==UNCERTAIN and streak(dd >= DD_RECOVER) >= BULL_DWELL_BARS -> BULL",
+      "4) otherwise hold state"
+    ],
+    "streak_law": "consecutive bars with dd >= DD_RECOVER; reset by any dd < DD_RECOVER bar and by entering BEAR; only a transition FROM UNCERTAIN consumes it into BULL",
+    "persistence": "BULL has no exit to UNCERTAIN (exits only via rule 1); UNCERTAIN has no timeout"
+  },
+  "census_contract": {
+    "per_state": ["occupancy_share", "runs_raw", "episodes_merged_independent_estimate", "dwell_distribution", "transition_matrix_counts", "margin_to_floors"],
+    "merge_rule": "merge adjacent same-state runs iff gap < 12 H4 bars (owner-recon convention)",
+    "detection_lag_descriptive_only": "bars from public calendar anchors (cycle top 2021-04-30 00:00 UTC = ERA-B1 end; bear bottom 2022-12-31 00:00 UTC = ERA-B2 end) to the first BEAR entry after the top anchor and the first BULL entry after the bottom anchor; DESCRIPTIVE ONLY, never a rule input",
+    "audits": [
+      "BULL vs PSV1 UPTREND phase label (verbatim read-only import): agreement + contingency",
+      "BULL and BEAR vs SMA200(H4) lens: agreement + contingency (V2 forensic fact carried: SMA200 gate bound 0/86 entry bars)",
+      "no-lookahead mutation fixture: perturbing a future bar must not change any past state",
+      "hysteresis fixtures: rebound failing the dwell stays non-BULL; a -30% break enters BEAR immediately from BULL"
+    ],
+    "sensitivity_ladder_report_only": {
+      "DD_BEAR": [-0.25, -0.3, -0.35],
+      "DD_RECOVER": [-0.05, -0.1, -0.15],
+      "BULL_DWELL_BARS": [60, 90, 120],
+      "output": "per-bar agreement % of each ladder point vs the central machine; NEVER optimized"
+    }
+  },
+  "floors": {
+    "FLOOR_EPISODES_CELL": 20,
+    "FLOOR_EPISODES_FOLD": 3,
+    "FLOOR_DECISIONS_FOLD": 100,
+    "source": "PSV1 lane_btc_h4 pipeline/config.py verbatim (plan section 1.5); IMMUTABLE, never relaxed after any PnL",
+    "application": "a state gate failing ANY floor makes every arm gated on it NOT_RUN_THIN (slot FLAT, reported, never scored)"
+  },
+  "outcome_blindness": "states/transitions/dwell/occupancy/floors/lag/agreement ONLY. No strategy returns, equity, PnL, costs or parameter search exist in this census."
+}
