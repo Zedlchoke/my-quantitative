@@ -168,3 +168,12 @@ echo "control artifacts extracted"
 # v14_root also needs the V11 publication-identity module (V12-inherited identity law)
 mkdir -p "$DEST/v14_root/research/v11"; git -C "$REPO" show "$V14C:research/v11/publication_identity.py" > "$DEST/v14_root/research/v11/publication_identity.py"
 for f in $(git -C "$REPO" ls-tree -r --name-only "$V14C" research/v12/ 2>/dev/null || true); do mkdir -p "$DEST/v14_root/$(dirname "$f")"; git -C "$REPO" show "$V14C:$f" > "$DEST/v14_root/$f"; done
+
+# v6_root = closure-commit executor stack (portfolio_runner + funding_carry +
+# strategy wrappers + data/) @ fbd2e9d36b5349489ef29deec4cdeb8bca2b89ad
+V6C=fbd2e9d36b5349489ef29deec4cdeb8bca2b89ad
+mkdir -p "$DEST/v6_root/research" "$DEST/v6_root/data"
+for f in $(git -C "$REPO" ls-tree --name-only "$V6C" research/ | grep '\.py$'); do git -C "$REPO" show "$V6C:$f" > "$DEST/v6_root/$f"; done
+for f in strategy_base.py strategy_funding_crowding_mr.py strategy.py strategy_breakout.py strategy_mean_reversion.py strategy_reclaim_mr.py strategy_trend_pullback.py; do git -C "$REPO" cat-file -e "$V6C:$f" 2>/dev/null && git -C "$REPO" show "$V6C:$f" > "$DEST/v6_root/$f" || true; done
+for f in $(git -C "$REPO" ls-tree --name-only "$V6C" data/); do mkdir -p "$DEST/v6_root/data"; git -C "$REPO" show "$V6C:data/$f" > "$DEST/v6_root/data/$f"; done
+echo "v6_root extracted"
