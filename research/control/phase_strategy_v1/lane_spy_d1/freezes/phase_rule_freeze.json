@@ -1,0 +1,58 @@
+{
+  "schema": "psv1_phase_rule_freeze@1",
+  "cycle_id": "PHASE-STRATEGY-V1",
+  "lane": "L3_SPY_D1",
+  "cell": "SPY_D1",
+  "rule_id": "PSV1-SPYD1-QUAD-SMA200-SLOPE20",
+  "frozen_before_history_labels": true,
+  "freeze_note": "Rule, parameters and notches were fixed and written here BEFORE any phase label was computed on the real snapshot. The sensitivity table (reported, never optimized) is computed by census and stored in census.json; parameters may not change after.",
+  "price_series": {
+    "field": "adjusted_close",
+    "rationale": "Dividend-adjusted close, anchored to raw close at the final snapshot session (measured, see data/manifest.json). Chosen to remove mechanical ex-dividend gaps from the label input; SPY has no splits in the window (measured: 46 quarterly ex-div steps, zero split steps). This also structurally excludes the measured-dead dividend-transition book class (plan section 7.2): the transition events that class trades on are absent from the adjusted series.",
+    "decision_value": "The close VALUE of session d. MEASURED timestamp convention of the frozen bytes: the file carries date-only stamps (YYYY-MM-DD), no time-of-day, no timezone, no next-midnight stamping. The predecessor next-midnight defect clock is NOT present in this snapshot.",
+    "execution_law": "Decision at session close of session d; first executable fill at the NEXT session's open (next row in the session list). XNYS session calendar respected: the session list contains no weekend or holiday sessions (measured), so no weekend/holiday fills are constructible. No intraday execution.",
+    "long_flat_only": true,
+    "staleness_law": "NONE. No age-based or staleness-based flat rule exists in this lane (structural: gates.py asserts zero weekday-attributable force-flats; test suite enforces). Default per plan section 10.1 kept: no age rule at all."
+  },
+  "labels": {
+    "ACCUMULATION": "r <= -P_BAND and s >= +S_BAND",
+    "UPTREND": "r >= +P_BAND and s >= +S_BAND",
+    "DISTRIBUTION": "r >= +P_BAND and s <= -S_BAND",
+    "DOWNTREND": "r <= -P_BAND and s <= -S_BAND",
+    "TRANSITION_UNKNOWN": "otherwise (explicit uncertainty: |r| < P_BAND or |s| < S_BAND, or insufficient warmup)"
+  },
+  "observables": {
+    "r": "close_adj[t] / SMA200_adj[t] - 1",
+    "s": "(SMA200_adj[t] - SMA200_adj[t - SLOPE_K]) / SMA200_adj[t - SLOPE_K]",
+    "causality": "SMA200 at t uses closes with index <= t only; slope uses SMA at t and t - SLOPE_K. No future bar may influence any label at t (enforced by mutation test)."
+  },
+  "parameters": {
+    "SMA_N_sessions": 200,
+    "SLOPE_K_sessions": 20,
+    "P_BAND_fraction": 0.01,
+    "S_BAND_fraction": 0.005,
+    "WARMUP_SESSIONS": 219,
+    "parameter_provenance": "Round, domain-standard constants fixed before any history-wide label was computed: 200-session SMA is the industry-standard long anchor; 20 sessions is one trading month; +/-1.0% price margin and +/-0.5%-per-20-session slope margin are round uncertainty bands. Not chosen by any sweep, label optimization, or PnL (none exists)."
+  },
+  "warmup": {
+    "sessions": 219,
+    "definition": "First labelable index is 219 (0-based): SMA200 needs 200 closes and the slope needs SMA at t-20, i.e. 220 distinct closes. Indices 0..218 are warmup, labeled TRANSITION_UNKNOWN and EXCLUDED from eras, folds, floors and census. First post-warmup session: 2015-11-13 (index 219 of 2943).",
+    "first_post_warmup_date": "2015-11-13",
+    "first_post_warmup_index": 219
+  },
+  "notches": {
+    "SMA_N_sessions": {"down": 175, "up": 225, "step": 25},
+    "SLOPE_K_sessions": {"down": 15, "up": 25, "step": 5},
+    "P_BAND_fraction": {"down": 0.005, "up": 0.015, "step": 0.005},
+    "S_BAND_fraction": {"down": 0.0025, "up": 0.0075, "step": 0.0025},
+    "law": "One-notch perturbations are single-parameter; label agreement vs base is REPORTED in census.json (sensitivity_table), never optimized. Parameters may not be moved after this freeze."
+  },
+  "transition_unknown_policy": "TRANSITION_UNKNOWN is code-owned by the explicit margin conditions above (|r| < P_BAND or |s| < S_BAND) plus warmup insufficiency. It is never model abstention, never an external decision stream, never an LLM.",
+  "phase_outputs_exactly": [
+    "ACCUMULATION",
+    "UPTREND",
+    "DISTRIBUTION",
+    "DOWNTREND",
+    "TRANSITION_UNKNOWN"
+  ]
+}
