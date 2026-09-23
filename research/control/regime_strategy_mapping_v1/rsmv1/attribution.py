@@ -433,10 +433,12 @@ class Attribution:
         out["cf_a_noop_hold_same_direction"] = self._rerun(fixed)
 
         # (b) transition buffer k regime bars: honor the persisted label k
-        # bars late (targets built from the shifted timeline)
+        # bars LATE — the label known at ts[i] applies only from ts[i+k]
+        # (pair ts[k:] with labels[:n-k]; the reverse pairing is lookahead)
+        from .turnover import buffered_labels
+
         for k in (1, 2, 3):
-            shifted_ts = self.ct.ts[: len(self.ct.ts) - k]
-            shifted_lab = self.ct.persisted[k:]
+            shifted_ts, shifted_lab = buffered_labels(self.ct.ts, self.ct.persisted, k)
             out[f"cf_b_buffer_{k}regimebars"] = self._rerun(
                 targets_from_regime(
                     self.exec_bars, shifted_ts, shifted_lab,
