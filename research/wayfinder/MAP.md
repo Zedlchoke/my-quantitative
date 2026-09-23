@@ -2,6 +2,32 @@
 
 ## Sprint state (synced at the PHASE-STRATEGY-V1 terminal, 2026-09-23)
 
+- **EURUSD-OPEN-SEARCH-V1 REGISTERED BLOCKED → `BLOCKED_SOURCE_LICENSE` (P1,
+  2026-09-23)**; branch `orca/eurusd-open-search-v1-integration` head
+  ac54f2fc, plan `plans/PLAN_eurusd_open_search_v1.md`; owner directive
+  2026-09-23 opened an after-cost EURUSD open search with **D2 =
+  OWNER_WAIVED_EXPLORATORY** (novelty/mechanism veto waived pre-backtest in
+  the exploratory phase; recording D2 PASS forbidden; data/license/PIT,
+  costs, trial accounting, reproduction, A7, owner GO, S1 seal, heavy lock
+  NOT waived). P1 re-survey (owner-ordered, TrueFX from original terms):
+  historical tick downloads **login-gated, license text only behind free
+  login**, legacy anonymous archive URLs 404, live `webrates` endpoint is
+  not historical and has no public terms; **no OANDA credential exists**
+  (env names census); **no Dukascopy written consent**; no new rights
+  artifact since EURUSD-DATA-QUALIFICATION-V1 `BLOCKED_SOURCE_LICENSE`
+  2026-09-22. **0/96 trials, 0 PnL**; 24-family × 4-config preregistered
+  campaign (trend/MR/breakout-fail/vol/session/event-PIT/order-flow-proxy
+  classes), dev/holdout split with a sealed final-block holdout (program-S0,
+  never S1), measured-spread cost authority + 1.5×/2× stress, one-shot
+  holdout check, max 1–2 candidate freezes. Single unblock path: ONE owner
+  source decision — TrueFX free-registration license capture (recommended) /
+  OANDA v20 practice token / Dukascopy consent email / paid vendor; then
+  P1-bis bounded probe → data freeze → A7 prelaunch → owner GO at own gate
+  (`GO EURUSD OPEN SEARCH V1 EXPLORATORY SCORED` registered, NOT consumed).
+  Evidence: `.worktrees/eurusd-open-search-v1/integration/research/control/
+  EURUSD-OPEN-SEARCH-V1/` (P1_SOURCE_RESURVEY_2026-09-23.md, P1_VERDICT.json,
+  CYCLE_VERDICT.md). Denominators unchanged (forex 48/48, program 283/286).
+
 - **PHASE-STRATEGY-V1 CLOSED → `PHASE_STRATEGY_V1_NO_INCREMENTAL_VALUE`**
   (2026-09-23, branch `orca/phase-strategy-v1-integration` terminal anchor
   af52f3582270bcc19634add3d88858e0c28959bf + closeout 0b25b230; owner GO
