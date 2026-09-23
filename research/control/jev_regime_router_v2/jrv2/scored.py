@@ -14,6 +14,7 @@ folds/costs/mapping/thresholds are frozen and digest-asserted at start.
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 import pathlib
 from datetime import datetime, timezone
 
