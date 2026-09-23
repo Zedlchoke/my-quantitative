@@ -1,0 +1,155 @@
+{
+ "authority": {
+  "freeze_order_law": "gates and vocabulary freeze BEFORE any candidate PnL is computed",
+  "plan": "plans/PLAN_regime_strategy_mapping_v1.md sections 7, 10.3, 11"
+ },
+ "base_sha": "02167db05cb5d494c9ef992883e522c234c4391d",
+ "candidate_gates": {
+  "cell_precondition": "a cell is EVALUABLE iff arm C's frozen selection routes at least one non-FLAT specialist somewhere in the cell; a cell where every regime is thin (C degenerates to FLAT by floor law) is labeled NOT_RUN_THIN_REGIME, excluded from the overall denominator, and reported",
+  "cost_tier_of_gates": "gates G1-G6 compare at BASE tier 1.0x unless stated",
+  "gates": [
+   {
+    "id": "G1",
+    "law": "net_1x > 0 (net-positive after base 1.0x costs)"
+   },
+   {
+    "id": "G2",
+    "law": "net_1.5x > 0 (not collapsing at the 1.5x stress tier)"
+   },
+   {
+    "id": "G3",
+    "law": "net_1x > max(net_A1_1x, net_A2_1x) on that cell (beats the better always-on baseline)"
+   },
+   {
+    "id": "G4",
+    "law": "net_1x > net_B_1x on that cell (beats the original V2 mapping reference, post engine-equivalence)"
+   },
+   {
+    "id": "G5",
+    "law": "no single-fold dependency: (# outer folds with net_fold > 0) >= 3 OR (sum of the 4 fold nets - max fold net) > 0"
+   },
+   {
+    "id": "G6",
+    "law": "not merely trading less: net_1x > net_D_1x AND, if F is valid on the cell, net_1x > median(F seed nets at 1.0x); if F is NOT_RUN_CONTROL_MATCHING, record F_INVALID_REST_ON_ABDE and the gate rests on the D comparison alone \u2014 the F failure is reported, never silent"
+   },
+   {
+    "id": "G7",
+    "law": "reproduction: an independent re-run of the scored process produces byte-identical tier files for every arm x cell x tier"
+   },
+   {
+    "id": "G8",
+    "law": "A7 terminal fresh-context clean: zero unresolved HIGH/CRITICAL findings"
+   }
+  ],
+  "overall_pass": "ALL EVALUABLE cells pass per_cell_pass; cells excluded as NOT_RUN_THIN_REGIME are reported but do not block if at least one cell remains evaluable",
+  "per_cell_pass": "ALL of G1-G8 PASS on that cell (G8 is cycle-level: it passes for a cell iff the terminal A7 audit is clean)",
+  "subject": "arm C only, per cell, then overall"
+ },
+ "contamination_disclosure": {
+  "ceiling_law": "the strongest verdict any result of this cycle can earn is DISCOVERY_CANDIDATE_FOR_PROSPECTIVE_VALIDATION \u2014 even an all-gates-PASS outcome grants no more",
+  "corpus_status": "the WHOLE corpus is outcome-observed: every price, every cached V2 decision and every V2 outcome was observed before this cycle",
+  "promotion_ban": "no promotion to shadow, paper, live, or orders \u2014 ever, from this cycle; no live-ready or profitable language in any artifact",
+  "s1_status": "SEALED_UNTOUCHED (every asset)",
+  "successor_law": "the only forward path is a NEW prospective-validation cycle on future/never-observed data or a genuinely never-observed time extension",
+  "walk_forward_honesty": "the nested walk-forward law reduces overfitting but does NOT convert observed history into untouched validation"
+ },
+ "cycle": "REGIME-STRATEGY-MAPPING-V1",
+ "honest_decision_table": [
+  {
+   "pattern": "engine/timeline/reproduction/law-violation mechanical failure",
+   "verdict": "TECHABORT"
+  },
+  {
+   "pattern": "all cells thin; C is FLAT everywhere by floor law",
+   "verdict": "BLOCKED_THIN_REGIME_SAMPLE"
+  },
+  {
+   "pattern": "cost identity or D/E control authority broken, >=1 cell evaluable",
+   "verdict": "BLOCKED_COST_OR_CONTROL_AUTHORITY"
+  },
+  {
+   "pattern": "all 8 gates PASS on all evaluable cells (F valid or F-invalid-with-D-only-fallback)",
+   "verdict": "DISCOVERY_CANDIDATE_FOR_PROSPECTIVE_VALIDATION"
+  },
+  {
+   "pattern": "C positive at 1.0x but net <= 0 at 1.5x",
+   "verdict": "NO_REGIME_STRATEGY_INCREMENTAL_VALUE (G2 fail)"
+  },
+  {
+   "pattern": "C beats B but not the better always-on baseline",
+   "verdict": "NO_REGIME_STRATEGY_INCREMENTAL_VALUE (G3 fail)"
+  },
+  {
+   "pattern": "C profitable only via one fold",
+   "verdict": "NO_REGIME_STRATEGY_INCREMENTAL_VALUE (G5 fail)"
+  },
+  {
+   "pattern": "C beats A/B but not D or a valid F median",
+   "verdict": "NO_REGIME_STRATEGY_INCREMENTAL_VALUE (G6 fail)"
+  },
+  {
+   "pattern": "C passes economics but reproduction or A7 fails",
+   "verdict": "TECHABORT (G7/G8 route to ladder rung 1)"
+  },
+  {
+   "pattern": "any gates fail on any evaluable cell, nothing above fires",
+   "verdict": "NO_REGIME_STRATEGY_INCREMENTAL_VALUE"
+  }
+ ],
+ "proposed_at_utc": "2026-09-23T00:00:00Z",
+ "role": "A6-CONTROLS-DESIGN",
+ "schema": "rsmv1_evaluation_freeze_proposal@1",
+ "self_sha256": "79089d19f2082f619d5b337315c90d90391c80ac1faced94b16279f01e451ddf",
+ "status": "PROPOSED_AWAITING_A1_FREEZE",
+ "trial_accounting": {
+  "counting_laws": [
+   "every computed outcome counts against the budget EVEN IF its artifact fails to publish \u2014 publication failure is not un-trialed",
+   "the denominator is fixed at 21 before the scored run; all 21 must reach a terminal state (scored, or explicitly NOT_RUN_* labeled, or hard-blocked) before any verdict",
+   "no mid-run stopping on interim numbers; the full denominator runs even if early cells look bad",
+   "arm F's 21 seeds are one scored arm instance per cell (median headline), not 21 trials",
+   "zero-cost variants are diagnostics inside the same trial and can never support a PASS",
+   "P1 attribution and P2 feasibility are diagnostic and consume no scored trials"
+  ],
+  "identity": "3 cells (BTC_H1, BTC_H4, SPY_D1) x 7 scored arm instances (A1, A2, B, C, D, E, F)",
+  "references_excluded": [
+   "FLAT",
+   "BUY_AND_HOLD"
+  ],
+  "total_scored_cells": 21
+ },
+ "verdict_ladder": {
+  "ladder": [
+   {
+    "condition": "any of: REGIME_TIMELINE_MISMATCH on any cell; B engine-equivalence gate failure; fold reconciliation identity failure; no-lookahead or turnover-law violation counter > 0 anywhere; reproduction byte-mismatch persisting after one full re-run; execution/infrastructure failure preventing the scored run",
+    "verdict": "TECHABORT"
+   },
+   {
+    "condition": "no TECHABORT and ZERO evaluable cells (every cell's selectable regimes below the outer sample floors => C routed FLAT everywhere for sample reasons)",
+    "verdict": "BLOCKED_THIN_REGIME_SAMPLE"
+   },
+   {
+    "condition": "at least one evaluable cell, but evaluation authority is broken: the frozen cost contract fails digest verification OR per-fill costs on the B replay do not reproduce to <1e-6 from the frozen contract (cost authority), OR arm D or E cannot be executed as frozen on some evaluable cell (control authority)",
+    "verdict": "BLOCKED_COST_OR_CONTROL_AUTHORITY"
+   },
+   {
+    "condition": "candidate_gates.overall_pass is true (all G1-G8 on all evaluable cells)",
+    "verdict": "DISCOVERY_CANDIDATE_FOR_PROSPECTIVE_VALIDATION"
+   },
+   {
+    "condition": "anything else: the run completed with >=1 evaluable cell and arm C failed at least one gate on at least one evaluable cell",
+    "verdict": "NO_REGIME_STRATEGY_INCREMENTAL_VALUE"
+   }
+  ],
+  "law": "evaluate top to bottom; the FIRST matching condition is the cycle verdict; the ladder is total \u2014 every terminal state of the cycle maps to exactly one verdict"
+ },
+ "verdict_vocabulary": {
+  "allowed_values_exactly": [
+   "DISCOVERY_CANDIDATE_FOR_PROSPECTIVE_VALIDATION",
+   "NO_REGIME_STRATEGY_INCREMENTAL_VALUE",
+   "BLOCKED_THIN_REGIME_SAMPLE",
+   "BLOCKED_COST_OR_CONTROL_AUTHORITY",
+   "TECHABORT"
+  ],
+  "law": "the cycle verdict is EXACTLY one of these strings; no other verdict string may appear in any cycle artifact; misspellings are hard failures"
+ }
+}

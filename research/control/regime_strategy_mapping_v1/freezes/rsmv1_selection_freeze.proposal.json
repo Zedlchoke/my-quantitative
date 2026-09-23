@@ -1,0 +1,169 @@
+{
+ "authority": {
+  "freeze_order_law": "this law freezes BEFORE any candidate PnL exists; A7 may adjust the numeric floors pre-outcome only, with rationale recorded in this file's floor_adjustments block",
+  "plan": "plans/PLAN_regime_strategy_mapping_v1.md sections 4.0, 5"
+ },
+ "base_sha": "02167db05cb5d494c9ef992883e522c234c4391d",
+ "candidate_set_law": {
+  "asset_law": "BTC-only-short specialists are ineligible on SPY (filtered before any comparison, info code ASSET_INELIGIBLE); every regime retains >=1 asset-eligible specialist by library construction",
+  "library_bound": "at most 2 specialists per regime, from freezes/specialist_library_freeze.json",
+  "specialist_classes": {
+   "BTC_ONLY_SHORT": "specialists whose target direction can be short and whose library eligibility flag is BTC-only",
+   "LONG_CAPABLE": "all other selectable specialists (long/flat only)"
+  },
+  "unk_law": "TRANSITION_UNKNOWN routes FLAT always (UNK_FLAT fixed); never selectable, reason FIXED_FLAT_UNK"
+ },
+ "counts_definitions": {
+  "eligible_decision_for_regime": "an exec-bar decision whose persisted regime is R at decision close AND whose regime-bar offset inside its R-episode is >= transition_buffer_k + 1 = 2 (the first buffer bar of an episode cannot admit an entry); specialist-independent by construction",
+  "episode": "maximal contiguous run of one persisted label in the cell's regime-bar stream (rsmv1.regime_timeline.episodes); episode boundaries include stream edges",
+  "inner_pooling": "episodes and eligible decisions are POOLED over the inner folds of fold k; outer folds are never pooled with inner folds; cells are never pooled with each other"
+ },
+ "cycle": "REGIME-STRATEGY-MAPPING-V1",
+ "decision_procedure": {
+  "law": "ordered rules, FIRST MATCH WINS; every (cell, regime R, outer fold k) terminates in exactly one outcome {FLAT, specialist_id} with exactly one reason_code; the procedure is total and deterministic \u2014 no unspecified tie exists",
+  "pair_resolution": {
+   "comparison_metric": "inner pooled NET PnL at BASE tier (1.0x) costs, computed ONLY inside R-windows of inner folds (each specialist runs its own frozen spec with fold force-flat, next-executable-open fills, fraction 1.0)",
+   "delta_law": "delta = net_higher - net_lower over the two candidates",
+   "exact_numeric_tie": {
+    "recording": "every applied tie-break is recorded with the delta and the class of both candidates",
+    "resolution": [
+     "if exactly one candidate is BTC_ONLY_SHORT: select it, reason TIE_BREAK_BTC_SHORT",
+     "else (both LONG_CAPABLE, both BTC_ONLY_SHORT, or one FLAT-class): FLAT, reason TIE_BREAK_FLAT"
+    ],
+    "threshold": "abs(delta) <= 1e-9",
+    "tie_break_total_order": [
+     "FLAT",
+     "BTC_ONLY_SHORT",
+     "LONG_CAPABLE"
+    ]
+   },
+   "stability": {
+    "comparative_folds_S": "inner folds where BOTH candidates have >= 1 episode in R",
+    "if_S_empty": "FLAT, reason STABILITY_NO_COMPARATIVE_FOLDS",
+    "if_met": "SELECT pooled winner, reason POOLED_WIN_STABLE",
+    "if_not_met": "FLAT, reason STABILITY_FAIL",
+    "required_wins": "ceil(2 * |S| / 3) wins in S for the pooled winner (|S|=1 -> 1, |S|=2 -> 2, |S|=3 -> 2); this equals 'higher on EVERY comparative inner fold when <= 2 inner folds, else >= 2/3'"
+   }
+  },
+  "rules": [
+   {
+    "id": "R_UNKNOWN",
+    "order": 1,
+    "outcome": "FLAT",
+    "predicate": "R == TRANSITION_UNKNOWN",
+    "reason_code": "FIXED_FLAT_UNK"
+   },
+   {
+    "id": "OUTER_THIN",
+    "label": "NOT_RUN_THIN_REGIME",
+    "order": 2,
+    "outcome": "FLAT",
+    "predicate": "outer sample floors fail for (cell, R, k)",
+    "reason_code": "OUTER_FLOOR_THIN"
+   },
+   {
+    "id": "FOLD1",
+    "order": 3,
+    "outcome": "FLAT",
+    "predicate": "k == 1",
+    "reason_code": "FOLD1_NO_INNER"
+   },
+   {
+    "id": "ASSET_FILTER",
+    "order": 4,
+    "outcome": "CONTINUE with eligible set E (|E| in {1,2})",
+    "predicate": "filter library specialists for R by asset eligibility",
+    "reason_code": "ASSET_INELIGIBLE"
+   },
+   {
+    "id": "INNER_FLOORS",
+    "order": 5,
+    "outcome": "FLAT",
+    "predicate": "inner floors fail for R pooled over folds 1..k-1",
+    "reason_code": "INNER_FLOOR_FAIL"
+   },
+   {
+    "id": "SINGLE",
+    "order": 6,
+    "outcome": "SELECT E[0]",
+    "predicate": "|E| == 1",
+    "reason_code": "SINGLE_ELIGIBLE"
+   },
+   {
+    "id": "PAIR",
+    "order": 7,
+    "outcome": "see pair_resolution below",
+    "predicate": "|E| == 2",
+    "reason_code": "see pair_resolution"
+   }
+  ]
+ },
+ "floors": {
+  "floor_adjustments": {
+   "status": "none proposed by A6",
+   "who": "A7 only, BEFORE any outcome, with rationale recorded here"
+  },
+  "inner_floors": {
+   "applies": "per regime R, pooled over folds 1..k-1; below EITHER floor => FLAT for R in fold k, reason INNER_FLOOR_FAIL",
+   "min_eligible_decisions_pooled_inner": 150,
+   "min_episodes_pooled_inner": 5
+  },
+  "outer_sample_floors": {
+   "applies": "per cell x regime x outer fold; below ANY floor => that regime x cell x fold routes FLAT and is labeled NOT_RUN_THIN_REGIME (the router still runs; the thin regime contributes no specialist risk)",
+   "label_persistence": "NOT_RUN_THIN_REGIME cells/regs are reported in every artifact and excluded from the candidate gate denominator (evaluation freeze); the label is never silently dropped",
+   "min_eligible_decisions_per_regime_per_outer_fold": 100,
+   "min_episodes_per_regime_per_outer_fold": 3,
+   "min_episodes_total_per_regime_per_cell": 20
+  }
+ },
+ "input_pins": {
+  "cells_law": "cells BTC_H1, BTC_H4, SPY_D1 are NEVER pooled to fake sample size; BTC_H1 and BTC_H4 are independent cells and H1-vs-H4 selection by PnL is forbidden",
+  "fold_contract": {
+   "path": "freezes/fold_contract.json",
+   "sha256": "6d33600702b200f449e6b467a8240b71524fe36691ca9b3aed2f2109678a2e78",
+   "use": "outer fold boundaries k=1..4 per cell (V2 boundaries, byte-authoritative \u2014 never restated here); warmup 192"
+  },
+  "specialist_library": {
+   "path": "freezes/specialist_library_freeze.json",
+   "status": "TO_LAND_AT_P3_FREEZE_BEFORE_ANY_CANDIDATE_PNL",
+   "use": "the selectable specialist set per regime (max 2); entry/exit parameters; asset eligibility flags"
+  }
+ },
+ "nested_walk_forward_law": {
+  "fold_1_default": "k=1 has an empty inner set => FLAT for every selectable regime, reason code FOLD1_NO_INNER (the law's own insufficient-evidence default)",
+  "inner_train_set": "folds 1..k-1 (expanding window)",
+  "outer_folds": {
+   "boundaries": "exactly freezes/fold_contract.json cells.<cell>.folds (V2 fold boundaries)",
+   "count": 4,
+   "numbering": "k in {1,2,3,4}"
+  },
+  "outer_scored_once": "the outer fold k is scored EXACTLY ONCE with the selections frozen from inner data; no retuning, re-selection, or re-scoring of an outer fold is permitted for any reason; violating this voids the cell (TECHABORT ladder)",
+  "selection_grain": "selection is per cell x per regime x per outer fold"
+ },
+ "no_peeking_law": "inner pooled NET is computed ONLY from inner folds; outer fold prices/decisions may not enter any selection statistic; a leak test (selection invariance under outer-fold data mutation) is mandatory in tests",
+ "proposed_at_utc": "2026-09-23T00:00:00Z",
+ "reason_code_vocabulary": [
+  "FIXED_FLAT_UNK",
+  "OUTER_FLOOR_THIN",
+  "FOLD1_NO_INNER",
+  "ASSET_INELIGIBLE",
+  "INNER_FLOOR_FAIL",
+  "SINGLE_ELIGIBLE",
+  "POOLED_WIN_STABLE",
+  "TIE_BREAK_BTC_SHORT",
+  "TIE_BREAK_FLAT",
+  "STABILITY_NO_COMPARATIVE_FOLDS",
+  "STABILITY_FAIL"
+ ],
+ "role": "A6-CONTROLS-DESIGN",
+ "schema": "rsmv1_selection_freeze_proposal@1",
+ "self_sha256": "513e9468ea0df6b52fd7c0145845ce0cbbc67f69fb5b20a68363f68e79586a73",
+ "status": "PROPOSED_AWAITING_A1_FREEZE",
+ "thin_regime_law": {
+  "anti_fraud_law": "a thin regime must never be merged, window-shifted, or cell-pooled to pass a floor",
+  "effect": "FLAT routing for that regime in that fold; selection output still recorded with reason OUTER_FLOOR_THIN; the label propagates to the evaluation freeze's denominator and to any BLOCKED_THIN_REGIME_SAMPLE verdict",
+  "label": "NOT_RUN_THIN_REGIME",
+  "scope": "(cell, regime, outer fold)"
+ },
+ "totality_law": "the reason_code_vocabulary is EXHAUSTIVE: every terminal state of the decision procedure carries exactly one of these codes; a state outside the vocabulary is an implementation bug (hard failure), not a judgment call"
+}

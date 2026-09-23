@@ -1,0 +1,108 @@
+{
+ "applies_to": {
+  "arms": [
+   "C",
+   "D",
+   "E"
+  ],
+  "does_not_apply": {
+   "A1_A2": "always-on arms have no regime-driven switching to govern; their only fills are strategy-native and fold_force_flat",
+   "B": "arm B runs ORIGINAL V2 mechanics by design (attrition included) so the engine-equivalence gate stays meaningful",
+   "F": "arm F inherits arm C's routing machinery and therefore this law automatically (seed paths routed as C is routed)"
+  }
+ },
+ "authority": {
+  "freeze_order_law": "this law freezes BEFORE any candidate PnL is computed",
+  "plan": "plans/PLAN_regime_strategy_mapping_v1.md section 6"
+ },
+ "base_sha": "02167db05cb5d494c9ef992883e522c234c4391d",
+ "cycle": "REGIME-STRATEGY-MAPPING-V1",
+ "input_pins": {
+  "safety_persistence_contract": {
+   "constants_used": {
+    "confirm_bars": 2,
+    "cooldown": 3,
+    "min_confidence": 0.5,
+    "min_dwell": 6,
+    "min_margin": 0.2
+   },
+   "path": "freezes/safety_persistence_contract.json",
+   "sha256": "5f7ba602eea79c6031e21db85a026605acf687052c0004013bc0c03d1a94fc24"
+  }
+ },
+ "invariants": {
+  "fill_cause_exclusive": "every fill carries exactly one cause tag; a fill with zero or two tags is a ledger bug (hard failure)",
+  "fold_force_flat_not_a_switch": "fold force-flat closes are tagged fold_force_flat and excluded from position_switch_count",
+  "switch_count_sanity": "position_switch_count <= regime_switch_count + strategy_native_entries is NOT asserted (strategy-native churn is legal); the SEPARATE fields exist precisely so the auditor can compare them",
+  "zero_unnecessary_close_reopen": "counter == 0 on every arm x cell x tier, else TURNOVER_LAW_VIOLATION"
+ },
+ "laws": [
+  {
+   "id": "T1_REGIME_CONFIRMATION",
+   "law": "the persisted-regime machine (confirm 2 / dwell 6 / cooldown 3, pinned constants above) is the first gate and is UNCHANGED; nothing in this freeze may relax it",
+   "machine_check": "constants equal safety_persistence_contract.persistence_params; any divergence is a freeze violation"
+  },
+  {
+   "frozen_k": 1,
+   "id": "T2_TRANSITION_BUFFER",
+   "law": "a persisted-regime switch changes the TARGET only after k = 1 further regime bar of confirmation (transition_buffer_regime_bars = 1); entries into a fresh episode become targetable only after the buffer completes",
+   "not_selectable": "2-bar and 3-bar buffers are Phase-1 attribution diagnostics ONLY; they are never selectable in any scored arm"
+  },
+  {
+   "direction": "LONGER_ONLY",
+   "floor_constant": 6,
+   "id": "T3_MIN_DWELL",
+   "law": "minimum dwell of the target state is 6 regime bars (the machine's min_dwell); a specialist may impose a LONGER frozen min-hold in the library, never shorter; no scored path may exit a target state earlier than max(machine min_dwell, specialist frozen min-hold)"
+  },
+  {
+   "id": "T4_NOOP_LAW",
+   "law": "if the target direction equals the current position direction there is NO fill of any kind, even if the regime label or the selected specialist identity changed; a specialist switch takes effect ONLY at flat or at a direction change; mid-position specialist parameter changes are forbidden",
+   "machine_check": "fixture: label change with unchanged target direction must produce zero fills",
+   "unnecessary_close_reopen": {
+    "definition": "a close immediately followed by a reopen of the SAME direction with no strategy-native reason",
+    "law": "must NEVER fire under this freeze; the counter existing > 0 on any arm x cell x tier is a hard TURNOVER_LAW_VIOLATION of that run (evaluation TECHABORT ladder), never a warning"
+   }
+  },
+  {
+   "id": "T5_REVERSAL_CHARGING",
+   "law": "long->short and short->long reversals are an explicit close + open; BOTH sides' costs are charged (SPY is long-only, so its only reversals are flat transitions: each close and each open is charged individually)",
+   "machine_check": "reversal fills carry exactly two cost entries; assertion in the ledger test"
+  },
+  {
+   "fields": [
+    "regime_switch_count",
+    "position_switch_count"
+   ],
+   "fill_cause_tags": [
+    "strategy_native",
+    "regime_switch",
+    "fold_force_flat",
+    "unnecessary_close_reopen"
+   ],
+   "id": "T6_SEPARATE_REPORTING",
+   "law": "regime switches and actual position switches are reported as SEPARATE fields in every artifact; every fill carries exactly one cause tag",
+   "position_switch_count_definition": "count of direction-establishing fills: entries (flat -> position) plus reversals (position -> opposite position); pure exits and fold force-flat closes are NOT position switches"
+  },
+  {
+   "binding": "frozen BEFORE scoring; a FAIL here feeds the evaluation freeze's NO_REGIME_STRATEGY_INCREMENTAL_VALUE ladder for that cell",
+   "id": "T7_TURNOVER_REJECTION",
+   "law": "arm C FAILS the cell if its position_switch_count at tier 1.0x >= the pinned V2 JEV_ONLY trade count on that cell (churn law not binding => the mechanism is not what it claims); additionally any candidate that is net-positive ONLY at zero cost (net > 0 at 0x but net <= 0 at 1.0x) FAILS the cell outright",
+   "v2_trade_count_pins": {
+    "arbitration_note_for_A1": "if the pinned V2 definition is round-trip- or exit-based rather than entry-based, A1 records the exact mapping to position_switch_count here pre-outcome; the law (C count >= pinned count => FAIL) is unchanged",
+    "definition_field": null,
+    "law": "A1 pins, per cell, the V2 JEV_ONLY tier-1 trade count AND the V2 ledger field/definition it comes from (with artifact digest), so the comparison is apples-to-apples; A6 does not read outcome data",
+    "per_cell": {
+     "BTC_H1": null,
+     "BTC_H4": null,
+     "SPY_D1": null
+    },
+    "status": "TO_PIN_AT_FREEZE_BY_A1"
+   }
+  }
+ ],
+ "proposed_at_utc": "2026-09-23T00:00:00Z",
+ "role": "A6-CONTROLS-DESIGN",
+ "schema": "rsmv1_turnover_freeze_proposal@1",
+ "self_sha256": "893efa8a99609cb255cd50245cf52e9db3107df62c1b27da638f980ee9260649",
+ "status": "PROPOSED_AWAITING_A1_FREEZE"
+}

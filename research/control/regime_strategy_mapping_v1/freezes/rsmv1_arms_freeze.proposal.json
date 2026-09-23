@@ -1,0 +1,251 @@
+{
+ "a1_arbitration_list": [
+  "pin v2_reference_pins (V2 JEV_ONLY tier-1 stored totals + artifact digests) for the B engine-equivalence gate",
+  "confirm freezes/specialist_library_freeze.json lands (P3) before any candidate PnL; C is not executable without it",
+  "the F invested-fraction definition here is measured on routed targets (per fold); A1 confirms the forked V1/V2 matching code is adapted to exactly this definition",
+  "A7 may adjust sample floors in the selection freeze pre-outcome only, with rationale recorded there"
+ ],
+ "arms": {
+  "A1": {
+   "name": "ALWAYS_ON_MR",
+   "question_isolated": "no regime information at all: the mean-reversion baseline alone",
+   "role": "REFERENCE_BASELINE",
+   "scored": true,
+   "spec": {
+    "active": "always, on every bar of every fold, regime ignored",
+    "assets": [
+     "BTC_H1",
+     "BTC_H4",
+     "SPY_D1"
+    ],
+    "strategy": "MR_LONG",
+    "strategy_source": "rsmv1/strategies.py frozen MR_LONG spec (RSI14<30 and close<BOLL(20,2.0) lower entry; mid/RSI14>55/96-bar-max-hold/2*ATR14-stop exits; next-bar-open fill; fraction 1.0)"
+   }
+  },
+  "A2": {
+   "name": "ALWAYS_ON_TREND",
+   "question_isolated": "no regime information at all: the trend-long baseline alone",
+   "role": "REFERENCE_BASELINE",
+   "scored": true,
+   "spec": {
+    "active": "always, on every bar of every fold, regime ignored",
+    "assets": [
+     "BTC_H1",
+     "BTC_H4",
+     "SPY_D1"
+    ],
+    "strategy": "TREND_LONG",
+    "strategy_source": "rsmv1/strategies.py frozen TREND_LONG spec (close>EMA20 and EMA20>EMA50 entry; close<EMA20 / 3*ATR14-stop exits; next-bar-open fill; fraction 1.0; long-only so SPY-eligible)"
+   }
+  },
+  "B": {
+   "engine_equivalence_gate": {
+    "failure": "any field mismatch => hard stop B_ENGINE_EQUIVALENCE_FAILED; no candidate outcome may exist in any artifact (feeds evaluation TECHABORT ladder)",
+    "fields": [
+     "gross_pnl",
+     "fee_total",
+     "slippage_total",
+     "funding_total",
+     "net_pnl",
+     "trade_count"
+    ],
+    "law": "BEFORE any arm C outcome is computed, arm B must reproduce the V2 JEV_ONLY tier-1 stored totals on each cell to <1e-6 absolute per field",
+    "v2_source_law": "A1 pins the per-cell V2 JEV_ONLY tier-1 stored totals + artifact digest into this file's v2_reference_pins at freeze time; A6 does not read outcome data and leaves them TO_PIN_AT_FREEZE"
+   },
+   "name": "ORIGINAL_V2_MAPPING_REFERENCE",
+   "question_isolated": "the original V2 mapping under ORIGINAL V2 mechanics, re-run on the recomputed persisted timeline \u2014 the like-for-like predecessor reference C must beat",
+   "role": "REFERENCE_REPRODUCTION",
+   "scored": true,
+   "spec": {
+    "asset_law": "SPY never shorts (mapping already FLAT in DOWNTREND for SPY)",
+    "mapping_source": "freezes/mapping_arms_freeze.json `mapping` block, byte-authoritative: ACCUMULATION MR_LONG (BTC+SPY); UPTREND TREND_LONG (BTC+SPY); DISTRIBUTION FLAT; DOWNTREND TREND_SHORT BTC / FLAT SPY; TRANSITION_UNKNOWN FLAT",
+    "mechanics": "ORIGINAL V2 engine semantics byte-for-byte as forked at V2 commit 0c277a94: next-executable-open fills, fraction 1.0, fold force-flat, V2 frozen costs \u2014 the rsmv1 turnover law (transition buffer, no-op law, dwell floor) is NOT applied to arm B by design: B reproduces V2 as it was, attrition included",
+    "regime_input": "the recomputed PERSISTED regime timeline (same stream all arms consume), verified against regime_timeline_constants before use"
+   }
+  },
+  "C": {
+   "name": "REGIME_SPECIALIST_ROUTER",
+   "question_isolated": "THE hypothesis: per-regime specialists (bounded library, nested walk-forward selection) under the anti-churn turnover law beat blind baselines and the V2 mapping after costs",
+   "role": "CANDIDATE",
+   "scored": true,
+   "spec": {
+    "execution": "rsmv1_turnover_freeze.proposal.json law fully active (transition buffer k=1, min-dwell floor 6, no-op law, reversal charging, unnecessary_close_reopen counter)",
+    "library": "freezes/specialist_library_freeze.json (<=2 specialists per regime; BTC-only shorts ineligible on SPY)",
+    "never_outcome_informed": "selection uses inner-fold data only; no candidate parameter is chosen from any full-history PnL",
+    "regime_input": "recomputed PERSISTED regime timeline (cached V2 decisions, zero provider calls)",
+    "routing": "persisted regime -> per (cell, regime, outer fold) specialist selected by freezes/rsmv1_selection_freeze.proposal.json; TRANSITION_UNKNOWN always routes FLAT"
+   }
+  },
+  "D": {
+   "disclosure": "the per-cell base choice (BTC: MR, SPY: TREND) is outcome-informed and DISCLOSED as such; controls may be outcome-informed, candidates never \u2014 arm C's design contains no D-informed choice",
+   "name": "SPARSE_JEV_RISK_OFF_VETO",
+   "question_isolated": "does merely standing aside in risk-off regimes (no specialist structure) explain the candidate's edge? gate 6 forces C to beat D, so 'trades less' alone cannot pass",
+   "role": "OUTCOME_INFORMED_CONTROL",
+   "scored": true,
+   "spec": {
+    "asset_law": "SPY base is TREND_LONG (long-only); BTC base is MR_LONG; no shorting introduced",
+    "base_per_cell": {
+     "BTC_H1": "A1 ALWAYS_ON_MR",
+     "BTC_H4": "A1 ALWAYS_ON_MR",
+     "SPY_D1": "A2 ALWAYS_ON_TREND"
+    },
+    "execution": "rsmv1 turnover law fully active",
+    "veto_law": "target is the base strategy while persisted regime not in {DISTRIBUTION, DOWNTREND}; FLAT while persisted regime in {DISTRIBUTION, DOWNTREND}"
+   }
+  },
+  "E": {
+   "name": "DETERMINISTIC_PROPOSAL_PLUS_JEV_VETO",
+   "question_isolated": "the V2 CONFIRM design (deterministic proposer + Jev veto) re-run under the NEW turnover law \u2014 isolates the churn-law's contribution to the V2 mechanism-vs-attrition decomposition",
+   "role": "CONTROL",
+   "scored": true,
+   "spec": {
+    "execution": "rsmv1 turnover law fully active",
+    "proposal_persistence": "same persistence machine 0.50/0.20/confirm 2/dwell 6/cooldown 3 applied to the deterministic proposal stream",
+    "proposer": "V2 deterministic law unchanged: EMA12>EMA48 structure with close vs EMA48, ADX14>=22 -> UPTREND/DOWNTREND; else trailing-168-bar return <-10% -> ACCUMULATION, >+10% -> DISTRIBUTION; else no proposal (rsmv1/deterministic.py constants ADX_THRESHOLD=22.0, RANGE_RETURN_WINDOW=168, RANGE_RETURN_THRESHOLD=0.10)",
+    "proposer_mapping": "the V2 frozen mapping (same mapping block as arm B) applied to the proposer's persisted label",
+    "veto_law": "trade the proposer's mapped strategy IFF the proposer's persisted label equals the Jev persisted label (same persisted timeline all arms consume); ANY disagreement -> FLAT; Jev never selects alone; disagreement never invents a strategy"
+   }
+  },
+  "F": {
+   "name": "EPISODE_SHUFFLED_MATCHED_CONTROL",
+   "question_isolated": "is arm C's net distinguishable from label-randomized routing that pays the same occupancy, churn, dwell and exposure? (matched permutation null)",
+   "role": "NULL_CONTROL",
+   "scored": true,
+   "spec": {
+    "headline": "median of the 21 seed nets per cell per tier; all 21 seed nets reported",
+    "machinery": "V1/V2 segment-permutation machinery carried over: per seed, seeded alternating shuffle of the reference path's maximal constant-label segments, then seeded marginal-anchored relabeling of the label alphabet",
+    "matching_tolerances": {
+     "invested_frac_abs_dev_pp": 0.02,
+     "mean_dwell_rel_dev": 0.1,
+     "measured": "global over the cell's label stream, identical definitions on both sides; invested fraction measured on C's actual routed targets vs the seed path routed through C's frozen per-fold selections",
+     "occupancy_max_abs_dev_per_label_pp": 0.02,
+     "switches_rel_dev": 0.1
+    },
+    "max_attempts_per_seed": 200,
+    "q11_movement_validation": {
+     "fail_closed": "if any seed has no accepted (matched AND moved) path within 200 attempts, the ENTIRE F control for that cell is NOT_RUN_CONTROL_MATCHING: all 21 seeds discarded, no partial null, cell gate 6 rests on A/B/D/E with F_INVALID_REST_ON_ABDE recorded",
+     "law": "an accepted seed path must move BOTH statistics by > 0.02 absolute versus arm C's actual label path",
+     "mandatory": true,
+     "placement": "INSIDE the acceptance loop: a candidate that matches structurally but fails movement is REJECTED and resampled within the 200-attempt budget",
+     "statistics": [
+      "lag1_autocorr of the label stream",
+      "label-to-forward-return association"
+     ],
+     "v2_lesson": "V2's null was null_invalid on all 9 cell x tier combos because movement was only flagged post hoc; here invalidity is structurally impossible to pass silently"
+    },
+    "reference_path": "arm C's label path: the persisted regime stream arm C consumes, and arm C's actual invested profile (fraction of regime bars whose routed target is non-FLAT, per fold)",
+    "routing": "each accepted seed path is routed through arm C's FROZEN per-fold selection maps (folds and force-flat unchanged); turnover law active as for C",
+    "seeds": {
+     "count": 21,
+     "values": "20260901..20260921 inclusive (F_SEEDS law, carried from the frozen V1/V2 machinery)"
+    }
+   }
+  }
+ },
+ "authority": {
+  "contamination_note": "the whole corpus is outcome-observed; controls D and F carry that disclosure explicitly; the candidate arm C is never outcome-informed",
+  "plan": "plans/PLAN_regime_strategy_mapping_v1.md sections 4, 5, 6, 11",
+  "predecessor": "JEV-REGIME-ROUTER-V2 TERMINAL JEV_NO_INCREMENTAL_VALUE (only outcome fact used; no V2 number is designed around)"
+ },
+ "base_sha": "02167db05cb5d494c9ef992883e522c234c4391d",
+ "cycle": "REGIME-STRATEGY-MAPPING-V1",
+ "input_pins": {
+  "decision_cache_manifest": {
+   "path": "freezes/decision_cache_manifest.json",
+   "sha256": "4f8c341b6b19f07bb8db633e6f148b95aebc112a34e2273cb12ca9443e72fea9",
+   "use": "cached V2 decision digests; zero-provider-call law; V2 source commit 0c277a94"
+  },
+  "fold_contract": {
+   "path": "freezes/fold_contract.json",
+   "sha256": "6d33600702b200f449e6b467a8240b71524fe36691ca9b3aed2f2109678a2e78",
+   "use": "outer fold boundaries, warmup 192, per-cell floors, exec/regime clocks"
+  },
+  "mapping_arms_freeze": {
+   "path": "freezes/mapping_arms_freeze.json",
+   "sha256": "3736cd4cc345568c6f79515bf5aaa130332b467174b832fc6c8c699f109dc37b",
+   "use": "arm B mapping source-of-truth; frozen V2 costs; frozen strategy specs statement"
+  },
+  "regime_timeline_constants": {
+   "path": "rsmv1/regime_timeline.py V2_EXPECTED",
+   "use": "classification facts only: switches 90/31/34, effUNKNOWN 0.427/0.272/0.291, n_decisions 8567/1997/2751; rebuild-verify hard stop REGIME_TIMELINE_MISMATCH"
+  },
+  "safety_persistence_contract": {
+   "path": "freezes/safety_persistence_contract.json",
+   "sha256": "5f7ba602eea79c6031e21db85a026605acf687052c0004013bc0c03d1a94fc24",
+   "use": "persistence machine confirm=2/dwell=6/cooldown=3/min_conf=0.50/min_margin=0.20"
+  },
+  "specialist_library": {
+   "path": "freezes/specialist_library_freeze.json",
+   "status": "TO_LAND_AT_P3_FREEZE_BEFORE_ANY_CANDIDATE_PNL",
+   "use": "arm C specialist specs (<=2 per regime, economic rationale, exact parameters); arm C is NOT executable until this file is frozen"
+  }
+ },
+ "mandatory_laws_for_every_scored_arm": {
+  "cost_tiers": {
+   "base_contract": "freezes/mapping_arms_freeze.json costs block: BTC taker 5 bps/side + slippage 1 bps/side, funding 1.377e-05 per 8h signed; SPY 10 bps/fill long-only",
+   "law": "tier t multiplies per-side/fill costs by t; funding untouched by the tier multiplier; 1.0x is the base gate; zero-cost diagnostics can never support a PASS",
+   "tiers": [
+    1.0,
+    1.5,
+    2.0
+   ]
+  },
+  "fold_force_flat": "at each outer fold boundary every position is closed at the last fill opportunity of the fold, flat into the next fold, costs charged, fills tagged fold_force_flat",
+  "no_lookahead_mutation_law": "mutation tests are mandatory: perturbing any bar's future data must not change any past decision, fill or count; a violation is a hard failure of the arm's implementation",
+  "no_post_outcome_change": "no strategy, mapping, selection or threshold change between bars once outcome data is visible; any change re-runs the whole cell from scratch under a new disclosed attempt",
+  "reconciliation_identity": "per arm x cell x tier: net = gross - fee - slippage - funding (BTC funding signed; SPY no funding) to <1e-6; fill counts and switch counts reconcile to the ledger",
+  "regime_lag": "decisions are taken on a COMPLETED regime/exec bar close and filled at the NEXT executable bar open (>=1 executable bar lag; SPY: decision at session close, fill next session open); no same-bar close-to-fill",
+  "separate_reporting": "regime_switch_count and position_switch_count are reported as separate fields for every arm x cell x tier (turnover freeze law 7)"
+ },
+ "proposed_at_utc": "2026-09-23T00:00:00Z",
+ "references": {
+  "BUY_AND_HOLD": {
+   "definition": "single long entry (fraction 1.0) at the first executable bar open after the cell warmup, held to the cell's last bar close; one entry + one exit charged; BTC funding signed over the holding period",
+   "scored": false,
+   "use": "market context metric per cell; reported, never a gate"
+  },
+  "FLAT": {
+   "definition": "constant FLAT target across the cell",
+   "scored": false,
+   "use": "degenerate reference; a router indistinguishable from FLAT must fail gates, not win"
+  }
+ },
+ "role": "A6-CONTROLS-DESIGN",
+ "schema": "rsmv1_arms_freeze_proposal@1",
+ "self_sha256": "2f8e468ddb7edbcaf2b25cfb2b4f68587910f5411eda743d02849728c6b0e7d0",
+ "status": "PROPOSED_AWAITING_A1_FREEZE",
+ "trial_budget": {
+  "accounting_law": "every computed outcome counts against the budget EVEN IF its artifact fails to publish; the denominator is fixed before the scored run; no mid-run stopping on interim numbers",
+  "cells": [
+   "BTC_H1",
+   "BTC_H4",
+   "SPY_D1"
+  ],
+  "reference_law": "FLAT and BUY_AND_HOLD are reported context metrics per cell; they are never scored arms, never gates, and consume no trial budget",
+  "references_not_scored": [
+   "FLAT",
+   "BUY_AND_HOLD"
+  ],
+  "scored_arm_instance_ids": [
+   "A1",
+   "A2",
+   "B",
+   "C",
+   "D",
+   "E",
+   "F"
+  ],
+  "scored_cells": 21,
+  "seed_law": "arm F's 21 seeds are ONE scored arm instance per cell (median-of-21 headline); seeds are not separate trials",
+  "zero_cost_law": "zero-cost variants are diagnostic computations inside the same trial; they can never support a PASS anywhere"
+ },
+ "v2_reference_pins": {
+  "b_engine_equivalence_v2_jev_only_tier1_totals_per_cell": {
+   "BTC_H1": null,
+   "BTC_H4": null,
+   "SPY_D1": null
+  },
+  "law": "A1 fills these from V2 frozen artifacts (with artifact digests) BEFORE freezing this file; A6 deliberately does not read outcome data",
+  "status": "TO_PIN_AT_FREEZE_BY_A1"
+ }
+}
