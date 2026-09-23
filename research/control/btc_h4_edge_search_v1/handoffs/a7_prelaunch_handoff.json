@@ -1,0 +1,62 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "es1-a7-prelaunch",
+  "cycle_id": "BTC-H4-EDGE-SEARCH-V1",
+  "role": "A7",
+  "lane": "prelaunch-audit",
+  "dispatch_sha": "912882114c1615347cae0b60a2660c9c15e44e9f",
+  "actual_start_sha": "912882114c1615347cae0b60a2660c9c15e44e9f",
+  "commit_sha": "9a6f82158903dbd56075a7541bd6ec82551007f7",
+  "changed_paths": [
+    "research/control/btc_h4_edge_search_v1/audits_a7/a7_prelaunch_es1.json",
+    "research/control/btc_h4_edge_search_v1/audits_a7/a7_prelaunch_notes.md",
+    "research/control/btc_h4_edge_search_v1/handoffs/a7_prelaunch_handoff.json"
+  ],
+  "tests": [
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/btc_h4_edge_search_v1/tests_py/test_es1_fixtures.py -v",
+      "exit_code": 0,
+      "note": "8/8 PASSED; A7 also graded pinning quality (2 gaps: scale-cap fixture caps inside test body; no exit-from-long hysteresis golden)"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/btc_h4_edge_search_v1/scripts/es1_reconcile_comparator.py",
+      "exit_code": 0,
+      "note": "A7 re-run: verdict RECONCILED, net rel-err 9.0e-10, folds <=9.4e-8, 86 trades (79 STOP + 7 GATE); rewrite byte-identical to committed artifact; tree left clean"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python (ancestry_rho.py re-executed with OUT redirected to /tmp)",
+      "exit_code": 0,
+      "note": "byte-identical to committed freezes/ancestry_rho.json: lane A worst |rho| 0.090376 PASS, lane B 0.20509 VETOED; committed artifact untouched"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python (3x Binance Vision re-downloads: ETH 1h 2020-01, BTC funding 2023-06, SOL 1h 2026-08)",
+      "exit_code": 0,
+      "note": "all 3 sha256 + byte lengths MATCH freezes/staging_manifest.json"
+    },
+    {
+      "command": "/Users/hoangminhlong/.venv python -c 'import es1_engine; es1_engine.load_funding_measured()'",
+      "exit_code": 1,
+      "note": "BLOCKER REPRODUCTION: NameError: name 'Path' is not defined at es1_engine.py:71 — pathlib.Path never imported in the frozen engine; the only staged loader for the lane D measured funding series crashes; simulate(funding_law='measured') itself runs correctly when handed an externally built 7,305-row frame, so the defect is loader + missing fixture, not the simulator"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "commit_sha 9a6f8215 names the evidence commit (audit JSON + notes); this handoff file is delivered by the immediately following pathspec commit on the same branch — final HEAD reported to the coordinator in chat per TRV1 convention",
+    "P4 scored run was NOT executed (pre-GO turn scope); every check is pre-PnL",
+    "C2 reconcile re-run writes freezes/comparator_reconciliation.json in place; A7 verified the rewrite byte-identical and left the tree clean rather than restoring from backup",
+    "SOL gate-FAIL dates in the freeze text (2022-02-26..28, 2022-04-01..02) were accepted as consistent with the census aggregate (120 missing H1 = 72+48; gap 0.23%; max run 72) without per-hole date re-derivation",
+    "the forbidden research/control/SANDBOX-OVERFIT-3ASSETS/ tree was never read; S1 seal verified only to the extent git can see (no branch commit touches it; dir untracked in root repo)",
+    "PSV1 lane-btc-h4 worktree has one untracked handoffs/ directory (tracked artifacts byte-untouched) — recorded as INFO finding F-A7-5"
+  ],
+  "incidents": [],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "research/control/btc_h4_edge_search_v1/audits_a7/a7_prelaunch_es1.json",
+    "research/control/btc_h4_edge_search_v1/audits_a7/a7_prelaunch_notes.md",
+    "research/control/btc_h4_edge_search_v1/handoffs/a7_prelaunch_handoff.json"
+  ],
+  "verdict": "REMEDIATION_REQUIRED",
+  "blocking_count": 1,
+  "findings_summary": "1 HIGH blocking (F-A7-1: frozen es1_engine.load_funding_measured raises NameError 'Path' — pathlib.Path never imported; P4 must price every cell and baseline under BOTH funding laws per plan §3 lane D / §7 denominator, so the scored run as frozen crashes at first measured-law pricing or forces post-freeze edits; remedy: add import, add measured-law funding fixture, re-run fixtures+dry run, refresh freeze engine SHA) + 1 MEDIUM (F-A7-2 scale-cap fixture never exercises sig_vol_managed's cap) + 3 LOW (F-A7-3 no exit-from-long hysteresis golden; F-A7-4 census-vs-engine SMA200 warmup-window divergence, both causal, gates unaffected; F-A7-6 G6 shuffle seed hard-coded not preregistered) + 2 INFO (F-A7-5 PSV1 lane untracked handoffs dir; F-A7-7 sig_donchian dead code, constants match PSV1 config). All other axes exceptionally clean: C2 identity byte-identical re-run at 1e-10..1e-8 rel-err, 3/3 data digests re-download MATCH, ancestry razor independently reproduced, dry run recursively PnL-free, boundaries (S1/Vision-only host/no push/data_local ignored/ancestor worktrees clean) all verified."
+}
