@@ -872,3 +872,32 @@ promise.
   same mapping class with new parameters; any Jev-classifier reuse needs a
   changed mechanism per the V2 reopening law. SPY +19,813 remains a
   concentration-killed baseline, never evidence.
+
+## STOCKS-AMIHUD-V1 (CLOSED 2026-09-23, `STOCKS_AMIHUD_V1_REJECT_ALL`) — first Amihud on stocks; the PnL was a ghost ticker
+
+- Owner-directed cycle (2026-09-23): Amihud (2002) illiquidity long-only on
+  US listed-venue common stocks, folds CY2019 | CY2020 | CY2021-22, 3 cells
+  (ILLIQ21/ILLIQ63/REVERSAL5). Plan A7-audited (REFUSED→remediate→AUTHORIZED);
+  D2 skipped by owner amendment A3 (R0_NOT_RUN); prelaunch A7 took 3 rounds
+  (round 2 caught a real annual_split KeyError with its own repro); owner GO
+  fresh+exact at gate; 3/3 cells under heavy lock.
+- Verdict: REJECT_ALL. Anchor/neighbour fail MDD (59.25%/56.79% vs 15%) and
+  fold-concentration (50.1%/50.0% vs 50%, razor). The PF 54/56 "edge" is ONE
+  non-tradable print: 99.7% of net = ticker HTV, for which EODHD serves
+  2017-2022 bars although Hearst-Argyle Television went private in 2009
+  (2019-12-06: 1.36→13,050 on volume 10). Reversal control negative — the
+  anchor is not a reversal effect, it is a data-identity artifact.
+- Identity-failure census (terminal_forensics.json): C1 ghost series
+  (HTV/NLG); C2 same-security-two-tickers (BYON/OSTK same ISIN; 249
+  collision groups); C3 shared-death-date batches (76@2018-01-30,
+  38@2022-03-02); C4 reverse-split adjusted_close NOT smoothed (408-name
+  extreme-print class — the forward-split F3a fixture was never tested on
+  reverse splits); C5 zero-volume bars carrying prices; C6 11,345 no-ISIN
+  codes; C7 vendor test tickers (NTEST-T).
+- Owner waivers at close (recorded verbatim): reproduction NOT_RUN
+  ('bỏ reproduction đi'), A7 terminal NOT_RUN ('không dispatch A7 terminal
+  gì hết') — verdict is the A1's, backed by frozen gates + forensics.
+- Successor: STOCKS-AMIHUD-RETEST-V1 (owner directive, retrospective
+  retest with identity/execution gates). Denominators: stocks 45/45,
+  program 260/263 (P-9). Detail:
+  `.worktrees/stocks-amihud-v1/integration/research/control/stocks_amihud_v1/scored/terminal_verdict.json`.

@@ -847,3 +847,47 @@ domain runs a documented reachability precondition at G0 (single HEAD probe +
 the standing discriminator if it fails, committed as evidence) BEFORE any lane
 is dispatched; a measured block routes straight to the BLOCKED_TRANSPORT
 terminal with the named single owner action — no lane burn, no audit arc.
+
+## L-SAMV1-1 (2026-09-23, STOCKS-AMIHUD-V1): a data-availability fixture must cover BOTH directions of every corporate action
+
+- Source: the F3a split fixture tested four FORWARD splits, all smooth;
+  reverse splits were never fixture-tested. EODHD's adjusted_close is NOT
+  smoothed across reverse splits (UNT 0.0455→41.1; 408-name extreme-print
+  class), feeding fake |r|/DV terms and fake fills into any price/volume
+  family.
+- Lesson: when a vendor's adjustment behavior is the load-bearing
+  assumption, the fixture matrix must enumerate every direction and class
+  of the corporate action (forward/reverse split, split ratio extremes,
+  dividends, ticker renames) BEFORE the first scored run — "smooth on the
+  cases I tested" is not "smooth".
+- Consequence: retest cycle freezes an extreme-print bar law (|r_adj| ≥ 9)
+  and a reverse-split fixture; any future vendor-adjusted dataset owes the
+  full-direction fixture matrix at its data gate.
+
+## L-SAMV1-2 (2026-09-23, STOCKS-AMIHUD-V1): ticker is not identity — dollar floors do not catch ghost series
+
+- Source: EODHD served 5.5 years of bars for a company private since 2009
+  (HTV; NLG same pattern). The $1 price floor and $2M DV-median floor
+  passed because the ghost series carried plausible historical volume; the
+  pathology surfaced only as a +9,594× single-bar "return" on volume 10
+  that produced 99.7% of the cycle's PnL.
+- Lesson: cross-sectional price/volume strategies on delisted-inclusive
+  universes need an IDENTITY gate (independent ticker→company mapping,
+  listing/delisting dates, ISIN/CIK where available) with mechanical
+  quarantine laws — execution floors filter prices, not existence. A
+  single-ticker PnL-share number > ~50% is itself a root-cause alarm worth
+  a forensic pass BEFORE interpreting any gate.
+- Consequence: STOCKS-AMIHUD-RETEST-V1's Q1–Q4 quarantine laws + B1/B2
+  bar laws + X1 fill-feasibility law; final reports must state residual
+  single-symbol dependence explicitly.
+
+## L-SAMV1-3 (2026-09-23, STOCKS-AMIHUD-V1): an EOD open bar does not certify a fill — volume=0 bars must be unfillable
+
+- Source: fills were allowed on any served bar, including volume-0 prints;
+  a buy at a fantasy open on a no-trade day created PnL that cannot exist.
+- Lesson: fill laws need bar-level feasibility (volume>0 AND order notional
+  ≤ participation fraction of that bar's dollar volume), and the fill
+  constraint must be firewalled from signal/sizing (info at order time vs
+  volume known ex post).
+- Consequence: X1/X2 execution law in the retest; unfillable entries are
+  skipped and counted, never silently filled.
