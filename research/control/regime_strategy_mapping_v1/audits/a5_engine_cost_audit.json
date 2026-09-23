@@ -1,0 +1,140 @@
+{
+  "schema": "rsmv1_a5_engine_cost_audit@1",
+  "task_id": "RSMV1-A5-ENGINE-AUDIT",
+  "cycle_id": "REGIME-STRATEGY-MAPPING-V1",
+  "role": "A5",
+  "lane": "a5-engine-audit",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/regime-strategy-mapping-v1/a5-engine-audit",
+  "branch": "orca/rsmv1-a5-engine-audit",
+  "dispatch_base_sha": "02167db05cb5d494c9ef992883e522c234c4391d",
+  "object_under_audit": "research/control/regime_strategy_mapping_v1/rsmv1 (fork of JEV-REGIME-ROUTER-V2 @ 0c277a94): engine.py, strategies.py, arms.py helpers, data.py, metrics.py",
+  "method": "hand-computed golden fixtures on synthetic bars (15-97 bars); every expected number derived from the pinned laws, not engine internals; pytest tests_py -q",
+  "verification": {
+    "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests_py -q",
+    "cwd": "<worktree>/research/control/regime_strategy_mapping_v1",
+    "exit_code": 0,
+    "summary": "26 passed, 1 xfailed (strict xfail = finding A5-F1)",
+    "golden_tests": 21,
+    "preexisting_tests": 5,
+    "log_sha256": "98d39b6fc95b1f080940da03a7ac101547b99d4ae4666fd149fac075dd826d17"
+  },
+  "laws": {
+    "law1_next_bar_open_fills": {
+      "verdict": "PASS",
+      "tests": ["test_law1_next_bar_open_fills"],
+      "evidence": "signal bar 19 -> fill bar 20 open (px 100, ts_open[20]); invested[19]==0; exit signal bar 29 -> fill bar 30 open; no same-open flip: fill step is if/elif and pending_entry is always None while a position is open (law 7 shows distinct exit/entry opens)"
+    },
+    "law2_costs_exactly_once": {
+      "verdict": "PASS",
+      "tests": ["test_law2_costs_exactly_once_btc", "test_law2_spy_band_booked_as_fees_zero_slippage"],
+      "evidence": "BTC fees 100=50+50, slip 20=10+10, net -120, hand-traced 34-bar equity path; SPY band (10 bps) booked as fees with slip exactly 0.0, net -200; stop and fold-flat fills carry a single charge each (laws 3/5/7)"
+    },
+    "law3_stop_after_entry_bar": {
+      "verdict": "PASS",
+      "tests": ["test_law3_stop_after_entry_bar_at_stop_price"],
+      "evidence": "ATR14[19]=2 hand-derived (TR=2 x20 bars); stop=94; entry-bar low 94 does NOT trigger (invested[20]==1); bar 21 low<=stop -> fill exactly 94.0 at ts_open[21]; fee 47 + slip 9.4 debited on the 94 notional; net -6116.4"
+    },
+    "law4_exits_at_next_open_reconcile": {
+      "verdict": "PASS",
+      "tests": ["test_law4_regime_off_exit_at_next_open", "test_law4_entry_dropped_when_target_vanishes_before_fill"],
+      "evidence": "regime_off at open of first FLAT bar (bar 21 @101), reconciliation precedes stop at the same open; queued entry dropped when target no longer matches at the fill open (zero trades)"
+    },
+    "law5_fold_partition": {
+      "verdict": "PASS",
+      "tests": ["test_law5_fold_partition_and_force_flat"],
+      "evidence": "folds_from_regime_ts -> [(0,8,17),(1,18,19)] contiguous; fold_id [-1]x8+[0]x10+[1]x2; entry refused on unassigned bar 5; force-flat at ts_close[17] with costs (fees 100, slip 20); equity continuous; fold_net [-120,0] sums to totals -120 (hard-asserted in-engine); fold_partition_invariants raises for first_required_bar=7"
+    },
+    "law6_btc_funding": {
+      "verdict": "PASS",
+      "tests": ["test_law6_funding_long_pays_at_boundaries", "test_law6_funding_short_receives_signed_credit"],
+      "evidence": "entry 07:45Z; events 08:00Z and 16:00Z at rate*dir*qty*ref: long +2.814708 (pays), short -2.69892 (signed credit); net includes the credit for shorts; boundary strictly after entry; exit at 16:00Z open charges nothing further"
+    },
+    "law7_trade_counting_flip": {
+      "verdict": "PASS",
+      "tests": ["test_law7_flip_is_close_then_open_two_costed_fills"],
+      "evidence": "TREND_LONG->TREND_SHORT = exactly 2 trade records: long regime_off @103 (open bar 25, net 2878.2), short entry @100 (open bar 26, qty 1028.782=round(102878.2/100,8), net 5023.542506); both costed; t2.entry_ts > t1.exit_ts; totals 7901.742506"
+    },
+    "law8_noop_target": {
+      "verdict": "PASS",
+      "tests": ["test_law8_noop_target_no_reconciliation_no_churn"],
+      "evidence": "constant target -> exactly one entry, zero reconciliation fills; holding-plateau equity exactly flat (no cost events); reconciliation only on None/FLAT/strategy change"
+    },
+    "law9_regime_clock_governance": {
+      "verdict": "PASS",
+      "tests": [
+        "test_law9_regime_clock_governing_h1",
+        "test_law9_regime_clock_governing_h4",
+        "test_law9_unknown_and_unmapped_labels_map_flat",
+        "test_law9_arms_target_grid_matches_governing_law"
+      ],
+      "evidence": "41-bar H1 and 97-bar H4 hand tables; ts_o == decision ts -> previous regime governs / None before first; strictly-before law; TRANSITION_UNKNOWN and unmapped labels -> FLAT; arms helper element-identical to targets_from_regime"
+    },
+    "law10_determinism": {
+      "verdict": "PASS",
+      "tests": ["test_law10_determinism_byte_identical_reruns"],
+      "evidence": "two runs byte-identical: equity/invested/fold_id tobytes, totals dict, all 16 fields of every trade"
+    },
+    "law11_stale_rejection": {
+      "verdict": "PASS",
+      "tests": ["test_law11_stale_beyond_two_periods_maps_flat"],
+      "evidence": "age exactly 2 periods governs (strict > comparison; H1 k=28 age 2h, H4 k=48/k=80 age 8h), age beyond -> FLAT"
+    }
+  },
+  "also_audit": {
+    "equity_mtm_identity": {
+      "verdict": "PASS",
+      "tests": ["test_mtm_identity_on_flip_and_stop_scenarios"],
+      "evidence": "100000 + totals.net_pnl == equity[-1] within 1e-9; every fixture equity path hand-traced bar by bar; reading-level proof: per round trip dCash = gross - fees - slip - funding = net_pnl; fold attribution telescopes (hard-asserted each run)"
+    },
+    "metrics_turnover": {
+      "verdict": "PASS",
+      "tests": ["test_metrics_turnover_and_time_in_market_hand_check"],
+      "note": "definitional: ENTRY-SIDE notional (sum qty*entry_px) / mean equity / fold-span years; hand case entry notional 202878.2 over 31 bars, rel 1e-9"
+    },
+    "metrics_time_in_market_expectancy_win_rate": {"verdict": "PASS", "evidence": "9/31 invested; expectancy and win_rate hand-checked on the 2-win flip scenario"},
+    "metrics_regime_stats": {
+      "verdict": "PASS",
+      "tests": ["test_metrics_regime_stats_hand_case"],
+      "evidence": "[A,A,B,B,B,A,C,C]: switches 3, occupancy {A:3/8,B:3/8,C:2/8}, avg_dwell 2.0, unknown_share 0; timeline metrics, independent of trade records by construction"
+    },
+    "data_py_reading_level": {
+      "verdict": "PASS_READING_ONLY",
+      "evidence": "snap-close (<=1ms, UP, fail-closed), bucket resample completeness law, census fail-closed vs freeze, SPY adjusted-series construction, duplicate-session rejection: all match frozen contract texts; runtime census equivalence NOT_RUN (real-corpus runs forbidden in this lane)"
+    }
+  },
+  "findings": [
+    {
+      "id": "A5-F1",
+      "severity": "MEDIUM",
+      "status": "PROVEN (strict xfail fixture committed)",
+      "title": "BUY_HOLD reference violates its documented hold-to-end law",
+      "documented_law": "engine.py docstring: BUY_HOLD 'exits only via fold force-flat (hold-to-end modulo fold law)'",
+      "observed": "BUY_HOLD positions are opened as strategy=TREND_LONG, so the TREND_LONG exit signal (close<EMA20) closes mid-fold with reason strategy_exit and the intrabar stop is live; re-entry only at fold starts, so the reference sits flat after any mid-fold exit",
+      "minimal_repro": "one 20-bar fold, targets BUY_HOLD; bar 2 close 98 < EMA20 99.809519 -> exit at open[3] @98 reason strategy_exit (entry bar 1 @100, net -2118.8); invested==0 through fold end",
+      "tests": ["test_buyhold_documented_hold_to_end_law (xfail, strict)", "test_buyhold_observed_deviation_documented (PASS, pins observed behavior)"],
+      "impact": "buy-hold REFERENCE metric per cell is a trend-exit-managed path, not buy-and-hold; understates hold-to-end in down-drifts, adds churn; no scored arm affected; no dispatch law violated (module-documented law)",
+      "reported_to": "A1 (audit-only lane; not repaired)"
+    },
+    {
+      "id": "A5-O1",
+      "severity": "LOW",
+      "status": "PROVEN by code reading (unreachable post-warmup)",
+      "title": "stop level falls back to atr14[i] (entry bar's own TR) when atr14[i-1] is NaN (only i==13)",
+      "impact": "intra-bar lookahead in the stop LEVEL on the first ATR bar; stops still evaluated only on later bars; unreachable with warmup=192",
+      "reported_to": "A1"
+    },
+    {"id": "A5-O2", "severity": "INFO", "title": "folds_from_regime_ts ignores frozen span END timestamps (contiguous-partition amendment makes next-start/final-bar bind; ends decorative in exec mapping)"},
+    {"id": "A5-O3", "severity": "INFO", "title": "staleness constant '2' duplicated in arms._targets_from_regime_target_grid instead of STALE_REGIME_PERIODS; currently consistent (equivalence fixture)"},
+    {"id": "A5-O4", "severity": "INFO", "title": "queued entry silently dropped when the target changes between signal close and fill open (conservative, deterministic, fixture-pinned)"},
+    {"id": "A5-O5", "severity": "INFO", "title": "stop exits stamped at the trigger bar's OPEN timestamp; funding boundary exactly at that stamp is charged via the close path"},
+    {"id": "A5-O6", "severity": "INFO", "title": "engine relies on folds covering the final exec bar; misuse would hard-fail on the built-in fold-attribution assert, never silent"}
+  ],
+  "not_audited": [
+    "rsmv1/attribution.py, rsmv1/feasibility.py (forbidden to this lane)",
+    "questionio.py, safety.py, deterministic.py, regime_timeline.py, features.py internals; indicator formulas beyond load-bearing constants consumed by fixtures",
+    "data.py loaders against the real catalog/corpus (forbidden; runtime census NOT_RUN here)",
+    "security.py internals, freezes.py digests, pyarrow decode path",
+    "any runtime/ or evidence/ artifact, any scored output, the V2 worktree, other lanes",
+    "no Jev API calls; no paper/live/orders; workers 0; no heavy-lock jobs"
+  ]
+}
