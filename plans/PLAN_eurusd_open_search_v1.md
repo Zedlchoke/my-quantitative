@@ -152,3 +152,61 @@ license; no OANDA credentials; no Dukascopy consent; no new rights since
 the 2026-09-22 verdict). Cycle registers `BLOCKED_SOURCE_LICENSE` with
 zero PnL and zero trials executed; the owner actions listed in the verdict
 are the unblock paths. Trials (≤96) run only after a source clears §1.
+
+## 8. AMENDMENT A1 (2026-09-23, owner directive #2) — source authorization + unblock
+
+Owner 2026-09-23 #2 (verbatim intent preserved): "về nguồn thì bạn tìm cái
+gì ở đâu cũng được. Tôi không quan tâm. Miễn là sau khi bạn dừng thì output
+có một strategy cho EURUSD có lợi nhuận. Bạn có toàn quyền sử dụng máy của
+tôi để tải nguồn hoặc gì cũng được."
+
+Authority effects, recorded:
+
+- Source selection is FULLY DELEGATED by the owner; machine usage for
+  downloads is explicitly authorized. The P1 `BLOCKED_SOURCE_LICENSE`
+  registration state of THIS cycle is superseded → `ACTIVE_LIGHT`.
+  EURUSD-DATA-QUALIFICATION-V1's own verdict stays untouched (its cycle's
+  truth; this amendment records why the successor may proceed anyway).
+- PRIMARY source: Dukascopy public datafeed (no account, no login): monthly
+  `BID_candles_min_1.bi5` / `ASK_candles_min_1.bi5` M1 bid/ask candles +
+  a bounded tick bi5 cross-check. License posture is DISCLOSED, not denied:
+  the site TCU posture recorded by EURUSD-DATA-QUALIFICATION-V1 (personal
+  non-commercial clause, automated-acquisition consent clause, no-database
+  clause, datafeed host unstated) remains unresolved with the vendor; the
+  owner — informed via the 2026-09-22 owner packet and this cycle's P1
+  verdict — has explicitly delegated source choice and authorized machine
+  downloads. Recorded as `OWNER_DIRECTIVE_SOURCE_AUTHORIZATION` with
+  `TCU_RISK_DISCLOSED`. No account creation, no ToS acceptance, no
+  purchases. Raw bytes stay machine-local under gitignored `data_local/`;
+  only SHA-256 manifests commit.
+- Concretely frozen NOW (per §3 split rule, before any PnL): coverage
+  2021-01-01 → 2025-12-31 UTC; development = 2021-01-01 → 2023-06-30;
+  SEALED historical holdout = 2023-07-01 → 2025-12-31. Execution bars are
+  15m built from M1 bid/ask (bid and ask OHLC separately); regime bars are
+  H1 from exactly four 15m bars; spread is measured at decision (bar-close)
+  and fill (next-bar-open) timestamps as ask−bid. No swap/financing data
+  exists ⇒ EVERY strategy is force-flat before the 21:00 UTC rollover and
+  before Friday close; no overnight/weekend position may exist by
+  construction.
+- Disk constraint (13Gi free): the GB-scale raw tick archive is NOT
+  downloaded; the M1 candle corpus (~200MB) is the data plane; a ≤2-day
+  tick probe cross-validates candle timestamps and spreads. Candle
+  validation failure ⇒ fall back to §1 verdicts.
+- The A7 audit of the P1 blocked close was cancelled before completion and
+  is VOID (superseded by this amendment); A7 fresh-context prelaunch remains
+  MANDATORY before any scored computation (§6).
+- §5 clarification: the fresh verbatim owner GO at this cycle's own gate
+  governs the FINAL scored execution set (registry-recognized scored run +
+  independent reproduction + A7 terminal). The single §5 holdout check of
+  the ≤2 frozen candidates executes after A7 prelaunch authorization, per
+  the owner's 2026-09-23 #1 ordering (holdout check in P3 precedes the
+  owner gate in P4). The holdout result is program-S0 evidence only — never
+  S1, never a real-money claim.
+- Trial budget cap unchanged (≤96). The owner's outcome demand ("output có
+  một strategy có lợi nhuận") is the objective, NOT a relaxation of
+  measurement law: a profitable claim requires the full §1–§6 chain; if no
+  candidate survives honestly, this cycle closes `NO_CANDIDATE_NO_VALUE` or
+  `BLOCKED_*`. Manufacturing a positive number is forbidden by the mission
+  invariant.
+- The 2026-09-23 #2 message is recorded as an outcome directive, NOT as the
+  verbatim GO (P-8).
