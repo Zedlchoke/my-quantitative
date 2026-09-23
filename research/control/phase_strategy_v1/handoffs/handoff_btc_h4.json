@@ -1,0 +1,71 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "psv1-l2-btc-h4",
+  "cycle_id": "PHASE-STRATEGY-V1",
+  "role": "lane-research",
+  "lane": "L2_BTC_H4",
+  "dispatch_sha": "6e6ffa3bb1c6ad82fb1771b99abdecfb0bedf849",
+  "actual_start_sha": "6e6ffa3bb1c6ad82fb1771b99abdecfb0bedf849",
+  "commit_sha": "8a4275718532b96c3a3a2742960785a79397f90e",
+  "changed_paths": [
+    "research/control/phase_strategy_v1/lane_btc_h4/.gitignore",
+    "research/control/phase_strategy_v1/lane_btc_h4/data/manifest.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/data/data_gate.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/freezes/phase_rule_freeze.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/freezes/era_fold_freeze.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/census/census.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/census/CENSUS.md",
+    "research/control/phase_strategy_v1/lane_btc_h4/proposals/proposals.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/proposals/PROPOSALS.md",
+    "research/control/phase_strategy_v1/lane_btc_h4/proposals/ancestry_selfcheck.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/feasibility/ceiling.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/tests_py/ (7 test modules + conftest)",
+    "research/control/phase_strategy_v1/lane_btc_h4/pipeline/ (12 modules: config, ingest, h4derive, integrity, crosscheck, phase_rule, census, events, costs, ancestry, run_gate, run_research, make_proposals)"
+  ],
+  "tests": [
+    {
+      "command": ".venv/bin/python -m pytest research/control/phase_strategy_v1/lane_btc_h4/tests_py -q  (run inside the lane worktree with the repo-root venv)",
+      "exit_code": 0,
+      "summary": "45 passed in 1.06s: phase-rule goldens (5 named outputs, UNKNOWN conditions U1-U4, warmup exclusion, no-lookahead future-mutation invariance, confirmation flicker, +-1-notch ladder), H4 derivation goldens (floor alignment, completeness law, partial-bucket exclusion, hand-computed OHLCV aggregation, gap/zero-volume integrity BLOCKED/PASS), census determinism + hand-computed counts + margin calculator + thin->NOT_RUN_THIN_PHASE, era/fold boundary law, signal-event goldens (next-bar fill, fold force-flat, min-hold suppression, MAX_HOLD, Donchian event, no-cross-fold entry, no-op law flicker->zero fills, fold attribution reconciliation), cost-model fixtures (6/12/18/24 bps exact tiers, signed funding, full-stack tier multiplication, ceiling PASS/STRUCK branches), manifest digest chain (182 files, sample re-verified from staged bytes, URL identity) + gate artifact schema + synthetic 4h-shadow MATCH_EXACT / MATCH_EXCEPT_1_DISCLOSED_BUCKETS, hygiene (S1 denial strings, broker hosts/modules scan, outcome-blindness AST identifier scan on pipeline, ancestry shadow inputs limited to close+quote_volume)."
+    }
+  ],
+  "authority_claims": [
+    "Checkout verified before work: HEAD 6e6ffa3bb1c6ad82fb1771b99abdecfb0bedf849 == dispatch_sha, branch orca/psv1-lane-btc-h4, clean tree; all work inside .worktrees/phase-strategy-v1/lane-btc-h4.",
+    "Data gate verdict PASS_WITH_DISCLOSURES, retrieval DETERMINISTIC: Binance Vision keyless USDT-M klines, 182 sha256-pinned files (80 monthly 1h 2020-01..2026-08 + 22 daily 1h 2026-09-01..22 tail + 80 monthly 4h shadow), 2019-12 monthly 404 and 2026-09-23 daily 404 probed and documented; data_end 2026-09-22T23:59:59Z; 58,968 1h bars -> 14,742 complete H4 buckets, 0 partial buckets excluded.",
+    "Integrity law PASS: OHLC sanity clean (1h and H4), 0 duplicate timestamps (fail-closed), interior 1h gap fraction 0.0 (0/58,968; longest run 0h vs tolerance 0.05%/4h), zero-volume flagged not dropped (1h: 1, H4: 0).",
+    "Mandatory native-4h shadow: MATCH_EXCEPT_3_DISCLOSED_BUCKETS - 14,607/14,610 buckets exact at 1e-9; 3 disclosed snapshot-revision buckets enumerated (2024-10-28T20:00 open, 2023-11-10T12:00 close+volume, 2022-07-16T04:00 volume); aggregated-from-1h stays the scored representation; nothing smoothed.",
+    "Optional frozen 15m catalog cross-check (digest 81d4f147... re-verified read-only before reading): CATALOG_NOT_CORROBORATIVE_MISMATCH_DISCLOSED - content differs materially from Vision on all 2,189 shared buckets (median hourly-close rel-diff 41 bps, p99 327 bps, 0/8,760 closes match at 1e-6); cause not determinable inside the lane; disclosed, never smoothed.",
+    "PIT disclosure present in every artifact: Vision klines are retrospective exchange snapshots (retrieved 2026-09); bar knowable at close, first executable fill at NEXT H4 open.",
+    "Phase rule frozen BEFORE any history-wide measurement (config.py constants): SMA120 / slope-over-30 quadrants with deadbands 1%/1% and 3-bar confirmation; warmup 153 H4 bars; TRANSITION_UNKNOWN is code-owned by U1-U4 explicit uncertainty conditions, never model abstention; no Jev input anywhere.",
+    "Census (counts/occupancy/dwell/transitions ONLY; no returns/equity/PnL path exists in lane code, enforced by AST hygiene test): UPTREND 94 episodes and DOWNTREND 85 = DATA_SUFFICIENT on immutable 20/3/100 floors (all 4 folds); ACCUMULATION 57 eps / DISTRIBUTION 48 eps fail per-fold decision floors (ACC F4 71<100 margin -29; DIST F1 66, F4 53) = NOT_RUN_THIN_PHASE, slots FLAT; UNKNOWN share 44.7% (F1 34% -> F4 55%). +-1-notch label-agreement table reported 88.8-98.1%, never optimized.",
+    "Exactly ONE proposal (<=1 per data-sufficient phase): PSV1-BTC_H4-UPTREND-DONCHIAN_CONTINUATION - forced covering at 30-bar channel breaks gated by confirmed UPTREND (6-bar hysteresis), long-only, sizing 1.0, min-hold 12 / max-hold 450 bars, 15-bar Donchian structural stop, next-open fills, fold force-flat; 89 trades (16-34 per fold), median hold 23 bars; ceiling PASS_WITHIN_CEILING (20.4 bps/trade at 1.5x vs 100 bps preregistered plausible-edge bound); no-op law structurally zero flicker fills (tested).",
+    "Ancestry self-check (plan 7): measured signal-series rho (daily-sampled, pre-PnL) vs price-reconstructible dead shadows all WITHIN_BAR at bar 0.20 - close_displace_fade -0.017, rev24_leg -0.149, run_imbalance +0.168, amihud_illiq -0.081; OI_level / OI_share_stoch / generic_dvol_shock / pair_spread_trend recorded NOT_MEASURED_WITH_REASON (observables do not exist in this price/volume single-instrument cell; class-distance documented). Not a phase-gated variant of any 7.1 specialist or V2 arm. DOWNTREND carried NO_ELIGIBLE_PROPOSAL with a mechanism-distance argument (every natural book = DOWN_SHORT_BTC / DOWN_FLAT_RISKOFF / dead reversal class).",
+    "Falsification control preregistered before any scored result: phase-shuffled matched control (30-bar block permutation of the UPTREND gate within folds) with Q-11 movement validation (>=50% of candidate entries) and G6 kill law; failure interpretations preregistered.",
+    "Discipline: single commit 8a4275718532b96c3a3a2742960785a79397f90e staged by pathspec (no git add -A), no push/merge/rebase, no registry/ledger/plan writes, no cross-lane reads, forbidden paths never opened (SANDBOX-OVERFIT-3ASSETS, S1, wayfinder MAP/SURVIVORS/HYPOTHESIS_LEDGER/LESSONS, all V2/RSMV1 artifacts, other lanes). Light jobs only (locks inspected FREE_PROVEN before start; nothing exceeded 5 min CPU)."
+  ],
+  "known_limitations": [
+    "Tests path deviation (disclosed): dispatch said 'pytest research/control/phase_strategy_v1/tests_py -q', but the ownership manifest restricts writes to lane_btc_h4/ + the handoff file; tests therefore live at research/control/phase_strategy_v1/lane_btc_h4/tests_py/ and the suite was run against that path (same pytest, 45 passed, exit 0).",
+    "The handoff envelope (this file) is intentionally NOT part of the single lane commit: it records that commit's sha. CLAUDE.md contract language is 'one focused clean commit and a handoff'. Tree state after handoff write: clean except this file (untracked).",
+    "Manifest/gate JSONs embed data_staging local paths for staged zip provenance; raw zip bytes stay out of git via lane-local .gitignore (data_staging/). Manifest-relative local paths remain valid inside the lane worktree.",
+    "Optional 15m-catalog cross-check is non-corroborative; if A1 wants this explained, the catalog's capture pipeline (Nautilus-style parquet, scale 1e9, close-stamped ns timestamps) was decoded and validated structurally (uniform monotonic 15m grid) but its content does not match Vision klines - resolution requires authority outside this lane.",
+    "ACCUMULATION thin margin is decisions-driven (episodes are comfortable): F4 has 71 vs 100 required; if the owner ever re-baselines data_end forward, ACC may cross the floor - floors are immutable this cycle, so this is context only, not a relaxation path.",
+    "Min-hold (12 bars) suppresses ALL exit triggers including the Donchian structural stop inside the first 12 bars of a trade; this risk window is frozen and disclosed in the proposal rather than tuned.",
+    "No historical funding-rate series exists in klines; the frozen flat funding constant 1.377e-5 per 8h (signed by position) is a convention from the dispatch packet, applied identically at all tiers."
+  ],
+  "incidents": [],
+  "tree_status": "clean; branch orca/psv1-lane-btc-h4 at 8a4275718532b96c3a3a2742960785a79397f90e (1 commit ahead of base 6e6ffa3bb1c6ad82fb1771b99abdecfb0bedf849), not pushed; data_staging/ gitignored (raw zips never staged); untracked files after this handoff write: research/control/phase_strategy_v1/handoffs/handoff_btc_h4.json (envelope, by design)",
+  "workers": 0,
+  "outputs": [
+    "research/control/phase_strategy_v1/lane_btc_h4/data/manifest.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/data/data_gate.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/freezes/phase_rule_freeze.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/freezes/era_fold_freeze.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/census/census.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/census/CENSUS.md",
+    "research/control/phase_strategy_v1/lane_btc_h4/proposals/proposals.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/proposals/PROPOSALS.md",
+    "research/control/phase_strategy_v1/lane_btc_h4/proposals/ancestry_selfcheck.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/feasibility/ceiling.json",
+    "research/control/phase_strategy_v1/lane_btc_h4/tests_py/ (45 tests, all passing)"
+  ]
+}
