@@ -24,7 +24,9 @@ re-tuning, no second look, holdout not rescued.
   frozen in `selection_freeze.json` BEFORE any outcome).
 - **After measured costs (k=1.0): 5/48 profitable** (median trial −1,497
   pips — costs dominate this market at 15m granularity).
-- **At stress 1.5×: 4/48 survive; at 2.0×: 1/48 stays positive.**
+- **At stress 1.5×: 4/48 survive; at 2.0×: 3/48 stay positive**
+  (FXOS-04-C4 +204.3, FXOS-10-C3 +371.0, FXOS-10-C4 +26.0 — correction per
+  A7 terminal F4; the terminal commit 11b5f714 text said 1/48, wrong).
 - 1 trial passed all gates → frozen: **FXOS-04-C4** (Bollinger mean
   reversion, N=192×15m, z=2.5): dev +1,203.6 pips, PF 1.1445, 609 trades,
   folds −162/+545/+497, positive even at 2.0× (+204.3).

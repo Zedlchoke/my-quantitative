@@ -1,0 +1,41 @@
+{
+  "schema": "eosv1.a7_terminal@1",
+  "cycle_id": "EURUSD-OPEN-SEARCH-V1",
+  "auditor": "A7 (independent fresh-context; same auditor as prelaunch)",
+  "measured_utc": "2026-09-23T14:52:30Z",
+  "context_fresh": true,
+  "verdict": "CONFIRM_NO_CANDIDATE_NO_VALUE",
+  "terminal_commit": "11b5f71481706b2f390285a6e5a665bb7f8d1984",
+  "prelaunch_lineage": "bd61d200 (freeze) -> bc14cb6d (dev outcomes) -> 6235c615 (A7-F1 fix + prelaunch audit) -> 11b5f714 (terminal)",
+  "checks": [
+    {
+      "id": "T1_holdout_semantics_and_run_count",
+      "result": "PASS",
+      "evidence": "Independent recomputation with the committed engine (sha cc868402... unchanged at terminal) on the holdout plane (ts>=2023-07-01, 59,885 bars): ALL 12 metric blocks in outcomes/holdout_check.json match byte-exact (0 mismatches) - candidate FXOS-04-C4 tiers (k=1.0 net -134.4/PF 0.9816/630 trades/hit 0.5841/maxdd 631.3; k=1.5 -585.15/PF 0.9225; k=2.0 -1035.9/PF 0.8676), LONG_ALWAYS (782 trades: +286.7/-542.1/-1370.9), SHORT_ALWAYS (-1944.3/-2773.1/-3601.9), RANDOM_MATCHED(seed=20260923) (26,565 trades: -8948.6/-19980.6/-31012.6). config_digest 188a2070879d365a recomputed match. run_count=1 in BOTH holdout_check.json and holdout_run_count.json; holdout_bars=59,885 equals the auditor's pre-audit measurement of the same parquet (no bar-count drift between audit and run). Preregistered criteria from candidates_frozen.json: net>0@1.0=False AND net>0@1.5=False -> SUCCESS=False; failure final per plan section 5. Single-run property: prelaunch audit verified outcomes/ contained only 3 files at 14:33:46Z; holdout measured 14:36:04Z (after F1-fix commit 6235c615 at 14:35:54Z, honoring the A7 prelaunch condition); run_count visibility is the governance control and shows no contrary evidence."
+    },
+    {
+      "id": "T2_no_premature_holdout_metrics",
+      "result": "PASS",
+      "evidence": "git log --follow: outcomes/holdout_check.json first exists at 11b5f714. Exhaustive ancestor grep (bc14cb6d, 6235c615, bd61d200, 7761ef1b, ac54f2fc, bf5e8191) over cycle paths for holdout metric strings (-134.4, 585.15/585.1, 1035.9, 0.9816, 8948.6, 286.7, 1944.3, holdout_check.json, holdout_run_count): only source-code filename references inside scripts/holdout_check.py itself (pre-registered code, committed at bc14cb6d, unchanged through terminal). The auditor's own prelaunch artifacts (committed 6235c615, written before the run) contain dates/criteria only, no holdout outcome numbers."
+    },
+    {
+      "id": "T3_cycle_verdict_claims",
+      "result": "PASS_WITH_FINDING_F4",
+      "evidence": "CYCLE_VERDICT.md cross-checked against artifacts verified this session and at prelaunch: 48/96 trials, 5/48 dev-positive@1.0, median -1497 pips (-1496.7), 4/48 survive @1.5 - all match. Candidate dev stats (+1203.6, PF 1.1445, 609 trades, folds -162/+545/+497, +204.3 @2.0) match. Near-miss FXOS-10-C3 G2 0.0081 NOT frozen - matches. Holdout table matches recomputation. Baselines correctly quoted (LONG +286.7@1.0 dies at stress -542.1@1.5; RANDOM -8948.6 cost honesty). Incidents (1) probe 20B-vs-24B layout caught pre-corpus, (2) pandas-3 datetime force-flat fixture catch (engine.py comment), (3) digest hand-typed correction INC-DEU-1 - all previously verified. Data authority: manifest has 3,652 files = 1,826 days x BID/ASK, 0 missing, 2021-01-01..2025-12-31 - '3652/3652 day files' accurate. 'Dev runner loaded only bars < 2023-07-01 (physically)' is true of committed code since 6235c615 (A7-F1 resolved exactly as conditioned; committed diff byte-identical to the version observed at prelaunch). D2 OWNER_WAIVED_EXPLORATORY, S1 SEALED, no orders/paper/live, GO phrase 'GO EURUSD OPEN SEARCH V1 EXPLORATORY SCORED' registered plan section 1 and never consumed (nothing survived to execute) - all consistent. F4: one narrative stat is wrong (see findings)."
+    },
+    {
+      "id": "T4_terminal_enum",
+      "result": "PASS",
+      "evidence": "Plan section 6 terminal enums (exactly one): CANDIDATE_PENDING_PROSPECTIVE_VERIFICATION | NO_CANDIDATE_NO_VALUE | BLOCKED_SOURCE_LICENSE | BLOCKED_COST_AUTHORITY | TECHABORT. Data plane was unblocked (BLOCKED_* inapplicable); no technical abort; the single frozen candidate failed its ONE preregistered holdout so no candidate remains to send to prospective verification -> NO_CANDIDATE_NO_VALUE is the correct enum, and it matches the verdict_if_fail preregistered in candidates_frozen.json BEFORE the holdout opened. Holdout is program-S0 evidence only, never S1."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F4",
+      "severity": "LOW",
+      "title": "CYCLE_VERDICT.md mis-states the k=2.0 dev distribution: claims 'at 2.0x: 1/48 stays positive', record shows 3/48",
+      "detail": "campaign_dev.jsonl recount: FXOS-04-C4 +204.3, FXOS-10-C3 +371.0, FXOS-10-C4 +26.0 are positive at k=2.0 (3 arms, not 1). INC-DEU-1-class narrative inaccuracy in the terminal document. Non-blocking: does not affect any gate, the selection (which ranked by net@1.5), the holdout execution, or the terminal enum - the decisive fact (frozen candidate failed holdout at ALL tiers) is unaffected; if anything the corrected count still supports the 'costs dominate' conclusion. Recommend a one-line correction in the next owner-supervised commit; not a repair the auditor performs (audit-only)."
+    }
+  ],
+  "verdict_rationale": "The holdout check ran exactly once, after the A7 prelaunch condition (F1 fix committed) was honored, on the sealed plane, and every number in holdout_check.json - candidate, all baselines, bar count, digest - reproduces byte-exact from the frozen engine, which is unchanged since the code freeze. No holdout metric existed anywhere in history before the terminal commit. The preregistered SUCCESS criteria (net>0 at k=1.0 AND k=1.5) are not met (-134.4 and -585.15), the pre-registered verdict_if_fail enum applies, and the terminal document is accurate in everything material. CONFIRM_NO_CANDIDATE_NO_VALUE."
+}

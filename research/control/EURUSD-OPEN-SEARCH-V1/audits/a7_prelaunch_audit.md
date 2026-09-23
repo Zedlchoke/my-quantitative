@@ -157,3 +157,39 @@ and boundaries are clean. The single MEDIUM finding is commit hygiene on the dev
 not undermine selection integrity, which is established by recomputation rather than by the
 runner's guard alone. **AUTHORIZED** for the single historical-holdout check under the binding
 conditions above.
+
+---
+
+# A7 TERMINAL CONFIRMATION — 2026-09-23
+
+- Terminal commit audited: `11b5f71481706b2f390285a6e5a665bb7f8d1984`
+- Full evidence: `audits/a7_terminal_verdict.json`
+
+## Verdict: CONFIRM_NO_CANDIDATE_NO_VALUE
+
+1. **Holdout semantics + run_count: PASS.** All 12 metric blocks in
+   `outcomes/holdout_check.json` (candidate 3 tiers + LONG/SHORT/RANDOM baselines 3 tiers each)
+   recomputed byte-exact with the committed engine (sha unchanged since freeze) on the sealed
+   plane (59,885 bars = exactly the count measured at prelaunch). `run_count=1` in both files;
+   the run executed at 14:36:04Z, AFTER the F1-fix commit `6235c615` (14:35:54Z) — the prelaunch
+   condition was honored. Preregistered criteria: net>0 @1.0 False AND @1.5 False → SUCCESS
+   False; failure final, no rescue.
+2. **No leak: PASS.** `holdout_check.json`/`holdout_run_count.json` first exist at `11b5f714`;
+   exhaustive ancestor grep over cycle paths finds no holdout metric anywhere before the
+   terminal commit (only the pre-registered script source itself).
+3. **CYCLE_VERDICT.md claims: PASS (with F4).** 48/96 trials, 5/48 dev-positive, median −1497,
+   4/48 @1.5, candidate dev/holdout stats, baselines, all three incidents, data authority
+   (3,652 manifest files = 1,826 days × BID/ASK, 0 missing), D2 record, S1 SEALED, and
+   GO-phrase-UNCONSUMED all match verified artifacts.
+4. **Terminal enum: PASS.** Plan §6 enums; data unblocked, no tech abort, no surviving
+   candidate → `NO_CANDIDATE_NO_VALUE`, matching the `verdict_if_fail` preregistered in
+   `candidates_frozen.json` before the holdout opened.
+
+## Terminal findings
+
+- **F4 — LOW (non-blocking):** `CYCLE_VERDICT.md` claims "at 2.0×: 1/48 stays positive"; the
+  record shows **3/48** (FXOS-04-C4 +204.3, FXOS-10-C3 +371.0, FXOS-10-C4 +26.0). INC-DEU-1-class
+  narrative inaccuracy; affects no gate, no selection, no holdout, no terminal enum. Recommend a
+  one-line correction in the next owner-supervised commit (auditor performs no repairs).
+
+**Terminal verdict: CONFIRM_NO_CANDIDATE_NO_VALUE.**
