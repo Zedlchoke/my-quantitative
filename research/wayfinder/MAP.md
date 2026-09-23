@@ -24,12 +24,30 @@
   - Incidents recorded: registry row stale 10:21Z→close (Lead-session
     handover mid-P7; adopted-evidence receipt in closeout); prior-session
     close rows landed mixed inside AMIHUD-RETEST close commit 4fc3320c.
-- **BTC-H4-CONTINUATION-V2 OPENED** (owner instruction 2026-09-23):
-  successor cycle investigating the PSV1 BTC_H4 arm's F2/F4 losses vs F1/F3
-  gains; AT MOST ONE pre-registered strategy change with an economic
-  mechanism, else NO_ELIGIBLE_PROPOSAL; everything is POSTHOC S0 DISCOVERY
-  (ceiling `POSTHOC_DISCOVERY_CANDIDATE_FOR_PROSPECTIVE_VALIDATION`); plan
-  `plans/PLAN_btc_h4_continuation_v2.md`; STOP-1 owner gate; no orders.
+- **BTC-H4-CONTINUATION-V2 CLOSED → `BTC_H4_CONTINUATION_V2_NO_ELIGIBLE_PROPOSAL`**
+  (2026-09-23 same-day successor; branch `orca/btc-h4-continuation-v2-integration`
+  terminal c390375e, base af52f358; budget 0/2 — NO scored run, NO candidate
+  PnL ever computed, GO phrase extinguished UNCONSUMED; A7 terminal
+  CONFIRM_WITH_FINDINGS 0 blocking with independent engine recompute
+  rel-err 0.0; S1 SEALED; no orders):
+  - Forensic answer to the owner's question: F2/F4 losses of
+    PSV1-BTC_H4-UPTREND-DONCHIAN_CONTINUATION are GROSS (−41,885/−43,504)
+    — the arm pays breakout premiums in regimes without follow-through
+    (win/loss collapses 3.78/2.45→0.95/0.66; MFE median 8.1%→3.1–3.8% with
+    flat MAE); entries are mechanically identical across folds and NO
+    measured at-entry PIT state separates the regimes (slope20 anti-sorted;
+    SMA200 gate binds 0/86 entry bars). The owner's suspected min-hold
+    culprit is measured INNOCENT (22 suppressed stops; immediate-stop
+    counterfactual WORSE −3,785, F4 −13,066).
+  - Durable assets: per-trade ledger + fold-comparison/min-hold-audit
+    machinery over the frozen engine (reusable for any BTC_H4 arm
+    forensics); third independent reproduction of the PSV1 BTC_H4 arm
+    (day total: 3× byte-exact).
+  - Reopening law: a materially NEW evidenced PIT observable (new data
+    source = own data gate + PIT + license cycle) or an owner plan naming a
+    changed mechanism; closing was judged NOT premature vs the strongest
+    folklore alternative (breakout-strength gate) because any threshold now
+    would be fold-PnL-informed (plan §2).
 
 - **DATA-EDGE-UNLOCK-V1 CLOSED → `DATA_EDGE_UNLOCK_V1_PASS_D2_CONTROL_ONLY__BLOCKED_BROKER_COST_AUTHORITY__WAITING_COVERAGE`** (2026-09-17, branch `orca/data-edge-unlock-v1-integration` terminal 0f6cee90; owner directive 2026-09-17 "mở cycle nền tảng DATA-EDGE-UNLOCK-V1" — three independent data-authority lanes; budget 0/0, 0 scored cells, no GO phrase, S1 SEALED, no orders, denominators unchanged 257/260 P-9; **0 successors opened** — plan §7 exactness: Lane S needed PASS_DIRECT_SIGNAL_AUTHORITY, Lane F needed PASS, Lane C needed PASS_PROSPECTIVE_CONTROL_AUTHORITY):
   - **LANE S → PASS_D2_CONTROL_ONLY** (dossiers s_a3 PIT + s_a2 mechanism + s_a4 hostile critic): FTD PIT evidenced-conservative — settlement date is NEVER availability; FTD_CONSERVATIVE_AVAILABILITY@1 frozen then TIGHTENED to a binding **≥17-calendar-day guard** (A4 refuted the 16d advisory: 'a'-file end-of-month posting overshoots in 31-day months; A7 FND-1 corrected A4's leak share ~46%→~29% — the guard stands as exactly the right fix); F2 per-file posting timestamps / F5 historical CUSIP→entity mapping / F7 PIT denominator authority / N2 EDGAR acceptance datetimes all BLOCKED on network windows (403 class), with the ordered owner upgrade path **F7 > F5 > F2/N2**; M4 denominated forms infeasible, M5 event-conditioned books struck by construction (STOCKS-NG6 vol-state ancestry), M1/M2 FTD-level and M6 N-PORT crowding states usable as a D2 control plane only; direct historical scored use RETROSPECTIVE_ONLY. **NO STOCKS-NG7.**
