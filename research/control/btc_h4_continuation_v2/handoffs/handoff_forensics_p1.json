@@ -1,0 +1,80 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FORENSICS_P1",
+ "cycle_id": "BTC-H4-CONTINUATION-V2",
+ "role": "quant-explorer/forensics",
+ "lane": "P1",
+ "dispatch_sha": "1442a76af565b618e6c6824f0d8b7f08c1a554a0",
+ "actual_start_sha": "1442a76af565b618e6c6824f0d8b7f08c1a554a0",
+ "commit_sha": null,
+ "status": "COMPLETE_RECONCILIATION_PASS",
+ "lock_mode": "LIGHT_EXEMPTION_DISCLOSED",
+ "lock_mode_disclosure": {
+  "sequence": "initial bounded window (4 attempts x 100 s) BLOCKED; resume (A1): yield-attempt snapshot, 2 renewed attempts 90 s apart still HELD_PROVEN; rebuild then ran WITHOUT the lock under plan §8 LIGHT-JOB EXEMPTION with mandatory measurement",
+  "foreign_holder_snapshot": "CRYPTO-HISTORICAL-REPLICATION-3F-V1/data-staging pid 77456, HELD_PROVEN throughout; read-only evidence in forensics/BLOCKED_lock_report.json (yield_attempts)",
+  "resource_measurement": {
+   "method": "resource.getrusage(RUSAGE_SELF) around run_all()",
+   "wall_s": 0.424,
+   "cpu_s": 0.37,
+   "peak_rss_bytes": 121962496,
+   "limits": {"max_cpu_s": 300.0, "max_peak_rss_bytes": 2147483648},
+   "within_light_exemption": true
+  }
+ },
+ "changed_paths": [
+  "research/control/btc_h4_continuation_v2/forensics/forensics_driver.py",
+  "research/control/btc_h4_continuation_v2/forensics/trade_ledger_btc_h4.csv",
+  "research/control/btc_h4_continuation_v2/forensics/trade_ledger_tiers_sidecar.json",
+  "research/control/btc_h4_continuation_v2/forensics/reconciliation.json",
+  "research/control/btc_h4_continuation_v2/forensics/fold_comparison.json",
+  "research/control/btc_h4_continuation_v2/forensics/min_hold_audit.json",
+  "research/control/btc_h4_continuation_v2/forensics/data_receipt.json",
+  "research/control/btc_h4_continuation_v2/forensics/FINDINGS.md",
+  "research/control/btc_h4_continuation_v2/forensics/BLOCKED_lock_report.json",
+  "research/control/btc_h4_continuation_v2/handoffs/handoff_forensics_p1.json"
+ ],
+ "tests": [
+  "RECONCILIATION (hard gate §1.1): PASS — measured vs frozen PSV1 scored_ledger.json AND tiers/tier_{1.0x,1.5x,2.0x}.json, 13 checks per tier (entries 86, exits 86, trades 86, exit_reasons DONCHIAN_STOP 79 / GATE_INACTIVE 7, per-fold nets 0..3, net/gross/fees/funding), max relative error 0.0 at ALL THREE tiers; tier files cross-checked against the ledger (agree)",
+  "measured per-fold nets @1.0x (== targets): F1 +140843.2837184764, F2 -46959.98560513256, F3 +133820.82597620029, F4 -50012.3039298933; net +177691.82015965082; 1.5x +161531.82703744556; 2.0x +146308.4144221541",
+  "instrumented min-hold machine asserted trade-identical to books.l2_run_book output before its counts were used (PASSED)",
+  "identity law: driver imports cells/books/accounting from PSV1 integration worktree verbatim; run_scored.run_scored() NOT called; PSV1 trees read-only (no writes anywhere under research/control/phase_strategy_v1/)",
+  "determinism: two full rebuild runs produced identical reconciliation/fold/audit numbers (only the run-conditional resource measurement block differs)",
+  "data receipt: manifest sha256 == plan pin 3f1a668798c82fbfe7311fadf65a300a583043cdbeba226164bd28c81885b66d; staged scored_h4.parquet sha256 16ce61bb8ef6211ce7c08d7321b42c6fb7e411dd5bdc03ef388cd3474d94abd6; 14589/14742 bars scored after warmup truncation; byte integrity rests on the primary run's 284/284 ingest verification (PASS) of the same staged bytes — no re-download",
+  "anti-overfit compliance: no PnL-conditioned parameter scanning anywhere; k=6 failed-breakout constant a-priori descriptive; immediate-stop counterfactual computed once, reported, never optimized; PIT covariates use bars with close time <= decision time only; no fold exclusion or fold-conditioned logic"
+ ],
+ "authority_claims": [
+  "Rebuild is the predecessor's own record: reconciliation max_rel_err 0.0 at 1.0x/1.5x/2.0x against frozen PSV1 artifacts (schema psv1_scored_ledger@1, arm BTC_H4::PSV1-BTC_H4-UPTREND-DONCHIAN_CONTINUATION)",
+  "Min-hold law measured at lane-btc-h4 pipeline/events.py lines 99-100 (suppresses DONCHIAN_STOP/GATE_INACTIVE/MAX_HOLD while bars_held < MIN_HOLD_BARS=12 from config.py line 127; FOLD_END force-flat NOT suppressed): 22 stop + 13 gate triggers suppressed, 11/86 trades affected, per-trade delays 2..29 bars (median 9); 9/22 suppressed stops fired at <= 6 bars held",
+  "Immediate-stop counterfactual (POST-HOC-DESCRIPTIVE-ONLY): net -3785.069412896526 vs measured (173906.7507467543); per fold F1 +2263.59, F2 +5200.74, F3 +1816.54, F4 -13065.94 — the min-hold was net-protective on this window, so it is NOT the origin of the F2/F4 losses",
+  "Fold split measured (fold_comparison.json): hit rate 52.6%/35.3%/47.1%/31.3%; avg_win +18493/+8470/+15442/+4247 vs avg_loss -4898/-8889/-6292/-6477; gross BEFORE costs is already negative in F2 (-41884.62) and F4 (-43503.90); fees+funding = 12.1%/13.0% of |net| in F2/F4 — costs deepen but do not cause the losing folds",
+  "MFE median falls 8.13% (F1) to 3.1-3.8% (F2/F3/F4) with F1's right tail unique (p75 18.24%); entries are mechanically identical across folds (donchian_rank median 1.00, dd200 ~0, all UPTREND at decision); descriptive BTC per-fold close-to-close: F1 +581.79%, F2 -71.59%, F3 +465.96%, F4 -8.16% (POST-HOC-DESCRIPTIVE context only)",
+  "Observed failed-breakout rate at a-priori k=6: 0/86 in every fold — structural (min-hold 12 > k=6); raw suppressed triggers at <=6 bars: 9 (min_hold_audit.json)"
+ ],
+ "known_limitations": [
+  "lock_mode LIGHT_EXEMPTION_DISCLOSED: the rebuild ran without the machine-wide heavy lock (A1-authorized fallback) after HELD_PROVEN persisted through the original bounded window and 2 renewed attempts; measured 0.424 s wall / 0.370 s CPU / 121962496 bytes peak RSS — far inside the §8 ceilings; a lock-free re-run remains available and would be byte-identical except the resource-measurement block",
+  "post-hoc S0 ceiling: every number is POSTHOC_DISCOVERY, never OOS, never validation; no parameter/threshold recommendation is made anywhere in the deliverables",
+  "undetermined items listed in FINDINGS.md §(c): per-fold UPTREND label quality, any causal fix beyond the single §1.3 counterfactual, F4 representativeness (n=16), intra-bar path reconstruction, cost-model realism",
+  "trade MFE/MAE conventions documented in trade_ledger_tiers_sidecar.json (window excludes the exit bar for open-class exits; USD uses equity at entry, fraction 1.0)"
+ ],
+ "incidents": [
+  {
+   "kind": "RESOURCE_CONFLICT_RESOLVED_VIA_DISCLOSED_LIGHT_EXEMPTION",
+   "detail": "Machine-wide heavy lock HELD_PROVEN by CRYPTO-HISTORICAL-REPLICATION-3F-V1/data-staging pid 77456 through the original bounded window (4 attempts) and 2 renewed attempts 90 s apart; rebuild then executed under plan §8 light-job exemption with mandatory measurement and disclosure (see lock_mode_disclosure); no interaction with the foreign worker; read-only snapshots in BLOCKED_lock_report.json",
+   "evidence": "research/control/btc_h4_continuation_v2/forensics/BLOCKED_lock_report.json"
+  }
+ ],
+ "tree_status": "HEAD 1442a76af565b618e6c6824f0d8b7f08c1a554a0 (== dispatch sha); porcelain: untracked research/control/btc_h4_continuation_v2/forensics/ (9 files) and handoffs/handoff_forensics_p1.json only; no commits, no PSV1 writes, no other paths touched",
+ "workers": 0,
+ "outputs": [
+  "research/control/btc_h4_continuation_v2/forensics/trade_ledger_btc_h4.csv",
+  "research/control/btc_h4_continuation_v2/forensics/trade_ledger_tiers_sidecar.json",
+  "research/control/btc_h4_continuation_v2/forensics/reconciliation.json",
+  "research/control/btc_h4_continuation_v2/forensics/fold_comparison.json",
+  "research/control/btc_h4_continuation_v2/forensics/min_hold_audit.json",
+  "research/control/btc_h4_continuation_v2/forensics/data_receipt.json",
+  "research/control/btc_h4_continuation_v2/forensics/FINDINGS.md",
+  "research/control/btc_h4_continuation_v2/forensics/BLOCKED_lock_report.json",
+  "research/control/btc_h4_continuation_v2/forensics/forensics_driver.py",
+  "research/control/btc_h4_continuation_v2/handoffs/handoff_forensics_p1.json"
+ ]
+}
