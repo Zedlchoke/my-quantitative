@@ -1,0 +1,202 @@
+{
+  "schema": "a7_plan_audit/stocks_amihud_v1@2",
+  "audited_at_utc": "2026-09-23T05:27:14Z",
+  "auditor": "A7-fresh-context-r2",
+  "subject": {
+    "plan_path": "plans/PLAN_stocks_amihud_v1.md",
+    "plan_sha256": "aedac12bda547e79e9c449a35502bbe38a4269b32fa05b9cfa27510d8243f243",
+    "base_main_commit": "44513e71a1d1663afa929a199447a581fb63341e",
+    "worktree_head": "05f4f4fcfa61e9554eae90ddffd8b31d2aa80b0b",
+    "worktree_path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-amihud-v1/integration",
+    "branch": "orca/stocks-amihud-v1-integration",
+    "identity_verification": "git show 44513e71:plans/PLAN_stocks_amihud_v1.md vs worktree copy: diff empty, shasum -a 256 identical (aedac12bd...243) — amended plan audited is byte-identical to main commit 44513e71. Worktree porcelain: untracked audit/handoff artifacts only (r1 outputs)."
+  },
+  "remediation_table": [
+    {
+      "finding_id": "H-1",
+      "verdict": "REMEDIATED",
+      "evidence": "Sec3 weights law now fully pinned: 'book members (top-quintile names actually held) get equal target weight 1/N_book, capped by the §4 F6 participation law: w_i = min(1/N_book, 0.15 * DVmed60_i / AUM_ref) with reference AUM_ref = $1,000,000 FROZEN; weight released by a cap goes to CASH (zero return), never redistributed (redistribution could re-violate caps). Capacity number (reported, not tuned): the book AUM at which the binding member first hits its cap.' Membership is pinned to a defined quantity: 'top quintile of ILLIQ among eligible names at t, by RANK-COUNT (no interpolation): sort eligible names by ILLIQ descending, book size N_book = min(ceil(0.20 * N_eligible), N_eligible); ties in ILLIQ broken by ticker lexicographic order (stable, deterministic).' The dangling 'cap law sec5' cross-reference is gone — the cap law is now cited at its true home §4 F6. One residual arithmetic slip introduced by the amendment is filed as new finding N-2 (the '(equivalently N_eligible >= 50)' parenthetical); the operative clause itself is unambiguous."
+    },
+    {
+      "finding_id": "H-2",
+      "verdict": "REMEDIATED",
+      "evidence": "Sec3 now freezes a death contract: 'if a HELD name's served series ends before its scheduled exit (next rebalance t+21 or fold boundary), the position is closed and marked at that name's FINAL served bar close — the last price at which the name is evidenced to have traded under this channel; no forward fill, no synthetic bar, no invented delisting haircut (none is evidenced). Such exits are counted in the BC-7a death census and their PnL contribution is reported separately in §9 attribution.' Backed by golden test 'mid-fold death contract fixture (held name's series ends => final-served-close mark, counted, attributed)' (§8) and §9 disclosure. Interaction with fold force-flat is coherent: death contract governs ends BEFORE the scheduled exit; names whose final served bar coincides with the fold boundary close under force-flat. Cost treatment is pinned by F6's letter ('Cost is debited exactly once per fill') — a death exit has no fill (no t+1 open print exists) so no cost is debited; consistent with 'no invented delisting haircut'."
+    },
+    {
+      "finding_id": "H-3",
+      "verdict": "REMEDIATED",
+      "evidence": "F3b rewritten to match its own title: 'EVERY division in this cycle — anchor, neighbour, reversal control, matched book, benchmarks, census and reporting code, no exceptions — belongs to one of three registered classes': (i) price denominators ('must be > 0 and finite, else the name-day is excluded'), (ii) DOLLAR-VOLUME denominators explicitly naming the Amihud term ('DV must be > 0 and finite, else the name-day is excluded from the formation mean'), (iii) count/PnL-sum denominators ('a zero denominator FAILS LOUD (TECHABORT), never silently returns 0'). Exclusions counted in a fail-closed guard_counter; D1 commits division_site_register.json ('a division site found outside the register = HIGH'); 'a raised ZeroDivisionError or inf/nan reaching any computed number = TECHABORT, never a silent fill or imputation'. §8 negative tests now inject 'DV==0 dollar-volume fixtures AND zero-count denominators into anchor, neighbour, CONTROL, matched-book and benchmark paths' with per-class expectations, plus a register-completeness test ('a fixture-built unregistered site must be caught'). The un-enumerated-division-site class that killed STOCKS-SEARCH-V1 (registry phase TECHABORT_3, re-verified in CYCLE_REGISTRY.json) is closed. Residual taxonomy note filed as LOW N-4."
+    },
+    {
+      "finding_id": "H-4",
+      "verdict": "REMEDIATED",
+      "evidence": "F6 pins the band classifier to a defined statistic, window and instant: 'frozen band schedule BAND_BPS = {A:10, B:15, C:25} bps/fill on the per-name ADV-band statistic DVmed60_i (the SAME trailing 60-session median dollar volume used for eligibility), evaluated at the fill's decision date t: DVmed60 >= $50M => A 10 bps; >= $10M => B 15 bps; >= $2M => C 25 bps (names below $2M cannot be held — eligibility floor).' The bogus RULES §9 lineage is dropped and replaced honestly: 'Numeric precedent: STOCKS-SEARCH-V1 F6 values, restated as THIS cycle's own frozen schedule (no external kernel file is cited — none is pinned in this tree).' Classifier is internally coherent with eligibility (same statistic, same decision date t => every holdable name carries a band; no unbandable hold exists)."
+    },
+    {
+      "finding_id": "M-1",
+      "verdict": "REMEDIATED_WITH_CAVEAT — pushback UPHELD on its own claim, residual recorded as N-3",
+      "evidence": "Two of three families added to §2 and to the D2 shadow list (§6): 'SFV3-A5 idio-shock reversal; V2-A5 trend-defensive rotation' — independently verified in HYPOTHESIS_LEDGER.md §C (line 81: V3 SFV3-A5-IDIO-SHOCK-REVERSAL, REJECT expectancy −0.00296; line 80: V2 A5-SFV2-TREND-DEFENSIVE, INCOMPLETE_NOT_PROMOTABLE MDD 23.22%) and FAMILY_FAILURES.jsonl lines 17-18. PUSHBACK ADJUDICATION: I independently re-grepped the ledger. The claim 'the ledger carries no such family (V13 scored only SFV13-A6-P1 dividend-policy transition; all A6-P2 rows are crypto/forex)' is TRUE: the STOCKS-FREE-V13 row (HYPOTHESIS_LEDGER.md line 195) carries only SFV13-A6-P1; every A6-P2 ledger row is crypto (V15 line 56, V17 line 58) or forex (FXFV6 line 137, FXFV7 line 140). R1's characterization of SFV13-A6-P2 as 'scored' was wrong — the row r1 cited (FAMILY_FAILURES.jsonl line 75) is verdict_class SELECTION_REJECTION with '0/15 vetoes measured => fail-closed per the frozen rule; control unidentifiable', i.e. never scored (0 cells). CAVEAT (N-3, LOW): that FAMILY_FAILURES.jsonl:75 row does exist and is asset=stocks split-direction; the amended pushback text does not acknowledge it, and shadow_inventory.json (D1) should record an explicit membership decision (long-only split-state shadow, or exclusion rationale on record)."
+    },
+    {
+      "finding_id": "M-2",
+      "verdict": "REMEDIATED",
+      "evidence": "Sec2 now records the reading verbatim as requested: 'Standing stocks-frontier law (STOCKS-NG6 terminal): reopening needs \"a materially new evidenced source or an owner plan naming a changed killer.\" The LITERAL clause says \"changed killer\"; this cycle invokes the owner's explicit 2026-09-23 instruction opening a NEW family ... an owner plan that names a new family is the stronger form of the same reserved owner-authority branch (a new family has no killer yet to change), and the owner instruction is quoted in the header. A7 adjudicated this reading lawful (r1 checklist A PASS); it is recorded here verbatim so no later reader mistakes it for a data claim.' Registry re-verified: STOCKS-AMIHUD-V1 lifecycle PLANNED_NOT_STARTED, budget 0/3, go_phrase_state REGISTERED_NOT_CONSUMED, S1 SEALED_UNTOUCHED."
+    },
+    {
+      "finding_id": "M-3",
+      "verdict": "REMEDIATED",
+      "evidence": "Sec3 freezes a per-date bookability floor: 'a scheduled rebalance date is bookable iff N_book >= 10 (equivalently N_eligible >= 50); if not, the book force-flattens at t+1 open and stays flat until the next bookable date (event counted, never silently held)' — non-bookable dates are counted, never silently held, answering the empty/degenerate-date question. F8 is strengthened to a two-part floor: '>= 30 executed position entries AND >= 6 bookable rebalance dates per fold; 2019, 2020 and 2020-03 never share a fold with any other period.' Feasibility checked: 21-session cadence over a 252-session fold yields ~12 scheduled dates, so >= 6 bookable dates is attainable; entries >= 30 is consistent with N_book >= 10. Golden test added: 'bookability floor fixture (N_book < 10 => flat, counted)' (§8). Residual: the parenthetical equivalence is arithmetically wrong — new finding N-2."
+    },
+    {
+      "finding_id": "L-1",
+      "verdict": "REMEDIATED",
+      "evidence": "Sec3: 'by RANK-COUNT (no interpolation): sort eligible names by ILLIQ descending, book size N_book = min(ceil(0.20 * N_eligible), N_eligible); ties in ILLIQ broken by ticker lexicographic order (stable, deterministic). Winsorization: NONE anywhere (ranks only, equal weights) — stated so that absence is not read as freedom.' (The min() with N_eligible is redundant since ceil(0.2*N) <= N for all N >= 1 — harmless defensive wording.)"
+    },
+    {
+      "finding_id": "L-2",
+      "verdict": "REMEDIATED",
+      "evidence": "F7: 'C-RANDOM-TIMING clock twin (deterministic: PCG64/seed 20260923, 200 random rebalance calendars over the same fold span, statistics reported as distribution; seed frozen here)'. Seed, generator, sample count and reporting shape all pinned."
+    },
+    {
+      "finding_id": "L-3",
+      "verdict": "REMEDIATED",
+      "evidence": "Sec9 adds the disclosure: 'the formation law's gap-halt interaction (a return spanning a multi-session halt enters the ILLIQ mean as one observation and can inflate ILLIQ for gappy names — F4 gap census cross-tabulated against book membership)'. Deterministic law unchanged; honesty chain completed."
+    }
+  ],
+  "checklist": [
+    {
+      "item": "A",
+      "title": "Reopening legality",
+      "verdict": "PASS_WITH_NOTE",
+      "evidence": "Unchanged from r1 and improved: registry re-verified today — STOCKS-AMIHUD-V1 PLANNED_NOT_STARTED, budget 0/3, go_phrase REGISTERED_NOT_CONSUMED, S1 SEALED_UNTOUCHED (phase 'P_PLAN_AUDIT'); STOCKS-SEARCH-V1 BLOCKED, TECHABORT_3, go_phrase REGISTERED_NOT_CONSUMED. The M-2 generous-reading clause is now recorded verbatim in §2 with its owner-instruction foundation, removing the risk r1 flagged of it being cited as derived-law precedent."
+    },
+    {
+      "item": "B",
+      "title": "Ancestry completeness",
+      "verdict": "PASS_WITH_FINDINGS",
+      "evidence": "Inventory now includes SFV3-A5 idio-shock reversal (ledger line 81, REJECT) and V2-A5 trend-defensive (ledger line 80, INCOMPLETE_NOT_PROMOTABLE), both independently verified as stocks rows; §6 D2 shadow list enumerates them ('idio-shock-reversal (SFV3-A5), trend-defensive (V2-A5), dividend-transition where constructible'). The third r1 item is pushed back and the pushback's ledger claim verified TRUE (see M-1). Residual N-3 (LOW): FAMILY_FAILURES.jsonl:75 SFV13-A6-P2 (stocks, split-direction, SELECTION_REJECTION never scored) is unacknowledged; D1 shadow_inventory.json should record its membership decision explicitly."
+    },
+    {
+      "item": "C",
+      "title": "Freeze completeness",
+      "verdict": "PASS_WITH_FINDINGS",
+      "evidence": "All four r1 HIGH freeze gaps closed: weight law (H-1), death contract (H-2), division-site register (H-3), band classifier (H-4) are now singular and pinned; ties, winsorization (NONE), bookability floor, twin seed added. Remaining defects are amendment-introduced and bounded: N-2 (MEDIUM) — the bookability parenthetical '(equivalently N_eligible >= 50)' is arithmetically wrong (ceil(0.2*N) >= 10 iff N >= 46); the operative clause 'bookable iff N_book >= 10' and the §8 fixture anchor N_book are unambiguous, but family_contract.json commits §3 verbatim so the parenthetical must be corrected BEFORE the D1 freeze. N-1 (LOW) cap-inertness disclosure; N-4 (LOW) F3b taxonomy exhaustiveness. Death-exit cost is adequately pinned by F6's 'exactly once per fill' letter (no fill exists on a death exit)."
+    },
+    {
+      "item": "D",
+      "title": "Fold law",
+      "verdict": "PASS",
+      "evidence": "Sec3 unchanged: F1=CY2019, F2=CY2020 (2020-03 alone), F3=CY2021–2022 with 2021/2022 also reported separately; 'Fold boundaries frozen at P0-F8 BEFORE any PnL, never moved afterwards'; 'If any post-PnL change to formula, direction, lookback, calendar, book, eligibility, folds or costs is proposed: that is a NEW plan and a NEW cycle.' F8 two-part floor (>= 30 entries AND >= 6 bookable dates, measured at census, fail-closed kill) is coherent and feasible (12 scheduled dates per 252-session fold at 21-session cadence). Death contract (H-2) composes correctly with force-flat: contract governs ends strictly before the scheduled exit; boundary-coincident ends close under force-flat."
+    },
+    {
+      "item": "E",
+      "title": "Data gate adequacy F1-F9",
+      "verdict": "PASS",
+      "evidence": "F3a split fixture unchanged (four canaries, DV pair fixed in dollar_volume_contract.json pre-signal, mixed pair = hard fail, undecidable => BLOCKED_DATA). F3b now covers EVERY division site in three registered classes including DV==0 explicitly, with fail-closed guard_counter, D1 division_site_register.json, unregistered-site=HIGH, and TECHABORT on any inf/nan reaching a computed number — the STOCKS-SEARCH-V1 TECHABORT_3 class is structurally closed. §8 negative fixtures now cover all three classes across all five code paths plus register completeness. F4/F5/F9 unchanged from r1 (PIT death-inclusive cohort, no-lookahead clock, reproducibility)."
+    },
+    {
+      "item": "F",
+      "title": "Costs and capacity",
+      "verdict": "PASS_WITH_FINDINGS",
+      "evidence": "BAND_BPS {A:10,B:15,C:25} on DVmed60 at decision date t — same statistic as eligibility, so bands and the $2M floor are mutually coherent (no unbandable hold, no below-floor hold). STRESS 2.0 PRIMARY and the 100 bps round-trip ceiling unchanged; band-C fraction on the FIRED population; cost once per fill; costs locked post-PnL (§3 closing). Participation cap + capacity reporting present (§3, F6). Finding N-1 (LOW): the cap is provably inert at AUM_ref=$1M — cap term = 0.15*DVmed60/1e6 >= 0.30 at the $2M floor, versus 1/N_book <= 0.10 given N_book >= 10 — so scored weights are exactly 1/N_book and the capacity number (N_book * 0.15 * min DVmed60, >= ~$3M at the floor) is the honest headline; §9 should state explicitly that the cap does not bind in the scored run so the capacity report is not misread as an active constraint."
+    },
+    {
+      "item": "G",
+      "title": "Controls and benchmarks",
+      "verdict": "PASS",
+      "evidence": "SPY exposure-matched, C-RANDOM-TIMING twin now deterministic (PCG64 seed 20260923, 200 calendars, distribution reported), matched-characteristic book (DV tercile, vol tercile, price tier) on the same clock, reversal control with Q-11 adjudication (>= 0.5x same-sign in >= 2/3 folds => falsification). UNMEASURABLE declarations unchanged and evidenced (fundamentals 403 / NG3; sector not derivable from /eod); size control on DV proxy disclosed fail-closed."
+    },
+    {
+      "item": "H",
+      "title": "Trial accounting",
+      "verdict": "PASS",
+      "evidence": "Unchanged: 3 named cells (SAMV1-ANCHOR-ILLIQ21 / SAMV1-NEIGH-ILLIQ63 / SAMV1-C-REVERSAL5), budget 3/3, slots never reassigned, observed vs published denominators separate (P-9), benchmarks are context not scored cells; §8 exactly-three-cell enforcement retained."
+    },
+    {
+      "item": "I",
+      "title": "Long-only boundary",
+      "verdict": "PASS",
+      "evidence": "Unchanged: direction LONG the most illiquid quintile, 'frozen; never flipped after seeing PnL'; §9 'long-short claims: NONE — long-only only, and any discussion of short legs is explicitly forbidden as unevidenced'. (Note: the pushed-back SFV13-A6-P2 family was a long/short split-state book — one more reason its long-only projection, if used, must be defined explicitly at D1; see N-3.)"
+    },
+    {
+      "item": "J",
+      "title": "GO/launch law",
+      "verdict": "PASS",
+      "evidence": "Unchanged: §7 GATE 'Owner GO must be typed AFTER this gate exists, fresh, exact-phrase; this plan and the registering instruction are NOT a GO (P-8)'; §11 exact phrase 'GO STOCKS AMIHUD V1 SCORED EXECUTION', 'early or malformed GO is intent only and dies unconsumed'; spend/S1/orders require separate owner instruction. Two-key law intact."
+    },
+    {
+      "item": "K",
+      "title": "S1/sealed/boundaries",
+      "verdict": "PASS",
+      "evidence": "Unchanged: S1 SEALED_UNTOUCHED, orders NONE, data spend NONE under existing entitlement, key never echoed; boundaries inherited verbatim; SANDBOX-OVERFIT-3ASSETS prohibition; PROSPECTIVE-SHADOW-V1 untouched; heavy lock never contended. Registry confirms S1 SEALED_UNTOUCHED for this cycle."
+    },
+    {
+      "item": "L",
+      "title": "Terminal vocabulary and honest-report clause",
+      "verdict": "PASS",
+      "evidence": "Unchanged: fixed vocabulary with REJECT_ALL and BLOCKED_DATA_OR_SELECTION as valid terminals; §0 'A P0/D2 close with zero scored cells is a valid result'; §9 honesty clause 'No threshold, fold, cost or eligibility change to save the strategy'; L-3 gap-halt disclosure now in §9."
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "N-1",
+      "severity": "LOW",
+      "title": "Participation cap is provably inert at the frozen reference AUM; scored weights are exactly 1/N_book",
+      "detail": "For any bookable book, cap term = 0.15 * DVmed60 / 1,000,000 >= 0.30 (eligibility floor DVmed60 >= $2M), while 1/N_book <= 0.10 (bookability floor N_book >= 10). Therefore min(1/N_book, cap term) = 1/N_book for every legal name at every date: the cap can never bind in the scored run. The capacity number is still well-defined (AUM where the binding member first binds = N_book * 0.15 * min DVmed60, >= ~$3M at the floor) and is reported 'not tuned'. Remediation is a disclosure sentence: §9 should state that the cap does not bind at AUM_ref=$1M in the scored run, so the capacity report is not read as an active constraint and the frozen cap law is not mistaken for a scored-number input.",
+      "blocking": false
+    },
+    {
+      "id": "N-2",
+      "severity": "MEDIUM",
+      "title": "Bookability parenthetical '(equivalently N_eligible >= 50)' is arithmetically wrong; correct equivalence is N_eligible >= 46",
+      "detail": "Sec3: 'bookable iff N_book >= 10 (equivalently N_eligible >= 50)'. With N_book = ceil(0.20 * N_eligible): N_eligible = 45 gives N_book = 9 (not bookable); N_eligible in {46..49} gives N_book = 10 (bookable). So the exact equivalence is N_eligible >= 46, not >= 50. A decision date with N_eligible in {46..49} is bookable under the operative clause but flat under the gloss — a scored-number difference if an implementer codes the parenthetical. The operative clause ('bookable iff N_book >= 10') and the §8 golden fixture ('N_book < 10 => flat, counted') are unambiguous and agree, so this does not rise to HIGH; but family_contract.json commits §3 verbatim at D1, so the parenthetical must be corrected (to 'N_eligible >= 46' or deleted) BEFORE the D1 freeze. Binding into D1.",
+      "blocking": false
+    },
+    {
+      "id": "N-3",
+      "severity": "LOW",
+      "title": "Pushback text omits the FAMILY_FAILURES.jsonl:75 stocks split-direction row; shadow_inventory.json should record its membership decision explicitly",
+      "detail": "The pushback's ledger claim is verified TRUE (ledger V13 row carries only SFV13-A6-P1; all ledger A6-P2 rows are crypto/forex; SFV13-A6-P2 was SELECTION_REJECTION, '0/15 vetoes measured => fail-closed', never scored). However the registry row the r1 finding cited does exist: FAMILY_FAILURES.jsonl line 75, cycle STOCKS-FREE-V13, asset stocks, family_id SFV13-A6-P2, 'Split direction is a two-faced slow signal: long forward-split states, short reverse-split states'. The amended §2 does not acknowledge it. shadow_inventory.json (D1) inherits §2, so the honest close is an explicit recorded decision at D1: either add a long-only forward-split-state shadow (constructible — splits are observable on this substrate, and F3a itself measures split behavior) or record the exclusion rationale (selection-rejected without a scored decision series; long/short construction has no long-only projection defined).",
+      "blocking": false
+    },
+    {
+      "id": "N-4",
+      "severity": "LOW",
+      "title": "F3b three-class taxonomy is not literally exhaustive over conceivable division sites (second-moment denominators)",
+      "detail": "Classes are (i) price, (ii) dollar-volume, (iii) count/PnL-sum. A variance/second-moment denominator (e.g. beta = cov/var(SPY) in the vol/beta attribution, or any realized-vol ratio) fits none of the three literally. The operative catch-alls still close the structural hole — 'EVERY division ... no exceptions', 'a division site found outside the register = HIGH', and the §8 register-completeness fixture ('a fixture-built unregistered site must be caught') — so an unregistered site cannot pass silently; but D1's division_site_register.json must assign every site a class, so the plan (or D1) should state how a second-moment denominator is housed (recommended: fail-loud under the class-iii convention). Non-blocking; binding at D1 register construction.",
+      "blocking": false
+    }
+  ],
+  "carried_findings": [],
+  "verdict": "AUTHORIZED_WITH_FINDINGS",
+  "verdict_rationale": "All four r1 HIGH findings are remediated in amended plan text (verified byte-identical between main 44513e71 and the worktree copy): H-1 weight/membership/bookability law pinned with the cap-law cross-reference corrected; H-2 mid-fold death contract frozen (final-served-close mark, counted, attributed, golden-tested); H-3 F3b now covers EVERY division site in three registered classes with DV==0 named, a fail-closed guard_counter, a D1 division_site_register.json and per-class negative fixtures — closing the un-enumerated-division-site class that killed STOCKS-SEARCH-V1; H-4 band classifier pinned to DVmed60 at decision date t (the same statistic as eligibility) with the bogus lineage honestly dropped. All three MEDIUM and all three LOW findings are remediated; M-1's third item is pushed back and the pushback's ledger claim is independently verified TRUE (SFV13-A6-P2 was never scored; the ledger's V13 row carries only SFV13-A6-P1; all A6-P2 ledger rows are crypto/forex), with a residual LOW (N-3) because the FAMILY_FAILURES.jsonl:75 stocks row is unacknowledged. No original finding remains open (carried_findings empty); the amendment introduced four new bounded defects: N-2 (MEDIUM, binding into D1 — arithmetically wrong bookability parenthetical '>= 50' should be '>= 46'; operative clause and golden fixture are unambiguous) and N-1/N-3/N-4 (LOW disclosure/register-completeness items). With zero unresolved HIGH, the verdict rules give AUTHORIZED_WITH_FINDINGS; the MEDIUM carries as a binding pre-D1 correction and the LOWs bind into D1 artifacts (shadow_inventory.json, division_site_register.json, §9 disclosures). This audit adjudicates the PLAN only; no implementation, data pull, or scored outcome exists anywhere, and no file outside the two audit artifacts was touched.",
+  "amendment_a2_verification": [
+    {
+      "finding_id": "N-2",
+      "verdict": "REMEDIATED",
+      "note": "A2 diff (15d3f470, hunk @§3): '(equivalently N_eligible >= 50)' replaced by '(ceil(0.20*N_eligible) >= 10, i.e. N_eligible >= 46)'. Arithmetic re-verified exact: ceil(0.2*45)=9 (not bookable), ceil(0.2*46)=10 (bookable); the gloss now restates the operative inequality with the correct equivalence. Operative clause, gloss and the §8 golden fixture (N_book < 10 => flat) are now mutually consistent; family_contract.json can commit §3 verbatim at D1 without carrying the contradiction."
+    },
+    {
+      "finding_id": "N-1",
+      "verdict": "REMEDIATED",
+      "note": "A2 diff (hunk @§9): 'PARTICIPATION-CAP INERTNESS DISCLOSURE (A7 r2 N-1): at the frozen AUM_ref $1,000,000 the cap term 0.15*DVmed60_i/AUM_ref >= 0.15*$2M/$1M = 0.30 for every legal name while 1/N_book <= 0.10 for N_book >= 10 — the cap cannot bind at the reference AUM; it exists to make the CAPACITY number ... explicit, and §9 reports that number rather than implying the cap distorted weights at AUM_ref.' Arithmetic matches the r2 finding exactly (0.30 vs 0.10); the disclosure states non-bindingness and redirects the reader to the capacity number. Exactly the requested remediation."
+    },
+    {
+      "finding_id": "N-3",
+      "verdict": "REMEDIATED",
+      "note": "A2 diff (hunk @§6): 'shadow_inventory.json also RECORDS (A7 r2 N-3) the membership decision for every borderline ancestor — including SFV13-A6-P2 (FAMILY_FAILURES row: SELECTION_REJECTION, never scored; IN or OUT of the rho panel, with the reason) — so no ancestor is silently dropped.' The registry row r1/r2 flagged is now acknowledged in the plan text and the D1 artifact is required to carry an explicit IN/OUT decision with reason for every borderline ancestor."
+    },
+    {
+      "finding_id": "N-4",
+      "verdict": "REMEDIATED",
+      "note": "A2 diff (hunk @§4 F3b): adds class '(iv) STATISTICAL denominators (realized-vol session counts, variance degrees of freedom): a zero or negative denominator FAILS LOUD (TECHABORT), never silently returns 0', folding into the existing guard_counter/register/TECHABORT machinery. Second-moment and other statistical denominators (e.g. beta's var(SPY)) now have a legal home in the D1 division_site_register.json with a defined fail-loud guard; the §8 register-completeness fixture still catches any unregistered site. Scope note: class (iv) names counts/degrees-of-freedom examples; a zero variance value also fails loud under the class's 'zero or negative' rule, so the taxonomy is now exhaustive in substance."
+    }
+  ],
+  "amendment_a2_meta": {
+    "commit": "15d3f4709aafb3281df8c1fe0bdd185fa39e4a4d",
+    "diff_verified": "git show 15d3f470 -- plans/PLAN_stocks_amihud_v1.md: 4 hunks, 19 insertions / 3 deletions, one file — no changes outside the four remediation sites",
+    "worktree_plan_sync": "worktree copy plans/PLAN_stocks_amihud_v1.md sha256 5486c76ca6a77e1f83e2e2f30287371a2f10e62fb27ba9da836add226429bb63 — identical to git show 15d3f470:plans/PLAN_stocks_amihud_v1.md (byte-identical)",
+    "verified_at_utc": "2026-09-23T05:31:00Z",
+    "overall": "ALL FOUR CARRY ITEMS REMEDIATED — no new defects introduced by A2; r2 verdict AUTHORIZED_WITH_FINDINGS stands with carry list now clear"
+  }
+}
