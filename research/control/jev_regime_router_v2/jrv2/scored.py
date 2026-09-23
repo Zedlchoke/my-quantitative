@@ -101,7 +101,7 @@ def run_scored(fz, cells: list[str], out_root: pathlib.Path) -> dict:
     }
 
     for cell in cells:
-        exec_bars, regime_bars, period = _load_cell_full(fz, cell)
+        exec_bars, regime_bars, period, _ = _load_cell_full(fz, cell)
         feats = RegimeFeatures(regime_bars)
         dec_path = out_root.parent / "replay" / cell / f"decisions_{cell}.jsonl"
         store = DecisionStore.load(dec_path)
