@@ -1,0 +1,50 @@
+{
+  "schema": "psv1_evaluation_freeze@1",
+  "cycle_id": "PHASE-STRATEGY-V1",
+  "frozen_by": "A1 controller at P4, BEFORE any PnL exists and BEFORE A7 prelaunch",
+  "cells": ["BTC_H1", "BTC_H4", "SPY_D1"],
+  "windows": {
+    "BTC_H1": "2020-01-01T00:00Z -> last complete hour of retrieved data (58,968 hourly bars; data_end per L1 manifest)",
+    "BTC_H4": "2020-01-01 -> data end (14,742 complete H4 buckets; aggregated from the same 1h Vision series; L2 manifest)",
+    "SPY_D1": "2015-01-02 -> 2026-09-16, 2,943 sessions, frozen snapshot sha 3fd229f9...; post-warmup from 2015-11-13 (L3)"
+  },
+  "eras": {
+    "BTC_H1|BTC_H4": ["ERA-B1 2020-01-01..2021-04-30", "ERA-B2 2021-05-01..2022-12-31", "ERA-B3 2023-01-01..2024-12-31", "ERA-B4 2025-01-01..data_end"],
+    "SPY_D1": ["ERA-S1 ..2018-12-31", "ERA-S2 2019-01-02..2020-12-31", "ERA-S3 2021-01-04..2022-12-30", "ERA-S4 2023-01-03..2026-09-16"]
+  },
+  "folds": "exact per-cell boundaries are FROZEN in each lane's era_fold_freeze.json (paths in eligible_candidates_freeze.json lane_refs); 4 contiguous outer folds per cell, fold ends force-flat, era-aligned; folds are NOT re-derived at scoring time",
+  "phase_labels": "per-cell frozen PIT rules only (lane phase_rule_freeze.json); Jev labels never read; decision at bar/session close, first executable fill at next bar/open; warmup excluded everywhere",
+  "arms": {
+    "candidates": "the 4 arms in eligible_candidates_freeze.json — each trades ONLY while its frozen phase state is active on its cell, else FLAT",
+    "baselines_reference_not_budget": {
+      "CASH": "flat everywhere, 0 by construction",
+      "ALWAYS_ON_LONG": "long from first post-warmup bar to window end, re-entered at each fold start; BTC perp long, SPY long",
+      "ALWAYS_ON_TREND_LF": "long iff close > SMA200 of the cell clock (200xH1, 200xH4, 200 sessions), else flat",
+      "SPARSE_RISK_OFF": "long unless trailing drawdown from running window high > 30% (BTC) / > 20% (SPY); re-entry when drawdown <= 10%; min-hold 5 bars; round frozen constants"
+    },
+    "controls": "each candidate's ONE preregistered falsification control, semantics exactly as frozen in its proposal (phase-shuffled matched with movement validation / clock-only / neighbour); control out-earning the candidate = kill (G6); invalid control null = disclosed, gates rest on G1-G5"
+  },
+  "costs": {
+    "BTC_H1|BTC_H4": "taker 5 bps/side + slippage 1 bps/side (6 bps/side; 12 bps round trip); funding 1.377e-5 per 8h signed by position (perp)",
+    "SPY_D1": "10 bps per fill long-only (20 bps round trip); no financing",
+    "tiers": "1.0x / 1.5x / 2.0x multiplier on the FULL cost stack (fees+slippage+funding); zero-cost variants diagnostic-only, never support a PASS"
+  },
+  "churn_law": "candidates inherit their frozen min-dwell + no-op law; unnecessary_close_reopen must be structurally zero (counter reported); candidate FAILS the cell if its position-switch count implies churn not bounded by its frozen law",
+  "spy_calendar_gate": "plan §10 regressions (weekday-rotation invariance + Tuesday test) RE-RUN at integration (PASS: 55/55 L3 tests) and re-run inside the scored run; any weekday-attributable force-flat = BLOCKED_SPY_CALENDAR_DEFECT, scoring halted",
+  "gates_per_candidate": {
+    "G1": "net > 0 at 1.0x costs",
+    "G2": "net > 0 at 1.5x costs",
+    "G3": "net (1.0x) beats ALL FOUR baselines on the same cell",
+    "G4": "positive in >=3/4 folds OR best-fold-removed net > 0",
+    "G5": "no single fold contributes > 50% of positive net",
+    "G6": "preregistered control does not out-earn the candidate",
+    "G7": "turnover within frozen ceiling; zero unnecessary close-reopen",
+    "G8": "reproduction byte-match (detached twin at exact freeze)",
+    "G9": "A7 terminal clean (0 unresolved HIGH/CRITICAL)"
+  },
+  "scoring_run_law": "ONE atomic process under the machine-wide heavy lock AFTER owner GO; ALL 4 candidates + 4 baselines + controls across ALL 3 cells in the same run; full denominator (no mid-run stopping on ugly numbers); no rule/parameter edit after any PnL is visible; reporting per cell x phase x era: trades, gross, fees, slippage, funding, net, drawdown, fold concentration, holding time vs baselines; NOT_RUN separated from FAIL everywhere",
+  "trial_identity": "cycle_id PHASE-STRATEGY-V1 + arm_id + arm_config_digest + data manifest digest + code_freeze_sha + cost_tier + fold contract, recorded per scored arm; observed vs published denominators reported at every checkpoint",
+  "verdicts": ["PHASE_STRATEGY_V1_DISCOVERY_CANDIDATE_FOR_PROSPECTIVE_VALIDATION", "PHASE_STRATEGY_V1_NO_INCREMENTAL_VALUE", "PHASE_STRATEGY_V1_NO_ELIGIBLE_PROPOSAL", "PHASE_STRATEGY_V1_BLOCKED_DATA_OR_SELECTION", "PHASE_STRATEGY_V1_BLOCKED_SPY_CALENDAR_DEFECT", "TECHABORT"],
+  "contamination": "S0 discovery everywhere; BTC 2020-2024 = DISCOVERY_ON_NEVER_COMPUTED_HISTORY; never OOS; no shadow/paper/live/orders; S1 SEALED_UNTOUCHED",
+  "go_phrase": "GO PHASE STRATEGY V1 SCORED EXECUTION (typed by the owner at STOP-1 only; this freeze consumes nothing)"
+}
