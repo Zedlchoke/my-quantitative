@@ -253,11 +253,12 @@ def f_daymom(p, N):
     days = sorted(oc)
     closes = {d: oc[d][1] for d in days}
     tgt = np.zeros(len(p.ts), dtype=np.int8)
-    for j in range(N, len(days)):
-        d = days[j]
-        ret = closes[d] - closes[days[j - N]]
+    for j in range(N, len(days) - 1):
+        nxt = days[j + 1]
+        ret = closes[days[j]] - closes[days[j - N]]  # window ENDS at days[j]:
+        # the traded day is days[j+1]; its own close is never in the signal
         want = int(np.sign(ret))
-        tgt[(p.day == d) & (p.hour >= 7) & (p.hour <= 18)] = want
+        tgt[(p.day == nxt) & (p.hour >= 7) & (p.hour <= 18)] = want
     return tgt
 
 
@@ -271,9 +272,10 @@ def f_rangeexp(p, lo_q, hi_q, use_breakout):
     hist = []
     pct = {}
     for d in days:
-        pct[d] = (
-            float(np.mean([1.0 for x in hist])) if not hist else float(np.searchsorted(sorted(hist), ranges[d][0]) / len(hist))
-        )
+        if d not in ranges:  # first day has no prior-day stats
+            continue
+        if hist:
+            pct[d] = float(np.searchsorted(sorted(hist), ranges[d][0]) / len(hist))
         hist.append(ranges[d][0])
         if len(hist) > 60:
             hist.pop(0)

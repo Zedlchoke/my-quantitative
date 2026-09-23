@@ -55,6 +55,9 @@ def test_pit_truncation_v2_families():
         ("h1tsmom", V.f_h1tsmom, {"K": 24}),
         ("stoch", V.f_stoch, {"N": 24, "th_hi": 80, "th_lo": 20}),
         ("hourrev", V.f_hourrev, {"win_days": 5, "invert": True}),
+        ("daymom", V.f_daymom, {"N": 3}),
+        ("rangeexp", V.f_rangeexp, {"lo_q": 0.3, "hi_q": 0.7, "use_breakout": True}),
+        ("dow", V.f_dow_simple, {"weeks": 2, "min_days": 4}),
     ]
     for name, fn, cfg in cases:
         full = fn(p, **cfg)
