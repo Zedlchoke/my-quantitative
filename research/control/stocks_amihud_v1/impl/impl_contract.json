@@ -1,0 +1,33 @@
+{
+  "schema": "impl_contract/stocks_amihud_v1@1",
+  "pinned_utc": "2026-09-23T07:30:00Z",
+  "law": "Every implementation decision not fixed by the plan/D1 set is pinned HERE before any PnL exists; A7 prelaunch audits this file against the code; a divergence found after scored PnL is an incident, never a silent choice.",
+  "decisions": {
+    "fold_force_flat_price": "fold's LAST SESSION CLOSE on the adjusted series (consistent with the death-contract marking convention; no leak into the next fold's open)",
+    "fills_basis": "adjusted opens computed as raw_open x (adj_close/raw_close) at the fill bar — keeps entries/exits on the same total-return basis as the frozen DV pair and adjusted-close marks",
+    "exit_law_order": "next served bar AFTER the decision date at its OPEN if in-fold (covers t+1 and multi-session halts identically); only if the name never serves again in-fold: death contract final served close; unexitable => FailLoud",
+    "reversal_axis_score": "score = -(5-session past return) so the descending rank_book longs the biggest 5-session losers (plan: past return ASC)",
+    "band_at_exit": "DVmed60 evaluated at the last served bar before the exit fill; fallback DV_FLOOR (band C, most conservative) when no DV window exists",
+    "death_and_fold_exits_pay_cost": "they are fills; cost once per fill applies (band at exit per above)",
+    "dollar_base": "per-fold PnL in $ computed at AUM_ref = $1,000,000 base (no cross-fold compounding for $ figures); return%/MDD from a compounded equity curve where each hold compounds its weight x (exit/entry - 1) at fill dates",
+    "annual_split_marks": "F3 annual split (2021 vs 2022) is a mark-to-market attribution at the 2021-12-31 close of still-open positions; no trade, no cost",
+    "eligibility_dv_window": "DVmed60 requires >= 30 of the trailing 60 sessions present with DV>0; else ineligible at t",
+    "unbookable_flatten": "on an unbookable date all open holds exit by the exit law (next-bar open) and the book stays flat until the next bookable date",
+    "matched_book_construction": "for each anchor member at t: nearest eligible non-member by |log(DVmed60 ratio)| within the same realized-vol tercile (60-session, >=30 rets) and same price tier (adj in [1,5)/[5,20)/[20,100)/[100,inf)); fallback same vol tercile only; else skipped; >=10 picks required else the matched book is flat that date; EW min(1/N, cap) like the anchor; same exits/costs/clock",
+    "random_timing_twin": "per calendar: per fold offset ~ UniformInt(0,20) sessions from fold start, step 21; SPY single-position round trips at t+1 adj-open with band-A; PCG64 seed 20260923, 200 calendars",
+    "stress_accounting": "tier 2.0 multiplies the SUM of entry+exit band costs by 2.0 (both fills symmetric)",
+    "pf_zero_zero": "profit factor with gross_win==0 and gross_loss==0 => FailLoud (class iii); inf recorded when gross_loss==0 and gross_win>0",
+    "concentration_when_total_negative": "FailLoud (shares undefined when total net PnL <= 0 — reported verbatim as not-computable instead of a signed share)",
+    "warmup_dynamic": "own-series index at t >= 252 served bars (253rd session law), evaluated per name per date"
+  },
+  "engine_layout": {
+    "samv1/panel.py": "loader + guard classes i/ii counting",
+    "samv1/engine.py": "eligibility, ILLIQ/reversal scores, rank book, weights, bands, constants",
+    "samv1/portfolio.py": "fold/grid state machine, exits (rebalance/unbookable/fold/death), holds",
+    "samv1/benchmarks.py": "SPY twin, random-timing twins, matched-characteristic book",
+    "samv1/evaluate.py": "SCORED-ONLY metrics (fold summaries, equity curve, MDD, concentration)",
+    "samv1/run_cells.py": "CLI: --mode dry-run|scored; exactly 3 cells; S1 refusal; leak scan; vacuous check",
+    "tests/test_golden.py": "14 golden tests per plan §8 (synthetic fixtures only)"
+  },
+  "test_results": "14/14 PASS (see z-phase artifacts; synthetic panel; production outcomes never touched)"
+}
