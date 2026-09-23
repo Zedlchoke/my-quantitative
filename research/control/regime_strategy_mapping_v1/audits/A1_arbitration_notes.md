@@ -38,3 +38,23 @@ A1 records every cross-lane arbitration here. Lanes never edit this file.
 3. **Specialist library freeze ordering**: CONFIRMED — the specialist
    library freeze (A4 proposal -> A1 freeze) lands BEFORE any arm C
    execution; cmd_scored refuses without the GO token regardless.
+
+## 2026-09-23 — A7 terminal findings (post-verdict hygiene, disclosed)
+
+- **F-A7T-1 (MEDIUM)**: go_authority_and_floor_sensitivity_freeze.json had
+  a brace imbalance since its creation commit (invalid JSON). A7 verified
+  every content claim independently against the code constants and digest
+  pins before authorizing; the syntax repair (this commit) changes no
+  frozen value — repair_note added inside the file.
+- **F-A7T-2 (LOW)**: the report's G5 arithmetic gloss said "sum−max =
+  −13,006"; the frozen G5 literal (sum of the four fold nets minus the BEST
+  fold net) evaluates to 0 − (−36,655) = +36,655 vs the alternative literal
+  (sum minus worst) −13,006; under EITHER reading G5 FAILs (0 positive
+  folds; the verdict is unchanged). The gate implementation compares
+  against the frozen literal; the report gloss is corrected here:
+  G5 FAIL because no fold is positive and sum−best = −13,006 − (−36,655)
+  is not > 0 under the frozen rule.
+- INFO: incident file retained run-2=12 from the first remediation draft;
+  the final remediation observed 18 (45 total). terminal_evaluation.json
+  carries the authoritative accounting; incident file superseded on this
+  point.
