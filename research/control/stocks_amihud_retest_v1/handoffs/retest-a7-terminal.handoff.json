@@ -1,0 +1,44 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "retest-a7-terminal",
+  "cycle_id": "STOCKS-AMIHUD-RETEST-V1",
+  "role": "quant-auditor",
+  "lane": "a7-terminal",
+  "dispatch_sha": "fa16082ab6aae49f8dd186efce28ce1aa790c505",
+  "actual_start_sha": "fa16082ab6aae49f8dd186efce28ce1aa790c505",
+  "commit_sha": null,
+  "changed_paths": [
+    ".worktrees/stocks-amihud-retest-v1/integration/research/control/stocks_amihud_retest_v1/audits/a7_terminal_retest_v1.json",
+    ".worktrees/stocks-amihud-retest-v1/integration/research/control/stocks_amihud_retest_v1/handoffs/retest-a7-terminal.handoff.json"
+  ],
+  "tests": [
+    {
+      "name": "pytest impl/tests -q (test_golden_inherited.py + test_retest_laws.py)",
+      "result": "28 passed in 2.34s (auditor rerun at HEAD fa16082a)"
+    },
+    {
+      "name": "full recompute from scored_records_retest.json (per cell per fold gross/costs/net/PF/expectancy, annual split per mark law, stress2, per-ticker attribution)",
+      "result": "all values match recorded records to <0.005; Lead's headline numbers confirmed exactly"
+    }
+  ],
+  "authority_claims": [
+    "A7 fresh-context TERMINAL audit for STOCKS-AMIHUD-RETEST-V1 per plan §7 phase 'A7 terminal' and the dispatch packet; negative outcome audited as-if-positive (rejection verified not a bug-mask).",
+    "Verdict CONFIRM_STOCKS_AMIHUD_RETEST_V1_REJECT_ALL: every Stage-A gate that can fail fails on all 3 cells (expectancy<0, min-fold PF 0.646/0.693/0.737 <1.10, MDD 62.31/56.63/54.31% >15%, SPY-excess 1/3, stress-2.0 negative, drop-one dead; folds>=2/3 passes only technically on the two ILLIQ cells).",
+    "Headline recompute: RETEST-ILLIQ21 2019 +92,247.77 / 2020 +401,633.78 / 2021-22 -958,981.67, total -465,100.12; ILLIQ63 total -324,713.50; REVERSAL5 total -448,134.14; matched book F1 +170,483 / F2 +1,822,080 / F3 -985,494 — all match the Lead's reported figures exactly.",
+    "Artifact-gone check from hold_rows: top tickers by |net| are 0.82% (KEG, ILLIQ21), 0.88% (KEG, ILLIQ63), 2.20% (GIX_old1, REVERSAL5) of SUM|net| — no HTV-style dominance (predecessor 99.7%); HTV/NLG/BYON/OSTK absent from the frozen universe.",
+    "Reproduction: reference sha256 reverified against the committed file (0e3cf73b...); whole-file delta vs twin confined by construction to the 3 self-referential code_freeze_sha leaves — ALL_MATCH_VALUE_IDENTICAL satisfies the cycle requirement per the V10 precedent.",
+    "Substitution B1..B8 all verified COMPLIANT at terminal (B4 compliant-with-gap: R0_NOT_RUN ancestry not a scored-record field — must land on the close/ledger artifacts per plan §8, finding F-T2). Census 16,572 = 8,356 Q4 + 8,216 staged = 7,571 kept + 645 removed reconciles exactly (3 dual-reason NTEST codes explain label-vs-unique delta). Freeze chain clean: fc233dc0..fa16082a touches only control-plane/audit/scored artifacts; engine blobs byte-unchanged; tree clean at audit time; predecessor worktree untouched at 321c3b22.",
+    "Control adjudication nuance (F-T3): control total negative as reported, but the frozen >=0.5x same-sign predicate is MET in 2/3 folds (F2 0.7071, F3 0.6857) — reinforces REJECT_ALL; no gate outcome changes."
+  ],
+  "known_limitations": [
+    "Audit-only task: no scored re-runs (reproduction already done), no repair, no S1 access, no .env read, nothing modified except the two audit artifacts; artifacts NOT committed (Lead commits at close).",
+    "Findings: F-T1 LOW beta_vs_spy implausible (-36.5/-59.1/+9.2; 60-bar window admits B1-excluded prints; no gate consumes beta), F-T2 LOW R0_NOT_RUN absent from records (close obligation), F-T3/F-T4/F-T5/F-T6/F-T7 INFO (control fold predicate; census dual-labels; close-pending budget/phase fields; SPY-based twin identical across records; prelaunch P-1 resolved in the committed envelope).",
+    "beta/spy-excess/matched-book/random-twin are evaluation context computed inside the scored envelope and were recomputed only from recorded aggregates + hold rows; the twin-run field-level walk was verified structurally (3 code_freeze_sha occurrences) plus reference-hash re-verification, not re-executed."
+  ],
+  "incidents": [],
+  "tree_status": "dirty-audit-artifacts-only",
+  "workers": 0,
+  "outputs": [
+    ".worktrees/stocks-amihud-retest-v1/integration/research/control/stocks_amihud_retest_v1/audits/a7_terminal_retest_v1.json"
+  ]
+}
