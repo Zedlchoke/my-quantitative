@@ -901,3 +901,31 @@ promise.
   retest with identity/execution gates). Denominators: stocks 45/45,
   program 260/263 (P-9). Detail:
   `.worktrees/stocks-amihud-v1/integration/research/control/stocks_amihud_v1/scored/terminal_verdict.json`.
+
+## STOCKS-AMIHUD-RETEST-V1 (CLOSED 2026-09-23, `STOCKS_AMIHUD_RETEST_V1_REJECT_ALL`) — identity/execution remediation retest: the artifact is gone, and so is the "edge"
+
+- Owner-directed retrospective retest (2026-09-23 directive) after the
+  predecessor's PnL proved to be a ghost-ticker print. Launch under the
+  owner standing directive + A7 plan adjudication SUBSTITUTION_VALID_
+  AUTO_RUN_ALLOWED (B1..B8) + A7 prelaunch AUTHORIZED — the typed GO was
+  never used (owner-reserved). Reproduction ALL_MATCH_VALUE_IDENTICAL
+  (provenance-leaf-only); A7 terminal CONFIRM (recompute exact).
+- Remediation: 645 of 8,216 staged codes quarantined with reason codes
+  (499 ghosts incl. HTV/NLG; 52 vendor-test; 97 same-ISIN duplicates —
+  BYON/OSTK are replicas of BBBY's series); B1 both-direction
+  extreme-print law (798 bars excluded+unfillable); B2 zero-volume bars
+  unfillable (452,333); X1 fill feasibility (15% of fill-bar DV; 68
+  unfillable orders blocked; 65 proxy-marked exits disclosed).
+- Verdict: REJECT_ALL three cells. 2019 thin (+$92k, PF 1.175), 2020
+  +$402k (PF 1.465), 2021-22 -$959k (PF 0.646) — no repetition; MDD
+  62/57/54% vs 15%; SPY-excess 1/3; stress negative; drop-one dead. The
+  MATCHED-CHARACTERISTIC book beats the anchor in 2019 (+$170k vs +$92k)
+  and 2020 (+$1,822k vs +$402k): no measurable Amihud illiquidity premium
+  on this cohort/window under band costs. Residual single-symbol
+  dependence: max |net| share 0.82% (was HTV 99.7%).
+- Durable assets: the ticker≠identity quarantine law + census, the
+  both-direction corporate-action fixture law, the fill-feasibility
+  execution law — the data-plane template for future EODHD single-name
+  cycles. Denominators: stocks 48/48, program 263/266 (P-9). Detail:
+  `.worktrees/stocks-amihud-retest-v1/integration/research/control/
+  stocks_amihud_retest_v1/scored/terminal_verdict.json`.
