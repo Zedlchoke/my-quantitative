@@ -840,3 +840,35 @@ promise.
   class (see Phase-4 successor proposals in the terminal report), never by
   prompt/threshold iteration on this corpus. EURUSD door: blocked on owner
   source/license decision (packet in EURUSD-DATA-QUALIFICATION-V1).
+
+## REGIME-STRATEGY-MAPPING-V1 (CLOSED 2026-09-23, `NO_REGIME_STRATEGY_INCREMENTAL_VALUE`)
+
+- Owner-instructed successor to JEV-REGIME-ROUTER-V2: regime-SPECIALIST
+  mapping + switching-cost attrition study on the frozen V2 cached corpus.
+  ZERO Jev calls (timeline rebuilt from cached decisions, verified
+  90/31/34 switches); V2 byte-untouched at 0c277a94; S1 sealed.
+- Orchestration: 5 parallel lanes (A3 census, A5 engine audit, A4
+  outcome-blind specialist architect, A6 controls, A2 attribution)
+  integrated A3→A5→A4→A6→A2; A7 pre-outcome took 3 rounds (F1 outer-thin
+  gate missing; N1 fold-index off-by-one; then AUTHORIZED).
+- Findings: BTC loss is strategy-native gross, SPY loss 94% cost churn
+  (Tuesday-staleness artifact); only BTC_H1 ACC/UP/DOWN have sample
+  (floors 20/3/100); the anti-churn turnover law saves +16–33k per cell
+  on Jev-dependent arms but cannot make them net-positive; specialist
+  router C loses (−49.7k BTC_H1) though it beats always-on-MR and the V2
+  mapping; sparse veto D is the best Jev-aware arm and still negative;
+  owner's relaxed-floor comparison (10/2/50, frozen pre-outcome): SPY
+  +2,529 at 1.0x dies at 1.5x — thin-sample mirage, not value.
+- Incidents (all disclosed, artifacts preserved): run-1 direction-dispatch
+  bug voided C*/F* (remediation run 2 under one final routing law);
+  D/E superseded; 45 observed total; reproduction 69/69 MATCH; A7 terminal
+  authorized with 0 HIGH/CRITICAL.
+- Durable assets: regime-timeline rebuild law (fail-closed vs V2 stats),
+  specialist registry engine (equivalence-proven vs V2), turnover law
+  (buffer/no-op/min-hold deferral), sanitized dry-run + GO quarantine
+  pattern, floor-sensitivity preregistration pattern, census/no-pooling
+  law.
+- Reopening: a routing/specialist cycle on this corpus may not retry the
+  same mapping class with new parameters; any Jev-classifier reuse needs a
+  changed mechanism per the V2 reopening law. SPY +19,813 remains a
+  concentration-killed baseline, never evidence.
