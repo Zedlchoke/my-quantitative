@@ -1,0 +1,74 @@
+{
+  "schema": "a7_prelaunch_delta@1",
+  "measured_utc": "2026-09-23T15:18:00Z",
+  "cycle_id": "BTC-H4-EDGE-SEARCH-V1",
+  "role": "A7 delta re-audit (remediation r1 verification; audit-only, no repairs)",
+  "baseline_audit": {
+    "artifact": "audits_a7/a7_prelaunch_es1.json",
+    "measured_at_head": "912882114c1615347cae0b60a2660c9c15e44e9f",
+    "verdict_then": "REMEDIATION_REQUIRED",
+    "blocking_then": ["F-A7-1"]
+  },
+  "remediation_commit": "f6e4f98c899b88023b5c7aa60073fd7f16ff2f09",
+  "checks": {
+    "D1_diff_scope": {
+      "verdict": "PASS",
+      "evidence": {
+        "files_touched": [
+          "research/control/btc_h4_edge_search_v1/scripts/es1_engine.py (+1 line)",
+          "research/control/btc_h4_edge_search_v1/tests_py/test_es1_fixtures.py (+34/-6)"
+        ],
+        "engine_change": "exactly one line: 'from pathlib import Path' — no numeric, accounting or signal-path change; constant-law semantics provably unchanged (comparator gate re-run BYTE-IDENTICAL to the committed artifact)",
+        "no_unrelated_changes": "git show f6e4f98c contains nothing else; no freezes/, no scripts/ rewrites, no plan/registry edits",
+        "no_pnl_exposure": "diff contains assertions on cost relationships only; no net/equity values are computed, printed or committed by the new fixture"
+      }
+    },
+    "D2_regression": {
+      "verdict": "PASS",
+      "evidence": {
+        "pytest": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests_py/ -> 9/9 PASSED (0.84s), including new test_measured_funding_loader_and_law",
+        "reconcile": "scripts/es1_reconcile_comparator.py -> exit 0, RECONCILED unchanged (rel_err net 9.0e-10, folds <=9.4e-8, 86 trades); rewrite of freezes/comparator_reconciliation.json BYTE-IDENTICAL to committed artifact",
+        "dry_run": "scripts/es1_dry_run.py -> exit 0, DRY_RUN_PASS; rewrite of freezes/dry_run_counts.json BYTE-IDENTICAL to committed artifact",
+        "tree": "worktree clean after all three re-runs (porcelain empty)"
+      }
+    },
+    "D3_F-A7-1_fix_quality": {
+      "verdict": "FIXED",
+      "evidence": {
+        "loader": "from pathlib import Path restores load_funding_measured(); the new fixture CALLS it end-to-end on the real staged Vision series (80 monthly zips, >7000 settlements asserted, monotonic ms, |rate|<=0.05 sanity) — this is the exact code path that raised NameError at prelaunch; it now executes green",
+        "law_pricing": "same always-long book priced under BOTH laws on one window: measured funding > 0 (sign), net == gross - fees - funding at rel 1e-9 (identity holds on the measured path), measured > 5x constant (magnitude sanity consistent with census ratio 7.824x)",
+        "defect_class": "prelaunch finding was 'frozen engine code path never executed before launch'; the measured loader + measured-law simulate path are now both executed by a committed regression test, closing the class for this path"
+      },
+      "residual": [
+        "D-F-A7-8 (LOW): the measured_rate +-60s match tolerance and its no-match -> rate 0.0 fallback are not pinned by a synthetic offset-settlement frame; the real series is complete (census: ~full 8h cadence), so the fallback should not trigger at P4 — undercharge-only failure mode",
+        "D-F-A7-9 (INFO): the new fixture is the first machine-local fixture (requires staged data_local/vision series); intentional end-to-end fidelity trade-off, consistent with program conventions"
+      ]
+    },
+    "D4_F-A7-2_fix_quality": {
+      "verdict": "FIXED",
+      "evidence": "test_scale_cap_and_zero_when_unknown rewritten to exercise PRODUCTION sig_vol_managed directly: rvol 0.01/target 0.60 -> capped at exactly 1.0 (no leverage), rvol 2.0 -> exactly 0.30 (=0.60/2.0), NaN rvol -> exactly 0.0 exposure — all three branches (cap, scale-down, non-finite->0) of the production function now pinned"
+    },
+    "D5_boundary_recheck": {
+      "verdict": "PASS",
+      "evidence": "remediation commit touches only the two declared files; no push (no remote ref contains HEAD); no S1/SANDBOX paths touched; still no broker/API surface added; audits written only under audits_a7/ and handoffs/ by pathspec"
+    }
+  },
+  "findings_status": {
+    "F-A7-1": "FIXED (was HIGH blocking)",
+    "F-A7-2": "FIXED (was MEDIUM)",
+    "F-A7-3": "OPEN (LOW, non-blocking: no exit-from-long hysteresis golden)",
+    "F-A7-4": "OPEN (LOW, non-blocking: census-vs-engine SMA200 warmup-window divergence — carry into the P4 charter as a fidelity note)",
+    "F-A7-5": "OPEN (INFO: PSV1 lane untracked handoffs dir)",
+    "F-A7-6": "OPEN (LOW, non-blocking: G6 seed 20260923 hard-coded, state provenance in the P4 charter)",
+    "F-A7-7": "OPEN (INFO: sig_donchian dead code, constants match PSV1 config)",
+    "D-F-A7-8": "NEW LOW (measured-rate +-60s fallback untested; undercharge-only, series complete)",
+    "D-F-A7-9": "NEW INFO (first machine-local fixture, intentional)"
+  },
+  "findings": [
+    {"severity": "LOW", "id": "D-F-A7-8", "blocking": false, "detail": "measured_rate +-60s settlement-match window and its no-match -> 0.0 fallback lack a synthetic pin; failure mode is undercharge-only and the staged series is complete, so not gating"},
+    {"severity": "INFO", "id": "D-F-A7-9", "blocking": false, "detail": "test_measured_funding_loader_and_law depends on machine-local staged Vision zips (first machine-local fixture) — deliberate end-to-end fidelity, noted for portability"}
+  ],
+  "verdict": "AUTHORIZED_FOR_DISCOVERY_STOP",
+  "blocking_count": 0,
+  "verdict_note": "Remediation r1 verified by direct re-execution: the previously-crashing loader now runs end-to-end on the real staged series and the measured law is priced with sign, identity and magnitude pinned; the scale-cap fixture now pins the production no-leverage function; constant-law semantics provably unchanged (byte-identical comparator re-run); regression 9/9 + DRY_RUN_PASS + RECONCILED all green with zero collateral changes. 0 HIGH/CRITICAL remain. Per plan §6, this authorizes proceeding to the STOP-1 owner gate report — the scored run itself still requires the owner's verbatim GO phrase; remaining LOW/INFO findings are charter notes, not launch blockers."
+}
