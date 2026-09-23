@@ -1,0 +1,110 @@
+{
+ "schema": "psv1_proposals@1",
+ "cycle_id": "PHASE-STRATEGY-V1",
+ "cell": "BTC_H1",
+ "lane": "L1_BTC_H1",
+ "pit_disclosure": "PIT: Vision klines are retrospective exchange snapshots (retrieved 2026-09-23; no per-bar publication timestamps). Frozen convention: a bar is knowable at its close; first executable fill at the NEXT bar open (>=1 executable-bar latency). Every label/decision uses only bars closed at or before decision time. Class: DISCOVERY_ON_NEVER_COMPUTED_HISTORY (S0 discovery, not OOS). Outcome-blindness: no strategy PnL exists in this lane.",
+ "xcheck_incident": "INCIDENT XCHECK-FAIL: the mandatory cross-check of the frozen 15m catalog (sha 81d4f147..., verified) resampled to 1h vs the Vision 1h series FAILED at the pre-declared tolerance (price 0.01 abs / volume 1e-9 rel). Forensics: alignment is correct (shift scan optimum at 0h; close correlation 0.999969); both volume fields decode sanely (VWAP inside bar range); nevertheless per-hour volume differs by ~12x at the median (per-day vision/catalog ratios 0.01..32) and close diffs reach +/-6800 points. Conclusion: the frozen catalog is NOT a complete, consistent trade record of BTCUSDT-PERP over the overlap; identity assurance for the V2-era window could NOT be established. Law applied: no smoothing, no tolerance relaxation. The plan-prescribed SCORED source (Vision klines, independently retrieved, sha-pinned, integrity PASS, zero interior gaps) proceeds; the assurance failure is escalated to A1 for adjudication and disclosed in every artifact.",
+ "phase_slots": {
+  "ACCUMULATION": "FROZEN: PSV1-BTC_H1-ACC-FLOOR_PROVISION",
+  "UPTREND": "FROZEN: PSV1-BTC_H1-UPTREND-BREAKOUT_CONT",
+  "DISTRIBUTION": "NO_ELIGIBLE_PROPOSAL (strict default: no evidenced forced-counterparty mechanism from OHLCV observables)",
+  "DOWNTREND": "FROZEN: PSV1-BTC_H1-DOWNTREND-BREAKDOWN_CONT",
+  "TRANSITION_UNKNOWN": "NOT_RUN_THIN_PHASE (slot FLAT)"
+ },
+ "proposals": {
+  "PSV1-BTC_H1-UPTREND-BREAKOUT_CONT": {
+   "phase": "UPTREND",
+   "family_id": "PSV1-BTC_H1-UPTREND-BREAKOUT_CONT",
+   "mechanism": "forced-counterparty anatomy of BTC markup legs: shorts are stopped/liquidated into standing highs and late momentum chasers lift offers; continuation after a 20d-high breakout is supplied by these forced buyers, and the effect survives costs because episodes are sparse (few round trips/yr) and multi-day.",
+   "observable": "PIT: close vs trailing 480-bar high of highs (Donchian-20d) on the H1 UTC grid, gated by the cell's frozen phase rule state UPTREND",
+   "phase_rule": "cell's frozen ADX/DI+SMA720 rule (sec5 freeze)",
+   "direction": "LONG only (BTC perp)",
+   "entry": "state==UPTREND AND close > max(high, previous 480 bars)",
+   "exit": "STOP: close < min(low, trailing 240 bars) [risk stop, pre-min-hold allowed]; gate-off exit: state leaves UPTREND after min-hold; fold-end force-flat",
+   "holding": "min hold 24 bars (churn law); max hold unbounded (structure-exited)",
+   "sizing": "fraction 1.0 (V2 accounting)",
+   "stop_policy": "the 240-bar-low close IS the stop (structure stop); no separate ATR stop",
+   "execution": "decision at bar close; fill at NEXT bar open; no mid-bar fills",
+   "churn_law": "min-dwell 24 bars == phase-rule transition buffer; same-direction label noise produces zero fills (no-op law, engine-structurally-enforced)",
+   "capacity": "BTCUSDT-PERP is the deepest crypto venue; hourly decisions with multi-day holds at 1.0 book fraction are negligible vs top-of-book depth; turnover = entries/yr x 2 sides (see ceiling.json)",
+   "control": {
+    "type": "phase-shuffled matched control with movement validation",
+    "semantics_frozen_now": "permute phase-label EPISODE blocks within each fold (seed 20260923, 100 draws); apply the identical entry/exit rule under the shuffled gate; control is VALID only if its entry-time 24h realized-move distribution matches the candidate's (KS stat <= 0.15), computed in the scored run; control out-earning => kill (G6)"
+   },
+   "failure_mode": "expected failure: breakout continuation is already arbitraged in BTC perps (mechanism-dead or cost-eaten at 1.5x); fold concentration in one bull era is the secondary failure signature",
+   "ancestry_self_check": "not an RSM-V1 specialist: UP_TREND_SLOW_LONG is a continuously-held regime long; this is an event-conditional breakout book with structure stop; not any sec7.2 dead class (reversal/imbalance/illiquidity/OI/vol-shock/pair); rho measured in census",
+   "arm_config": {
+    "entry_donchian_bars": 480,
+    "stop_donchian_bars": 240,
+    "min_hold_bars": 24,
+    "sizing_fraction": 1.0,
+    "direction": "long",
+    "execution": "next_open"
+   },
+   "arm_config_digest": "4c4ab5262de3cb5cb3a4f207bfbc9126805dded97de258c8f0776cf388b4e550"
+  },
+  "PSV1-BTC_H1-ACC-FLOOR_PROVISION": {
+   "phase": "ACCUMULATION",
+   "family_id": "PSV1-BTC_H1-ACC-FLOOR_PROVISION",
+   "mechanism": "at range floors after declines, forced sellers (margin-stressed longs, redemption flows, impatient holders) hit thin books; patient accumulation provides the other side and inventory is held through the range until markup; effect survives costs because entries are sparse deep-in-range events with multi-week holds.",
+   "observable": "PIT: close position within the trailing 720-bar (30d) close range, gated by state ACCUMULATION",
+   "phase_rule": "cell's frozen ADX/DI+SMA720 rule (sec5 freeze)",
+   "direction": "LONG only",
+   "entry": "state==ACCUMULATION AND close <= 30d-range low + 25% of range height",
+   "exit": "hold gate {ACCUMULATION, UPTREND}: exit when state leaves the gate after min-hold (markup ride through ACC->UP is intended); STOP: close below the 30d range low observed at the entry bar (structure break, pre-min-hold allowed); fold-end force-flat",
+   "holding": "min hold 24 bars; max hold unbounded",
+   "sizing": "fraction 1.0",
+   "stop_policy": "entry-time 30d range low = structure stop",
+   "execution": "decision at close; fill next open",
+   "churn_law": "min-dwell 24 bars; same-direction label noise produces zero fills",
+   "capacity": "sparse floor entries, multi-week holds; turnover counts in ceiling.json",
+   "control": {
+    "type": "clock-only control",
+    "semantics_frozen_now": "identical structure entry rule WITHOUT the phase gate; entries thinned deterministically (keep every k-th event) to the candidate's entry count (k frozen from the candidate dry-run count); exits on a frozen 720-bar clock instead of the phase hold-gate; control out-earning => kill (G6)"
+   },
+   "failure_mode": "expected failure: ranges resolve DOWN more often than UP in contraction eras (falling-knife capture), or floor provision is just low-volatility beta that the baselines beat",
+   "ancestry_self_check": "not ACC_RANGE_MR: that specialist fades range excursions (two-sided, mean-target exits, high trade count); this is a one-sided liquidity-provision book with structure stop and markup-ride exit; not ACC_FLAT_BREAKOUT_WAIT (no breakout entries in ACC); rho measured in census",
+   "arm_config": {
+    "range_window_bars": 720,
+    "entry_quantile": 0.25,
+    "min_hold_bars": 24,
+    "sizing_fraction": 1.0,
+    "direction": "long",
+    "execution": "next_open"
+   },
+   "arm_config_digest": "f79ed997f752c546efb46f3d3f478a9a7fd8e0e35cfa91964483478e4c36df8b"
+  },
+  "PSV1-BTC_H1-DOWNTREND-BREAKDOWN_CONT": {
+   "phase": "DOWNTREND",
+   "family_id": "PSV1-BTC_H1-DOWNTREND-BREAKDOWN_CONT",
+   "mechanism": "deleveraging cascades are persistent: forced selling (margin calls, stop cascades, fund redemptions) begets forced selling; unlevered holders exit late and market makers reprice thin books slowly; breakdown continuation after a 20d-low break survives costs (sparse events, multi-day holds, funding typically a short rebate in contraction).",
+   "observable": "PIT: close vs trailing 480-bar low of lows, gated by state DOWNTREND",
+   "phase_rule": "cell's frozen ADX/DI+SMA720 rule (sec5 freeze)",
+   "direction": "SHORT only (BTC perp; allowed by plan sec6)",
+   "entry": "state==DOWNTREND AND close < min(low, previous 480 bars)",
+   "exit": "STOP: close > max(high, trailing 240 bars); gate-off exit after min-hold; fold-end force-flat",
+   "holding": "min hold 24 bars; max unbounded",
+   "sizing": "fraction 1.0",
+   "stop_policy": "the 240-bar-high close IS the stop",
+   "execution": "decision at close; fill next open",
+   "churn_law": "min-dwell 24 bars; same-direction label noise produces zero fills",
+   "capacity": "sparse breakdown events, multi-day holds; counts in ceiling.json",
+   "control": {
+    "type": "phase-shuffled matched control with movement validation",
+    "semantics_frozen_now": "same as the UPTREND candidate control (episode-block permutation within fold, seed 20260923, 100 draws, KS<=0.15 movement validation)"
+   },
+   "failure_mode": "expected failure: breakdown entries cluster at local lows that mean-revert (stop churn), or the effect is indistinguishable from SPARSE_RISK_OFF-style avoidance",
+   "ancestry_self_check": "not DOWN_SHORT_BTC: that specialist is a continuously-held regime short; this is an event-conditional breakdown book with structure stop; not any sec7.2 dead class (not reversal: entries require a NEW 20d low with ADX>=22 structure, not a fade signal); rho measured in census",
+   "arm_config": {
+    "entry_donchian_bars": 480,
+    "stop_donchian_bars": 240,
+    "min_hold_bars": 24,
+    "sizing_fraction": 1.0,
+    "direction": "short",
+    "execution": "next_open"
+   },
+   "arm_config_digest": "f70758acb4d575d9a9efc6fe43f19cbdedf8940e4a7241db768d1c65402ca170"
+  }
+ }
+}

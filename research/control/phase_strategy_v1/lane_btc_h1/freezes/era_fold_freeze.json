@@ -1,0 +1,43 @@
+{
+  "schema": "psv1_era_fold_freeze@1",
+  "cycle_id": "PHASE-STRATEGY-V1",
+  "cell": "BTC_H1",
+  "lane": "L1_BTC_H1",
+  "frozen_at_utc": "2026-09-23T00:00:00Z",
+  "pre_data_statement": "Era boundaries are the plan-sec4.1 public halving-cycle calendar anchors (halvings 2020-05-11 / 2024-04-20, cycle top 2021-04, bear bottom 2022-12). They were never moved and are independent of any retrieved data. data_end and the warmup start are measured facts of the retrieval, recorded here after the data gate; the fold LAW (4 contiguous folds mapped one-to-one onto the 4 plan eras, post-warmup) was fixed before any history-wide computation.",
+  "timezone": "UTC",
+  "bar_membership": "a bar belongs to an era/fold by its OPEN timestamp (bar covers [open, open+1h))",
+  "eras": [
+    {"era": "ERA-B1", "label": "post-halving expansion I", "start": "2020-01-01T00:00:00Z", "end_exclusive": "2021-05-01T00:00:00Z"},
+    {"era": "ERA-B2", "label": "contraction I", "start": "2021-05-01T00:00:00Z", "end_exclusive": "2023-01-01T00:00:00Z"},
+    {"era": "ERA-B3", "label": "post-halving expansion II", "start": "2023-01-01T00:00:00Z", "end_exclusive": "2025-01-01T00:00:00Z"},
+    {"era": "ERA-B4", "label": "current regime", "start": "2025-01-01T00:00:00Z", "end_exclusive": "DATA_END"}
+  ],
+  "fold_law": {
+    "folds": 4,
+    "mapping": "fold k == era k (4 plan eras exist, so boundaries land on era edges; no even-bar partition needed)",
+    "warmup_exclusion": "the first warmup_bars=720 hourly bars of the retrieved series (opens 2020-01-01T00:00 .. 2020-01-30T23:00) are excluded from ALL census, floors, folds and dry-runs; F1 effectively starts at the first post-warmup bar",
+    "force_flat": "fold ends force-flat: episodes are truncated at fold ends (truncated episodes counted and flagged); signal dry-runs evaluate each fold independently; any open position at a fold end is closed at that fold's last decision (flat at boundary)",
+    "attribution_identity": "per-phase fold episode counts sum to the per-phase cell total minus episodes spanning boundaries are NOT merged (each fold owns its own truncated runs); decision counts partition exactly"
+  },
+  "folds_measured": {
+    "F1": {"era": "ERA-B1", "start_open": "2020-01-31T00:00:00Z", "end_exclusive": "2021-05-01T00:00:00Z", "note": "start = first post-warmup bar open (bar index 720)"},
+    "F2": {"era": "ERA-B2", "start_open": "2021-05-01T00:00:00Z", "end_exclusive": "2023-01-01T00:00:00Z"},
+    "F3": {"era": "ERA-B3", "start_open": "2023-01-01T00:00:00Z", "end_exclusive": "2025-01-01T00:00:00Z"},
+    "F4": {"era": "ERA-B4", "start_open": "2025-01-01T00:00:00Z", "end_exclusive": "DATA_END"}
+  },
+  "data_end_disclosure": "DATA_END = last complete hourly bar retrieved from Vision (monthly zips 2020-01..2026-08 + daily tail for 2026-09 through the last fully published day); exact value recorded in data/manifest.json and census/census.json after the data gate.",
+  "data_end_measured": {
+    "last_bar_open": "2026-09-22T23:00:00Z",
+    "fold_end_exclusive_open_time": "2026-09-23T00:00:00Z",
+    "note": "measured fact filled after the data gate; the fold LAW above was fixed pre-data and no boundary was moved"
+  },
+  "outcome_observed_corpus_disclosure": "F4 contains 2025-08-20..2026-08-20 which overlaps the frozen V2 15m catalog (outcome-observed corpus); disclosed in every artifact; no V2 artifact is read by this lane.",
+  "floors_immutable": {
+    "episodes_per_phase_per_cell_total": 20,
+    "episodes_per_phase_per_fold": 3,
+    "eligible_decisions_per_phase_per_fold": 100,
+    "below_floor": "NOT_RUN_THIN_PHASE for that phase x cell; strategy slot FLAT; reported with margin-to-floor; never pooled with BTC_H4 or any other cell"
+  },
+  "pit_disclosure": "Vision klines are retrospective exchange snapshots (retrieved 2026-09). Bar knowable at close; first executable fill next bar open. Disclosed in every artifact."
+}

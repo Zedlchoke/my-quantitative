@@ -1,0 +1,63 @@
+{
+  "schema": "psv1_phase_rule_freeze@1",
+  "cycle_id": "PHASE-STRATEGY-V1",
+  "cell": "BTC_H1",
+  "lane": "L1_BTC_H1",
+  "frozen_at_utc": "2026-09-23T00:00:00Z",
+  "frozen_before_history_wide_computation": true,
+  "pre_data_statement": "Parameters below are round, domain-standard constants fixed from published conventions (Wilder 1978 ADX/DI period-14; textbook ADX 20 trend threshold; calendar-multiple SMA windows on the hourly UTC clock) BEFORE any history-wide statistic of the retrieved Vision series was computed or viewed. No label-optimization sweep was run. The +-1-notch sensitivity table is reported once, never iterated.",
+  "clock": "UTC hourly bars. Bar k covers [open_k, open_k + 1h); close time = open_k + 1h. No DST exists for UTC.",
+  "pit_disclosure": "Vision klines are retrospective exchange snapshots (retrieved 2026-09, no per-bar publication timestamps). Frozen PIT convention: a bar is knowable at its close; the first executable fill is at the NEXT bar open (>=1 executable-bar latency). Every decision uses only bars closed at or before decision time.",
+  "observables": {
+    "adx": {
+      "name": "Wilder ADX",
+      "period": 14,
+      "definition": "Standard Wilder: TR = max(h-l, |h-c_prev|, |l-c_prev|); +DM = (h_t - h_{t-1}) iff > (l_{t-1} - l_t) and > 0 else 0; -DM = (l_{t-1} - l_t) iff > (h_t - h_{t-1}) and > 0 else 0; smoothed via Wilder recursion seeded with SMA of first 14 values; +DI = 100*sm(+DM)/sm(TR); -DI = 100*sm(-DM)/sm(TR); DX = 100*|+DI - -DI|/(+DI + -DI); ADX = Wilder RMA of DX seeded with SMA of first 14 DX values. TR == 0 => DX := 0 (documented degenerate-flat law).",
+      "source_convention": "Wilder (1978), standard textbook formulation, period 14"
+    },
+    "di_plus": "Wilder +DI, period 14, as above",
+    "di_minus": "Wilder -DI, period 14, as above",
+    "sma_slow": {"window_bars": 720, "hours": 720, "days": 30, "input": "close"},
+    "sma_fast": {"window_bars": 168, "hours": 168, "days": 7, "input": "close", "role": "declared structural observable; NOT used in base label logic and NOT notched (kept in freeze for completeness)"}
+  },
+  "parameters_frozen": {
+    "adx_period": 14,
+    "adx_trend_threshold": 20.0,
+    "adx_margin": 2.0,
+    "sma_slow_bars": 720,
+    "warmup_bars": 720,
+    "transition_buffer_bars": 24
+  },
+  "raw_label_law": {
+    "order": "evaluated top-down; first hit wins; total partition",
+    "rules": [
+      "warmup: bar index t < warmup_bars(720) counted from the first retrieved bar => TRANSITION_UNKNOWN (insufficient evidence)",
+      "margin: ADX in the open interval (18.0, 22.0), i.e. |ADX - 20.0| < 2.0 => TRANSITION_UNKNOWN (boundary-uncertainty margin)",
+      "trend: ADX >= 22.0 and DI+ >= DI- => UPTREND; ADX >= 22.0 and DI- > DI+ => DOWNTREND (DI+ == DI- exactly resolves to UPTREND by the frozen >= tie rule)",
+      "range: ADX <= 18.0 and close >= SMA720 => DISTRIBUTION; ADX <= 18.0 and close < SMA720 => ACCUMULATION (close == SMA720 exactly resolves to DISTRIBUTION by the frozen >= tie rule)"
+    ],
+    "causality": "all inputs at bar t use bars with close time <= close(t); no model, no abstention, no LLM"
+  },
+  "state_machine_law": {
+    "name": "transition buffer with hysteresis",
+    "definition": "state starts TRANSITION_UNKNOWN. Maintain pending=(label,count). If raw(t) == state: pending reset, state unchanged. If raw(t) != state: if raw(t) == pending.label then count += 1 else pending = (raw(t), 1); when count reaches transition_buffer(24), state := raw(t). TRANSITION_UNKNOWN raw labels obey the identical 24-bar persistence law (no special casing).",
+    "consequences": "state min-dwell is 24 bars (1 day) by construction; sub-buffer label noise is absorbed as the incumbent phase (this is the explicit no-op law backbone for churn control)"
+  },
+  "decision_and_execution": {
+    "decision_time": "close of bar t (t knowable)",
+    "executable_fill": "open of bar t+1",
+    "mid_bar_decisions": "forbidden"
+  },
+  "outputs": ["ACCUMULATION", "UPTREND", "DISTRIBUTION", "DOWNTREND", "TRANSITION_UNKNOWN"],
+  "sensitivity_table_contract": {
+    "type": "LABEL_AGREEMENT_REPORTING_ONLY",
+    "law": "Single +-1-notch variants of the three decision knobs, each computed ONCE against the frozen base on the full post-warmup retrieved series; agreement = fraction of post-warmup bars with identical STATE label. This table is reported, never optimized against; no parameter may be re-chosen after seeing it.",
+    "notches": {
+      "adx_trend_threshold": {"down": 19.0, "up": 21.0, "note": "margin band stays thr-2..thr+2 relative to the notched threshold"},
+      "adx_margin": {"down": 1.0, "up": 3.0, "note": "band = 20-m .. 20+m; threshold stays 20.0"},
+      "transition_buffer_bars": {"down": 12, "up": 48}
+    },
+    "structural_not_notched": ["adx_period 14", "sma_slow 720", "warmup 720", "tie rules"]
+  },
+  "self_check_plan7": "Named mechanism classes this rule could be accused of: none. The rule is a plain trend-strength/range partition (ADX/DI + SMA anchor); it is not a reversal, imbalance, illiquidity, OI, vol-shock or pair-spread signal and it is not any RSM-V1 specialist (those are strategies, not phase rules). Phase rules are per-cell code-owned by plan sec5 and the V2 Jev labels are not read."
+}
