@@ -250,8 +250,10 @@ identity          family_id PSV1-<CELL>-<PHASE>-<MECH>, arm_config_digest
    arms (JEV_ONLY, DETERMINISTIC router, DETERMINISTIC+JEV_CONFIRM,
    RANDOM_MATCHED) — renamed, re-clocked or not. A phase-gated variant of
    any of these is the same mapping class and is vetoed at integration.
-2. **Same-asset dead mechanisms** (proposals within |rho| ≤ 0.20 of these
-   frozen dead shadows are VETOED before scoring; canonical list
+2. **Same-asset dead mechanisms** (a candidate whose signal-series |rho|
+   with an applicable frozen dead shadow EXCEEDS 0.20 is VETOED before
+   scoring; |rho| ≤ 0.20 passes novelty — the program-wide convention, same
+   bar as §13 E3; canonical list
    `research/wayfinder/FAMILY_FAILURES.jsonl`, program-level):
    - crypto/BTC: close-displace-fade; rev24-style short-horizon reversal
      per-leg forms; run_imbalance; amihud-illiquidity proxy; OI-level and
@@ -304,9 +306,24 @@ baselines are long/flat only.
   bytes, digest; deterministic re-retrieval verified on a sample.
 - Integrity law: OHLC sanity (high≥low, close∈[low,high]), zero-volume bar
   flags, gap census vs a 1h calendar (UTC), duplicate-ts rejection
-  fail-closed. Cross-check: the frozen 15m catalog (sha 81d4f147) resampled
-  to 1h MUST equal the Vision 1h series on the overlap window within
-  documented tolerance; mismatch ⇒ STOP, not smoothing.
+  fail-closed.
+- Cross-check (AMENDED — see Amendments log A1): the frozen 15m catalog
+  (sha 81d4f147) resampled to 1h was a mandatory equality gate in the
+  original text. MEASURED OUTCOME (lanes L1/L2, independent, 2026-09-23):
+  the check FAILED and forensics locate the defect in the catalog reference
+  itself — close corr 0.999969 with correct +0h alignment, both decodes
+  VWAP-sane, yet catalog volume scale is ~12x off at the median (per-day
+  ratios 0.01–32x) and close diffs reach ±6,800; L2 independently found the
+  same catalog non-corroborative on all 2,189 shared buckets while the
+  native Vision 4h shadow matched 14,607/14,610 at 1e-9. ADJUDICATION (A1,
+  pre-outcome): the catalog is not a usable bar record and cannot serve as
+  an integrity reference; the equality gate is reclassified
+  DIAGNOSTIC_REFERENCE_FAILED (forensics frozen in L1 `data/manifest.json`
+  `cross_check_15m_catalog` / `cross_check_incident`). BTC integrity is
+  instead anchored by: zero gaps/duplicates/OHLC violations; sha256-pinned
+  deterministic re-retrieval; the native-4h shadow match; and the 0.999969
+  price-tracking diagnostic. A future mismatch remains STOP-class if it
+  ever points at the VISION series rather than the catalog. No smoothing.
 - H4 derivation: H4 bucket = floor(open/4h) UTC (00/04/08/12/16/20),
   complete iff exactly 4 aligned H1 bars (RSM-V1 census law); partial
   buckets excluded from floors. L2 (BTC_H4) additionally cross-checks the
@@ -495,3 +512,28 @@ no orders; no credentials in logs; V2/RSMV1 artifacts byte-untouched; root
 checkout is bootstrap/owner space; worktrees `.worktrees/phase-strategy-v1/*`.
 Turn-scope law: pre-GO turns may implement, test, census, freeze and audit —
 they may NOT run the scored backtest.
+
+## 20. Amendments log
+
+### A1 (2026-09-23, A1 controller, pre-outcome, pre-A7)
+
+1. **§7.2 rho-bar wording fixed.** Original text inverted the program
+   convention ("proposals within |rho| ≤ 0.20 … VETOED"), contradicting
+   §13 E3. Corrected: VETO iff signal-series |rho| with an applicable dead
+   shadow EXCEEDS 0.20; ≤ 0.20 passes. Both BTC lanes applied the correct
+   convention in their measurements (L1 worst 0.082, L2 worst 0.168); L3
+   self-killed a +0.559. No measurement changes; wording-only defect caught
+   by lane L1 and fixed before any integration or scoring.
+2. **§9.1 catalog equality gate → DIAGNOSTIC_REFERENCE_FAILED.** The
+   mandatory 15m-catalog-vs-Vision equality check failed; independent
+   forensics from two lanes locate the inconsistency in the catalog
+   reference itself (volume scale ~12x median off, close diffs to ±6,800 at
+   0.999969 close correlation), while the native Vision 4h shadow matches
+   14,607/14,610 at 1e-9. Ruling + replacement anchors are written into
+   §9.1. Evidence: L1 `lane_btc_h1/data/manifest.json` cross-check incident
+   block; L2 data-gate disclosure. Eras, folds, floors, costs, gates:
+   UNCHANGED.
+3. **Lane handoff envelopes.** L2's handoff JSON was left uncommitted in its
+   worktree (disclosed in its handoff `tree_status`); A1 commits it during
+   integration with attribution. L1/L3 committed their handoffs on their
+   branches.
