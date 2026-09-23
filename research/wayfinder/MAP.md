@@ -2,6 +2,35 @@
 
 ## Sprint state (synced at the PHASE-STRATEGY-V1 terminal, 2026-09-23)
 
+- **BTC-H4-TWO-REGIME-V1 CLOSED → `BTC_H4_TWO_REGIME_V1_NO_ELIGIBLE_PROPOSAL`
+  (2026-09-23)**; branch `orca/btc-h4-two-regime-v1-integration` terminal
+  4d93ff9e (base = PSV1 anchor af52f358), plan
+  `plans/PLAN_btc_h4_two_regime_v1.md` (113e0c2d); owner 2026-09-23
+  directive: three-state BULL/BEAR/UNCERTAIN router over the frozen PSV1
+  BTC_H4 Donchian long leg (FAILED G3/G5/G6 — test component) + one
+  mechanism-backed DOWN leg. **Preregistered causal drawdown-hysteresis
+  detector (−0.30/−0.10 bands + 90-bar dwell; PSV1 SPARSE_RISK_OFF
+  constants) frozen BEFORE the census; census (14,589 post-warmup H4 bars):
+  15 state changes in 6.7y, episodes merged BULL 5 / BEAR 6 / UNCERTAIN 5 —
+  ALL THREE STATES FAIL the immutable floors 20/3/100 → every state-gated
+  arm NOT_RUN_THIN, no relaxation (owner law); DOWN leg: zero candidates
+  survive the preregistered E1–E5 law (E4 fails independently; liquidation
+  tape 404 UNAVAILABLE_FAIL_CLOSED; cross-venue unstaged; funding-extreme
+  overlay collapses to the dead DOWN_SHORT class + funding-LEVEL shadow
+  exposure).** The detector HAS PIT evidence (no-lookahead fixture PASS) and
+  is a genuinely different law (agreement BULL~PSV1-UPTREND 0.599 /
+  BULL~SMA200 0.526 / BEAR~DOWNTREND 0.493), but a hysteresis machine on ONE
+  asset over 6.7y is structurally thin; lag descriptive: first BEAR 17.0d
+  after the 2021 top anchor, first BULL 520.7d after the 2022 bottom anchor,
+  BEAR at data end since 2025-11-20. Repro: detached twin byte-identical
+  modulo schema timestamp; A7 terminal fresh-context CONFIRM 0 blocking
+  (independent recompute 144/144; 2 LOW verdict-invariant wording findings);
+  budget 0/4; GO phrase `GO BTC H4 TWO REGIME V1 SCORED EXECUTION` died
+  UNCONSUMED; S1 SEALED; no orders. Evidence:
+  `.worktrees/btc-h4-two-regime-v1/integration/research/control/
+  btc_h4_two_regime_v1/` (census/, P2_ADJUDICATION_AND_CLOSE.json,
+  audits_a7/). Denominators UNCHANGED: program 283/286 (P-9).
+
 - **EURUSD-OPEN-SEARCH-V1 REGISTERED BLOCKED → `BLOCKED_SOURCE_LICENSE` (P1,
   2026-09-23)**; branch `orca/eurusd-open-search-v1-integration` head
   ac54f2fc, plan `plans/PLAN_eurusd_open_search_v1.md`; owner directive
