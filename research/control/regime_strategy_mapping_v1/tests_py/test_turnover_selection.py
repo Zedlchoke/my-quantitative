@@ -144,8 +144,16 @@ def _cand(sid, net, folds, cls="LONG_CAPABLE"):
 
 
 def test_fold1_defaults_flat():
-    out = select_for_fold("UPTREND", 1, [_cand("S1", 100.0, {2: 100.0})], 10, 500, 0)
+    # fid 0 == the law's fold 1 (empty inner) -> FLAT
+    out = select_for_fold("UPTREND", 0, [_cand("S1", 100.0, {1: 100.0})], 0, 0, 0)
     assert out.selected == "FLAT" and out.reason == "fold1_empty_inner_default"
+
+
+def test_fold2_proceeds_to_inner_law():
+    # A7-R2 N1: fid 1 (the law's fold 2) HAS inner fold 0 — must NOT hit the
+    # empty-inner default; with floors met and one candidate it selects it
+    out = select_for_fold("UPTREND", 1, [_cand("S1", 100.0, {0: 100.0})], 10, 500, 1)
+    assert out.selected == "S1" and out.reason == "single_eligible_specialist"
 
 
 def test_inner_floor_failure_selects_flat():

@@ -64,7 +64,10 @@ def select_for_fold(
         inner_episodes >= INNER_EPISODE_FLOOR
         and inner_eligible_decisions >= INNER_DECISION_FLOOR
     )
-    if fold_id == 1:
+    # fold indices are 0-based: fid 0 == the law's "fold 1" (empty inner).
+    # A7-R2 N1 fix: the empty-inner gate fires at fid == 0 ONLY; fid 1 has
+    # inner fold 0 and proceeds to the inner-floor law.
+    if fold_id == 0:
         return SelectionOutcome(regime, fold_id, "FLAT",
                                 "fold1_empty_inner_default", inner_episodes,
                                 inner_eligible_decisions, floor_ok)
