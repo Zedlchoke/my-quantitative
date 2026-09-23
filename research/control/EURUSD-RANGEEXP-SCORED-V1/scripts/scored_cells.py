@@ -83,12 +83,21 @@ def legs(trades):
                 "symmetry_short_share": None}
     lg = pn[[t["dir"] > 0 for t in trades]]
     sh = pn[[t["dir"] < 0 for t in trades]]
+
+    def leg_pf(x):
+        if len(x) == 0:
+            return None
+        gw = float(x[x > 0].sum()); gl = float(-x[x < 0].sum())
+        return round(gw / gl, 4) if gl > 0 else None
+
     tot = float(pn.sum())
     return {
         "long_net": round(float(lg.sum()), 2) if len(lg) else 0.0,
         "short_net": round(float(sh.sum()), 2) if len(sh) else 0.0,
         "long_trades": int(len(lg)),
         "short_trades": int(len(sh)),
+        "long_pf": leg_pf(lg),
+        "short_pf": leg_pf(sh),
         "long_hit": round(float((lg > 0).mean()), 4) if len(lg) else None,
         "short_hit": round(float((sh > 0).mean()), 4) if len(sh) else None,
         "total_net": round(tot, 2),
@@ -115,14 +124,18 @@ def main(dry_run=False):
         for name, plane, ref_key in (("DEV", dev, arm_id), ("HOLDOUT", hold, arm_id + "::HOLDOUT")):
             target = FAMILY_V2[fid]["fn"](plane, cfg)
             for k in KS:
-                trades, _ = E.run_strategy(plane, target, k)
-                m = E.metrics(trades, np.zeros(len(trades)))
+                trades, equity = E.run_strategy(plane, target, k)
+                m = E.metrics(trades, equity)  # real equity: maxdd is a
+                # preregistered S1 metric and zeros would never reconcile
                 ref = refs[ref_key][str(k)]
                 ok = (
                     m["trades"] == ref["trades"]
                     and abs(m["net_pips"] - ref["net_pips"]) <= TOL
                     and (m["pf"] is None) == (ref["pf"] is None)
                     and (m["pf"] is None or abs(m["pf"] - ref["pf"]) <= 1e-6)
+                    and (m["hit"] is None) == (ref["hit"] is None)
+                    and (m["hit"] is None or abs(m["hit"] - ref["hit"]) <= 1e-9)
+                    and abs(m["maxdd_pips"] - ref["maxdd_pips"]) <= TOL
                 )
                 rec["s1_reproduction"].append({
                     "arm": arm_id, "window": name, "k": k, "reconciled": bool(ok),
@@ -135,17 +148,29 @@ def main(dry_run=False):
                 rec["legs"].append({"arm": arm_id, "window": name, **L})
 
     if not dry_run:
-        ones = np.ones(len(dev.ts), dtype=np.int8)
-        sa_dev = E.metrics(E.run_strategy(dev, ones, 1.0)[0], np.zeros(len(dev.ts)))["net_pips"]
-        ones = np.ones(len(hold.ts), dtype=np.int8)
-        sa_hold = E.metrics(E.run_strategy(hold, ones, 1.0)[0], np.zeros(len(hold.ts)))["net_pips"]
-        rec["baselines"] = {"SHORT_ALWAYS_dev_k1": sa_dev, "SHORT_ALWAYS_holdout_k1": sa_hold}
+        rng = np.random.default_rng(20260923)
+
+        def baselines(plane):
+            n = len(plane.ts)
+            out = {"CASH": 0.0}
+            for nm, tgt in (("LONG_ALWAYS", np.ones(n, dtype=np.int8)),
+                            ("SHORT_ALWAYS", -np.ones(n, dtype=np.int8)),
+                            ("RANDOM_MATCHED(seed=20260923)",
+                             rng.integers(-1, 2, size=n).astype(np.int8))):
+                out[nm] = E.metrics(E.run_strategy(plane, tgt, 1.0)[0], np.zeros(n))["net_pips"]
+            return out
+
+        bl_dev = baselines(dev)
+        bl_hold = baselines(hold)
+        rec["baselines"] = {"DEV_k1": bl_dev, "HOLDOUT_k1": bl_hold}
+        sa_dev = bl_dev["SHORT_ALWAYS"]
+        sa_hold = bl_hold["SHORT_ALWAYS"]
         for L in rec["legs"]:
             sa = sa_dev if L["window"] == "DEV" else sa_hold
             drift = (
                 L["short_net"] > 0
                 and L["total_net"] != 0
-                and abs(L["short_net"]) >= 0.5 * abs(L["total_net"])
+                and L["short_net"] >= 0.5 * L["total_net"]  # plan §2 literal
                 and sa > 0
             )
             rec["s6_drift_flags"].append({
