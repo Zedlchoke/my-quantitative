@@ -205,4 +205,12 @@ def _route_for_random(ctx: AssetContext, timeline: Timeline, seed: int):
     invested = ctx.invested_labels()
     paths = random_matched_paths(timeline.persisted, invested)
     entry = next(p for p in paths if p["seed"] == seed)
-    return _route_and_backtest(ctx, timeline.ts, entry["labels"])
+    _targets, res = _route_and_backtest(ctx, timeline.ts, entry["labels"])
+    from .metrics import compute_arm_metrics
+
+    m = compute_arm_metrics(
+        res, ctx.exec_bars, ctx.periods_per_year, ctx.initial_equity,
+        timeline_labels=entry["labels"], targets=_targets,
+        cost_frac_per_side=(ctx.costs.fee_bps + ctx.costs.slip_bps) * 1e-4,
+    )
+    return res, m
