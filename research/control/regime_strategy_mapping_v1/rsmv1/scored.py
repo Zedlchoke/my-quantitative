@@ -539,34 +539,27 @@ def arm_f(ctx: CellCtx, c_desired_mapping_by_fold, tier: float):
         _segments, _match, q11_metrics,
     )
 
-    # arm C's desired label path per exec bar (fold-aware mapping applied)
-    desired_labels: list[str] = []
+    # The matcher + Q-11 operate on the REGIME-GRID buffered label path
+    # (V2 machinery semantics); routing maps each regime bar's (permuted)
+    # label through the SAME fold-aware specialist mapping arm C uses.
     fold_of_exec = np.full(ctx.n, -1, dtype=np.int64)
     for fid, s, e in ctx.folds_exec:
         fold_of_exec[s : e + 1] = fid
     ts_b, labels_b = buffered_labels(ctx.ct.ts, ctx.ct.persisted, BUFFER_REGIME_BARS)
-    j = -1
-    invested_label_set = set()
-    for i in range(ctx.n):
-        ts_o = int(ctx.exec_bars.ts_open[i])
-        while j + 1 < len(ts_b) and ts_b[j + 1] < ts_o:
-            j += 1
-        lab = labels_b[j] if j >= 0 else "TRANSITION_UNKNOWN"
-        fid = int(fold_of_exec[i])
-        mapping = c_desired_mapping_by_fold.get(fid, {})
-        strat = mapping.get(lab, FLAT)
-        if strat != FLAT:
-            invested_label_set.add(lab)
-        desired_labels.append(lab)
-
     exec_idx = [bisect.bisect_right(ctx.exec_bars.ts_open.tolist(), t)
-                for t in ctx.ct.ts]
+                for t in ts_b]
     code = dict(zip(LABELS, range(1, 6)))
-    q11_e = q11_metrics(desired_labels, code, ctx.exec_bars, exec_idx)
-    segs = _segments(desired_labels)
+    q11_e = q11_metrics(labels_b, code, ctx.exec_bars, exec_idx)
+    segs = _segments(labels_b)
+    desired_labels = labels_b  # regime-grid anchor for matching
+    invested_label_set = {
+        lab for lab in LABELS
+        for fid in range(4)
+        if c_desired_mapping_by_fold.get(fid, {}).get(lab, FLAT) != FLAT
+    }
 
     def _route(labels_path):
-        mapping_by_fold = c_desired_mapping_by_fold
+        """Regime-grid permuted path -> per-exec-bar strategy targets."""
         targets: list = [None] * ctx.n
         j = -1
         for i in range(ctx.n):
@@ -576,8 +569,9 @@ def arm_f(ctx: CellCtx, c_desired_mapping_by_fold, tier: float):
             if j < 0:
                 continue
             fid = int(fold_of_exec[i])
-            mapping = mapping_by_fold.get(fid, {})
-            targets[i] = mapping.get(labels_path[j], FLAT)
+            mapping = c_desired_mapping_by_fold.get(fid, {})
+            strat = mapping.get(labels_path[j], FLAT)
+            targets[i] = strat if (strat in ctx.a4_specs or strat == FLAT) else FLAT
         emitted: list = [None] * ctx.n
         cur, cur_d = None, 0
         for i, t in enumerate(targets):
