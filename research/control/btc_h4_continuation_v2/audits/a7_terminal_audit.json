@@ -1,0 +1,98 @@
+{
+ "schema": "v2_a7_terminal_audit@1",
+ "cycle_id": "BTC-H4-CONTINUATION-V2",
+ "auditor": "A7 terminal fresh-context",
+ "audited_head": "0724542b7c678bb674f168ded8edf6fddb387766",
+ "measured_at_utc": "2026-09-23T12:20:00Z",
+ "audit_mode": {
+  "heavy_lock": "HELD_PROVEN by foreign worker CRYPTO-HISTORICAL-REPLICATION-3F-V1/data-staging pid 77456 (researchctl locks inspect)",
+  "recompute_mode": "LIGHT_EXEMPTION_DISCLOSED per plan §8 (<5 min CPU / <2 GB)",
+  "auditor_resources": {"cpu_s": 0.22, "wall_s": 0.26, "peak_rss_bytes": 113508352,
+   "method": "resource.getrusage(RUSAGE_SELF); RSS cross-checked via child-process getrusage (112,525,312 B) — initial in-script ru_maxrss*1024 unit error corrected; P1 receipt independently reproduced (121,962,496 B)",
+   "script": "research/control/btc_h4_continuation_v2/audits/a7_recompute.py",
+   "result": "research/control/btc_h4_continuation_v2/audits/a7_recompute_result.json"}
+ },
+ "checklist": [
+  {
+   "id": "C1",
+   "name": "Chain: plan a8473839 on main; bootstrap 1442a76a; P1+P2 HEAD 0724542b; PSV1 registry TERMINAL 4/15 anchor af52f358; V2 registry budget 0/2",
+   "verdict": "PASS",
+   "evidence": "git rev-parse HEAD == 0724542b…766 on orca/btc-h4-continuation-v2-integration; parent 1442a76a (bootstrap msg cites plan a8473839 + anchor af52f358); git log main shows a8473839 (plan) above 3e45b81a (PSV1 two-half close). plans/CYCLE_REGISTRY.json measured: PHASE-STRATEGY-V1 lifecycle TERMINAL, budget {used:4,max:15}, phase text carries terminal anchor af52f358 + head 0b25b230; BTC-H4-CONTINUATION-V2 budget {used:0,max:2}, s1 SEALED_UNTOUCHED.",
+   "margin": "Exact SHA matches; one claim-string defect split out as F-A7-1 (lifecycle wording)."
+  },
+  {
+   "id": "C2",
+   "name": "Claim 'registry lifecycle ACTIVE' vs registry bytes",
+   "verdict": "FAIL",
+   "evidence": "CYCLE_REGISTRY.json BTC-H4-CONTINUATION-V2 lifecycle == 'PLANNED_NOT_STARTED' (updated_at 2026-09-23T11:29:11Z, head field 1442a76a — both predate P1+P2 commit 0724542b at 12:01:38Z). The string 'ACTIVE' exists in the worktree OWNERSHIP_MANIFEST.json (integration.status), not in the registry.",
+   "margin": "LOW severity, non-blocking: registry (the authority) is correct where it matters — budget 0/2, S1 SEALED_UNTOUCHED, PSV1 row TERMINAL 4/15. Registry is governance-written (researchctl only); stale head/lifecycle expected to reconcile at close. Claim-precision defect, not an integrity defect."
+  },
+  {
+   "id": "C3",
+   "name": "FORENSICS reconciliation independently recomputed from frozen PSV1 engine (auditor script, READ-ONLY imports)",
+   "verdict": "PASS",
+   "evidence": "a7_recompute.py re-ran cells.load_btc_h4 -> books.l2_run_book -> books.l2_fills_from_book -> accounting.run_accounting (PSV1 integration tree, af52f358 lineage) and compared to the COMMITTED PSV1 scored_ledger.json: max rel-err 0.0 across 1.0x/1.5x/2.0x for trades, 4 fold nets (140843.2837184764 / -46959.98560513256 / 133820.82597620029 / -50012.3039298933 @1.0x) and net/gross/fees/funding. V2 forensics/reconciliation.json 'measured' values cross-matched the auditor rebuild exactly at every checked total; 86 entries/exits/trades, 79 DONCHIAN_STOP + 7 GATE_INACTIVE confirmed.",
+   "margin": "0.0 rel-err vs 1e-6 tolerance; independent target (committed PSV1 artifact, not the cycle's own claim)."
+  },
+  {
+   "id": "C4",
+   "name": "P2 branch 1 (min-hold): suppression law exists where cited; counts and spot-checks consistent",
+   "verdict": "PASS",
+   "evidence": "events.py:99-100 verbatim 'if exit_reason is not None and bars_held < spec.min_hold: exit_reason = None  # churn law: min-dwell suppresses exit triggers' (citation exact); config.py:127 MIN_HOLD_BARS = 12; FOLD_END set after the suppression (not suppressed). min_hold_audit.json internally consistent: 22 suppressed DONCHIAN_STOP + 13 GATE_INACTIVE = 35 detail rows; 11 delayed trades; delays {2,2,3,6,8,9,12,14,21,24,29} median 9. 6/6 spot-checked delayed trades found in forensics/trade_ledger_btc_h4.csv and in the auditor's rebuilt book with matching fold/reason and hold_bars == exit-entry (1180->1192, 4509->4521, 5585->5599, 7505->7536, 10922->10944, 12481->12499), all >= 12. Counterfactual per-fold deltas (+2263.59/+5200.74/+1816.54/-13065.94 = -3785.07) match min_hold_audit.json and the P2 rounding.",
+   "margin": "Counterfactual not re-derived from scratch (permitted): code citation + ledger columns + rebuilt-book identity support it; direction mechanically plausible (immediate stops help F1/F2/F3, hurt F4 more; 86->88 trades from freed book)."
+  },
+  {
+   "id": "C5",
+   "name": "P2 branch 2 (entry confirmation): quoted PIT medians faithful; anti-sort/wrong-cluster numerically correct",
+   "verdict": "PASS",
+   "evidence": "All 16 table values match fold_comparison.json (vol20 1.22/1.10/0.79/0.85%; slope20 +4.52/+5.12/+2.85/+4.14%; dd200 0.000/-0.005/0.000/0.000; rank 1.00 x4). Anti-sort holds pairwise: F2(loss) 5.12 > F1(win) 4.52; F4(loss) 4.14 > F3(win) 2.85. Wrong split: vol clusters {F1,F2}={1.22,1.10} vs {F3,F4}={0.79,0.85} — orthogonal to win/loss. MFE collapse 8.13% (F1) vs 3.79/3.68/3.12%; MAE flat -2.70/-2.35/-2.60/-2.33%. donchian_rank == 1.0 at all 86 entries (ledger + rebuilt book).",
+   "margin": "No separating PIT observable in the measured set; conclusion 'any threshold = curve-fit on 4 fold medians, n=86' is arithmetically fair."
+  },
+  {
+   "id": "C6",
+   "name": "SMA200/no-op arithmetic re-checked from the panel (mandate item)",
+   "verdict": "PASS_WITH_FINDINGS",
+   "evidence": "P2 premise 'every entry has dd200 ~= 0' is FALSE: 17/86 entries have dd200 < -1% (min -23.33%, 2020-04-06); fold medians 0.000/-0.005 masked the tail. Conclusion independently re-verified TRUE: close[decision_bar] > SMA200(close, 200 incl. current) computed directly from the frozen panel binds at 0/86 entry decision bars — the gate never excludes anything, so it is a no-op on THIS entry series in fact, though the stated universal-arithmetic proof is invalid as written (SMA200 <= rolling-max only forces SMA200 <= close when close IS the max).",
+   "margin": "See F-A7-2 (LOW)."
+  },
+  {
+   "id": "C7",
+   "name": "Budget/boundary: no scored arm in V2 tree; changes confined to control namespace; PSV1 byte-untouched; no orders surface",
+   "verdict": "PASS",
+   "evidence": "git diff --name-only af52f358..HEAD = 12 files, all under research/control/btc_h4_continuation_v2/. grep for arm_id/arm_config_digest/family_id/CANDIDATE over V2 *.json+*.py: zero hits; runtime/ and tests_py/ empty; worktree untracked = audits/ only. PSV1 integration worktree (HEAD 0b25b230 == registry head) and lane-btc-h4 worktree: git status porcelain clean of tracked modifications. No broker/paper/API surface anywhere in the V2 tree (only forensic driver + auditor script import frozen engine read-only).",
+   "margin": "Budget 0/2 confirmed in registry; no candidate PnL computed at any point."
+  },
+  {
+   "id": "C8",
+   "name": "Denominators: 0 observed / 0 published scored outcomes; forensic rebuild is predecessor reproduction, not a new §7 trial",
+   "verdict": "PASS",
+   "evidence": "Plan §7 requires every scored arm to carry cycle_id/arm_id/arm_config_digest — no such record exists in the V2 tree. The §1.1 rebuild reproduces the predecessor's OWN committed record (reconciliation 0.0 rel-err vs psv1_scored_ledger@1) and created no new PnL number; PSV1 ledger fields unchanged (observed_scored_denominator 52, budget_cells_consumed 4) and its worktrees are byte-clean. Program totals 283/286 confirmed at research/wayfinder/HYPOTHESIS_LEDGER.md:28. Registry V2 row: s1 SEALED_UNTOUCHED, budget 0/2.",
+   "margin": "No V2 trial-identity element was instantiated; nothing counts toward the V2 observed denominator."
+  }
+ ],
+ "findings": [
+  {
+   "id": "F-A7-1",
+   "severity": "LOW",
+   "detail": "Controller claim 'registry lifecycle ACTIVE' is not what the registry says: CYCLE_REGISTRY.json carries lifecycle 'PLANNED_NOT_STARTED' and head 1442a76a (both predate the P1+P2 commit 0724542b, 12:01:38Z vs registry 11:29:11Z). The 'ACTIVE' string lives in OWNERSHIP_MANIFEST.json integration.status. Registry is the authority and is correct on budget 0/2, S1, and the PSV1 row; reconcile lifecycle/head at close via researchctl. Claim-precision defect only."
+  },
+  {
+   "id": "F-A7-2",
+   "severity": "LOW",
+   "detail": "P2 branch-2 'arithmetic no-op proof' overclaims: 'every entry has dd200 ~= 0' is false (17/86 entries >=1% below the 200-bar high; min -23.33%). The CONCLUSION survives — auditor recomputed close > SMA200 at all 86 entry decision bars from the frozen panel: binds 0 times. Restate as an empirical no-op, not a universal arithmetic identity; the dismissal of the SMA200 gate stands."
+  },
+  {
+   "id": "F-A7-3",
+   "severity": "LOW",
+   "detail": "Strongest PIT-observable entry-confirmation candidate the auditor could construct from the same H4 OHLCV panel: breakout-strength gate — require entry-bar close to clear the prior N-bar channel high by >= 1.0x ATR(14) (round frozen parameter; mechanism: marginal breakouts lack follow-through fuel). Also considered: prior-range compression (20-bar range percentile <= 50, mechanism volatility-expansion) and time-since-gate-flip (mechanism early-trend freshness; but any gate-age covariate is a function of the gate timing series already G6-killed by block-shuffle placebo +190,392 > +177,692). Judgment: closing WITHOUT scoring is NOT premature. The measured record shows mechanically identical entries (rank 1.0 at all 86), flat MAE across folds, and failure entirely in post-entry follow-through; no measured covariate separates folds; with the full window already seen, ANY concrete threshold for such a gate could only be justified by the F2/F4 record it would be built to exclude — i.e. fold-PnL scanning, plan §2 forbidden, spending 1 of 2 budget cells on a manufactured backtest. FINDINGS.md layer (c) item 2 already discloses this as undetermined rather than resolved — honest. If a successor prospective cycle ever runs, breakout-strength is the first candidate to preregister BEFORE seeing outcomes."
+  },
+  {
+   "id": "F-A7-4",
+   "severity": "INFO",
+   "detail": "Lock discipline verified end-to-end: P1 ran LIGHT_EXEMPTION_DISCLOSED (foreign lock HELD_PROVEN, measured 0.37 s CPU / 122 MB, disclosed in data_receipt.json); the A7 audit recompute ran the same mode (0.22 s CPU / 113.5 MB peak RSS, getrusage, cross-checked via child process). Manifest digest 3f1a6687… matches the plan §0 pin (data_receipt.sha256_matches_plan_pin true); fold boundaries applied match plan §0 folds exactly."
+  }
+ ],
+ "verdict": "CONFIRM_WITH_FINDINGS",
+ "blocking_count": 0,
+ "strongest_allowed_label": "BTC_H4_CONTINUATION_V2_NO_ELIGIBLE_PROPOSAL"
+}

@@ -82,3 +82,14 @@ PIT observable does not exist in the authorized evidence space.
 - No FAMILY_FAILURES row: no family was scored or rejected; the ancestor
   PSV1-BTC_H4-UPTREND-DONCHIAN_CONTINUATION already carries its kill row
   (CONTROL_OUTEARNED_ANCHOR) from PHASE-STRATEGY-V1.
+
+---
+
+## A7-terminal correction (F-A7-2, recorded before close)
+
+The arithmetic no-op proof above overclaims its premise: "every entry has
+dd200 ≈ 0" is median-level, not universal (17/86 entries sit >1% below the
+200-bar high; min −23.3%). The CONCLUSION holds independently and was
+re-verified by A7 from the panel: `close > SMA200` binds **0/86** entry
+decision bars — the SMA200 entry-gate is vacuous on this entry series
+regardless. See audits/a7_terminal_audit.{json,md} C6.
