@@ -65,10 +65,16 @@ def fetch_backoff(url: str, attempts=8, backoff=20.0) -> bytes:
     for i in range(attempts):
         st, b = http_get(url)
         if st == 200:
-            return b
-        last = st
+            try:
+                if isinstance(json.loads(b), list):
+                    return b
+                last = "HTTP 200 with non-list body (rate-limit class) - treated transient"
+            except Exception:
+                last = "HTTP 200 unparseable body - treated transient"
+        else:
+            last = st
         time.sleep(backoff)
-    raise RuntimeError(f"fail-closed after {attempts} attempts: {url[:120]} (last status {last})")
+    raise RuntimeError(f"fail-closed after {attempts} attempts: {url[:120]} (last: {last})")
 
 def done_key(kind, ident) -> Path:
     return STATE / f"{kind}__{ident.replace('/','_')}.done"
@@ -141,29 +147,40 @@ def stage_funding_sym(sym, win) -> dict:
                                      "rows": len(rows)}])
     return {"symbol": sym, "rows": len(rows)}
 
-def stage_index_sym(sym, win) -> dict:
+def stage_index_sym(sym, win, interval="15m") -> dict:
+    # interval: A (equivalence) = 15m to match the A9-F manifest entries;
+    # B (replication cross-check) = 8h sampled density, decided pre-PnL 2026-09-23.
     rows = page_fapi(lambda s, e: (f"{FAPI}/fapi/v1/indexPriceKlines?pair={sym}"
-                                   f"&interval=15m&startTime={s}&endTime={e}&limit=1000"),
+                                   f"&interval={interval}&startTime={s}&endTime={e}&limit=1000"),
                      win[0], win[1], 1000)
     out = STAGE / "index"; out.mkdir(parents=True, exist_ok=True)
-    f = out / f"{sym}_index_15m.json"
-    f.write_text(json.dumps({"pair": sym, "window": list(win), "n": len(rows),
-                             "rows": rows}))
+    f = out / f"{sym}_index_{interval}.json"
+    f.write_text(json.dumps({"pair": sym, "window": list(win), "interval": interval,
+                             "n": len(rows), "rows": rows}))
     manifest_write("index", sym, [{"file": f.name, "sha256": sha256_file(f),
                                    "rows": len(rows)}])
     return {"symbol": sym, "rows": len(rows)}
 
 def stage_basis_frozen(sym, out: Path) -> dict:
-    """Phase A basis: the FROZEN restage_basis.py, run unmodified, one symbol."""
-    r = subprocess.run([str(PY), str(V14_ROOT / "research/v14/families/basislv_premfade/restage_basis.py"),
-                        "--out-root", str(out), "--symbols", sym],
-                       cwd=str(V14_ROOT), capture_output=True, text=True)
-    (out / f"runner_{sym}.log").write_text(r.stdout + "\n" + r.stderr)
-    if r.returncode != 0:
-        raise RuntimeError(f"frozen restage_basis failed rc={r.returncode} for {sym}")
-    j = json.loads((out / "restage_summary.json").read_text())
-    return {"mode": "frozen_script", "symbol": sym,
-            "rows": j["entries"][-1]["rows"]}
+    """Phase A basis: the FROZEN restage_basis.py, run unmodified, one symbol.
+    INC-1 fix: output dir pre-created and the script's stdout/stderr are
+    captured to the runner log BEFORE the rc check (the first crash lost the
+    diagnostics). A crash retries up to 5 times with a 600s cooldown because
+    the shared-IP 418 bans outlast the script's own 8x20s backoff."""
+    out.mkdir(parents=True, exist_ok=True)
+    for attempt in range(1, 6):
+        r = subprocess.run([str(PY), str(V14_ROOT / "research/v14/families/basislv_premfade/restage_basis.py"),
+                            "--out-root", str(out), "--symbols", sym],
+                           cwd=str(V14_ROOT), capture_output=True, text=True)
+        (out / f"runner_{sym}.log").write_text(
+            f"attempt {attempt} {datetime.now(timezone.utc).isoformat()} rc={r.returncode}\n"
+            + r.stdout + "\n" + r.stderr)
+        if r.returncode == 0:
+            j = json.loads((out / "restage_summary.json").read_text())
+            return {"mode": "frozen_script", "symbol": sym, "attempt": attempt,
+                    "rows": j["entries"][-1]["rows"]}
+        time.sleep(600.0)
+    raise RuntimeError(f"frozen restage_basis failed 5 attempts for {sym} (see runner log)")
 
 def stage_basis_window_sym(sym, win, out: Path) -> dict:
     """Phase B basis: window-parameterized, SAME frozen protocol (forward-only,
@@ -182,7 +199,7 @@ def stage_basis_window_sym(sym, win, out: Path) -> dict:
         if len(batch) < 500:
             break
         cursor = last + BUCKET
-        time.sleep(0.55)
+        time.sleep(10.0)  # 6 req/min: shared-IP budget (gateway + shadow coexist here)
     f = out / f"{sym}_basis_15m.json"
     f.write_text(json.dumps({"pair": sym, "window": list(win), "n": len(rows),
                              "rows": [rows[k] for k in sorted(rows)]}))
@@ -199,12 +216,12 @@ def build_items():
     items = []
     for s in SYMS20: items.append(("A_klines", s, lambda s=s: stage_klines_sym(s, A_KL_MONTHS)))
     for s in SYMS20: items.append(("A_funding", s, lambda s=s: stage_funding_sym(s, A_FUND)))
-    for s in SYMS19: items.append(("A_basis", s, lambda s=s: stage_basis_frozen(s, STAGE / "basis_orig")))
-    for s in SYMS19: items.append(("A_index", s, lambda s=s: stage_index_sym(s, A_BASIS_WINDOW)))
     for s in SYMS20: items.append(("B_klines", s, lambda s=s: stage_klines_sym(s, B_KL_MONTHS)))
     for s in SYMS20: items.append(("B_funding", s, lambda s=s: stage_funding_sym(s, B_FUND)))
+    for s in SYMS19: items.append(("A_basis", s, lambda s=s: stage_basis_frozen(s, STAGE / "basis_orig")))
     for s in SYMS19: items.append(("B_basis", s, lambda s=s: stage_basis_window_sym(s, B_BASIS, STAGE / "basis_win")))
-    for s in SYMS19: items.append(("B_index", s, lambda s=s: stage_index_sym(s, B_BASIS)))
+    for s in SYMS19: items.append(("A_index", s, lambda s=s: stage_index_sym(s, A_BASIS_WINDOW, "15m")))
+    for s in SYMS19: items.append(("B_index", s, lambda s=s: stage_index_sym(s, B_BASIS, "8h")))
     return items
 
 def main() -> int:
