@@ -99,6 +99,22 @@ the mechanism is not illiquidity but reversal.
   transition; all A6-P2 rows are crypto/forex) — grep of
   HYPOTHESIS_LEDGER.md 2026-09-23, recorded for A7 r2 re-verification.
 
+### 2b. Owner amendment 2026-09-23 #1 — D2 SKIPPED (verbatim intent:
+"chạy luôn Implementation. Không chạy qua D2." — run Implementation
+now; do not run the D2 step)
+
+The owner exercises authority order #1: phase D2 of §7 is NOT RUN in this
+cycle; implementation proceeds directly on the D1 freeze. Consequences,
+frozen here: (a) the R0 ancestry rho gate is `NOT_RUN` — no shadow rho is
+measured, and no survivor claim may cite D2/novelty evidence; (b) every
+terminal outcome name and every §9 report table carries `R0_NOT_RUN`
+alongside the standing 0.20 bar disclosure (ancestry UNMEASURED this
+cycle, per the STOCKS-SEARCH-V1 §3b precedent); (c) shadow_inventory.json
+remains committed as the frozen record of what was NOT measured and the
+standing disclosure duty; (d) budget, cells, folds, costs, guards and all
+other gates are UNCHANGED; (e) skipping D2 is not evidence for or against
+the family — it only leaves the ancestry question open.
+
 ## 3. What is frozen BEFORE any PnL exists (no grid search anywhere)
 
 ```text
