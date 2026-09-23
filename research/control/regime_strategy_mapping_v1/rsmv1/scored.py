@@ -287,29 +287,36 @@ def route_arm(ctx: CellCtx, mapping_by_fold: dict[int, dict], buffer_k: int,
             seg_start_ts = ts_open_l[i] if d != 0 else None
         held[i] = cur
     emitted = held
-    res = _run_engine(ctx, emitted, specs, tier)
-    # FILL-LEVEL no-op invariant: a regime_off exit must never be immediately
-    # followed by a same-direction entry (that would be the unnecessary
-    # close/reopen the turnover law forbids).
-    tr_list = res.trades
-    unnecessary_fills = sum(
-        1 for j in range(len(tr_list) - 1)
-        if tr_list[j].exit_reason == "regime_off"
-        and tr_list[j + 1].direction == tr_list[j].direction
+    # NO-OP LAW invariant (RSMV1-INC-1d, exact form): the EMITTED series must
+    # never change its strategy STRING while the direction stays non-zero —
+    # that is the only mechanism by which an unnecessary same-direction
+    # close/reopen could fire (the engine reconciles exactly on string
+    # changes). Direction legitimately leaving and returning (e.g. through a
+    # TRANSITION_UNKNOWN window that maps FLAT) is NOT a violation — the
+    # target really left.
+    unnecessary_string_changes = sum(
+        1 for i in range(1, ctx.n)
+        if emitted[i - 1] is not None and emitted[i] is not None
+        and emitted[i - 1] != emitted[i]
+        and emitted[i - 1] != FLAT and emitted[i] != FLAT
+        and direction_of(emitted[i - 1]) != 0
+        and direction_of(emitted[i - 1]) == direction_of(emitted[i])
     )
+    res = _run_engine(ctx, emitted, specs, tier)
     report = {"noop_target_updates": noop,
               "noop_suppressed_label_changes": noop_suppressed_label_changes,
-              "unnecessary_close_reopen_fills": unnecessary_fills,
+              "unnecessary_close_reopen_string_changes":
+                  unnecessary_string_changes,
               "unnecessary_close_reopen_law": "must be identically 0 "
-              "(proven from the trade stream)",
+              "(same-direction string changes in the emitted series)",
               "min_hold_deferred_direction_changes": deferred,
               "mechanism": "deterministic desired-series deferral "
                            "(min-hold 6 regime bars, buffered clock)"}
-    if unnecessary_fills != 0:
+    if unnecessary_string_changes != 0:
         raise RuntimeError(
-            "unnecessary_close_reopen FIRED "
-            f"{unnecessary_fills} same-direction close/reopen pairs — "
-            "no-op law violated")
+            "unnecessary_close_reopen: emitted series changed strategy "
+            f"string {unnecessary_string_changes} times with unchanged "
+            "direction — no-op law violated")
     return emitted, report, res
     raise RuntimeError(f"min-hold suppression did not converge in {FIXED_POINT_MAX} iters")
 
