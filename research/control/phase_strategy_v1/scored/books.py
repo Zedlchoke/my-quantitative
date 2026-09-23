@@ -40,6 +40,19 @@ def l1_events_to_fills(ev, side: int, n_bars: int | None = None) -> list[tuple[i
             fills.append((t, 0.0, True))       # series end: flat at final close
         else:
             fills.append((t + 1, 0.0, False))
+    # L1's event engine has no series-end force-flat (L2's SERIES_END_OPEN
+    # analogue): close any position still open at the final bar's close.
+    if n_bars is not None:
+        last_event = max([t for t, _ in ev.exits] + ev.entries, default=-1)
+        open_at_end = False
+        pos = 0
+        steps = sorted([(t, "e", side) for t in ev.entries]
+                       + [(t, "x", 0) for t, _ in ev.exits])
+        for t, kind, _s in steps:
+            pos = 0 if kind == "x" else _s
+        open_at_end = pos != 0
+        if open_at_end:
+            fills.append((n_bars - 1, 0.0, True))
     return fills
 
 
@@ -238,7 +251,7 @@ def l1_phase_shuffled_control(cell: dict, which: str, tier: float, bps: float,
         moves = _entry_forward_moves(cell["close"], ev.entries, 24)
         if len(cand_moves) and _ks_2samp(moves, cand_moves) > KS_MOVEMENT_BAR:
             continue
-        fills = l1_events_to_fills(ev, side)
+        fills = l1_events_to_fills(ev, side, len(cell["close"]))
         res = run_accounting(cell["open"], cell["close"], fills,
                              cell["fold_ids"], bps, tier,
                              funding_mask, funding_rate)

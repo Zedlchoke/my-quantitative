@@ -42,10 +42,11 @@ def build_cell_runs(cell: dict) -> dict:
     """arms: {arm_id: fills}; controls: {control_id: builder callable}."""
     out = {"arms": {}, "controls": {}, "baselines": {}}
     if cell["cell"] == "BTC_H1":
+        n_bars = len(cell["close"])
         for arm_id, _phase in L1_ARMS:
             ev, side = bk.l1_candidate_signals(cell, arm_id)
             out["arms"][arm_id] = {
-                "fills": bk.l1_events_to_fills(ev, side),
+                "fills": bk.l1_events_to_fills(ev, side, n_bars),
                 "entries": len(ev.entries), "exits": len(ev.exits),
                 "exit_reasons": dict(ev.exit_reasons),
                 "unnecessary_close_reopen": ev.unnecessary_close_reopen,

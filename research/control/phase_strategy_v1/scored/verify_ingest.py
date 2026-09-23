@@ -43,16 +43,17 @@ def verify() -> dict:
                 fresh = r.read()
             fresh_sha = _sha(fresh)
             staged_ok = None
-            staged = stage / e["file"]
-            if staged.exists():
+            fname = e.get("file") or e.get("staged_file")
+            staged = (stage / fname) if fname else None
+            if staged is not None and staged.exists():
                 staged_ok = _sha(staged.read_bytes()) == e["sha256"]
-            else:
+            elif fname is None:
                 results["no_staged_file"] += 1
             if fresh_sha != e["sha256"] or (len(fresh) != e.get("bytes", len(fresh))):
-                results["mismatch"].append({"lane": lane, "file": e["file"],
+                results["mismatch"].append({"lane": lane, "file": e.get("file", e.get("url")),
                                             "fresh_sha": fresh_sha, "manifest": e["sha256"]})
             elif staged_ok is False:
-                results["mismatch"].append({"lane": lane, "file": e["file"],
+                results["mismatch"].append({"lane": lane, "file": fname,
                                             "error": "staged bytes differ from manifest"})
             else:
                 results["verified"] += 1
