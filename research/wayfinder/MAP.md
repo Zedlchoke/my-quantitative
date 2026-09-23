@@ -55,6 +55,33 @@
   btc_h4_two_regime_v1/` (census/, P2_ADJUDICATION_AND_CLOSE.json,
   audits_a7/). Denominators UNCHANGED: program 283/286 (P-9).
 
+- **EURUSD-OPEN-SEARCH-V2 CLOSED → `EURUSD_OPEN_SEARCH_V2_CANDIDATE_PENDING_PROSPECTIVE_VERIFICATION`**
+  (2026-09-23, owner option (a) "A" — same-day successor on the V1 data
+  plane; branch `orca/eurusd-open-search-v2-integration` terminal 86668a5f;
+  budget 48/96; S1 SEALED; no orders; GO phrase extinguished UNCONSUMED;
+  A7 prelaunch AUTHORIZED + A7 terminal CONFIRM_CANDIDATE_PENDING_PROSPECTIVE
+  0 blocking): **the program's FIRST forex candidate that survived a fresh
+  holdout under measured two-sided costs.**
+  - Mechanism (frozen pre-holdout): **FX2-RANGEEXP wide-prior-day-range
+    fade** — when yesterday's true range is in the upper tail of its
+    trailing 60-day distribution, fade today's extension beyond yesterday's
+    high/low, exit halfway back, flat by 20:00 UTC (H1 exec, no
+    rollover/weekend/swap risk). Dev 2021–2025: C3 +7,147.1 pips PF 1.7287,
+    C4 +6,561.1 PF 1.6497, **6/6 folds positive each**. FRESH holdout
+    2026-01..06 (one look, never touched by any search): **C3 +274.0 pips
+    PF 1.31, C4 +217.1 PF 1.24 — both alive at 2.0× cost stress**; 87
+    trades (~15/month). Verdict = pending PROSPECTIVE verification (paper-
+    forward), NOT a real-money claim; **SHORT_ALWAYS +314.0 on the same
+    window is disclosed** — successor must preregister a short-beta control.
+  - Data plane extended: +2026-H1 corpus (362 files, 0 missing), full
+    census BUILD_PASS (130,911 15m bars / 30,550 H1; spread p50 0.3 pips
+    stable).
+  - Incidents: dev RUN-1 VOIDED — f_daymom look-ahead (signal used the
+    traded day's own close; printed +26k pips were fabricated by the bug)
+    caught by RUN-1 crash + extended truncation fixtures; remediated
+    (4/4 fixtures), freeze unchanged, whole run invalidated; A7-T1
+    short-beta control note carried to successor.
+  - Denominators: forex 96→144/144, program 331/334→379/382 (P-9 stamp).
 - **EURUSD-OPEN-SEARCH-V1 CLOSED → `EURUSD_OPEN_SEARCH_V1_NO_CANDIDATE_NO_VALUE`**
   (2026-09-23 same-day lifecycle: registered BLOCKED at P1 → owner directive #2
   delegated source choice + machine downloads → ACTIVE_LIGHT → TERMINAL at
