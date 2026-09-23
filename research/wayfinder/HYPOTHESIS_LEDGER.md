@@ -25,6 +25,7 @@
   (re-stamped at STOCKS-FREE-V13 close 2026-09-10: 236/239 post-FX-V8 + V13's 3/3; stocks 42/42; per P-9 the rows carry post-close truth)
   (re-stamped at STOCKS-AMIHUD-V1 close 2026-09-23: program 260/263 post-V13-NG-era 257/260 + V1's 3/3; stocks 45/45; reproduction + A7 terminal waived by owner instruction, recorded; per P-9 the rows carry post-close truth)
   (re-stamped at STOCKS-AMIHUD-RETEST-V1 close 2026-09-23: +3/+3 — stocks 48/48, program 263/266; per P-9 the rows carry post-close truth)
+  (re-stamped at PHASE-STRATEGY-V1 close 2026-09-23: +20/+20 arm×cell outcomes (4 candidates + 4 controls + 12 baseline-cells; 52 raw computations with tiers folded) — first shared/phase-class cells, program 283/286, 0 survivors; per P-9 the rows carry post-close truth)
   The first Stage-A survivor (FXFV3-A6-P1) was invalidated by its own
   remediation cycle — see the Free-V3 row and `LESSONS.md` P-1..P-6.
 - **No strategy has ever been promoted.** Every governed scored cycle closed

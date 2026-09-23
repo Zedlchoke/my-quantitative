@@ -1,6 +1,35 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
-## Sprint state (synced at the DATA-EDGE-UNLOCK-V1 terminal, 2026-09-17)
+## Sprint state (synced at the PHASE-STRATEGY-V1 terminal, 2026-09-23)
+
+- **PHASE-STRATEGY-V1 CLOSED → `PHASE_STRATEGY_V1_NO_INCREMENTAL_VALUE`**
+  (2026-09-23, branch `orca/phase-strategy-v1-integration` terminal anchor
+  af52f3582270bcc19634add3d88858e0c28959bf + closeout 0b25b230; owner GO
+  `GO PHASE STRATEGY V1 SCORED EXECUTION` consumed at its own gate after A7
+  prelaunch r2 AUTHORIZED; budget 4/15; observed 20/20 arm×cell = 52 raw
+  computations; repro BYTE_MATCH 5/5 ×3; A7 terminal 0 HIGH/CRITICAL;
+  S1 SEALED; no orders; registry TERMINAL, GO phrase DEAD):
+  - All 4 eligible candidates failed G1–G7 on the merits: BTC_H1-UP +89,637
+    (G3/G4/G5), BTC_H1-ACC +45,744 (G3/G5), BTC_H1-DOWN −44,486 (G1/G2/G6
+    control-KILLED), **BTC_H4-DONCHIAN +177,692 (G3 7.2x-loss to TREND_LF,
+    G5 0.5128, G6 KILLED — 30-bar block-shuffle gate placebo +190,392
+    out-earns the candidate: the phase-break TIMING series carries no
+    information)**. SPY_D1 closed zero-eligible (NO_ELIGIBLE_PROPOSAL).
+    BTC buy-and-hold (+429k H1 / +814k H4) and TREND_LF dwarf every gated
+    book; funding drag is a first-order cost on every BTC long book.
+  - Durable assets: 2020–2026 BTC H1/H4 Vision panel + sha-pinned manifests
+    (H4 manifest 3f1a6687…), code-owned PIT phase rules + label censuses,
+    fill-class accounting engine (funding 8h signed, fold force-flat, tier
+    exactness), frozen baseline/control definitions, G1–G9 evaluator.
+  - Incidents recorded: registry row stale 10:21Z→close (Lead-session
+    handover mid-P7; adopted-evidence receipt in closeout); prior-session
+    close rows landed mixed inside AMIHUD-RETEST close commit 4fc3320c.
+- **BTC-H4-CONTINUATION-V2 OPENED** (owner instruction 2026-09-23):
+  successor cycle investigating the PSV1 BTC_H4 arm's F2/F4 losses vs F1/F3
+  gains; AT MOST ONE pre-registered strategy change with an economic
+  mechanism, else NO_ELIGIBLE_PROPOSAL; everything is POSTHOC S0 DISCOVERY
+  (ceiling `POSTHOC_DISCOVERY_CANDIDATE_FOR_PROSPECTIVE_VALIDATION`); plan
+  `plans/PLAN_btc_h4_continuation_v2.md`; STOP-1 owner gate; no orders.
 
 - **DATA-EDGE-UNLOCK-V1 CLOSED → `DATA_EDGE_UNLOCK_V1_PASS_D2_CONTROL_ONLY__BLOCKED_BROKER_COST_AUTHORITY__WAITING_COVERAGE`** (2026-09-17, branch `orca/data-edge-unlock-v1-integration` terminal 0f6cee90; owner directive 2026-09-17 "mở cycle nền tảng DATA-EDGE-UNLOCK-V1" — three independent data-authority lanes; budget 0/0, 0 scored cells, no GO phrase, S1 SEALED, no orders, denominators unchanged 257/260 P-9; **0 successors opened** — plan §7 exactness: Lane S needed PASS_DIRECT_SIGNAL_AUTHORITY, Lane F needed PASS, Lane C needed PASS_PROSPECTIVE_CONTROL_AUTHORITY):
   - **LANE S → PASS_D2_CONTROL_ONLY** (dossiers s_a3 PIT + s_a2 mechanism + s_a4 hostile critic): FTD PIT evidenced-conservative — settlement date is NEVER availability; FTD_CONSERVATIVE_AVAILABILITY@1 frozen then TIGHTENED to a binding **≥17-calendar-day guard** (A4 refuted the 16d advisory: 'a'-file end-of-month posting overshoots in 31-day months; A7 FND-1 corrected A4's leak share ~46%→~29% — the guard stands as exactly the right fix); F2 per-file posting timestamps / F5 historical CUSIP→entity mapping / F7 PIT denominator authority / N2 EDGAR acceptance datetimes all BLOCKED on network windows (403 class), with the ordered owner upgrade path **F7 > F5 > F2/N2**; M4 denominated forms infeasible, M5 event-conditioned books struck by construction (STOCKS-NG6 vol-state ancestry), M1/M2 FTD-level and M6 N-PORT crowding states usable as a D2 control plane only; direct historical scored use RETROSPECTIVE_ONLY. **NO STOCKS-NG7.**
