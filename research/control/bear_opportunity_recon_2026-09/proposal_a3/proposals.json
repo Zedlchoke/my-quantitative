@@ -1,0 +1,133 @@
+{
+  "schema": "a3_proposals@1",
+  "task_id": "PROPOSAL_A3",
+  "cycle": "BTC-BEAR-OPPORTUNITY-RECON",
+  "lane": "A3",
+  "written_utc": "2026-09-23",
+  "head_sha": "66d58e2a7292418ba09cec997d3df3ecc04cec5c",
+  "outcome_blind": true,
+  "inputs_relied_on": [
+    "research/control/bear_opportunity_recon_2026-09/data_a2/data_inventory.json",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/downtrend_census.json",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/short_feasibility.md",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/PIT_DISCLOSURES.md",
+    "dispatch text: sanitized ancestry class list (14 classes, status only) + house law excerpts"
+  ],
+  "no_pnl_anywhere": true,
+  "arithmetic_groundwork": {
+    "lens_containment_identity": {
+      "inputs": {"P_sma_down": 0.464185, "P_downtrend": 0.200973, "agreement": 0.736},
+      "P_sma_and_dt": 0.200579,
+      "P_dt_and_not_sma": 0.000394,
+      "P_sma_and_not_dt_preconfirmation_region": 0.263606,
+      "reading": "frozen DOWNTREND label is a subset of SMA200-down to within ~6 of 14589 bars; label is the later, stricter state variable"
+    },
+    "carry_vs_fees": {
+      "in_dt_mean_funding_per_8h": 3.709e-5,
+      "bps_per_settlement": 0.371,
+      "annualized_short_carry_pct": 4.06,
+      "implied_cumulative_in_dt_pct": 5.36,
+      "a2_measured_cumulative_pct": 5.46,
+      "round_trip_bps": 12,
+      "conclusion": "carry alone is 32x below one round trip per settlement; carry-edge proposals dead on arithmetic (class 8 consistent)"
+    },
+    "worst_settlement": "-0.30% cap-binding = 30 bps = 2.5 round trips",
+    "funding_accounting_declaration": "per-settlement measured archive rates (in-DT expectation +3.709e-5/8h, actuals per settlement); NOT PSV1 frozen 1.377e-5"
+  },
+  "proposals": [
+    {
+      "id": "A",
+      "name": "Confirmation-Lag Front-Run",
+      "priority": "PRIMARY",
+      "mechanism_class": "harvest of rule-compelled structurally-late systematic flow (state-variable timing)",
+      "forced_counterparty_story": "Label-following systematic short capital (state variable = frozen PSV1 DOWNTREND label and SMA-lens siblings) cannot act until its state flips and MUST sell at the next open when it does; the containment identity shows the label confirms strictly later than the SMA lens (pre-confirmation region = 26.4% of bars), so the cohort's compelled entry flow is timestamped after my entry. Rule-structural lateness, not slowness.",
+      "pit_observable": {
+        "series": ["SMA200 lens state (frozen preregistered census rules)", "DOWNTREND label state (frozen PSV1 phase rule)"],
+        "grid": "H4 bar close decision, next H4 open fill",
+        "pit_status": "PIT_USABLE (census label rules sha-pinned 62e4df5c..., one-shot counted)",
+        "new_staging_required": false
+      },
+      "downtrend_gate": "entry state = SMA200-lens-down AND label-not-DOWN, edge-triggered on first bar of conjunction; includes label TRANSITION_UNKNOWN bars — FLAGGED DEVIATION from default flat law (the uncertainty is the mechanism's countdown; exposure bounded by K_ABANDON); owner sign-off required; all other uncertain states -> FLAT",
+      "direction": "short BTCUSDT um perp; market-neutral NOT constructible from PIT_USABLE set as staged (indexPriceKlines synthetic; no spot panel staged) — DATA-GATE FLAGGED for owner decision",
+      "entry_exit_sketch": {
+        "entry": "short at open after first H4 close of conjunction",
+        "K_ABANDON": "12 H4 bars = 2 calendar days; label unconfirmed -> mechanism absent -> exit next open (rationale: round calendar convention, fixed pre-data, not tuned)",
+        "confirmation_hold": "H_HOLD = 6 H4 bars = 1 calendar day after label confirms DOWN, then exit at bar close / next open (rationale: round calendar constant; harvests the entry flow of the late cohort, not the downtrend)",
+        "invalidation_exits": "SMA lens flips UP pre-confirmation -> exit next open; label re-enters TRANSITION_UNKNOWN post-confirmation -> exit next open; hard cap 18 H4 bars; fold-end force-flat",
+        "churn_no_op_law": "one position, no pyramiding; re-arm needs conjunction false >=1 H4 bar then true; flat-to-flat = no orders; one entry per episode",
+        "holding_bounds": "1 to 18 H4 bars"
+      },
+      "cost_survival_story": "~<=59 events per 6.5y (bounded by 59 merged DT episodes; every label onset passes the pre-state by the containment identity) => ~12 bps churn/event; harvested flow is an entire cohort's compelled market entry — the only flow in this regime both large and timestamped; funding bounded: <=9 in-DT settlements in max hold at +0.37 bps mean received, worst squeeze settlement -30 bps disclosed and accounted per settlement",
+      "falsification_control": {
+        "type": "neighbour",
+        "name": "fake-out arm",
+        "spec": "episodes with identical visible state (SMA-down AND label-not-DOWN) whose label never confirms within K_ABANDON",
+        "prediction": "confirming episodes outperform fake-out episodes net of fees at EPISODE level; if indistinguishable, mechanism = drift, dead",
+        "why_this_control": "it is the partition of the same state — it moves the signal by construction (Q-11); phase-shuffle rejected as it can only test 'any drift'"
+      },
+      "expected_failure_mode": "label cohort too small to move price or already positioned: confirming and fake-out arms identical; confirmation lag < 1 bar; pre-state dominated by 1-bar wobble (few clean episodes)",
+      "rho_self_declaration": {
+        "claim": "|rho| <= 0.20 at same H4 binary entry representation",
+        "class_1_short_in_downtrend": "entry region disjoint from label-DOWN bars by construction; overlap only the 1-day post-confirmation coda; expected rho far below 0.20",
+        "class_2_breakdown_continuation": "LARGEST RESIDUAL RISK; shared falling tape; mitigated by sparsity (<=59 edge-triggered events vs frequent displacement triggers) and time-structured exits; A4 to measure, veto accepted",
+        "class_12_donchian_long": "not a sign flip; different state variables (A2 frozen lenses)",
+        "class_13_run_imbalance": "no run/flow-persistence features",
+        "classes_3_4_5_6_7_8_9_10_11_14": "no OI, no reversal-fade, no vol, no premium/basis level, no funding feature, no price-defined liquidation episode, no order-flow, no pairs, no calendar/attention conditioning"
+      },
+      "statistical_power_honesty": "event supply 40-59 (unknown until A4 counts); at sigma~2% per 1-day event, 80% power detects only >=~1.0%/event net edges (N=31); a 50bps edge needs N~125 and is undetectable; preregistered: episode-level paired inference vs fake-out arm, episode = independence unit (no bar pooling), N<30 confirming episodes => NOT_TESTABLE_AT_POWER (NOT_RUN), never 'failed'"
+    },
+    {
+      "id": "B",
+      "name": "Mark-Trigger Catch-Down",
+      "priority": "SECONDARY",
+      "mechanism_class": "margin-engine flow clock (contractual forced-flow timing), not a level fade",
+      "forced_counterparty_story": "Leveraged perp longs facing Binance's risk engine: liquidation is contractual — closed at market on MARK price whatever their will; mark = index + smoothed premium lags a fast crash (index is a multi-venue spot composite), so forced market-sell flow is timestamped by the mark's convergence toward last: a wide (mark - last) spread means liquidations are pending, not spent. I short at the wide spread and exit when it closes (flow spent).",
+      "pit_observable": {
+        "series": ["um klines 5m (last)", "markPriceKlines 5m", "indexPriceKlines 5m", "H4 DOWNTREND label (frozen census rules) as gate"],
+        "signal": "S_t = (mark_close_t - last_close_t) / index_close_t",
+        "grid": "5m close decision, next 5m open fill (frozen convention adapted)",
+        "pit_status": "PIT_USABLE (all 12 intervals measured 2020-01 -> 2026-09; A2 inventory)",
+        "note": "no liquidation prints used or needed (um tape absent — A2 decisive finding); mechanism consumes the exchange's own trigger surface, which is PIT"
+      },
+      "downtrend_gate": "DOWNTREND label = DOWN at last closed H4 for new entries; label TRANSITION_UNKNOWN or any non-DOWN state -> no entries, and if holding -> exit next 5m open (uncertain -> FLAT law, no deviation); onset crashes outside labeled downtrends out of scope (conservative)",
+      "direction": "short BTCUSDT um perp; same market-neutral data-gate flag as Proposal A",
+      "entry_exit_sketch": {
+        "entry": "short at next 5m open after S_t >= theta = 0.12% for 2 consecutive 5m closes (theta = cost-floor constant = exactly one round trip of fees — a smaller dislocation cannot pay for itself by construction; persistence 2 = minimal double-close convention; 5m = Binance native event-export interval; nothing tuned to returns)",
+        "exit": "next 5m open after first close with S_t <= 0 (mark caught down, flow spent), or hard time stop",
+        "T_MAX": "144 bars = 12h = half a settlement day; bounds exposure to <= 2 funding settlements per trade",
+        "margin_addenda": "1x notional; bar-open gap liquidation check for the short (conservative bar-high bound); funding cashflows 00/08/16 UTC on mark notional; ADL/partial-liq placeholder disclosed",
+        "churn_no_op_law": "one position; no re-entry within same H4 window after exit; flat-to-flat no-ops; fold-end force-flat",
+        "holding_bounds": "1 to 144 5m bars"
+      },
+      "cost_survival_story": "harvested flow is a liquidation cascade leg — price-insensitive market orders by definition, multi-percent in aggregate during cascades; 12 bps small relative to that flow IF timing works; funding while holding: mean +0.37 bps/8h received but 24.7% of in-DT settlements negative, tail -30 bps (2.5 round trips) — bounded to <=2 settlements by T_MAX, accounted per settlement",
+      "falsification_control": {
+        "type": "neighbour",
+        "name": "narrow-spread matched crashes",
+        "spec": "events with similar 5m down-move but S_t < theta at decision time (mark already converged), paired within +/-7 days and similar move magnitude",
+        "prediction": "wide-spread (traded) events drift further down post-entry than matched narrow-spread events; if identical, 'crashes continue regardless of the mark clock' kills the mechanism",
+        "why_this_control": "same crash, same regime, no pending forced flow — it moves the signal by partitioning on the mechanism's own state variable (Q-11)"
+      },
+      "expected_failure_mode": "mark converges within a single 5m bar (lag sub-grid; nothing left after next-open fill) => untradable at bar-close law; or wide-spread events are squeeze ignitions resolving UP; or narrow- and wide-spread crashes statistically identical",
+      "rho_self_declaration": {
+        "claim": "|rho| <= 0.20 on the 5m entry series (A4 to aggregate representations)",
+        "class_9_price_defined_liquidation_books": "MAIN DECLARED RISK — both fire in crash contexts; mitigated by construction: S_t (mark-last spread) conditional on a crash is governed by index staleness + premium smoothing, near-orthogonal to price-path shape; A4 to measure vs a price-threshold crash series, veto accepted",
+        "class_5_displacement_fade": "opposite sign — B shorts INTO displacement, class 5 faded it; expected rho ~0 or negative",
+        "class_7_premium_level_fade": "S_t is the premium's FAST component (last-vs-mark deviation from its smoothed state), not a level; entries on large NEGATIVE fast-premium where level-fade logic is silent or opposite",
+        "class_8_funding": "no funding feature in signal (accounting only)",
+        "class_2": "shared crash environments, smaller than in A because events are an order of magnitude sparser",
+        "classes_1_3_4_6_10_11_12_13_14": "no overlap of signal construction"
+      },
+      "statistical_power_honesty": "event count unknown until measured; ~1.3 in-gate years (20.1% x 6.5y); preregistered N<40 theta-events => NOT_TESTABLE_AT_POWER (NOT_RUN), never 'failed'; neighbour pairing halves required sample by differencing out common crash drift; >=~1%/event conditional edges still need the upper end of the plausible range — underpower is the expected state and is reported as such"
+    }
+  ],
+  "ordering": {"PRIMARY": "A", "SECONDARY": "B", "rationale": "A: cleanest structural rho control (disjoint from dead label region by containment identity), bounded known-scale event supply <=~59, zero new staging; B: strongest forced-counterparty story (contractual price-insensitive flow) but two live NOT_RUN risks (spread half-life at 5m, event scarcity) plus class-9 rho veto"},
+  "kill_evidence_before_pnl": {
+    "A": ["<30 pre-confirmation episodes => NOT_RUN", "median SMA-down-to-confirmation lag <1 H4 bar (checkable from census rules alone)", "fake-out arm shows same forward drift as confirming arm", "A4 rho vs class-2 series > 0.20", "owner rejects TRANSITION_UNKNOWN deviation (no fallback exists)"],
+    "B": ["(mark-last) half-life after theta-crossing < 2 bars of 5m (mechanism-level PIT measurement, not a backtest)", "<40 theta-events inside DOWNTREND windows", "narrow-spread matched crashes behave identically", "A4 rho vs class-9 shadows > 0.20"]
+  },
+  "data_gate_flags_for_owner": [
+    "spot kline staging (BTCUSDT spot) would be required for any spot-perp market-neutral variant; neither proposal assumes it",
+    "Proposal A's trade of label-TRANSITION_UNKNOWN states deviates from the default flat law and needs explicit sign-off",
+    "aggTrades/trades families exist but were left unstaged (classes 10/13 dead; no depth measurement spent)"
+  ]
+}

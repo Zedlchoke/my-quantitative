@@ -1,0 +1,763 @@
+{
+  "schema": "a2_data_inventory@1",
+  "cycle_id": "BTC-BEAR-OPPORTUNITY-RECON",
+  "lane": "A2",
+  "probed_utc": "2026-09-23",
+  "probe_method": {
+    "probe1": "HEAD + Range/GET walk over candidate months (2019-09,2019-12,2020-01,2020-06,2021-01,2021-06,2021-12,2022-01,2026-06..09) with monthly walk to first miss at both ends; sample decodes; double-download determinism check",
+    "probe2": "authoritative S3 ListObjectsV2 listing (keyless) of data.binance.vision \u2014 true key inventory per family/symbol, paginated; supersedes URL-pattern assumptions",
+    "raw_evidence": [
+      "vision_probe1_raw.json",
+      "s3_structure.json",
+      "funding_sha256.json",
+      "probe_binance_vision.py",
+      "probe2_s3_listing.py"
+    ],
+    "budget": "1202908 bytes downloaded in probe1 in 236 requests (< 200 MB light-job law; heavy lock NOT acquired, held by CRYPTO-HISTORICAL-REPLICATION-3F-V1 pid 77456)"
+  },
+  "manifest_cross_ref": {
+    "path": "/Users/hoangminhlong/my-quantitative/.worktrees/phase-strategy-v1/integration/research/control/phase_strategy_v1/lane_btc_h4/data/manifest.json",
+    "manifest_sha256": "3f1a668798c82fbfe7311fadf65a300a583043cdbeba226164bd28c81885b66d",
+    "psv1_first_month": "2020-01",
+    "psv1_last_complete_month": "2026-08",
+    "psv1_retrieved_at": "2026-09-23",
+    "psv1_pit_disclosure": "Vision klines are retrospective exchange snapshots (retrieved 2026-09, no per-bar publication timestamps). Frozen convention: a bar is knowable at its close; first executable fill at the NEXT H4 bucket open."
+  },
+  "sources": [
+    {
+      "source": "klines 4h",
+      "url_pattern": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-{YYYY-MM}.zip (daily tail: /daily/klines/BTCUSDT/4h/BTCUSDT-4h-{YYYY-MM-DD}.zip)",
+      "http_status_probe": "200 (all probed existing months); 404 outside coverage",
+      "sample_bytes": 10156,
+      "sample_sha256": "8b48ccc0a2f81c683cfadd32f2b616af401dc275c02eb30c718fdeef4e828510",
+      "sample_sha256_scope": "full file",
+      "sample_last_modified": "Wed, 17 Jul 2024 14:15:02 GMT",
+      "fields_after_decode": [
+        "open_time",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "close_time",
+        "quote_volume",
+        "count",
+        "taker_buy_volume",
+        "taker_buy_quote_volume",
+        "ignore"
+      ],
+      "granularity": "4h/1h (interval per file)",
+      "true_first_to_last": {
+        "monthly": "2020-01 -> 2026-08 (n_zip=80)",
+        "daily_tail_measured": "klines 4h daily 2019-12-31 -> 2026-09-22 (n=2458); 2026-09-23 not yet published at probe time"
+      },
+      "retrieved_time_utc": "2026-09-23",
+      "cross_check_vs_frozen_manifest": "klines 1h 2020-01 re-downloaded sha256 512a1d725c8df97a... MATCHES PSV1 manifest entry exactly; klines 4h monthly n_zip=80 == manifest 4h_monthly count 80 (2020-01..2026-08)",
+      "revision_risk": "MEASURED rewrite evidence: 1h 2020-01 Last-Modified=2021-06-14 (rewritten ~17 months after month end, backfill/format migration); 4h 2024-06 LM=2024-07-17 (~2.5 weeks after month end = finalization lag). Monthly kline bytes are byte-stable across same-day re-downloads but the archive has been rewritten at least once historically -> pin sha256 per file at retrieval (PSV1 manifest law) and re-verify on each reuse.",
+      "license_note": "data.binance.vision is Binance's free, keyless public data export; terms per binance.vision/vision (no API key, no auth); redistribution restrictions not tested here \u2014 treat as source-licensed research input",
+      "gap_risk": "PSV1 data gate enforced interior-gap tolerances on this exact panel (GAP_TOLERANCE_FRAC=0.0005, GAP_MAX_RUN_H1=4) and PASSED; risk is outage-tail gaps, not systematic",
+      "deterministic_reretrieval": "PASS: 1h 2020-01 downloaded twice byte-identical, sha256 == frozen manifest 512a1d72...; fundingRate 2024-06 downloaded twice byte-identical",
+      "pit_verdict": "PIT_USABLE",
+      "pit_rationale": "OHLCV bars are exchange-computed aggregations with event time = bar open/close; frozen PSV1 convention (bar knowable at close, first executable fill NEXT H4 open) makes decision-time causality code-owned; no per-bar publication timestamps exist (retrospective snapshot), which is why files are sha-pinned"
+    },
+    {
+      "source": "klines 1h",
+      "url_pattern": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-{YYYY-MM}.zip (daily tail: /daily/klines/BTCUSDT/1h/BTCUSDT-1h-{YYYY-MM-DD}.zip)",
+      "http_status_probe": "200 (all probed existing months); 404 outside coverage",
+      "sample_bytes": 37271,
+      "sample_sha256": "512a1d725c8df97a1bbbee4f118e730e9628500a8f271c9e59d2a7fc5fbfcfcc",
+      "sample_sha256_scope": "full file",
+      "sample_last_modified": "Mon, 14 Jun 2021 06:12:38 GMT",
+      "fields_after_decode": [
+        "1577836800000",
+        "7189.43",
+        "7190.52",
+        "7170.15",
+        "7171.55",
+        "2449.049",
+        "1577840399999",
+        "17576424.43970",
+        "3688",
+        "996.198",
+        "7149370.76353",
+        "0"
+      ],
+      "granularity": "4h/1h (interval per file)",
+      "true_first_to_last": {
+        "monthly": "2020-01 -> 2026-08 (n_zip=80)",
+        "daily_tail_measured": "klines 4h daily 2019-12-31 -> 2026-09-22 (n=2458); 2026-09-23 not yet published at probe time"
+      },
+      "retrieved_time_utc": "2026-09-23",
+      "cross_check_vs_frozen_manifest": "klines 1h 2020-01 re-downloaded sha256 512a1d725c8df97a... MATCHES PSV1 manifest entry exactly; klines 4h monthly n_zip=80 == manifest 4h_monthly count 80 (2020-01..2026-08)",
+      "revision_risk": "MEASURED rewrite evidence: 1h 2020-01 Last-Modified=2021-06-14 (rewritten ~17 months after month end, backfill/format migration); 4h 2024-06 LM=2024-07-17 (~2.5 weeks after month end = finalization lag). Monthly kline bytes are byte-stable across same-day re-downloads but the archive has been rewritten at least once historically -> pin sha256 per file at retrieval (PSV1 manifest law) and re-verify on each reuse.",
+      "license_note": "data.binance.vision is Binance's free, keyless public data export; terms per binance.vision/vision (no API key, no auth); redistribution restrictions not tested here \u2014 treat as source-licensed research input",
+      "gap_risk": "PSV1 data gate enforced interior-gap tolerances on this exact panel (GAP_TOLERANCE_FRAC=0.0005, GAP_MAX_RUN_H1=4) and PASSED; risk is outage-tail gaps, not systematic",
+      "deterministic_reretrieval": "PASS: 1h 2020-01 downloaded twice byte-identical, sha256 == frozen manifest 512a1d72...; fundingRate 2024-06 downloaded twice byte-identical",
+      "pit_verdict": "PIT_USABLE",
+      "pit_rationale": "OHLCV bars are exchange-computed aggregations with event time = bar open/close; frozen PSV1 convention (bar knowable at close, first executable fill NEXT H4 open) makes decision-time causality code-owned; no per-bar publication timestamps exist (retrospective snapshot), which is why files are sha-pinned"
+    },
+    {
+      "source": "markPriceKlines 1m",
+      "url_pattern": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-{YYYY-MM}.zip (daily tail: /daily/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-{YYYY-MM-DD}.zip)",
+      "http_status_probe": "200 (all probed existing months); 404 outside coverage",
+      "sample_bytes": 1009828,
+      "sample_sha256": "98fdafee41a7a051c2a5a7fd750e4957adaa3efc24e64bde87e006bc72afcf68",
+      "sample_sha256_scope": "full file",
+      "sample_last_modified": "Wed, 17 Jul 2024 14:28:14 GMT",
+      "fields_after_decode": [
+        "open_time",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "close_time",
+        "quote_volume",
+        "count",
+        "taker_buy_volume",
+        "taker_buy_quote_volume",
+        "ignore"
+      ],
+      "granularity": "1m (all 12 intervals 1m..1d exist monthly, measured at 2024-06)",
+      "true_first_to_last": {
+        "monthly": "2020-01 -> 2026-08 (n_zip=80)",
+        "daily_tail_measured": "klines 4h daily 2019-12-31 -> 2026-09-22 (n=2458); 2026-09-23 not yet published at probe time"
+      },
+      "retrieved_time_utc": "2026-09-23",
+      "cross_check_vs_frozen_manifest": "klines 1h 2020-01 re-downloaded sha256 512a1d725c8df97a... MATCHES PSV1 manifest entry exactly; klines 4h monthly n_zip=80 == manifest 4h_monthly count 80 (2020-01..2026-08)",
+      "revision_risk": "MEASURED rewrite evidence: 1h 2020-01 Last-Modified=2021-06-14 (rewritten ~17 months after month end, backfill/format migration); 4h 2024-06 LM=2024-07-17 (~2.5 weeks after month end = finalization lag). Monthly kline bytes are byte-stable across same-day re-downloads but the archive has been rewritten at least once historically -> pin sha256 per file at retrieval (PSV1 manifest law) and re-verify on each reuse.",
+      "license_note": "data.binance.vision is Binance's free, keyless public data export; terms per binance.vision/vision (no API key, no auth); redistribution restrictions not tested here \u2014 treat as source-licensed research input",
+      "gap_risk": "PSV1 data gate enforced interior-gap tolerances on this exact panel (GAP_TOLERANCE_FRAC=0.0005, GAP_MAX_RUN_H1=4) and PASSED; risk is outage-tail gaps, not systematic",
+      "deterministic_reretrieval": "PASS: 1h 2020-01 downloaded twice byte-identical, sha256 == frozen manifest 512a1d72...; fundingRate 2024-06 downloaded twice byte-identical",
+      "pit_verdict": "PIT_USABLE",
+      "pit_rationale": "OHLCV bars are exchange-computed aggregations with event time = bar open/close; frozen PSV1 convention (bar knowable at close, first executable fill NEXT H4 open) makes decision-time causality code-owned; no per-bar publication timestamps exist (retrospective snapshot), which is why files are sha-pinned"
+    },
+    {
+      "source": "markPriceKlines 1h",
+      "url_pattern": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/1h/BTCUSDT-1h-{YYYY-MM}.zip (daily tail: /daily/markPriceKlines/BTCUSDT/1h/BTCUSDT-1h-{YYYY-MM-DD}.zip)",
+      "http_status_probe": "200 (all probed existing months); 404 outside coverage",
+      "sample_bytes": 20704,
+      "sample_sha256": "f725086a0492f3a8be3234413fc6902d8191a4ed074c5a15d4bf0e53d8f37efb",
+      "sample_sha256_scope": "full file",
+      "sample_last_modified": "Wed, 17 Jul 2024 14:28:14 GMT",
+      "fields_after_decode": [
+        "open_time",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "close_time",
+        "quote_volume",
+        "count",
+        "taker_buy_volume",
+        "taker_buy_quote_volume",
+        "ignore"
+      ],
+      "granularity": "4h/1h (interval per file)",
+      "true_first_to_last": {
+        "monthly": "2020-01 -> 2026-08 (n_zip=80)",
+        "daily_tail_measured": "klines 4h daily 2019-12-31 -> 2026-09-22 (n=2458); 2026-09-23 not yet published at probe time"
+      },
+      "retrieved_time_utc": "2026-09-23",
+      "cross_check_vs_frozen_manifest": "klines 1h 2020-01 re-downloaded sha256 512a1d725c8df97a... MATCHES PSV1 manifest entry exactly; klines 4h monthly n_zip=80 == manifest 4h_monthly count 80 (2020-01..2026-08)",
+      "revision_risk": "MEASURED rewrite evidence: 1h 2020-01 Last-Modified=2021-06-14 (rewritten ~17 months after month end, backfill/format migration); 4h 2024-06 LM=2024-07-17 (~2.5 weeks after month end = finalization lag). Monthly kline bytes are byte-stable across same-day re-downloads but the archive has been rewritten at least once historically -> pin sha256 per file at retrieval (PSV1 manifest law) and re-verify on each reuse.",
+      "license_note": "data.binance.vision is Binance's free, keyless public data export; terms per binance.vision/vision (no API key, no auth); redistribution restrictions not tested here \u2014 treat as source-licensed research input",
+      "gap_risk": "PSV1 data gate enforced interior-gap tolerances on this exact panel (GAP_TOLERANCE_FRAC=0.0005, GAP_MAX_RUN_H1=4) and PASSED; risk is outage-tail gaps, not systematic",
+      "deterministic_reretrieval": "PASS: 1h 2020-01 downloaded twice byte-identical, sha256 == frozen manifest 512a1d72...; fundingRate 2024-06 downloaded twice byte-identical",
+      "pit_verdict": "PIT_USABLE",
+      "pit_rationale": "OHLCV bars are exchange-computed aggregations with event time = bar open/close; frozen PSV1 convention (bar knowable at close, first executable fill NEXT H4 open) makes decision-time causality code-owned; no per-bar publication timestamps exist (retrospective snapshot), which is why files are sha-pinned"
+    },
+    {
+      "source": "indexPriceKlines 1h",
+      "url_pattern": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/BTCUSDT/1h/BTCUSDT-1h-{YYYY-MM}.zip (daily tail: /daily/indexPriceKlines/BTCUSDT/1h/BTCUSDT-1h-{YYYY-MM-DD}.zip)",
+      "http_status_probe": "200 (all probed existing months); 404 outside coverage",
+      "sample_bytes": 21088,
+      "sample_sha256": "28923c0bf1f313af7bd2a7e753e82b09864d6b46da79e35ee138f1236106aa76",
+      "sample_sha256_scope": "full file",
+      "sample_last_modified": "Wed, 17 Jul 2024 14:14:05 GMT",
+      "fields_after_decode": [
+        "open_time",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "close_time",
+        "quote_volume",
+        "count",
+        "taker_buy_volume",
+        "taker_buy_quote_volume",
+        "ignore"
+      ],
+      "granularity": "4h/1h (interval per file)",
+      "true_first_to_last": {
+        "monthly": "2020-01 -> 2026-08 (n_zip=80)",
+        "daily_tail_measured": "klines 4h daily 2019-12-31 -> 2026-09-22 (n=2458); 2026-09-23 not yet published at probe time"
+      },
+      "retrieved_time_utc": "2026-09-23",
+      "cross_check_vs_frozen_manifest": "klines 1h 2020-01 re-downloaded sha256 512a1d725c8df97a... MATCHES PSV1 manifest entry exactly; klines 4h monthly n_zip=80 == manifest 4h_monthly count 80 (2020-01..2026-08)",
+      "revision_risk": "MEASURED rewrite evidence: 1h 2020-01 Last-Modified=2021-06-14 (rewritten ~17 months after month end, backfill/format migration); 4h 2024-06 LM=2024-07-17 (~2.5 weeks after month end = finalization lag). Monthly kline bytes are byte-stable across same-day re-downloads but the archive has been rewritten at least once historically -> pin sha256 per file at retrieval (PSV1 manifest law) and re-verify on each reuse.",
+      "license_note": "data.binance.vision is Binance's free, keyless public data export; terms per binance.vision/vision (no API key, no auth); redistribution restrictions not tested here \u2014 treat as source-licensed research input",
+      "gap_risk": "PSV1 data gate enforced interior-gap tolerances on this exact panel (GAP_TOLERANCE_FRAC=0.0005, GAP_MAX_RUN_H1=4) and PASSED; risk is outage-tail gaps, not systematic",
+      "deterministic_reretrieval": "PASS: 1h 2020-01 downloaded twice byte-identical, sha256 == frozen manifest 512a1d72...; fundingRate 2024-06 downloaded twice byte-identical",
+      "pit_verdict": "PIT_USABLE",
+      "pit_rationale": "OHLCV bars are exchange-computed aggregations with event time = bar open/close; frozen PSV1 convention (bar knowable at close, first executable fill NEXT H4 open) makes decision-time causality code-owned; no per-bar publication timestamps exist (retrospective snapshot), which is why files are sha-pinned"
+    },
+    {
+      "source": "premiumIndexKlines 1h",
+      "url_pattern": "https://data.binance.vision/data/futures/um/monthly/premiumIndexKlines/BTCUSDT/1h/BTCUSDT-1h-{YYYY-MM}.zip (daily tail: /daily/premiumIndexKlines/BTCUSDT/1h/BTCUSDT-1h-{YYYY-MM-DD}.zip)",
+      "http_status_probe": "200 (all probed existing months); 404 outside coverage",
+      "sample_bytes": 16134,
+      "sample_sha256": "2f0eb796b1826d941805bbf6201b908341f812c7b4210fe9efb4f6a125d70515",
+      "sample_sha256_scope": "full file",
+      "sample_last_modified": "Wed, 17 Jul 2024 14:20:12 GMT",
+      "fields_after_decode": [
+        "open_time",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "close_time",
+        "quote_volume",
+        "count",
+        "taker_buy_volume",
+        "taker_buy_quote_volume",
+        "ignore"
+      ],
+      "granularity": "4h/1h (interval per file)",
+      "true_first_to_last": {
+        "monthly": "2020-01 -> 2026-08 (n_zip=80)",
+        "daily_tail_measured": "klines 4h daily 2019-12-31 -> 2026-09-22 (n=2458); 2026-09-23 not yet published at probe time"
+      },
+      "retrieved_time_utc": "2026-09-23",
+      "cross_check_vs_frozen_manifest": "klines 1h 2020-01 re-downloaded sha256 512a1d725c8df97a... MATCHES PSV1 manifest entry exactly; klines 4h monthly n_zip=80 == manifest 4h_monthly count 80 (2020-01..2026-08)",
+      "revision_risk": "MEASURED rewrite evidence: 1h 2020-01 Last-Modified=2021-06-14 (rewritten ~17 months after month end, backfill/format migration); 4h 2024-06 LM=2024-07-17 (~2.5 weeks after month end = finalization lag). Monthly kline bytes are byte-stable across same-day re-downloads but the archive has been rewritten at least once historically -> pin sha256 per file at retrieval (PSV1 manifest law) and re-verify on each reuse.",
+      "license_note": "data.binance.vision is Binance's free, keyless public data export; terms per binance.vision/vision (no API key, no auth); redistribution restrictions not tested here \u2014 treat as source-licensed research input",
+      "gap_risk": "PSV1 data gate enforced interior-gap tolerances on this exact panel (GAP_TOLERANCE_FRAC=0.0005, GAP_MAX_RUN_H1=4) and PASSED; risk is outage-tail gaps, not systematic",
+      "deterministic_reretrieval": "PASS: 1h 2020-01 downloaded twice byte-identical, sha256 == frozen manifest 512a1d72...; fundingRate 2024-06 downloaded twice byte-identical",
+      "pit_verdict": "PIT_USABLE",
+      "pit_rationale": "OHLCV bars are exchange-computed aggregations with event time = bar open/close; frozen PSV1 convention (bar knowable at close, first executable fill NEXT H4 open) makes decision-time causality code-owned; no per-bar publication timestamps exist (retrospective snapshot), which is why files are sha-pinned"
+    },
+    {
+      "source": "fundingRate (monthly archive)",
+      "url_pattern": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-{YYYY-MM}.zip (NO daily family exists \u2014 measured)",
+      "http_status_probe": "200 for 2020-01..2026-08; 404 for 2019-09..2019-12 and 2026-09 (candidate probes + S3 listing n_zip=80)",
+      "sample_bytes": 896,
+      "sample_sha256": "7c108b3a02bd6dc7345ca7323e3a49664edcea0afdcf780ffb3b44762c45a964",
+      "sample_last_modified": "2024-06 file LM=2024-07-16 (finalization ~2 weeks); 2020-01 file LM=2023-05-09 (REWRITTEN ~3.3y after month end \u2014 format migration to calc_time,funding_interval_hours,last_funding_rate)",
+      "fields_after_decode": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "granularity": "per settlement event (8h; funding_interval_hours=8 throughout, decoded 80/80 files)",
+      "true_first_to_last": {
+        "monthly_archive": "2020-01 -> 2026-08 (n_zip=80, S3 listing authoritative)",
+        "rest_fapi_measured": "fapi/v1/fundingRate reaches 2019-09-10 08:00 UTC (perp launch) via startTime pagination; startTime=2020-01-01 limit=1000 returned exactly 1000 forward records"
+      },
+      "retrieved_time_utc": "2026-09-23",
+      "cross_check_vs_frozen_manifest": "not in PSV1 manifest (PSV1 staged klines only); all 80 monthly sha256 pinned in funding_sha256.json at retrieval",
+      "revision_risk": "settlement rates are fixed at calc_time (event records), but the ARCHIVE FILES have been rewritten (2020-01 LM=2023-05-09); live tail (< 1 month) only via REST, which is a mutable endpoint",
+      "license_note": "same keyless Vision terms",
+      "gap_risk": "archive lag: current month appears only at month end + processing (~2 weeks, LM evidence); no interior gaps found (80/80 months contiguous)",
+      "deterministic_reretrieval": "PASS: 2024-06 downloaded twice byte-identical (sha 43fc4473820d1fb4...)",
+      "pit_verdict": "PIT_USABLE (history) / RETROSPECTIVE_ONLY (live tail)",
+      "pit_rationale": "each row is a settlement event with event time = calc_time; usable PIT for any decision after the event's settlement; NOT usable as a current-month live feed from Vision (monthly lag) \u2014 REST is the live source and must be sha/row-pinned at retrieval"
+    },
+    {
+      "source": "metrics (sumOpenInterest / L-S ratios; DAILY ONLY)",
+      "url_pattern": "https://data.binance.vision/data/futures/um/daily/metrics/BTCUSDT/BTCUSDT-metrics-{YYYY-MM-DD}.zip (NO monthly family exists \u2014 measured; probe1 monthly URL assumption was wrong and returned 404 everywhere)",
+      "http_status_probe": "200 daily; monthly 404 all months",
+      "sample_bytes": 11524,
+      "sample_sha256": "full-file sha not pinned (decoded in probe); per-day ~11.5 KB",
+      "sample_last_modified": null,
+      "fields_after_decode": [
+        "create_time",
+        "symbol",
+        "sum_open_interest",
+        "sum_open_interest_value",
+        "count_toptrader_long_short_ratio",
+        "sum_toptrader_long_short_ratio",
+        "count_long_short_ratio",
+        "sum_taker_long_short_vol_ratio"
+      ],
+      "granularity": "5-minute snapshots (288/day; create_time verified on 2026-09-22 and 2021-10-06 samples; header identical across 2021->2026)",
+      "true_first_to_last": "2020-09-01 -> 2026-09-22 (n=2213 daily files, S3 listing) \u2014 TRUE first month is 2020-09, NOT perp launch 2019-09; current to T-1",
+      "retrieved_time_utc": "2026-09-23",
+      "cross_check_vs_frozen_manifest": "not in PSV1 manifest",
+      "revision_risk": "daily files published T+1 (bookDepth sibling LM 2026-09-23 07:27 for 2026-09-22 data); snapshots are event-time stamped; unknown rewrite history \u2014 pin sha at retrieval",
+      "license_note": "same keyless Vision terms",
+      "gap_risk": "coverage starts 2020-09-01 (no OI history before that ANYWHERE on Vision: REST openInterestHist measured to hold only ~41.6h \u2014 see rest_fapi row)",
+      "deterministic_reretrieval": "not re-downloaded twice (small decode sample only); flag for staging law",
+      "pit_verdict": "RETROSPECTIVE_ONLY",
+      "pit_rationale": "whole-month/year appears retrospectively; each row event-time stamped so decision-time causality is reconstructible at 5m grain for 2020-09 onward, but a LIVE decision cannot see OI from this source with < T+1 lag; the only multi-year OI history that exists \u2014 and it starts 2020-09, not 2019-09"
+    },
+    {
+      "source": "REST fapi openInterestHist (cross-check)",
+      "url_pattern": "https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=5m&limit=500[&startTime=...]",
+      "http_status_probe": "200 with no startTime (500 rows); HTTP 400 when startTime=2020-01-01 (5m and 1h)",
+      "sample_bytes": null,
+      "fields_after_decode": [
+        "symbol",
+        "sumOpenInterest",
+        "sumOpenInterestValue",
+        "CMCCirculatingSupply",
+        "timestamp"
+      ],
+      "granularity": "5m or 1h rows, max 500 per call",
+      "true_first_to_last": "measured lookback: 500x5m = ~41.6 h from now (first ts 1790019300000 vs server 1790169094070 at probe time); older startTime rejected HTTP 400",
+      "retrieved_time_utc": "2026-09-23",
+      "cross_check_vs_frozen_manifest": "n/a",
+      "revision_risk": "live mutable endpoint",
+      "license_note": "keyless REST, weight-rated; rate limits not stressed",
+      "gap_risk": "NOT multi-year history \u2014 owner's suspicion CONFIRMED by measurement: OI REST cannot seed a multi-year OI panel; Vision metrics daily is the only OI history (from 2020-09-01)",
+      "deterministic_reretrieval": "n/a (streaming endpoint)",
+      "pit_verdict": "UNAVAILABLE (as multi-year history)",
+      "pit_rationale": "empirical lookback ~2 days; docs-claims not trusted and measurement contradicts any multi-year use"
+    },
+    {
+      "source": "bookTicker (um, tick top-of-book)",
+      "url_pattern": "monthly: /monthly/bookTicker/BTCUSDT/BTCUSDT-bookTicker-{YYYY-MM}.zip; daily: /daily/bookTicker/...",
+      "http_status_probe": "200 inside coverage; 404 outside (probe1 candidate probes all-404 were a MONTHLY-ONLY assumption artifact; S3 listing is authoritative)",
+      "sample_bytes": 262144,
+      "sample_sha256": "range-sample sha in s3_structure.json (partial)",
+      "sample_last_modified": "monthly 2023-05 LM=2023-06-17; daily 2024-03-30 LM=2024-03-31",
+      "fields_after_decode": [
+        "update_id",
+        "best_bid_price",
+        "best_bid_qty",
+        "best_ask_price",
+        "best_ask_qty",
+        "transaction_time",
+        "event_time"
+      ],
+      "granularity": "tick events",
+      "true_first_to_last": "monthly: 2023-05 -> 2024-04 (n=12); daily: 2023-05-16 -> 2024-03-30 (n=320). NOTHING before 2023-05 and NOTHING after 2024-04 \u2014 discontinued ~2.4y ago",
+      "retrieved_time_utc": "2026-09-23",
+      "cross_check_vs_frozen_manifest": "n/a",
+      "revision_risk": "discontinued export; files stable",
+      "license_note": "same keyless Vision terms",
+      "gap_risk": "terminal: no current tail will ever arrive",
+      "deterministic_reretrieval": "not re-downloaded (large files, range-sampled only)",
+      "pit_verdict": "UNAVAILABLE (for current-cycle research)",
+      "pit_rationale": "no coverage of the frozen window's tail (2024-04..2026-09) and none before 2023-05; a 12-month tick island cannot support a multi-year book and cannot go live"
+    },
+    {
+      "source": "bookDepth (um, daily relative-depth snapshots)",
+      "url_pattern": "https://data.binance.vision/data/futures/um/daily/bookDepth/BTCUSDT/BTCUSDT-bookDepth-{YYYY-MM-DD}.zip (DAILY ONLY \u2014 no monthly family)",
+      "http_status_probe": "200 daily",
+      "sample_bytes": 560043,
+      "sample_sha256": "range-sample sha in s3_structure.json (partial)",
+      "sample_last_modified": "2026-09-22 file LM=2026-09-23 07:27 (T+1 publication); 2023-01-01 file LM=2023-07-11 (late backfill)",
+      "fields_after_decode": [
+        "timestamp",
+        "percentage",
+        "depth",
+        "notional"
+      ],
+      "granularity": "snapshot groups (multiple percentage levels per timestamp, e.g. -5.00/-4.00 at same second)",
+      "true_first_to_last": "2023-01-01 -> 2026-09-22 (n=1358 daily files) \u2014 current to T-1, but no 2020-2022 history",
+      "retrieved_time_utc": "2026-09-23",
+      "cross_check_vs_frozen_manifest": "n/a",
+      "revision_risk": "T+1 publication; 2023-01-01 LM 2023-07-11 shows backfill rewrites happen",
+      "license_note": "same keyless Vision terms",
+      "gap_risk": "starts 2023-01 (measured); not multi-year",
+      "deterministic_reretrieval": "not re-downloaded twice",
+      "pit_verdict": "RETROSPECTIVE_ONLY",
+      "pit_rationale": "event-time stamped T+1 snapshots, usable for 2023+ research; insufficient for a 2020-start frozen window and live use needs pinned T+1 retrieval"
+    },
+    {
+      "source": "liquidationSnapshot (um BTCUSDT-PERP)",
+      "url_pattern": "legacy path /futures/um/{monthly,daily}/liquidationSnapshot/BTCUSDT/... (direct HEAD probes)",
+      "http_status_probe": "404 on ALL probed months 2020-01..2021-06 legacy paths; NO liquidationSnapshot prefix exists under um/ (S3 listing authoritative)",
+      "sample_bytes": null,
+      "fields_after_decode": null,
+      "granularity": "event (forced-order) records where present",
+      "true_first_to_last": "NOTHING \u2014 um BTCUSDT liquidation print tape is entirely absent from Vision today",
+      "retrieved_time_utc": "2026-09-23",
+      "cross_check_vs_frozen_manifest": "n/a",
+      "revision_risk": "exchange removed the um export (legacy months removed retroactively \u2014 even 2020-2021 files 404)",
+      "license_note": "n/a",
+      "gap_risk": "total",
+      "deterministic_reretrieval": "n/a",
+      "pit_verdict": "UNAVAILABLE",
+      "pit_rationale": "DECISIVE for the ancestry 'honest gap': liquidation PRINT-conditioned dislocation on BTCUSDT-PERP is NOT MEASURABLE from Binance Vision (no um history at any date). The only survivor is the COIN-M island below."
+    },
+    {
+      "source": "liquidationSnapshot (cm BTCUSD_PERP \u2014 COIN-M island)",
+      "url_pattern": "https://data.binance.vision/data/futures/cm/daily/liquidationSnapshot/BTCUSD_PERP/BTCUSD_PERP-liquidationSnapshot-{YYYY-MM-DD}.zip (daily only; NOTE the task's 'bm/' prefix does not exist \u2014 COIN-M is 'cm/')",
+      "http_status_probe": "200 inside coverage",
+      "sample_bytes": 1733,
+      "sample_sha256": "sha256(first 256 KiB of 2023-06-25 file)=2068add7e570b1e17afc71e53e22fee716010f08976643ead345d6c96bfbd60b (partial-scope)",
+      "sample_last_modified": "2023-06-26 (T+1)",
+      "fields_after_decode": [
+        "time",
+        "side",
+        "order_type",
+        "time_in_force",
+        "original_quantity",
+        "price",
+        "average_price",
+        "order_status",
+        "last_fill_quantity",
+        "accumulated_fill_quantity"
+      ],
+      "granularity": "forced-order event records (side=BUY means a forced buy = short liquidation; sample rows LIMIT IOC FILLED)",
+      "true_first_to_last": "2023-06-25 -> 2024-10-14 (n=472 daily files; 6 interior missing days: 2023-09-09/23/25, 2024-06-01/11/12); DISCONTINUED after 2024-10-14",
+      "retrieved_time_utc": "2026-09-23",
+      "cross_check_vs_frozen_manifest": "n/a",
+      "revision_risk": "discontinued export",
+      "license_note": "same keyless Vision terms",
+      "gap_risk": "different instrument (COIN-M inverse BTCUSD_PERP, coin-margined) AND stale (>13 months old) AND 16-month island",
+      "deterministic_reretrieval": "not re-downloaded twice",
+      "pit_verdict": "UNAVAILABLE (as a decision-grade feed for BTCUSDT-PERP research)",
+      "pit_rationale": "16-month stale island on a sibling instrument cannot seed multi-year um liquidation-print research; at best a 2023-06..2024-10 ancillary measurement with its own ancestry rho burden"
+    },
+    {
+      "source": "futures/bm/ (as named in the dispatch)",
+      "url_pattern": "https://data.binance.vision/data/futures/bm/...",
+      "http_status_probe": "prefix does NOT exist; bucket root has exactly cm/ and um/ (S3 listing)",
+      "true_first_to_last": "n/a",
+      "retrieved_time_utc": "2026-09-23",
+      "pit_verdict": "UNAVAILABLE (misnamed \u2014 actual COIN-M prefix is cm/, covered above)",
+      "pit_rationale": "um coverage is missing nothing material for the frozen window except liquidation prints (covered by cm verdict) and pre-2020-09 OI (does not exist anywhere)"
+    },
+    {
+      "source": "aggTrades / trades (um monthly+daily)",
+      "url_pattern": "/{monthly,daily}/{aggTrades,trades}/BTCUSDT/... (families exist per S3 listing; NOT probed further)",
+      "pit_verdict": "WAITING_COVERAGE (exists; not staged, not measured in depth \u2014 ancestry classes #10/#13 are already dead, so depth measurement was not spent)",
+      "retrieved_time_utc": "2026-09-23"
+    }
+  ],
+  "interval_scan_measured_2024_06": {
+    "klines": [
+      {
+        "interval": "1m",
+        "bytes": 1789499,
+        "last_modified": "Wed, 17 Jul 2024 14:15:02 GMT"
+      },
+      {
+        "interval": "3m",
+        "bytes": 640889,
+        "last_modified": "Wed, 17 Jul 2024 14:15:02 GMT"
+      },
+      {
+        "interval": "5m",
+        "bytes": 388086,
+        "last_modified": "Wed, 17 Jul 2024 14:15:02 GMT"
+      },
+      {
+        "interval": "15m",
+        "bytes": 137470,
+        "last_modified": "Wed, 17 Jul 2024 14:15:02 GMT"
+      },
+      {
+        "interval": "30m",
+        "bytes": 71257,
+        "last_modified": "Wed, 17 Jul 2024 14:15:02 GMT"
+      },
+      {
+        "interval": "1h",
+        "bytes": 36794,
+        "last_modified": "Wed, 17 Jul 2024 14:15:02 GMT"
+      },
+      {
+        "interval": "2h",
+        "bytes": 19291,
+        "last_modified": "Wed, 17 Jul 2024 14:15:02 GMT"
+      },
+      {
+        "interval": "4h",
+        "bytes": 10156,
+        "last_modified": "Wed, 17 Jul 2024 14:15:02 GMT"
+      },
+      {
+        "interval": "6h",
+        "bytes": 6979,
+        "last_modified": "Wed, 17 Jul 2024 14:15:02 GMT"
+      },
+      {
+        "interval": "8h",
+        "bytes": 5346,
+        "last_modified": "Wed, 17 Jul 2024 14:15:02 GMT"
+      },
+      {
+        "interval": "12h",
+        "bytes": 3717,
+        "last_modified": "Wed, 17 Jul 2024 14:15:02 GMT"
+      },
+      {
+        "interval": "1d",
+        "bytes": 2068,
+        "last_modified": "Wed, 17 Jul 2024 14:15:02 GMT"
+      }
+    ],
+    "markPriceKlines": [
+      {
+        "interval": "1m",
+        "bytes": 1009828,
+        "last_modified": "Wed, 17 Jul 2024 14:28:14 GMT"
+      },
+      {
+        "interval": "3m",
+        "bytes": 366738,
+        "last_modified": "Wed, 17 Jul 2024 14:28:14 GMT"
+      },
+      {
+        "interval": "5m",
+        "bytes": 219814,
+        "last_modified": "Wed, 17 Jul 2024 14:28:14 GMT"
+      },
+      {
+        "interval": "15m",
+        "bytes": 78119,
+        "last_modified": "Wed, 17 Jul 2024 14:28:14 GMT"
+      },
+      {
+        "interval": "30m",
+        "bytes": 40453,
+        "last_modified": "Wed, 17 Jul 2024 14:28:14 GMT"
+      },
+      {
+        "interval": "1h",
+        "bytes": 20704,
+        "last_modified": "Wed, 17 Jul 2024 14:28:14 GMT"
+      },
+      {
+        "interval": "2h",
+        "bytes": 10736,
+        "last_modified": "Wed, 17 Jul 2024 14:28:14 GMT"
+      },
+      {
+        "interval": "4h",
+        "bytes": 5703,
+        "last_modified": "Wed, 17 Jul 2024 14:28:14 GMT"
+      },
+      {
+        "interval": "6h",
+        "bytes": 3956,
+        "last_modified": "Wed, 17 Jul 2024 14:28:14 GMT"
+      },
+      {
+        "interval": "8h",
+        "bytes": 3048,
+        "last_modified": "Wed, 17 Jul 2024 14:28:14 GMT"
+      },
+      {
+        "interval": "12h",
+        "bytes": 2189,
+        "last_modified": "Wed, 17 Jul 2024 14:28:14 GMT"
+      },
+      {
+        "interval": "1d",
+        "bytes": 1236,
+        "last_modified": "Wed, 17 Jul 2024 14:28:14 GMT"
+      }
+    ],
+    "indexPriceKlines": [
+      {
+        "interval": "1m",
+        "bytes": 1029516,
+        "last_modified": "Wed, 17 Jul 2024 14:14:05 GMT"
+      },
+      {
+        "interval": "3m",
+        "bytes": 372572,
+        "last_modified": "Wed, 17 Jul 2024 14:14:05 GMT"
+      },
+      {
+        "interval": "5m",
+        "bytes": 221155,
+        "last_modified": "Wed, 17 Jul 2024 14:14:05 GMT"
+      },
+      {
+        "interval": "15m",
+        "bytes": 79160,
+        "last_modified": "Wed, 17 Jul 2024 14:14:05 GMT"
+      },
+      {
+        "interval": "30m",
+        "bytes": 40843,
+        "last_modified": "Wed, 17 Jul 2024 14:14:05 GMT"
+      },
+      {
+        "interval": "1h",
+        "bytes": 21088,
+        "last_modified": "Wed, 17 Jul 2024 14:14:05 GMT"
+      },
+      {
+        "interval": "2h",
+        "bytes": 11081,
+        "last_modified": "Wed, 17 Jul 2024 14:14:05 GMT"
+      },
+      {
+        "interval": "4h",
+        "bytes": 5903,
+        "last_modified": "Wed, 17 Jul 2024 14:14:05 GMT"
+      },
+      {
+        "interval": "6h",
+        "bytes": 4090,
+        "last_modified": "Wed, 17 Jul 2024 14:14:06 GMT"
+      },
+      {
+        "interval": "8h",
+        "bytes": 3184,
+        "last_modified": "Wed, 17 Jul 2024 14:14:06 GMT"
+      },
+      {
+        "interval": "12h",
+        "bytes": 2260,
+        "last_modified": "Wed, 17 Jul 2024 14:14:05 GMT"
+      },
+      {
+        "interval": "1d",
+        "bytes": 1318,
+        "last_modified": "Wed, 17 Jul 2024 14:14:05 GMT"
+      }
+    ],
+    "premiumIndexKlines": [
+      {
+        "interval": "1m",
+        "bytes": 831891,
+        "last_modified": "Wed, 17 Jul 2024 14:20:12 GMT"
+      },
+      {
+        "interval": "3m",
+        "bytes": 299417,
+        "last_modified": "Wed, 17 Jul 2024 14:20:12 GMT"
+      },
+      {
+        "interval": "5m",
+        "bytes": 175445,
+        "last_modified": "Wed, 17 Jul 2024 14:20:12 GMT"
+      },
+      {
+        "interval": "15m",
+        "bytes": 62103,
+        "last_modified": "Wed, 17 Jul 2024 14:20:12 GMT"
+      },
+      {
+        "interval": "30m",
+        "bytes": 31694,
+        "last_modified": "Wed, 17 Jul 2024 14:20:12 GMT"
+      },
+      {
+        "interval": "1h",
+        "bytes": 16134,
+        "last_modified": "Wed, 17 Jul 2024 14:20:12 GMT"
+      },
+      {
+        "interval": "2h",
+        "bytes": 8436,
+        "last_modified": "Wed, 17 Jul 2024 14:20:12 GMT"
+      },
+      {
+        "interval": "4h",
+        "bytes": 4508,
+        "last_modified": "Wed, 17 Jul 2024 14:20:12 GMT"
+      },
+      {
+        "interval": "6h",
+        "bytes": 3155,
+        "last_modified": "Wed, 17 Jul 2024 14:20:12 GMT"
+      },
+      {
+        "interval": "8h",
+        "bytes": 2460,
+        "last_modified": "Wed, 17 Jul 2024 14:20:12 GMT"
+      },
+      {
+        "interval": "12h",
+        "bytes": 1773,
+        "last_modified": "Wed, 17 Jul 2024 14:20:12 GMT"
+      },
+      {
+        "interval": "1d",
+        "bytes": 1057,
+        "last_modified": "Wed, 17 Jul 2024 14:20:12 GMT"
+      }
+    ]
+  },
+  "deterministic_reretrieval": {
+    "fundingRate": {
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-06.zip",
+      "download1_sha256": "43fc4473820d1fb4fe340d1b1951a87555f6841aa352e684fa95d6adffce04c6",
+      "download2_sha256": "43fc4473820d1fb4fe340d1b1951a87555f6841aa352e684fa95d6adffce04c6",
+      "byte_identical": true,
+      "bytes": 721,
+      "etag1": "\"363a2bc8cdeb9616830a41f6c83948c1\"",
+      "etag2": "\"363a2bc8cdeb9616830a41f6c83948c1\"",
+      "retrieved_time_utc": "2026-09-23T13:05:48Z"
+    },
+    "klines:1h": {
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2020-01.zip",
+      "download1_sha256": "512a1d725c8df97a1bbbee4f118e730e9628500a8f271c9e59d2a7fc5fbfcfcc",
+      "download2_sha256": "512a1d725c8df97a1bbbee4f118e730e9628500a8f271c9e59d2a7fc5fbfcfcc",
+      "byte_identical": true,
+      "bytes": 37271,
+      "etag1": "\"41b5b6ff40ab7c841a63d1289c0ea53e\"",
+      "etag2": "\"41b5b6ff40ab7c841a63d1289c0ea53e\"",
+      "retrieved_time_utc": "2026-09-23T13:05:49Z",
+      "manifest_sha256_2020_01": "512a1d725c8df97a1bbbee4f118e730e9628500a8f271c9e59d2a7fc5fbfcfcc",
+      "matches_frozen_manifest": true
+    }
+  },
+  "daily_tail_2026_09_measured": {
+    "https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/4h/BTCUSDT-4h-2026-09-22.zip": {
+      "status": 200,
+      "bytes": 634,
+      "last_modified": "Wed, 23 Sep 2026 07:49:59 GMT"
+    },
+    "https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/4h/BTCUSDT-4h-2026-09-23.zip": {
+      "status": 404,
+      "bytes": null,
+      "last_modified": null
+    },
+    "https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/1h/BTCUSDT-1h-2026-09-22.zip": {
+      "status": 200,
+      "bytes": 1557,
+      "last_modified": "Wed, 23 Sep 2026 07:49:59 GMT"
+    },
+    "https://data.binance.vision/data/futures/um/daily/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2026-09-22.zip": {
+      "status": 404,
+      "bytes": null,
+      "last_modified": null
+    },
+    "https://data.binance.vision/data/futures/um/daily/metrics/BTCUSDT/BTCUSDT-metrics-2026-09-22.zip": {
+      "status": 200,
+      "bytes": 11524,
+      "last_modified": "Wed, 23 Sep 2026 06:40:57 GMT"
+    },
+    "https://data.binance.vision/data/futures/um/daily/bookTicker/BTCUSDT/BTCUSDT-bookTicker-2026-09-22.zip": {
+      "status": 404,
+      "bytes": null,
+      "last_modified": null
+    },
+    "https://data.binance.vision/data/futures/um/daily/liquidationSnapshot/BTCUSDT/BTCUSDT-liquidationSnapshot-2026-09-22.zip": {
+      "status": 404,
+      "bytes": null,
+      "last_modified": null
+    }
+  },
+  "verdict_summary": {
+    "PIT_USABLE_multi_year": [
+      "klines 4h/1h (+all kline intervals): 2020-01 -> 2026-08 monthly + daily tail to 2026-09-22",
+      "markPriceKlines/indexPriceKlines/premiumIndexKlines: 2020-01 -> 2026-08 (all 12 intervals)",
+      "fundingRate: 2020-01 -> 2026-08 archive (+REST back to 2019-09-10)"
+    ],
+    "RETROSPECTIVE_ONLY": [
+      "metrics (OI + L/S ratios): 2020-09-01 -> 2026-09-22 at 5m (only OI multi-year source; starts 2020-09, NOT 2019)",
+      "bookDepth: 2023-01-01 -> 2026-09-22 (current but not multi-year)"
+    ],
+    "UNAVAILABLE": [
+      "liquidationSnapshot um (BTCUSDT-PERP): zero coverage at any date \u2014 liquidation-print mechanisms NOT MEASURABLE on the primary instrument",
+      "liquidationSnapshot cm island 2023-06-25..2024-10-14 (sibling instrument, stale, discontinued)",
+      "bookTicker: 12-month island 2023-05..2024-04, discontinued",
+      "REST openInterestHist as history: measured ~41.6h lookback, HTTP 400 on older startTime",
+      "futures/bm/ (misnomer): prefix absent; COIN-M is cm/"
+    ]
+  }
+}

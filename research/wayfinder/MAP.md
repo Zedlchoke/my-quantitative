@@ -2,6 +2,30 @@
 
 ## Sprint state (synced at the PHASE-STRATEGY-V1 terminal, 2026-09-23)
 
+- **BTC-BEAR-OPPORTUNITY recon CLOSED PRE-CYCLE → `NO_ELIGIBLE_PROPOSAL`**
+  (2026-09-23, owner directive: forced-flow/liquidity-dislocation short or
+  market-neutral mechanisms in BTC downtrends; NO cycle opened — P3
+  precondition failed, no registry row, no scored cell, no GO; evidence
+  `research/control/bear_opportunity_recon_2026-09/` committed this date;
+  A7 CONFIRM_WITH_FINDINGS 0 blocking, decisive numbers independently
+  reproduced): lane A2 measured data authority (klines/mark/index/premium/
+  funding PIT_USABLE multi-year; **liquidationSnapshot ZERO coverage**;
+  multi-year PIT OI/order-book none; frozen DOWNTREND label: 20.1% occupancy,
+  59 merged independent episodes, floors PASS; in-downtrend funding mean
+  +3.709e-5/8h RECEIVED by shorts, 24.7% settlements negative); lane A3
+  (outcome-blind) proposed exactly 2 mechanisms; lane A4 vetoed both
+  pre-PnL: **Confirmation-Lag Front-Run → VETOED_FICTIONAL_COUNTERPARTY**
+  (counterparty = the repo's own research label; G6 already measured the
+  label's timing informationless; 284 entries vs ≤59 claimed, 88% fake-outs)
+  and **Mark-Trigger Catch-Down → VETOED ×3** (preregistered neighbour
+  control fires opposite: wide-spread events −4.87% mean gross per short vs
+  flat matched crashes; 13 independent clusters with 91.1% in one COVID
+  week; ancestry class-7 premium-fade rho −0.418/−0.515 > 0.20 bar,
+  construction identity −0.68). Bear-side short sub-family on BTCUSDT-PERP
+  H4/5m measured-closed at the mechanism layer. Reopening: new PIT-authorized
+  multi-year source (real liquidation/OI tape) or owner plan naming a
+  mechanism outside the ancestry table; cross-venue/ETF sources NOT gated
+  (separate data-authority cycle required).
 - **BTC-H4-TWO-REGIME-V1 CLOSED → `BTC_H4_TWO_REGIME_V1_NO_ELIGIBLE_PROPOSAL`
   (2026-09-23)**; branch `orca/btc-h4-two-regime-v1-integration` terminal
   4d93ff9e (base = PSV1 anchor af52f358), plan

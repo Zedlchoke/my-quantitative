@@ -1,0 +1,49 @@
+{
+  "schema": "a2_census_preregistration@1",
+  "rule_id": "A2_DOWNTREND_CENSUS@1",
+  "preregistered_utc": "2026-09-23T20:05:00Z",
+  "status": "WRITTEN_BEFORE_COUNTING — the census run (census_run.py) loads and hashes this file before computing any count; the sha256 of this file at count time is recorded in downtrend_census.json",
+  "panel": {
+    "source": "PSV1 frozen BTC_H4 staged panel (read-only)",
+    "path": "/Users/hoangminhlong/my-quantitative/.worktrees/phase-strategy-v1/lane-btc-h4/research/control/phase_strategy_v1/lane_btc_h4/data_staging/scored_h4.parquet",
+    "manifest_path": "/Users/hoangminhlong/my-quantitative/.worktrees/phase-strategy-v1/integration/research/control/phase_strategy_v1/lane_btc_h4/data/manifest.json",
+    "manifest_sha256": "3f1a668798c82fbfe7311fadf65a300a583043cdbeba226164bd28c81885b66d",
+    "loader": "scored.cells.load_btc_h4 convention imported VERBATIM read-only from the PSV1 integration scored namespace (sys.path insert of the scored package dir; sys.dont_write_bytecode=True so the read-only tree is not modified). This loader re-derives labels via pipeline.phase_rule.classify and truncates the warmup via pipeline.census.era_fold_assignment exactly as PSV1 used."
+  },
+  "labels": {
+    "primary": "DOWNTREND from PSV1 pipeline.phase_rule.classify with frozen config (N_SMA=120, M_SLOPE=30, DEADBAND_SLOPE=0.01, DEADBAND_SIDE=0.01, CONFIRM=3, WARMUP=153 H4 bars). Code-owned PIT: all inputs at t use bars with close time <= decision time t; the confirmation window uses raw states at t-CONFIRM+1..t. No future bars, no tops/bottoms, no outcome data.",
+    "secondary_lens": "close < SMA200(H4), SMA200 = causal rolling mean of the H4 close over the prior 200 H4 bars inclusive of t (PSV1 TREND_LF convention, inverse side). Lens is valid from panel index >= 199 (its own warmup); agreement with the primary label is reported on the overlap only. The lens is a ROBUSTNESS REPORT, not a replacement: no choice between lenses is made by this lane."
+    ,
+    "causality_statement": "Both labels are causal at decision time: computed from bars with close time <= decision time. Decision at H4 close; first executable fill at the NEXT H4 bucket open (PSV1 EXECUTION_LAW). No future tops/bottoms or outcome data are used anywhere in this census."
+  },
+  "window": {
+    "definition": "post-warmup buckets of the staged panel: panel index >= WARMUP(153), i.e. bucket open >= 2020-01-26 12:00 UTC, through the last staged bucket (open 2026-09-22 20:00 UTC).",
+    "warmup_treatment": "warmup buckets are used for indicator computation but excluded from all counts (PSV1 convention: truncated, not refused)."
+  },
+  "episode_definition": {
+    "run": "maximal contiguous run of bars with label == DOWNTREND (primary) or lens-true (secondary) inside the window",
+    "run_length": "number of H4 bars inclusive",
+    "censoring": "runs touching the window start/end are retained and flagged left/right-censored in the per-run report",
+    "dwell": "run length in H4 bars; also reported in days (bars * 4h)",
+    "occupancy_share": "label-true bars / window bars",
+    "threshold_counts": "counts of RAW runs with length >= 6, >= 24, >= 72 H4 bars",
+    "decisions_per_episode": "run length in H4 bars (one eligible decision per bar close; fill next bar open)"
+  },
+  "merge_rule": {
+    "primary": "iteratively merge two adjacent primary-label runs iff the gap between them consists ONLY of TRANSITION_UNKNOWN bars AND the gap length < 12 H4 bars; repeat left-to-right until fixpoint. Runs separated by any ACCUMULATION/UPTREND/DISTRIBUTION bar are never merged; any gap >= 12 bars is never merged.",
+    "secondary_lens": "the lens is binary (no TRANSITION_UNKNOWN): merge two adjacent lens runs iff the gap length < 12 H4 bars regardless of gap content.",
+    "merged_count": "number of runs after merging = the INDEPENDENT-EPISODE estimate reported to the floors"
+  },
+  "floors_evaluation": {
+    "source": "PSV1 lane_btc_h4 pipeline/config.py, verbatim:",
+    "FLOOR_EPISODES_CELL": 20,
+    "FLOOR_EPISODES_FOLD": 3,
+    "FLOOR_DECISIONS_FOLD": 100,
+    "fold_law": "F_i = ERA-Bi boundaries (post-warmup) via pipeline.census.era_fold_assignment; folds F1..F4",
+    "evaluation": "PASS/FAIL per floor for phase DOWNTREND under (a) RAW runs (PSV1 census convention, runs clipped at fold boundaries for fold-level counts) and (b) MERGED runs (independent-episode estimate, merged within each fold for fold-level counts). Reported for the primary label; the secondary lens is reported descriptively, not floor-adjudicated."
+  },
+  "per_run_report": {
+    "fields": "start/end bucket open UTC, run length, days, censored flags, fold(s) spanned, BTC close-to-close return over the run = close[last]/close[start] - 1 (DESCRIPTIVE PRICE OBSERVATION ONLY — this is a property of BTC over the window, not a strategy result; no PnL, no costs, no positions are computed)"
+  },
+  "outcome_blindness": "counts / occupancy / dwell / transitions / descriptive price returns only. No strategy returns, equity path, costs application or parameter search exists in this census. The counting rule above was fixed before the single census run."
+}

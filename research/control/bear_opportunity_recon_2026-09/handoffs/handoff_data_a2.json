@@ -1,0 +1,85 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "DATA_A2",
+  "cycle_id": "BTC-BEAR-OPPORTUNITY-RECON",
+  "lane": "A2",
+  "dispatch_sha": "d67f1af7f05cb21b5205ce4bb87768f1ab2e2f43",
+  "actual_start_sha": "d67f1af7f05cb21b5205ce4bb87768f1ab2e2f43",
+  "commit_sha": null,
+  "completed_utc": "2026-09-23T20:30:00Z",
+  "role": "data/PIT inventory — what is even measurable; no strategies, no PnL, no tuning",
+  "changed_paths": [
+    "research/control/bear_opportunity_recon_2026-09/data_a2/",
+    "research/control/bear_opportunity_recon_2026-09/handoffs/handoff_data_a2.json"
+  ],
+  "tests": [
+    "Lock state inspected BEFORE any compute: HELD_PROVEN (pid 77456, CRYPTO-HISTORICAL-REPLICATION-3F-V1/data-staging); heavy lock NOT acquired (light-job <200MB exemption); no process touched",
+    "Probe determinism: fundingRate 2024-06 downloaded twice byte-identical (sha 43fc4473...); klines 1h 2020-01 downloaded twice byte-identical AND sha256 512a1d725c8df97a... == frozen PSV1 manifest entry (independent same-day retrieval)",
+    "Manifest sha verified: 3f1a668798c82fbfe7311fadf65a300a583043cdbeba226164bd28c81885b66d over manifest.json; 182 files, statuses all 200, 2020-01..2026-08 monthly + 2026-09-01..22 daily",
+    "Coverage measured twice independently: HEAD/Range month-walk (probe1) vs authoritative S3 ListObjectsV2 key listing (probe2) — agree on klines/fundingRate 2020-01..2026-08 (80 files each); probe2 corrected probe1's URL-pattern assumptions for metrics/bookDepth (daily-only) and discovered um liquidationSnapshot absence",
+    "Census one-shot against frozen panel via PSV1 scored.cells.load_btc_h4 imported VERBATIM read-only (sys.dont_write_bytecode=True; verified zero bytecode writes into PSV1 trees — all pycache mtimes predate lane start); preregistration file sha256 recorded in downtrend_census.json at count time",
+    "Funding archive decode: 80/80 monthly files contiguous 2020-01..2026-08 (7305 settlements) + REST 2019-09-10..2019-12-31 (338); REST pagination measured (startTime=2020-01-01 limit=1000 -> exactly 1000 forward records; startTime=2019-09-10 returns perp-launch-era records)",
+    "REST openInterestHist lookback measured empirically: 500x5m => first ts 1790019300000 vs server 1790169094070 (~41.6h); startTime=2020-01-01 => HTTP 400 (5m and 1h) — multi-year OI via REST is NOT possible",
+    "Download budget: 1,202,908 bytes total across 236 HTTP requests in probe1 + ~1.5 MB in probe2/funding — far under the 200 MB light-job law; no compute over frozen panels exceeded 5 min CPU"
+  ],
+  "authority_claims": [
+    "PIT_USABLE multi-year: um klines ALL intervals (1m..1d) incl. 4h/1h monthly 2020-01 -> 2026-08 + daily tail to 2026-09-22; markPriceKlines/indexPriceKlines/premiumIndexKlines same window, all 12 intervals exist (measured at 2024-06)",
+    "PIT_USABLE history / RETROSPECTIVE_ONLY live tail: fundingRate archive 2020-01 -> 2026-08 (settlement events, 8h interval confirmed in all files); REST fapi/v1/fundingRate reaches 2019-09-10 08:00 UTC — pre-2020 funding exists ONLY via REST",
+    "RETROSPECTIVE_ONLY: metrics (sumOpenInterest, sumOpenInterestValue, toptrader + taker long/short ratios) DAILY files only, 2020-09-01 -> 2026-09-22, 5m grain — the ONLY multi-year OI history on keyless Binance surfaces, and it starts 2020-09 (windows before that are NOT MEASURABLE); bookDepth daily 2023-01-01 -> 2026-09-22 (T+1 publication)",
+    "UNAVAILABLE: um liquidationSnapshot (BTCUSDT-PERP) has ZERO coverage at any date — legacy 2020-2021 paths 404, no prefix under um/ — liquidation-print mechanisms are NOT MEASURABLE on the primary instrument; cm liquidationSnapshot (BTCUSD_PERP sibling) is a stale island 2023-06-25 -> 2024-10-14 (472 files, 6 missing days), discontinued; bookTicker is a 12-month island 2023-05-16 -> 2024-04, discontinued; REST openInterestHist as history (~41.6h lookback, HTTP 400 on older startTime)",
+    "NAMING: prefix data/futures/bm/ does NOT exist (bucket root = um/ + cm/ only); dispatch's 'bm' = cm (COIN-M)",
+    "REVISION RISK (measured, not assumed): Vision archive files ARE rewritten sometimes — klines 1h 2020-01 Last-Modified 2021-06-14 (~17 months post month-end), fundingRate 2020-01 rewritten 2023-05-09 (schema migration), bookDepth 2023-01-01 backfilled 2023-07-11; byte-stability verified only over short horizons => sha256 pinning at retrieval is mandatory (PSV1 manifest law is correct and sufficient)",
+    "CENSUS (frozen window 2020-01-26 12:00 -> 2026-09-22 24:00 UTC, 14,589 post-warmup H4 bars; counting rule preregistered in downtrend_census_rules_preregistered.json BEFORE the single count): primary PSV1 DOWNTREND occupancy 20.10% (2,932 bars); 85 raw runs (median 15, max 163 bars); 63 runs >=6 bars, 35 >=24, 14 >=72; MERGED independent-episode estimate 59 (gap<12 TRANSITION_UNKNOWN-only merge); total decisions 2,932; per-fold F1 308/12raw/7merged, F2 1285/29/21, F3 556/20/16, F4 783/25/16",
+    "FLOORS (PSV1 config verbatim): >=20 episodes/phase/cell PASS (85 raw, +65 margin; 59 merged, +39 margin); >=3 episodes/phase/fold PASS (min fold 12 raw / 7 merged); >=100 decisions/phase/fold PASS (min fold 308). All three floors PASS for phase DOWNTREND",
+    "SECOND LENS (robustness report, not a choice): close < SMA200(H4) — occupancy 46.4%, 208 raw runs, 67 merged; agreement with primary 73.6% (2,930/2,932 phase-DOWNTREND bars are also below SMA200; lens is strictly looser, +3,842 bars)",
+    "FUNDING IN DOWNTREND (descriptive, signed): within census DOWNTREND windows mean +3.709e-5 per 8h (short RECEIVES, ~+4.06% annualized), 24.7% of settlements negative, worst settlement -0.30% (cap-binding); outside windows +1.252e-4; in-minus-out delta -8.81e-5; the prior 'funding is negative in downtrends so shorts pay longs' is NOT the sample mode — cumulative funding inside DOWNTREND windows 2020-2026 is +5.46% of notional",
+    "PSV1 frozen FUNDING_PER_8H=1.377e-5 is ~7.8x BELOW the measured full-window mean (+1.073e-4/8h); disclosed, not retuned"
+  ],
+  "known_limitations": [
+    "Vision files carry no per-bar publication timestamps; PSV1's causal convention (bar knowable at close, fill next H4 open) is a frozen convention, not an exchange guarantee",
+    "metrics OI: whole history appears retrospectively (T+1-style daily publication); a LIVE decision cannot read this source with < T+1 lag; 2020-01..2020-08 and 2019 OI does not exist anywhere keyless",
+    "aggTrades/trades families confirmed to exist (listing) but NOT depth-measured (ancestry classes #10/#13 already dead; measurement spend not justified)",
+    "bookDepth granularity identified as percentage-level snapshot groups; exact snapshot cadence (10s nominal) not confirmed by full decode",
+    "Binance BTCUSDT margin/leverage tier table NOT fetched; margin/liquidation modeling requirements are enumerated, not parameterized (short_feasibility.md section 3)",
+    "License terms of data.binance.vision not re-derived; treated as keyless public export per existing PSV1 usage",
+    "The final staged H4 bar (open 2026-09-22 20:00) closes 2026-09-23 00:00 UTC — completeness of that single frozen bar is inherited from PSV1 staging, not re-derived here",
+    "Census runs touching window edges are left/right-censored (flagged per-run in downtrend_census.json); TRANSITION_UNKNOWN occupies 44.6% of the window and the merged count (59) is the independent-episode estimate under the preregistered gap<12 rule"
+  ],
+  "incidents": [
+    "probe1 monthly URL pattern was WRONG for metrics/bookDepth/liquidationSnapshot (assumed monthly families that are daily-only or absent) — corrected by authoritative S3 listing probe2; both raw probe files retained as evidence; final data_inventory.json states which measurement superseded which",
+    "dispatch named /data/futures/bm/ — that prefix does not exist (COIN-M is cm/); recorded, no data lost",
+    "No resource conflicts: heavy lock held by CRYPTO-HISTORICAL-REPLICATION-3F-V1 (pid 77456) was never acquired or touched; no errors contacting data.binance.vision or fapi.binance.com beyond expected 404/400 probes"
+  ],
+  "tree_status": {
+    "branch": "main (root checkout = bootstrap/owner space; no commits made by this lane)",
+    "HEAD": "398ad84db077327db00c80563d88d50dfefe35c6 (re-measured at completion; HEAD MOVED during this lane's run from the dispatch sha d67f1af7f05cb21b5205ce4bb87768f1ab2e2f43 — another worker committed to main mid-run; actual_start_sha remains d67f1af7 as measured at lane start)",
+    "porcelain_scoped_to_lane": "?? research/control/bear_opportunity_recon_2026-09/data_a2/\n?? research/control/bear_opportunity_recon_2026-09/handoffs/ (handoff_data_a2.json only)",
+    "porcelain_other_visible": "?? .zcode/ ?? research/control/SANDBOX-OVERFIT-3ASSETS/ ?? research/control/bear_opportunity_recon_2026-09/ (other lanes) ?? research/control/d2_curiosity_v1_sources/ — NOT mine, untouched",
+    "psv1_trees": "READ-ONLY respected; zero writes (verified: no new __pycache__ mtimes; imports ran with sys.dont_write_bytecode=True)",
+    "sandbox_and_s1": "research/control/SANDBOX-OVERFIT-3ASSETS/ and S1 data untouched"
+  },
+  "workers": {
+    "locks_inspect_verdict": "HELD_PROVEN",
+    "holder": "pid 77456, cycle CRYPTO-HISTORICAL-REPLICATION-3F-V1, role data-staging, worktree .worktrees/crypto-historical-replication-3f-v1/integration, heartbeat 2026-09-23T12:54:23Z",
+    "this_lane_lock": "NOT ACQUIRED (PSV1 sec.19 light-job exemption, <200MB downloads)"
+  },
+  "outputs": [
+    "research/control/bear_opportunity_recon_2026-09/data_a2/data_inventory.json",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/downtrend_census.json",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/downtrend_census_rules_preregistered.json",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/short_feasibility.md",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/PIT_DISCLOSURES.md",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/funding_in_downtrend.json",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/funding_events.parquet",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/funding_sha256.json",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/s3_structure.json",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/vision_probe1_raw.json",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/probe_binance_vision.py",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/probe2_s3_listing.py",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/census_run.py",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/funding_history.py",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/build_inventory.py",
+    "research/control/bear_opportunity_recon_2026-09/data_a2/probe_run.log",
+    "research/control/bear_opportunity_recon_2026-09/handoffs/handoff_data_a2.json"
+  ]
+}
