@@ -184,21 +184,31 @@ def stage_basis_frozen(sym, out: Path) -> dict:
 
 def stage_basis_window_sym(sym, win, out: Path) -> dict:
     """Phase B basis: window-parameterized, SAME frozen protocol (forward-only,
-    limit 500, 0.55s serial, 8x20s backoff) - derived from restage_basis.py."""
+    limit 500, backoff), derived from restage_basis.py.
+    INC-2 fix: a short page (<500) is a mid-history GAP, not end-of-data --
+    advance to last served + 1 bucket instead of breaking (the original
+    break truncated DOGE/BOME/... to a few hundred rows). Empty pages
+    advance by the page span like the frozen script does."""
     out.mkdir(parents=True, exist_ok=True)
     start, end = win; BUCKET = 900_000; rows = {}; cursor = start
+    empty_streak = 0
     while cursor < end:
+        page_end = min(cursor + 499 * BUCKET, end)
         batch = json.loads(fetch_backoff(
             f"{FAPI}/futures/data/basis?contractType=PERPETUAL&period=15m"
-            f"&limit=500&pair={sym}&startTime={cursor}&endTime={end}"))
+            f"&limit=500&pair={sym}&startTime={cursor}&endTime={page_end}"))
         if not batch:
-            break
+            empty_streak += 1
+            cursor = page_end + BUCKET
+            time.sleep(10.0)
+            if empty_streak > 40:  # ~7 months of consecutive empties = past all data
+                break
+            continue
+        empty_streak = 0
         for r in batch:
             rows[int(r["timestamp"])] = r
         last = max(int(r["timestamp"]) for r in batch)
-        if len(batch) < 500:
-            break
-        cursor = last + BUCKET
+        cursor = max(last + BUCKET, page_end + BUCKET) if len(batch) < 500 else last + BUCKET
         time.sleep(10.0)  # 6 req/min: shared-IP budget (gateway + shadow coexist here)
     f = out / f"{sym}_basis_15m.json"
     f.write_text(json.dumps({"pair": sym, "window": list(win), "n": len(rows),
