@@ -85,4 +85,9 @@ def test_go_quarantine_phrase_matches_registry():
     st = json.loads(out.stdout)
     assert st["go_phrase_sha256_expected"] == hashlib.sha256(
         "GO REGIME STRATEGY MAPPING V1 DISCOVERY BACKTEST".encode()).hexdigest()
-    assert st["authorized"] is False  # no token pre-GO
+    # legal states: pre-GO (no token, not authorized) or post-valid-GO
+    # (token present, matching, authorized). Anything else is illegal.
+    if st["token_present"]:
+        assert st["token_matches"] and st["authorized"]
+    else:
+        assert not st["authorized"]

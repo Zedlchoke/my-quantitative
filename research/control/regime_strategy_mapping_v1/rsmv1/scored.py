@@ -339,33 +339,89 @@ def arm_c_inner_evidence(ctx: CellCtx, tier: float):
     return evidence
 
 
-def arm_c_selection(ctx: CellCtx, evidence) -> tuple[dict[int, dict], list[dict]]:
+FROZEN_OUTER_FLOORS = {"episodes_total": 20, "episodes_per_fold": 3,
+                       "eligible_decisions_per_fold": 100}
+RELAXED_OUTER_FLOORS = {"episodes_total": 10, "episodes_per_fold": 2,
+                        "eligible_decisions_per_fold": 50}
+# frozen in freezes/go_authority_and_floor_sensitivity_freeze.json BEFORE
+# any scored outcome (owner GO instruction: compare floors vs relaxed)
+
+
+def _outer_thin_regimes(ctx: CellCtx, floors: dict) -> dict[str, dict]:
+    """Per-regime outer-floor block mirroring the census law exactly:
+    thin iff episodes_total < floor OR any fold (episodes < fold floor OR
+    eligible decisions < fold floor). Returns {regime: info} with 'thin'."""
+    out: dict[str, dict] = {}
+    spans = [
+        (_iso_ns(sp["start"]), _iso_ns(sp["end"]))
+        for sp in ctx.fz.fold_contract["cells"][ctx.cell]["folds"]
+    ]
+    for regime in PHASES4:
+        eps = [e for e in ctx.episodes if e["label"] == regime]
+        total = len(eps)
+        fold_eps = {f: 0 for f in range(4)}
+        fold_dec = {f: 0 for f in range(4)}
+        for e in eps:
+            f = _fold_of_span(spans, int(ctx.ct.regime_bars.ts_close[e["start"]]))
+            if 0 <= f <= 3:
+                fold_eps[f] += 1
+                if e["length"] >= 6:
+                    fold_dec[f] += e["length"]
+        reasons = []
+        if total < floors["episodes_total"]:
+            reasons.append("episodes_total")
+        for f in range(4):
+            if fold_eps[f] < floors["episodes_per_fold"]:
+                reasons.append(f"fold{f + 1}_episodes")
+            if fold_dec[f] < floors["eligible_decisions_per_fold"]:
+                reasons.append(f"fold{f + 1}_decisions")
+        out[regime] = {
+            "thin": bool(reasons), "failed_floors": reasons,
+            "episodes_total": total,
+            "fold_episodes": fold_eps, "fold_eligible_decisions": fold_dec,
+        }
+    return out
+
+
+def arm_c_selection(ctx: CellCtx, evidence,
+                    outer_floors: dict | None = None) -> tuple[dict[int, dict], list[dict]]:
     """Nested selection: mapping per outer fold + audit trail.
 
-    A7-R1 F1 fix: the OUTER sample floors (census 20/3/100 law) gate FIRST —
-    a census-THIN regime routes FLAT in EVERY fold (reason OUTER_FLOOR_THIN);
-    only non-thin regimes proceed to the inner-floor + inner-net law.
-    """
-    from .census import measure_cell_census
+    A7-R1 F1 fix: the OUTER sample floors gate FIRST — a census-THIN regime
+    routes FLAT in EVERY fold (reason OUTER_FLOOR_THIN); only non-thin
+    regimes proceed to the inner-floor + inner-net law.
 
-    census = measure_cell_census(CYCLE_DIR, ctx.cell)
+    outer_floors=None -> the FROZEN census verdicts (20/3/100); a dict ->
+    the owner-frozen sensitivity floors (computed from episode data with the
+    exact census math; frozen pre-outcome, never tuned).
+    """
+    if outer_floors is None:
+        from .census import measure_cell_census
+
+        census = measure_cell_census(CYCLE_DIR, ctx.cell)
+        outer = {
+            r: {"thin": census["per_regime"][r]["verdict"] == "NOT_RUN_THIN_REGIME",
+                "episodes_total": census["per_regime"][r]["episodes_total"],
+                "margin_to_floor_min": census["per_regime"][r].get(
+                    "margin_to_floor_min")}
+            for r in PHASES4
+        }
+    else:
+        outer = _outer_thin_regimes(ctx, outer_floors)
     mapping_by_fold: dict[int, dict] = {}
     audit: list[dict] = []
     base_map = {"TRANSITION_UNKNOWN": FLAT}
     for fid in range(4):
         mapping = dict(base_map)
         for regime in PHASES4:
-            c_reg = census["per_regime"].get(regime, {})
-            outer_verdict = c_reg.get("verdict", "NOT_RUN_THIN_REGIME")
-            if outer_verdict == "NOT_RUN_THIN_REGIME":
+            o = outer[regime]
+            if o["thin"]:
                 mapping[regime] = FLAT
                 audit.append({
                     "regime": regime, "fold_id": fid, "selected": "FLAT",
                     "reason": "OUTER_FLOOR_THIN",
-                    "outer_verdict": outer_verdict,
-                    "outer_episodes_total": c_reg.get("episodes_total"),
-                    "outer_margin_to_floor_min": c_reg.get(
-                        "margin_to_floor_min"),
+                    "outer_episodes_total": o["episodes_total"],
+                    "outer_failed_floors": o.get("failed_floors"),
                     "inner_episodes": None,
                     "inner_eligible_decisions": None,
                     "floor_ok": False,
@@ -397,7 +453,7 @@ def arm_c_selection(ctx: CellCtx, evidence) -> tuple[dict[int, dict], list[dict]
             mapping[regime] = out.selected if out.selected != "FLAT" else FLAT
             audit.append({
                 "regime": regime, "fold_id": fid, "selected": out.selected,
-                "reason": out.reason, "outer_verdict": outer_verdict,
+                "reason": out.reason, "outer_episodes_total": o["episodes_total"],
                 "inner_episodes": inner_episodes,
                 "inner_eligible_decisions": inner_dec,
                 "floor_ok": out.floor_ok,
@@ -413,14 +469,14 @@ def _start_fold(ctx: CellCtx, episode: dict) -> int:
          for sp in ctx.fz.fold_contract["cells"][ctx.cell]["folds"]], ts)
 
 
-def arm_c(ctx: CellCtx, tier: float):
+def arm_c(ctx: CellCtx, tier: float, outer_floors: dict | None = None):
     evidence = arm_c_inner_evidence(ctx, 1.0)  # selection on BASE tier law
-    mapping_by_fold, audit = arm_c_selection(ctx, evidence)
+    mapping_by_fold, audit = arm_c_selection(ctx, evidence, outer_floors)
     targets, report, res = route_arm(ctx, mapping_by_fold, BUFFER_REGIME_BARS,
                                      ctx.a4_specs, tier)
     res.selection_audit = audit  # type: ignore[attr-defined]
     res.routing_report = report  # type: ignore[attr-defined]
-    return res, audit, report
+    return res, audit, report, mapping_by_fold
 
 
 def arm_d(ctx: CellCtx, tier: float):
@@ -633,7 +689,8 @@ def run_all() -> int:
         "cycle": "REGIME-STRATEGY-MAPPING-V1",
         "started_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "cells": {},
-        "trial_accounting": {"planned": 21, "observed": 0},
+        "trial_accounting": {"planned": 21, "planned_sensitivity": 6, "observed": 0,
+         "denominator_law": "21 primary (frozen floors) + 6 owner-instructed sensitivity (C_RELAXED/F_RELAXED, relaxed floors 10/2/50, frozen pre-outcome); verdict decided on PRIMARY only"},
         "disclosure": (
             "S0 DISCOVERY on an outcome-observed corpus. Strongest allowed "
             "verdict: DISCOVERY_CANDIDATE_FOR_PROSPECTIVE_VALIDATION. No "
@@ -655,11 +712,7 @@ def run_all() -> int:
         _assert_b_equivalence(ctx, res_b1)  # hard gate BEFORE any C outcome
 
         # -- arm C at base tier (selection audit captured)
-        res_c, sel_audit, route_report = arm_c(ctx, 1.0)
-        mapping_by_fold = {}
-        for row in sel_audit:
-            mapping_by_fold.setdefault(row["fold_id"], {})[row["regime"]] = (
-                row["selected"] if row["selected"] != "FLAT" else FLAT)
+        res_c, sel_audit, route_report, mapping_by_fold = arm_c(ctx, 1.0)
 
         # turnover rejection law
         c_trades = res_c.totals["trades"]
@@ -701,7 +754,7 @@ def run_all() -> int:
                 elif arm == "B_ORIGINAL_V2_MAPPING":
                     by_tier[tier] = arm_b(ctx, tier)
                 elif arm == "C_REGIME_SPECIALIST_ROUTER":
-                    r, _, _ = arm_c(ctx, tier)
+                    r, _, _, _ = arm_c(ctx, tier)
                     by_tier[tier] = r
                 elif arm == "D_SPARSE_JEV_RISK_OFF_VETO":
                     r, _ = arm_d(ctx, tier)
@@ -744,7 +797,57 @@ def run_all() -> int:
         else:
             cell_blk["arms"]["F_EPISODE_SHUFFLED_MATCHED"] = {
                 "status": "NOT_RUN_CONTROL_MATCHING", "detail": f_error}
-        observed += 7
+
+        # -- owner-instructed floor sensitivity (frozen pre-outcome):
+        #    C_RELAXED + F_RELAXED under RELAXED_OUTER_FLOORS (10/2/50).
+        #    SENSITIVITY ONLY: never the primary candidate.
+        res_cr, sel_audit_r, route_report_r, mapping_r = arm_c(
+            ctx, 1.0, outer_floors=RELAXED_OUTER_FLOORS)
+        c_trades_r = res_cr.totals["trades"]
+        turnover_law_r = {
+            "v2_jev_only_trade_pin": V2_JEV_TRADE_PINS[cell],
+            "arm_c_relaxed_trades": c_trades_r,
+            "verdict": "PASS" if c_trades_r < V2_JEV_TRADE_PINS[cell] else "FAIL",
+        }
+        fr_blk = None
+        fr_error = None
+        try:
+            fr_blk = arm_f(ctx, mapping_r, 1.0)
+        except ControlMatchFailure as exc:
+            fr_error = exc.payload
+        cr_tiers = {1.0: res_cr}
+        for tier in TIERS:
+            if tier in cr_tiers:
+                continue
+            r, _, _, _ = arm_c(ctx, tier, outer_floors=RELAXED_OUTER_FLOORS)
+            cr_tiers[tier] = r
+        cell_blk["arms"]["C_RELAXED_REGIME_SPECIALIST_ROUTER"] = {}
+        for tier, res in sorted(cr_tiers.items()):
+            _persist(out_root, cell, "C_RELAXED_REGIME_SPECIALIST_ROUTER", tier,
+                     res, {
+                         "selection_audit": sel_audit_r,
+                         "routing_report": route_report_r,
+                         "outer_floors": RELAXED_OUTER_FLOORS,
+                         "sensitivity_note": "owner-instructed relaxed-floor "
+                                             "variant; NOT the primary candidate",
+                         "turnover_rejection_law": turnover_law_r})
+            cell_blk["arms"]["C_RELAXED_REGIME_SPECIALIST_ROUTER"][_tier_tag(tier)] = {
+                "net": res.totals["net_pnl"], "trades": res.totals["trades"],
+                "fold_nets": list(res.fold_net_pnl)}
+        if fr_blk is not None:
+            _persist(out_root, cell, "F_RELAXED_EPISODE_SHUFFLED_MATCHED", 1.0,
+                     _run_engine(ctx, [FLAT] * ctx.n, ctx.a4_specs, 1.0),
+                     {"f_control": fr_blk})
+            cell_blk["arms"]["F_RELAXED_EPISODE_SHUFFLED_MATCHED"] = {
+                "median_net_pnl": fr_blk["median_net_pnl"],
+                "seeds": len(fr_blk["seeds"]),
+                "null_invalid_flag": fr_blk["null_invalid_flag"]}
+        else:
+            cell_blk["arms"]["F_RELAXED_EPISODE_SHUFFLED_MATCHED"] = {
+                "status": "NOT_RUN_CONTROL_MATCHING", "detail": fr_error}
+
+        observed += 7  # primary cells (7) + sensitivity (2)
+        observed += 2
         summary["cells"][cell] = cell_blk
         summary["trial_accounting"]["observed"] = observed
         results_cache[cell] = cell_blk
