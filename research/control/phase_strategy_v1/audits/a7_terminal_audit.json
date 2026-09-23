@@ -1,0 +1,179 @@
+{
+ "schema": "psv1_a7_terminal_audit@1",
+ "cycle_id": "PHASE-STRATEGY-V1",
+ "auditor": "A7 terminal (fresh context, independent)",
+ "audited_heads": {
+  "evidence_head": "17a1bea5c40251e7e87d4b8493d9f1a738ca0c40 (orca/psv1-a7-terminal, this worktree)",
+  "scored_code_state": "a9c8a67c (verified: git diff a9c8a67c..17a1bea5 touches ONLY research/control/phase_strategy_v1/runtime/scored/* — engine code byte-identical)",
+  "code_freeze_sha_declared_in_ledger": "8865e7d33e6e6e00d9b1dae7ce8b911e740139aa",
+  "lane_heads_live_at_recompute": {
+   "L1": "orca/psv1-lane-btc-h1 @ 458d8aa3",
+   "L2": "orca/psv1-lane-btc-h4 @ 8a427571",
+   "L3": "orca/psv1-lane-spy-d1 @ 48388fbf"
+  }
+ },
+ "measured_at_utc": "2026-09-23T10:38:17Z",
+ "audit_worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/phase-strategy-v1/a7-terminal",
+ "checklist": [
+  {
+   "id": "C1",
+   "name": "Commit chain resolution (plan -> wave -> lanes -> amendment -> freeze -> A7 r1 -> remediation -> A7 r2 -> GO -> engine -> scored code -> evidence)",
+   "verdict": "PASS",
+   "evidence": "All 18 commits resolve with matching subjects: c6d80a9f (plan), 6e6ffa3b (ownership manifest), 88a42ed5+c8ea871b (L1), 8a427571 (L2; handoff at integration 8fd90f92), 4c17b7f4+48388fbf (L3), eaef65d6 (amendment A1), 4b7eae34 (P4 freeze), 991b4e02 (A7 r1 REMEDIATION_REQUIRED), 458d8aa3 (L1 remediation), 75765be2/a7d355db (integration remediation), 8865e7d3 (freeze bump), bbc5a778 (A7 r2 AUTHORIZED_FOR_DISCOVERY_STOP), b4246ac7 (scored engine), a9c8a67c (scored code state), 17a1bea5 (scored evidence). Each subject matches its claimed role.",
+   "margin": "18/18 resolved, 0 mismatches"
+  },
+  {
+   "id": "C2",
+   "name": "GO law (P-8): GO consumed at the cycle's own gate AFTER A7 r2 AUTHORIZED, phrase verbatim",
+   "verdict": "PASS",
+   "evidence": "plans/CYCLE_REGISTRY.events.jsonl line 781 (2026-09-23T09:28:37Z): phase -> 'P7 STOP-1 OWNER GATE — A7 prelaunch r2 AUTHORIZED_FOR_DISCOVERY_STOP (bbc5a778 ...) NEXT: owner types verbatim GO PHASE STRATEGY V1 SCORED EXECUTION'. Line 783 (2026-09-23T09:38:00Z): 'GO CONSUMED at STOP-1 (owner typed verbatim GO PHASE STRATEGY V1 SCORED EXECUTION at the cycle's own gate, A7 prelaunch r2 AUTHORIZED_FOR_DISCOVERY_STOP in hand)'. Line 784: lifecycle -> ACTIVE_HEAVY at 09:38:00Z. Phrase is byte-equal to plan §0 go_phrase and evaluation_freeze.go_phrase.",
+   "margin": "AUTHORIZED 09:28:37Z strictly precedes GO 09:38:00Z; phrase exact"
+  },
+  {
+   "id": "C3",
+   "name": "Auditor re-run of the scored engine + byte-compare vs committed primary (G8)",
+   "verdict": "PASS",
+   "evidence": "Heavy lock verified FREE_PROVEN before launch (researchctl locks inspect); heavy-lock discipline is already discharged by the recorded primary+twin runs, so this audit run was executed WITHOUT the lock wrapper and after lock inspection (single worker at run time). Engine code at this worktree head is byte-identical to a9c8a67c (diff touches only runtime/scored evidence files). Command: .venv/bin/python run_scored.py --mode scored --out /tmp/a7t_scored from this worktree's scored/ namespace; engine imports lane code from lane worktrees frozen at 458d8aa3/8a427571. Result: scored_ledger.json + tiers/tier_{1.0,1.5,2.0}x.json ALL BYTE-IDENTICAL (cmp) to research/control/phase_strategy_v1/runtime/scored/* committed at 17a1bea5. Engine stdout: candidates_passing_G1_G7=[] budget=4 denominator=52.",
+   "margin": "5/5 files byte-identical; G8 independently reproduced a third time (primary + twin + this audit run)"
+  },
+  {
+   "id": "C4",
+   "name": "Ingest verification (M3 binding precondition)",
+   "verdict": "PASS",
+   "evidence": "Committed runtime/scored/ingest_verification.json: verified=284 (L1 102 + L2 182, every manifest entry re-downloaded from data.binance.vision and re-hashed), mismatch=[], verdict=PASS. verify_ingest.py re-read from source: fail-closed semantics confirmed (fresh-sha != manifest OR byte-length mismatch OR staged-bytes differ => BLOCKED; exit 2). Auditor sample verification in lieu of re-running the download loop: 12/12 staged files re-hashed vs manifest digests MATCH (L1 monthly 2020-01/2020-02/2024-03/2024-04 + daily tail 2026-09-21/2026-09-22; L2 1h_monthly 2020-01/2023-05, 4h_monthly 2020-01/2023-05, 1h_daily 2026-09-21/2026-09-22); SPY snapshot sha256 = 3fd229f9... MATCH; 80/80 monthly periods shared by the two BTC manifests carry identical digests. Zip->parquet derivation chain additionally verified by auditor: L1 BTCUSDT-1h-2024-03.zip vs vision_1h.parquet max|OHLC diff| = 0.0 with aligned UTC stamps; L2 native BTCUSDT-4h-2023-05.zip vs scored_h4.parquet 186/186 rows max|OHLC diff| = 0.0. Panel sizes match freeze: 58,968 H1 bars (2020-01-01T00:00Z..2026-09-22T23:00Z), 14,742 H4 buckets.",
+   "margin": "12/12 sample digests + 2/2 derivation-chain months exact; committed 284/284 with 0 mismatch"
+  },
+  {
+   "id": "C5",
+   "name": "Gates G1-G7 re-evaluation for all 4 candidates with auditor-owned arithmetic",
+   "verdict": "PASS",
+   "evidence": "From the committed ledger only: (1) BTC_H1 UPTREND 89,636.78 @1.0x: G1/G2 True; G3 FAIL (loses to ALWAYS_ON_LONG 429,475.67 and TREND_LF 167,349.82; beats CASH and SPARSE 84,664.22); G4 FAIL (2/4 positive folds; best-fold-removed -21,219.46); G5 FAIL (concentration 0.854191 > 0.50, recomputed equal to 6dp); G6 PASS (shuffled control median 40,626.91 <= 89,636.78, 76/100 valid draws); G7 PASS (unnecessary_close_reopen=0). (2) BTC_H1 ACC 45,744.31: G1/G2 True; G3 FAIL (loses to all three nonzero baselines); G4 PASS via best-fold-removed +5,969.96; G5 FAIL (0.550145 > 0.50); G6 PASS (clock-only control -61,339.36 <= 45,744.31); G7 PASS. (3) BTC_H1 DOWNTREND -44,485.96: G1 FAIL, G2 FAIL; G3 FAIL; G4 FAIL; G5 FAIL (1.000); G6 KILLED (shuffled median -25,947.50 > candidate); G7 PASS. (4) BTC_H4 DONCHIAN 177,691.82: G1/G2 True; G3 FAIL (ALWAYS_ON_LONG 814,203.60, TREND_LF 1,278,270.73 both larger); G4 PASS via best-fold-removed +36,848.54; G5 FAIL (0.512784 > 0.50); G6 KILLED (block-shuffle control 190,391.51 > candidate, movement validation valid: 104 >= 43 entries); G7 PASS. candidates_passing_G1_G7=[] CONFIRMED on the merits. Controls' kill law applied exactly per plan/freeze.",
+   "margin": "Every ledger gate field matches auditor recompute; worst G5 margin: BTC_H4 0.512784 vs 0.50 bar (excess 0.0128)"
+  },
+  {
+   "id": "C6",
+   "name": "Accounting reconciliation identities",
+   "verdict": "PASS",
+   "evidence": "For all 4 arms x 3 tiers: net = gross - fees + funding holds to <= 8.5e-10; sum(per_fold_net) = net EXACTLY (fold force-flat decomposition); fold_concentration recomputed as best-positive-fold/sum(positive-folds) equals ledger to 6dp everywhere; final_equity = 100,000 + net exactly. Funding signs correct (long pays positive rate: negative funding for long arms; short DOWNTREND receives: +6,478.97 @1.0x). Tier monotonicity net(1.0x) > net(1.5x) > net(2.0x) holds for all three profitable arms; the losing DOWNTREND short reverses direction because the frozen full-stack tier law scales funding receipts with the tier (see finding T-I3).",
+   "margin": "max identity residual 8.5e-10; fold sums exact"
+  },
+  {
+   "id": "C7",
+   "name": "Adversarial baseline sanity: BTC_H4 ALWAYS_ON_TREND_LF +1,278,270.73",
+   "verdict": "PASS",
+   "evidence": "Auditor re-implemented the SMA200 long/flat book and the accounting loop from scratch (own fills, own compounding loop, same staged panel): net 1,264,374.28 vs ledger 1,278,270.73 = -1.09% delta, attributable to convention deltas (fold force-flat + re-entry at fold starts, warmup truncation point). Cross-check ALWAYS_ON_LONG: auditor 729,050 vs ledger 814,203 (-10.5%, same convention deltas). Per-fold ledger nets are consistent with the BTC price path (F1 2020-01..2021-04 ~8x; F2 2021-05..2022-12 ~-71%; F3 2023..2024 ~5.6x; F4 modestly negative to data end ~2026-09). Conclusion: +1.278M is genuine BTC beta captured by an SMA200 long/flat compound over 2020-2026, NOT an engine bug. The candidate losing G3 to this baseline is the correct outcome.",
+   "margin": "-1.09% on the challenged number, direction and magnitude fully explained"
+  },
+  {
+   "id": "C8",
+   "name": "Adversarial: BTC_H4 fold-0 (ERA-B1 2020-2021 bull) dominance +140,843",
+   "verdict": "PASS",
+   "evidence": "Fold attribution identity is exact; fold 0 = ERA-B1 (2020-01..2021-04) where a 30-bar Donchian breakout continuation naturally concentrates PnL. Fold-0 share of positive net = 0.5128 > 0.50 => G5 FAIL, correctly recorded. The dominance is additionally neutralized as an edge claim by the preregistered G6 block-shuffle control, which OUT-EARNED the candidate (190,391.51 > 177,691.82 => KILL): the gate timing itself carries no demonstrated edge. No defect.",
+   "margin": "G5 excess 0.0128; G6 kill margin +12,699.69 (7.1%)"
+  },
+  {
+   "id": "C9",
+   "name": "Denominators, budget, trial identity",
+   "verdict": "PASS",
+   "evidence": "observed_scored_denominator = 4 arms x 3 tiers + 12 baselines x 3 tiers + 4 controls = 52 (matches ledger and brief). budget_cells_consumed = 4 <= expected 4 <= max 15. Ledger carries cycle_id, go_phrase, code_freeze_sha, data authority digests (BTC_H1 manifest 70e59d64..., BTC_H4 manifest 3f1a6687..., SPY snapshot 3fd229f9...) per §12/evaluation_freeze trial identity.",
+   "margin": "52/52; 4/15 used"
+  },
+  {
+   "id": "C10",
+   "name": "Boundaries: S1 sealed, no orders/broker surface, lanes outcome-blind, V2/RSMV1 untouched",
+   "verdict": "PASS",
+   "evidence": "Spot-greps over the full cycle namespace: forbidden predecessor artifact names (MAP.md, MECHANISM_ATTRIBUTION_REPORT, SURVIVORS, SANDBOX-OVERFIT-3ASSETS, wayfinder, scored ledgers of predecessors) appear ONLY inside guard deny-lists and hygiene tests (lane_btc_h1/code/guards.py, lane_*/tests_py/test_hygiene.py) — i.e., lanes actively scan-and-block them; no read path exists. Broker/order/live surface tokens (ccxt, place_order, api_key, testnet, websocket, requests.post) appear ONLY inside the same FORBIDDEN lists. The scored engine (scored/*.py) opens only: BTC staged parquet + manifests, SPY snapshot (digest fail-closed), lane frozen code. S1: no S1 path referenced anywhere in the scored/lane runtime code; guards deny S1 markers. OWNERSHIP_MANIFEST forbids cross-lane reads and lists the exact forbidden paths.",
+   "margin": "0 non-guard hits"
+  },
+  {
+   "id": "C11",
+   "name": "Registry consistency",
+   "verdict": "PASS",
+   "evidence": "Events journal (authority): r2 AUTHORIZED 09:28:37Z -> GO consumed verbatim 09:38:00Z -> lifecycle ACTIVE_HEAVY 09:38:00Z; subsequent REGISTRY_SAVED projections list PHASE-STRATEGY-V1:ACTIVE_HEAVY. Projection lag noted: CYCLE_REGISTRY.json cycle row still shows go_phrase_state=REGISTERED_NOT_CONSUMED, budget.used=0, head=8865e7d3 (not evidence head 17a1bea5). Per dispatch this is A1's closeout step, not a defect: flagged as T-I1 (expected-closeout).",
+   "margin": "events journal authoritative and correct; projection fields lag exactly the closeout actions"
+  },
+  {
+   "id": "C12",
+   "name": "Scored engine test suite at audited state",
+   "verdict": "PASS",
+   "evidence": "scored/tests_py run standalone (per-lane invocation law, r1 item I7): 10 passed in 1.00s on this worktree.",
+   "margin": "10/10 green"
+  }
+ ],
+ "findings": [
+  {
+   "id": "T-L1",
+   "severity": "LOW",
+   "blocking": false,
+   "title": "Gate-value serialization quirk in run_scored.py pass-list filter (latent, conservative, non-outcome-affecting here)",
+   "detail": "In the committed ledger, G1/G2/G5 serialize as strings (\"True\"/\"False\") while G3/G4/G6/G7 serialize as JSON booleans — numpy boolean lineage hit json default=str. The candidates_passing_G1_G7 filter checks `v in (True, \"PASS\", ...)` which does NOT match the string \"True\": had a candidate substantively passed all gates, the pass list would still have shown empty (a false NEGATIVE, never a false positive). In THIS run the outcome is unaffected and double-verified: the auditor's own pure-Python arithmetic confirms all 4 candidates fail G1-G7 substantively (G3 and/or G5 fail in every arm; G6 kills two; one arm fails G1/G2; one fails G4). Terminal verdict does not depend on the pass list.",
+   "evidence_path": "scored/run_scored.py lines 227-256 vs runtime/scored/scored_ledger.json gates section; auditor recompute in C5"
+  }
+ ],
+ "info_notes": [
+  {
+   "id": "T-I1",
+   "severity": "INFO",
+   "title": "Registry projection lag (expected-closeout)",
+   "detail": "CYCLE_REGISTRY.json cycle row: go_phrase_state REGISTERED_NOT_CONSUMED, budget.used 0, head 8865e7d3 — all lag the events journal (GO consumed 09:38:00Z, budget 4, evidence head 17a1bea5). The events journal is authoritative and correct; these projection fields are A1's terminal-closeout writes."
+  },
+  {
+   "id": "T-I2",
+   "severity": "INFO",
+   "title": "OWNERSHIP_MANIFEST a7 slot lacks a terminal-round entry",
+   "detail": "The manifest's a7 block still references only the prelaunch worktree/branch and the r1 status; the terminal round (a7-terminal / orca/psv1-a7-terminal) is dispatched by packet but not mirrored in the manifest. Bookkeeping lag only."
+  },
+  {
+   "id": "T-I3",
+   "severity": "INFO",
+   "title": "Full-stack tier law scales funding; funding-receiving short is cushioned, not stressed, at higher tiers",
+   "detail": "evaluation_freeze freezes tiers as a multiplier on fees+slippage+FUNDING; accounting.py implements frate = funding_rate * tier exactly. Consequence observed: DOWNTREND (short, receives funding) net improves with tier (-44,485.96 -> -42,827.85). Frozen, disclosed, and gate-irrelevant (the arm fails G1 at 1.0x regardless). Recorded so the direction is never mistaken for an error."
+  },
+  {
+   "id": "T-I4",
+   "severity": "INFO",
+   "title": "Gross varies across cost tiers (compounding artifact, not a bug)",
+   "detail": "Gross is equity-proportional (gap/move accruals scale with equity), so fee drag at higher tiers lowers the equity path and hence gross (e.g. BTC_H1 UPTREND gross 118,966 -> 113,922 -> 109,155). The identity net = gross - fees + funding holds to <= 8.5e-10 at every cell."
+  }
+ ],
+ "carried_findings_adjudication": {
+  "A7-I6": {
+   "item": "SPY episode totals use fold-truncated (sum-of-folds) runs for floors; both conventions disclosed",
+   "terminal_verdict": "NO_ESCALATION",
+   "reason": "SPY_D1 has zero eligible candidates (valid NO_ELIGIBLE_PROPOSAL) so no SPY scored arm exists whose floors could be affected; SPY baselines computed on sessions are consistent (per-fold nets reconcile, 27/6/4 trades)."
+  },
+  "A7-I7": {
+   "item": "Per-lane pytest invocation required (duplicate test-module basenames)",
+   "terminal_verdict": "NO_ESCALATION",
+   "reason": "Scored-run harness tests run standalone green (10/10); no cross-lane combined invocation occurs in the scored path."
+  },
+  "A7-I8": {
+   "item": "Amendment exists twice (eaef65d6 and b75f35f7)",
+   "terminal_verdict": "NO_ESCALATION",
+   "reason": "Auditor re-verified: git diff eaef65d6 b75f35f7 -- plans/PLAN_phase_strategy_v1.md is EMPTY (byte-identical plan bytes). Chain integrity holds."
+  },
+  "A7-I9": {
+   "item": "§7.1 'phase-gated variant' breadth interpretation for event-conditional books",
+   "terminal_verdict": "NO_ESCALATION",
+   "reason": "Scored-arm behavior is consistent with the recorded structural-distinctness arguments: median holds 108.5/117.5/118.0 H1 bars and 23.0 H4 bars with structure-stop exits dominant (STOP/DONCHIAN_STOP 2/1/3/79 of exits) — trade geometry of gated structure books, not the continuous regime holds of the forbidden specialist library. The G6 controls directly tested gate informativeness and behaved adversarially as designed (two kills, two passes with informative margins). No predecessor artifact was opened (C10)."
+  },
+  "A7-R2-I1": {
+   "item": "Shadow head-bar convention differs between lanes (7th decimal of rho)",
+   "terminal_verdict": "NO_ESCALATION",
+   "reason": "Immaterial to any rho <= 0.20 measurement; all measured rhos (worst +0.168) clear the 0.20 bar by wide margins."
+  },
+  "A7-R2-I2": {
+   "item": "run_imbalance window per-cell clock-scaled (L1 24xH1, L2 12xH4), same family",
+   "terminal_verdict": "NO_ESCALATION",
+   "reason": "Per-cell rho is what the veto governs; r2 D-b verified the estimator family."
+  }
+ },
+ "terminal_verdict": {
+  "label": "PHASE_STRATEGY_V1_NO_INCREMENTAL_VALUE",
+  "law": "plan §18: candidates exist (4 eligible, frozen pre-PnL) and ALL were scored (full denominator 52, budget 4/15, no mid-run stop); every candidate fails G1-G7 on the merits per auditor-owned recomputation (G3 beats-no-baseline in 4/4; G5 concentration > 0.50 in 4/4; G6 kills 2/4; G1/G2 fail 1; G4 fail 2); candidates_passing_G1_G7=[] confirmed; G8 reproduction verified 5/5 byte-identical by the auditor's own run; no BLOCKED condition applies (ingest 284/284 PASS, SPY calendar gate green in lane and scored paths, S1 sealed, zero orders); SPY_D1 zero-eligible is reported inside this verdict as a cell-level NO_ELIGIBLE_PROPOSAL result, not the cycle label (candidates DID exist and were scored on the BTC cells).",
+  "g8_reproduction": "PASS (auditor run byte-identical 5/5)",
+  "g9_a7_terminal": "PASS (0 unresolved HIGH/CRITICAL; 1 LOW non-blocking; 4 INFO)",
+  "no_incremental_value_basis": "The best-performing candidate (BTC_H4 Donchian, +177,692 @1.0x) is KILLED by its own preregistered control (block-shuffle out-earns it) and loses G3 to a plain SMA200 long/flat baseline by 7.2x and G5 by 2.6pp. On BTC_H1 the best candidate (+89,637) is dominated by two frozen baselines and concentrates 85.4% of positive net in one fold. The phase-gating machinery demonstrably adds no incremental value over frozen baselines after costs on this cycle's evidence.",
+  "contamination_ceiling_note": "Even a passing candidate would have been capped at DISCOVERY_CANDIDATE_FOR_PROSPECTIVE_VALIDATION (S0 discovery; §2); nothing in this cycle is OOS and nothing is deployable. No orders exist or may follow."
+ }
+}
