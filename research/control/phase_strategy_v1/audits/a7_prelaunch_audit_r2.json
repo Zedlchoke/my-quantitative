@@ -1,0 +1,106 @@
+{
+  "schema": "psv1_a7_prelaunch_audit@1",
+  "cycle_id": "PHASE-STRATEGY-V1",
+  "audit_round": 2,
+  "audited_head": "8865e7d33e6e6e00d9b1dae7ce8b911e740139aa",
+  "audited_branch": "orca/phase-strategy-v1-integration",
+  "r1_audit_commit": "991b4e02fbe6f21cee06fed502ecf1f4c925481a",
+  "r1_verdict": "REMEDIATION_REQUIRED",
+  "audit_worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/phase-strategy-v1/a7-prelaunch",
+  "audit_branch": "orca/psv1-a7-prelaunch",
+  "measured_at_utc": "2026-09-23T09:06:06Z",
+  "delta_scope": "round-2 adjudicates ONLY the remediation commits 458d8aa3 (lane L1), 75765be2, a7d355db, 0a7d9c8b, 8865e7d3 (integration), plus full-diff scope scan 4b7eae34..8865e7d3; r1 PASS items stand unless the delta touches them (delta touches none outside the remediation namespace).",
+  "remediation_commits_adjudicated": [
+    "458d8aa3 (orca/psv1-lane-btc-h1): A7-H1 lane remediation",
+    "0a7d9c8b: L1 remediation landed on integration",
+    "75765be2: A7-M2/M3/L4 A1-side remediation",
+    "a7d355db: A7-L5 manifest status",
+    "8865e7d3: freeze bump (E3 discharged, registry head now 8865e7d3)"
+  ],
+  "duties": [
+    {
+      "id": "D-a",
+      "name": "Independent re-measurement of the run_imbalance rhos",
+      "verdict": "PASS",
+      "evidence": [
+        "auditor extracted the adjudicated lane code from git objects at 458d8aa3 into /tmp/a7r2_l1code (ancestry/census/phase_rule/proposals/signal_path), rebuilt labels from the L1 worktree staging parquet (digest-verified in r1), rebuilt the three candidate position books via the frozen proposal signal functions + book_from_events, and computed the shadow and Pearson correlation with AUDITOR-OWNED code",
+        "reproduced: UPTREND +0.119477 (recorded 0.1194766590236857), ACC +0.005920 (recorded 0.0059202874402092785), DOWN +0.084990 (recorded 0.08499041181994918) — all three match to 6 decimals; an L2-style fillna(0) shadow variant matches to 7 decimals (head-bar convention only)",
+        "estimator verified as signal-information correlation, NOT returns: candidate series are position books with values in {0,+1} / {-1,0} (occupancies 0.137/0.141/0.106); correlation is vs the shadow SIGNAL series — control computation rho(signal, 1-bar returns) = 0.0122 for UPTREND, materially different from the recorded 0.1195, proving the recorded number is not a returns correlation",
+        "all three |rho| <= 0.20 => zero vetoes confirmed correct"
+      ],
+      "margin_to_fail": "nearest bar: UPTREND +0.119477 vs 0.20 bar (margin 0.0805); worst-case all arms <= 0.12"
+    },
+    {
+      "id": "D-b",
+      "name": "Shadow construction family + window convention",
+      "verdict": "PASS",
+      "evidence": [
+        "L1 run_imbalance_shadow = sign(diff(close)).rolling(24).sum()/24 — same construction family as L2's frozen shadow_series (sign of 1-bar close return, rolled mean); identical estimator family",
+        "window documented in code + census remediation block: 24 hourly bars = L1's frozen convention for ALL its shadows (rev24 horizon 24, close-displace window 24, amihud rolling 24)",
+        "cross-cell note: L2 uses win=12 on the H4 clock (config.SHADOW_WINDOWS); windows are per-cell clock-scaled, the FAMILY is identical — per-cell rho vs per-cell shadow is what the veto governs; no defect"
+      ],
+      "margin_to_fail": "n/a"
+    },
+    {
+      "id": "D-c",
+      "name": "Freeze records measured values; veto wiring; remaining NOT_MEASURED reasons",
+      "verdict": "PASS",
+      "evidence": [
+        "freeze bump 8865e7d3 rewrites all three L1 ancestry blocks with the measured per-arm rhos and 'E3 DISCHARGED (A7-H1 remediation, lane commit 458d8aa3)'; census.json ancestry block carries the same values + remediation disclosure block",
+        "self_veto logic verified in adjudicated code: distinct_within_bar = (|rho| <= 0.20) per shadow; self_veto = ANY shadow not distinct, with run_imbalance added to the checked set — a |rho| > 0.20 measurement would have produced self_veto/ANCESTRY_VETOED",
+        "remaining NOT_MEASURED entries (oi_level_oi_share_stoch, generic_dvol_shock, pair_spread_trend_composites) retain the r1-judged LEGITIMATE reasons: observables genuinely absent from the cell data contract",
+        "prior shadow measurements unchanged: diff touches only run_imbalance entries + remediation block; rev24/close-displace-fade/amihud rho values byte-identical to r1-audited census"
+      ],
+      "margin_to_fail": "n/a"
+    },
+    {
+      "id": "D-d",
+      "name": "M2 digest recompute; M3 binding precondition; L4 row; L5 manifest",
+      "verdict": "PASS",
+      "evidence": [
+        "M2 CLOSED: auditor recomputed sha256 of canonical JSON (sorted keys, compact separators) of the frozen BTC_H4 arm_config {direction long, entry_donchian_bars 30, stop_donchian_bars 15, gate_exit_buffer_bars 6, min_hold_bars 12, max_hold_bars 450, sizing_fraction 1.0, execution next_open} = 3dbbdb5f77acb8cd47634d9599d540c382d9ebe7a5efc0f17ebdade33890f21f — EXACT match to the frozen digest; method cross-validated by recomputing all three L1 arm digests (4c4ab526…, f79ed997…, f70758ac…) — all exact; digest parameters match the frozen proposal law (no parameter drift hidden in the config)",
+        "M3 CLOSED: evaluation_freeze now carries 'scored_run_ingest_verification' as a BINDING scored-run precondition: re-hash EVERY BTC manifest entry (L1 102 + L2 182 incl. 4h shadow) against raw bytes re-staged from data.binance.vision + SPY snapshot sha re-verify; ANY drift = BLOCKED_DATA_OR_SELECTION, zero cells scored — a scheduled precondition with a fail-closed consequence, not prose",
+        "L4 CLOSED: BTC_H4 TRANSITION_UNKNOWN row added to not_scored (GATE_STATE_NOT_TRADABLE / NO_ELIGIBLE_PROPOSAL / FLAT); all 15 cell×phase slots now enumerated",
+        "L5 CLOSED: OWNERSHIP_MANIFEST a7.status = SPAWNED with r1 verdict reference (a7d355db)"
+      ],
+      "margin_to_fail": "n/a"
+    },
+    {
+      "id": "D-e",
+      "name": "Remediation diff scope scan (4b7eae34..8865e7d3)",
+      "verdict": "PASS",
+      "evidence": [
+        "12 files changed, 206 insertions / 34 deletions, ALL inside research/control/phase_strategy_v1/; plans/ untouched; no other namespace touched",
+        "code changes confined to lane_btc_h1/code/ancestry.py (shadow + measure + self_veto) and run_lane.py (remediation_notes into proposals.json only — no pipeline/logic change); phase_rule.py, signal_path.py, proposals.py signal functions, census.py UNTOUCHED",
+        "no PnL-path introduction (new code computes a sign-run shadow and Pearson on signal series only); no gate weakening (evaluation_freeze only GAINED a binding precondition); no floor/cost/budget changes; no scope creep",
+        "new test_ancestry.py goldens are hand-computed and falsifiable (up/down/alt shapes, default-window convention, NaN/zero-variance estimator handling); guard_scan.json registers the new test file",
+        "suites re-run by auditor on the full tree extracted at 8865e7d3: L1 35 passed + 3 disclosed staging-skips (was 32+3; +3 = new goldens), L2 44+1, L3 55 — green, matching the commit's claimed counts"
+      ],
+      "margin_to_fail": "n/a"
+    },
+    {
+      "id": "D-f",
+      "name": "r1 INFO items carried for terminal audit",
+      "verdict": "PASS",
+      "evidence": [
+        "A7-I6 (SPY fold-truncated episode convention, both counts disclosed), A7-I7 (per-lane pytest invocation), A7-I8 (A1 dual-commit provenance), A7-I9 (§7.1 breadth interpretation for event-conditional books) remain recorded in the r1 artifact (991b4e02, unchanged on this branch) and are restated below as terminal-audit carry-overs",
+        "terminal audit (G9) must re-verify I9 against scored-arm behavior and re-check I7 in the scored-run harness"
+      ],
+      "margin_to_fail": "n/a"
+    }
+  ],
+  "r1_findings_status": [
+    {"id": "A7-H1", "severity_r1": "HIGH", "status": "CLOSED", "evidence": "independently re-measured all three rhos from raw bytes (0.119477 / 0.005920 / 0.084990, all <= 0.20); estimator verified signal-information correlation; freeze records E3 DISCHARGED; self_veto wired incl. run_imbalance; remaining NOT_MEASURED reasons legitimate"},
+    {"id": "A7-M2", "severity_r1": "MEDIUM", "status": "CLOSED", "evidence": "digest 3dbbdb5f… recomputed by auditor — exact match; method verified against all three L1 known-good digests; arm_config parameters match the frozen proposal"},
+    {"id": "A7-M3", "severity_r1": "MEDIUM", "status": "CLOSED", "evidence": "evaluation_freeze.scored_run_ingest_verification is a binding fail-closed precondition (full manifest re-hash from re-staged bytes + SPY sha; drift = BLOCKED_DATA_OR_SELECTION, zero cells scored)"},
+    {"id": "A7-L4", "severity_r1": "LOW", "status": "CLOSED", "evidence": "row added; 15/15 cell×phase slots enumerated in the P4 freeze"},
+    {"id": "A7-L5", "severity_r1": "LOW", "status": "CLOSED", "evidence": "a7d355db sets a7.status SPAWNED with r1 verdict reference"}
+  ],
+  "new_findings_r2": [
+    {"id": "A7-R2-I1", "severity": "INFO", "blocking": false, "title": "Shadow head-bar convention differs between lanes (immaterial)", "detail": "L1 retains NaN at series head (diff prepend NaN); L2 fills first ret with 0 before sign. Difference shows only in the 7th decimal of the rho; finite-grid Pearson excludes the head either way. No action.", "evidence_path": "/tmp comparison in this audit; lane ancestry.py vs pipeline/ancestry.py"},
+    {"id": "A7-R2-I2", "severity": "INFO", "blocking": false, "title": "run_imbalance window is per-cell clock-scaled (L1 24xH1, L2 12xH4), same family", "detail": "Documented in each lane; the veto governs family correlation per cell, not cross-cell window equality. No action.", "evidence_path": "lane_btc_h1/code/ancestry.py (window=24 convention); lane_btc_h4/pipeline/config.py SHADOW_WINDOWS"}
+  ],
+  "top_level_verdict": "AUTHORIZED_FOR_DISCOVERY_STOP",
+  "blocking_findings": [],
+  "note_to_owner": "All five r1 findings are closed and independently verified — the H1 rhos were re-measured by the auditor from raw staging bytes with auditor-owned shadow and Pearson implementations, not taken from the record; the M2 digest was recomputed exactly; M3 is now a fail-closed scored-run precondition; L4/L5 are recorded. The remediation diff is tight (12 files, cycle namespace only, no logic changes outside the ancestry measurement, no gate/floor/cost/budget movement, no PnL path). Remaining pre-STOP-1 obligations are procedural, not audit-blocking: STOP-1 report per plan §16.2, the exact owner GO phrase 'GO PHASE STRATEGY V1 SCORED EXECUTION', scored run under the machine-wide heavy lock with the binding ingest verification, per-lane test invocation, and A7 terminal (G9) which carries r1 items I6-I9 and this round's R2-I1/I2. This verdict authorizes proceeding to STOP-1; it is NOT the GO."
+}
