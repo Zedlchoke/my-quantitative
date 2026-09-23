@@ -1,0 +1,154 @@
+{
+  "schema": "a7_prelaunch_es1@1",
+  "measured_utc": "2026-09-23T15:10:35Z",
+  "a7_git_head": "912882114c1615347cae0b60a2660c9c15e44e9f",
+  "cycle_id": "BTC-H4-EDGE-SEARCH-V1",
+  "role": "A7 independent fresh-context prelaunch auditor (audit-only, no repairs)",
+  "checks": {
+    "C1_freeze_chain": {
+      "verdict": "PASS_WITH_NOTES",
+      "evidence": {
+        "lane_A": "plan §3 rvol=150 H4 bars == es1_engine.rvol_series(bars=150) == census/ancestry rolling(150); targets 0.40/0.60 in freeze cells A1/A2/A4; scale=min(1,target/rvol) verbatim in sig_vol_managed (es1_engine.py:158); ann factor sqrt(6*365)",
+        "lane_C": "bands {0.005,0.01,0.02,0.03} == freeze C1..C4 == dry_run cells == census band_law_flips_window ladder (monotone 223/167/109/81)",
+        "folds": "engine FOLD_EDGES_MS 2021-05-01/2023-01-01/2025-01-01 == freeze folds F1..F4 == plan §0; warmup 153 == engine WARMUP == PSV1 config.py:90 (N_SMA+M_SLOPE+CONFIRM=153); ends force-flat in simulate (last_of_fold law)",
+        "capital_leverage": "CAPITAL=100_000; scale capped at 1.0 in sig_vol_managed; dry_run scale_bounds_ok=true over all 13 decision paths",
+        "costs": "COST_PER_SIDE_BPS=6.0 == PSV1 config.py:140 (5 taker + 1 slippage); tiers [1.0,1.5,2.0] == freeze == PSV1 config.py:144",
+        "funding_laws": "constant 1.377e-5 == engine FUNDING_CONST == PSV1 config.py:142; boundary-only hours {0,8,16}; measured law = Vision per-settlement series, engine supports funding_law='measured'; freeze cites census ratio 7.824x — matches feasibility_census.json fund.BTCUSDT (11.798%/yr vs 1.508%/yr)",
+        "budget": "8 scored cells (A1-A4, C1-C4) + 4 struck lane-B cells (ancestry veto + SOL gate FAIL); strike is a pre-PnL G11 gate outcome, not a §9 amendment; freeze 'amendments: none' is consistent (no plan text modified — root plans/PLAN_btc_h4_edge_search_v1.md clean at commit 3025dc61)"
+      },
+      "notes": "census SMA200 arithmetic computed on the FULL series then sliced at bar 153, while the scored engine computes SMA200 inside the warmup-truncated window (undefined for first 199 window bars) — both causal, census-only fidelity note (see findings F-A7-4)"
+    },
+    "C2_engine_identity": {
+      "verdict": "PASS",
+      "evidence": {
+        "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python scripts/es1_reconcile_comparator.py (re-run by A7)",
+        "exit_code": 0,
+        "verdict_out": "RECONCILED",
+        "rel_err": {"net": 8.98e-10, "F1": 2.64e-08, "F2": 9.36e-08, "F3": 3.01e-08, "F4": 7.86e-08},
+        "ledger": "net 177,691.82; fold_net +140,843.28 / -46,959.99 / +133,820.83 / -50,012.30; entries 86 (79 DONCHIAN_STOP + 7 GATE_INACTIVE); n_trades 86 — all match PSV1 committed ledger",
+        "artifact_integrity": "re-run output BYTE-IDENTICAL to committed freezes/comparator_reconciliation.json (diff clean); worktree left clean",
+        "runtime": "1.2 s — light census exempt from heavy lock"
+      }
+    },
+    "C3_fixtures": {
+      "verdict": "PASS_WITH_NOTES",
+      "evidence": {
+        "command": "pytest tests_py/test_es1_fixtures.py",
+        "result": "8/8 PASSED (0.54s)",
+        "pinning_quality": {
+          "next_bar_fill": "partial: pins profit capture at the jump bar and no-slower-than-t+1, cannot distinguish t+1-open fill from t-close fill on the flat-open fixture; backstopped by the 1e-6 fold-level reconcile vs PSV1",
+          "no_lookahead_mutation": "strong: perturbing bar 300 leaves equity[:300] identical to 1e-12 (covers simulate causality; signal builders are rolling/backward-window by construction)",
+          "funding_sign_boundary": "strong: long PAYS positive funding; magnitude == CONST*100k*11 boundary bars exact",
+          "band_golden": "pins enter threshold (+band), warmup flatness, and r=0 stays flat; does NOT pin exit-from-long stickiness at -band (see findings F-A7-3); backstopped by census band-flip monotonicity and the reconcile",
+          "scale_cap": "WEAK: the test caps the series itself (np.minimum/nan_to_num in test body) — E.sig_vol_managed's cap is never exercised by a fixture; artifact-level backstop = dry_run scale_bounds_ok + census mean_scale<=1 (see findings F-A7-2)",
+          "fold_force_flat_sum": "strong: 2-fold run, fills>=4, sum(fold_net)==net within 1e-6 rel; engine also self-asserts the identity every simulate()",
+          "tier_fee": "adequate first-order: fees ratio ~1.5 (2% tol), funding tier-invariant (2% tol)"
+        }
+      }
+    },
+    "C4_dry_run_hygiene": {
+      "verdict": "PASS",
+      "evidence": {
+        "recursive_scan": "programmatic walk of every key/leaf in freezes/dry_run_counts.json: ZERO occurrences of net/gross/fees/funding/pnl/equity/drawdown/price/cash/capital keys; only counts, record_ids, exposure means",
+        "cells": "14 decision paths (8 scored + COMPARATOR + 2 baselines + SPARSE baseline + 2 G6 shuffles), all fills>0 (non-vacuous gate PASS)",
+        "comparator": "entries == 86 exactly (comparator_identity_entries_86=true)",
+        "scale_bounds": "scale_bounds_ok=true (all cells finite, |.|<=1)",
+        "internal_consistency": "per-fold decision bars (2763,3660,4386,3780) sum to 14589 == decision_bars in every cell"
+      }
+    },
+    "C5_data_authority": {
+      "verdict": "PASS",
+      "evidence": {
+        "re_download": "3 of 80-file series re-downloaded from data.binance.vision (keyless, polite 0.5s pacing): ETHUSDT-1h-2020-01.zip fb4840ec…6021 MATCH, BTCUSDT-fundingRate-2023-06.zip 3ffdde6f…e6f7 MATCH, SOLUSDT-1h-2026-08.zip a25ab3df…ab833 MATCH — sha256 AND byte-length identical to staging_manifest.json",
+        "manifest_consistency": "5 series, 0 coverage holes; spans: ETH klines 2020-01..2026-08 (80), BTC/ETH funding 2020-01..2026-08 (80), SOL 2020-09..2026-08 (72, listing date — documented, never patched)",
+        "SOL_disposition": "census gap_fraction 0.002296 (0.23% > 0.05% law), max_missing_run 72h, missing_h1 120 (72+48) -> verdict FAIL -> fail-closed exclusion; freeze strike text matches census numbers exactly; B2/B4 struck",
+        "funding_spans": "freeze funding_series BTC/ETH 2020-01..2026-08 == manifest; BTC settlements 7305 ≈ 80 months x 3/day (complete 8h cadence, interval_hours_mode 8.0)",
+        "btc_panel": "freeze manifest sha 3f1a6687… == census BTCUSDT_reference == plan §0(a); PSV1 frozen staging read-only"
+      }
+    },
+    "C6_ancestry": {
+      "verdict": "PASS",
+      "evidence": {
+        "rerun": "scripts/ancestry_rho.py re-executed by A7 with output redirected to /tmp (committed artifact untouched): result BYTE-IDENTICAL to committed freezes/ancestry_rho.json",
+        "lane_A": "worst |rho| = 0.090376 (scale 0.60 vs vol-shock proxy) <= 0.20 PASS; run_imbalance rhos ~0.00",
+        "lane_B": "|rho| = 0.20509 > 0.20 -> VETOED; razor margin confirmed by independent re-run (0.20509, n=14543)",
+        "lane_C": "declared same-family with TREND_LF by construction, no novelty claim, G3-vs-TREND_LF adjudicates — declaration is verbatim honest per plan §4 G11 (the plan itself pre-declared lane C's shared ancestry, so no veto is required or claimed)",
+        "pre_pnl": "ancestry artifact contains signal-series correlations only; no returns/PnL anywhere in the script (verified by source read)"
+      }
+    },
+    "C7_anti_overfit_bounds": {
+      "verdict": "PASS",
+      "evidence": {
+        "fold_pnl_usage": "fold_net appears ONLY in engine accounting (Result/identity assert) and the comparator identity gate — grep shows no rule, no scoring, no cell selection touches fold PnL; no fold-PnL-conditional code exists pre-P4",
+        "year_labels": "only fold-edge constants 2021-05-01/2023-01-01/2025-01-01 (the frozen contract) and block_shuffle seed 20260923; no year-conditioned logic",
+        "round_ladder": "targets 0.40/0.60, bands 0.005/0.01/0.02/0.03, block 30, tiers 1.0/1.5/2.0, 6bps, 100k — all round pre-declared plan values",
+        "no_leverage": "fraction<=1.0 enforced at signal construction (sig_vol_managed min with 1.0); engine accepts fractional positions but no cell path can exceed 1.0; dry_run scale_bounds_ok",
+        "budget_consistency": "plan 12 cells (3x4) -> 8 scored + 4 struck by pre-PnL G11 veto + SOL gate FAIL; strike direction reduces trials (anti-selection), freeze records disposition per cell"
+      }
+    },
+    "C8_boundaries": {
+      "verdict": "PASS_WITH_NOTES",
+      "evidence": {
+        "S1": "no commit on this branch touches SANDBOX/S1 paths (git log filter empty); root checkout shows SANDBOX-OVERFIT-3ASSETS/ as untracked (sealed, never opened by A7)",
+        "change_scope": "all 14 files changed since base af52f358 are inside research/control/btc_h4_edge_search_v1/ — plans/ untouched in this branch; plan file itself committed at 3025dc61 and clean",
+        "network_surface": "grep across scripts/: the ONLY host is https://data.binance.vision (keyless GET, urllib, UA string, polite pacing); no keys/tokens/auth anywhere; 'order' hits are rng.permutation variable names — zero broker/order/API surface",
+        "ancestor_worktrees": "PSV1 integration clean (0); V2 integration clean (0); TRV1 integration clean (0); PSV1 lane-btc-h4 has 1 UNTRACKED handoffs/ dir — tracked artifacts byte-untouched (see findings F-A7-5)",
+        "no_push": "no remote ref contains this branch's HEAD (git branch -r --contains HEAD empty); branch has no upstream",
+        "raw_bytes_gitignored": "cycle .gitignore declares data_local/ + __pycache__/; git ls-files under data_local is EMPTY; check-ignore confirms data_local/vision/funding_BTCUSDT ignored; only manifests/digests committed",
+        "git_add_A": "not used; A7 commits by explicit pathspec only"
+      }
+    },
+    "C9_strongest_alternative": {
+      "verdict": "PASS_WITH_NOTES",
+      "analysis": "Most plausible self-dealing vectors checked against artifacts: (1) WEAK CONTROL — G6 block-shuffle seed 20260923 is hard-coded in the frozen engine, NOT preregistered in the plan text; a post-hoc seed could in principle select a weak control draw. Mitigations: single fixed seed for all shuffles, deterministic and disclosed pre-PnL, and the shuffle preserves the marginal scale/state distribution (blocks of 30 H4 bars); residual risk LOW, recorded as finding F-A7-6. (2) RAZOR VETO — lane B vetoed at |rho|=0.20509 vs bar 0.20 (2.5% over); A7 re-ran the measurement byte-identically, so the number is real, and the veto direction REDUCES the campaign from 12 to 8 cells (fewer trials = anti-selection, not cherry-picking); the veto applies the plan's own pre-registered G11 bar. Honest. (3) MEASURED-FUNDING FAVORITISM — the measured law (7.824x the constant on mean drag) is applied inside the scored run to EVERY arm AND every re-run baseline under both laws (freeze reference_computations includes baseline re-runs; plan §3 lane D), and a baseline-rank change under measured funding is pre-declared a first-class finding — so no book is priced against constant-law baselines while itself on measured law. The law is exposure-proportional, not lane-targeted. No artifact contradicts this. (4) The only defect found that could bias a scored run is the broken measured-funding loader — and its failure mode is a LOUD crash (fail-closed), not silent mispricing (see F-A7-1)."
+    }
+  },
+  "findings": [
+    {
+      "id": "F-A7-1",
+      "severity": "HIGH",
+      "blocking": true,
+      "detail": "The frozen engine's measured-funding loader cannot execute: es1_engine.load_funding_measured (scripts/es1_engine.py:71) calls Path(FUNDING_DIR).glob(...) but pathlib.Path is NEVER imported in the module — raises NameError: name 'Path' is not defined (reproduced by A7). This is the engine's only staged loader for the lane D measured funding series; P4 must price EVERY cell and baseline under BOTH funding laws (plan §3 lane D, §7 denominator cell×tier×funding_law). As frozen, the scored run crashes at the first measured-law pricing or forces post-freeze engine edits. A7 verified the defect is loader-only: feeding an externally built 7,305-row funding frame into simulate(funding_law='measured') executes correctly. No fixture covers the measured-law path. Remedy (owner/A1, not A7): add the import, add a measured-law fixture, re-run fixtures + dry run, re-freeze engine SHA."
+    },
+    {
+      "id": "F-A7-2",
+      "severity": "MEDIUM",
+      "blocking": false,
+      "detail": "Fixture gap: test_scale_cap_and_zero_when_unknown applies the cap inside the test body (np.minimum(1.0, np.nan_to_num(dec))) and therefore never exercises es1_engine.sig_vol_managed's cap or its non-finite->0 branch. The no-leverage law (plan §8 'fraction <= 1.0 always') is enforced in production code but unproven by the mandatory fixture. Artifact-level backstops exist (dry_run scale_bounds_ok=true over all 13 decision paths; census mean_scale 0.7772/0.9324 <= 1)."
+    },
+    {
+      "id": "F-A7-3",
+      "severity": "LOW",
+      "blocking": false,
+      "detail": "Band-hysteresis golden pins the enter threshold (+b), the warmup-flat law and r=0-stays-flat, but contains no golden for exit-from-long stickiness (state=1 held while -b <= r <= b, exit only below -b). The hysteresis ASYMMETRY — lane C's whole mechanism — is only indirectly evidenced (census band-flip monotonicity 223/167/109/81 and the source read of sig_trend_lf)."
+    },
+    {
+      "id": "F-A7-4",
+      "severity": "LOW",
+      "blocking": false,
+      "detail": "Warmup-convention divergence between census and engine: feasibility_census.py computes SMA200 on the FULL series then slices the window at bar 153, while the scored engine (es1_dry_run path) computes SMA200 inside the warmup-truncated window (undefined for the first 199 window bars -> flat). Both are causal (no lookahead); impact is limited to census realism (TREND_LF flip counts, band-flip counts, gate occupancy slightly overstate early-window activity vs the scored engine). P4/P5 gates are computed on the scored engine, so no gate is mis-decided; flagged for P4 charter honesty."
+    },
+    {
+      "id": "F-A7-5",
+      "severity": "INFO",
+      "blocking": false,
+      "detail": "PSV1 lane-btc-h4 worktree (orchestra/psv1-lane-btc-h4) contains one UNTRACKED directory research/control/phase_strategy_v1/handoffs/ — tracked PSV1 artifacts are byte-untouched (git status otherwise clean; PSV1/V2/TRV1 integration worktrees all 0-diff). No action required; recorded for the record."
+    },
+    {
+      "id": "F-A7-6",
+      "severity": "LOW",
+      "blocking": false,
+      "detail": "G6 block-shuffle seed 20260923 is hard-coded in the frozen engine but is not preregistered in the plan text. It is deterministic, identical across all shuffles, frozen pre-PnL, and the shuffle preserves marginals by construction (30-bar blocks), so post-hoc seed shopping risk is LOW — but the P4 charter should state the seed and its provenance."
+    },
+    {
+      "id": "F-A7-7",
+      "severity": "INFO",
+      "blocking": false,
+      "detail": "es1_engine.sig_donchian is dead code (the scored comparator/dry-run use the VERBATIM V2-instrumented run_book_instrumented + PSV1 BookSpec instead). Its hard-coded Donchian constants (30/15/12/450/6) match PSV1 config.py exactly, so no divergence risk today; recommend deletion or a cross-assert at P4 driver time."
+    }
+  ],
+  "verdict": "REMEDIATION_REQUIRED",
+  "blocking_count": 1,
+  "blocking_items": ["F-A7-1"],
+  "verdict_note": "Zero HIGH/CRITICAL other than F-A7-1. Engine identity (C2) is exceptionally strong (fold-level rel_err <= 1e-6, byte-identical re-run), data authority re-verified from source bytes, ancestry razor independently reproduced, dry run genuinely sanitized. The single blocker is a loud, one-line-class defect in the lane D measured-funding loader plus its absent fixture coverage — it must be fixed and re-frozen before STOP-1, per plan §6 P3/P4 (both funding laws are mandatory in the scored run)."
+}
