@@ -1,0 +1,133 @@
+{
+ "audited_head": "bfbb6e78 (full sha at write time below)",
+ "audited_head_sha": "bfbb6e7802ea9b9d3a8e185a0f449df5fedc0eb0",
+ "audited_head_note": "branch orca/jev-regime-router-v2-integration, clean tree; auditor measured HEAD itself",
+ "auditor": "A7 independent fresh-context TERMINAL (plan \u00a79 E/R/T phase)",
+ "checklist": {
+  "go_authority_sha_matches_owner_phrase": {
+   "evidence": "sha256('GO JEV REGIME V2 SCORED BACKTEST') recomputed by auditor = a7794ac8a779a599ddc885a39901fe8d8d353926b82c9801ca9ceeebcc428ed2 == SCORED_GO.json pin",
+   "pass": true
+  },
+  "cmd_backtest_gated_path_teeth": {
+   "evidence": "jrv2/run.py cmd_backtest refuses without authority+token (REFUSED_BACKTEST_QUARANTINE, exit 20; behaviorally re-tested by auditor with no token: refused); per-cell/per-arm invocation refused before any compute; quarantine tests in 127-green suite (test_backtest_quarantine_is_fail_closed_against_forced_authority)",
+   "pass": true
+  },
+  "stop2_preceded_go": {
+   "evidence": "root-checkout registry commit 28ccbee9 (2026-09-22T16:08:31Z events: 'awaiting owner exact GO phrase GO JEV REGIME V2 SCORED BACKTEST') precedes the owner GO (2026-09-23 message, attested in SCORED_GO.json granted_by_owner_at_utc) and the run (2026-09-23T00:25:40Z). Post-GO scored-complete registry event ac2e5b38 at 00:38:36Z",
+   "pass": true
+  },
+  "code_frozen_before_run_no_post_run_code_commit": {
+   "evidence": "freeze commit 13ecc2e65c04d11e (00:06:04Z) + pre-run fixes 34b60db7/3d61993f/fed96b40/b1b1494ae3c1efa2 (last 00:25:39Z) all before run start 00:25:40Z (summary started_at_utc; heavy-lock FINISHED lease 00:25:39Z\u219200:26:54Z); ZERO commits between run start and results commit bfbb6e78 (00:38:09Z), which touches only evidence/ + tools/scored_worker.py (launcher, no computation). Freeze files 10/10 shas match freeze_manifest.json today",
+   "pass": true
+  },
+  "independent_recompute_from_raw_tier_files": {
+   "evidence": "54/54 tier files: totals recomputed from trade ledgers (gross/fee/slip/funding/net) match stored; trade counts match; PF recomputed from per-trade net PnL matches; engine identity recomputed (100000+net == equity[-1], net == gross-costs) TRUE in every file, residuals <1e-6; fold reconciliation recomputed |sum(fold_net)-net| < 1e-9 in every file; stored engine_identity[0] and fold_reconciliation[0] TRUE in all 54. scored_summary base-tier block (net/trades/PF/folds/flags, 18 cell-arms) matches files exactly. 0 problems, 0 mismatches",
+   "pass": true
+  },
+  "jev_only_fold_nets_11_of_12_negative": {
+   "evidence": "base tier recomputed: BTC_H1 [-40997,-37419,-4923,-4802] 4/4 neg; BTC_H4 [-44582,-27241,-6522,-6930] 4/4 neg; SPY_D1 [-25488,+4985,-14810,-16310] 3/4 neg \u2014 sole positive SPY fold 2 (+4,985), exactly as reported; at tier 1.5 SPY fold 2 is negative too",
+   "pass": true
+  },
+  "reproduction_byte_compare_all_match": {
+   "evidence": "auditor byte-compared runtime/scored vs runtime/scored_repro: 54/54 tier files byte-identical; summaries differ ONLY in started_at_utc/finished_at_utc (00:25:40/00:26:54 vs 00:35:27/00:36:42). ALL_MATCH claim holds. Repro run also post-freeze (after b1b1494a 00:25:39Z)",
+   "pass": true
+  },
+  "verdict_preconditions_all_fail": {
+   "evidence": "JEV_INCREMENTAL_VALUE_SUPPORTED preconditions vs frozen evaluation_contract: net-positive after costs FAILS everywhere (JEV_ONLY -88,140/-85,274/-51,623; every non-always-on arm negative on every cell); beats always-on arms FAILS (loses to ALWAYS_ON_MR -35,008/-31,373/-50,700 on all cells); beats deterministic FAILS on SPY (-19,747), marginal on BTC (+8,514/+2,871) among deeply-negative arms; beats random FAILS (-13,863/-1,317/-21,608; comparison honestly weakened by null_invalid=TRUE on all 9 cell x tier combos \u2014 disclosed); confirmation-arm non-inferiority insufficient (CONFIRM deeply negative everywhere; agreement share 0.40/0.62/0.56). Refutation attempt FAILED: no cell/arm comparison qualifies JEV",
+   "pass": true
+  },
+  "verdict_survives_without_random_null": {
+   "evidence": "discarding the JEV-vs-random comparison entirely, net-negative-everywhere + losing to ALWAYS_ON_MR everywhere already preclude the supported verdict; the proposed verdict does not depend on the weakened null",
+   "pass": true
+  },
+  "budget_no_cap_breach": {
+   "evidence": "bulk manifests sum exactly 58,360,983 input / 1,744,755 output (auditor recomputed); formula cap 4,369x13,315 = 58,173,235 (auditor verified arithmetic); used-only 58,050,872 (A7-2 F5 decomposition) = -0.21% vs cap \u2014 no breach; raw all-cache convention (+0.32%) was disclosed at bulk time and is the conservative-overstated figure",
+   "pass": true
+  },
+  "trial_accounting_18_of_18": {
+   "evidence": "scored_summary trial_accounting observed 18 / planned 18; buy-hold structurally outside ARMS (buy_hold_reference field; dedicated test test_buy_hold_is_reference_not_scored in green suite)",
+   "pass": true
+  },
+  "spy_always_on_trend_not_promoted": {
+   "evidence": "SPY ALWAYS_ON_TREND +19,813 (recomputed; trades 143, PF 1.14, concentration 0.6876 > 0.50 kill) reported as BASELINE, explicitly not promoted; cycle has no promotion authority; terminal vocabulary contains no promotion token; reports make no profitability claim beyond evidence",
+   "pass": true
+  },
+  "s1_sealed_no_broker_no_credentials_v1_isolation": {
+   "evidence": "verify-freezes ok=true with security_scan 0 findings (18 files) and v1_isolation_scan 0 findings (18 files); S1-path denial and V1-isolation guards tested in green suite; auditor credential-pattern grep over the cycle dir (excluding node_modules): zero hits; no orders/broker surface in reports or artifacts",
+   "pass": true
+  },
+  "reports_traceable_to_artifacts": {
+   "evidence": "every number of all three base-tier tables of REGIME_BACKTEST_REPORT.md reproduced (18 arms x net/trades/PF/Sharpe/MaxDD); margins (-35,008/-31,373/-50,700; -13,863/-1,317/-21,608; CONFIRM-DET +14,893/+10,473/-507); JEV H1 tier degradation -88,140\u2192-93,415\u2192-96,345; SPY JEV folds; occupancy/switches 90/31/34; effUNKNOWN 0.427/0.272/0.291; agreement shares 0.399/0.620/0.561; skipped fractions -0.0741/+0.0156/-0.0533; buy-hold refs -131.6/-482.5/+8,405.3; classification-report corpus/usage \u2014 all match artifacts (well over the 10 spot-checks mandated)",
+   "pass": true
+  },
+  "honest_disclosures_confirmed": {
+   "evidence": "random null_invalid TRUE on all cells/tiers (disclosed in report Q3); provider nondeterminism disclosed (classification report; A7-1 finding N: identical request bytes \u2192 RANGE vs TREND); canary 9/10 honest FAIL disclosed ('One preregistered criterion failed'); SPY ran complete 2,751/2,751 (1 error fail-closed) \u2014 blockers did NOT block SPY",
+   "pass": true
+  },
+  "mandated_runs": {
+   "evidence": "pytest tests_py: 127 passed (auditor run); verify-freezes ok 10/10 (auditor run); census equals freeze: BTC 35,039 rows, H1 8,759 complete/0 interior gaps, H4 2,189/0 gaps, SPY 2,943 sessions (auditor run); heavy lock FREE_PROVEN at audit time; scored leases in governance history: TECHABORT 00:17:08\u219200:17:22Z (failed attempt, partials deleted unread per b1b1494a), FINISHED 00:25:39\u219200:26:54Z, FINISHED 00:35:27\u219200:36:42Z (repro)",
+   "pass": true
+  }
+ },
+ "cycle_id": "JEV-REGIME-ROUTER-V2",
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "LOW",
+   "finding": "REGIME_BACKTEST_REPORT verdict-basis gloss 'loses to always-on and random everywhere' is imprecise: JEV_ONLY actually beats ALWAYS_ON_TREND marginally on BTC_H1 (+3,395) and BTC_H4 (+4,225), and beats DETERMINISTIC on BTC (+8,514/+2,871). The formal precondition is unaffected \u2014 'beating always-on arms' requires BOTH, and ALWAYS_ON_MR beats JEV on every cell, with every comparison among deeply-negative arms. Report Q1/Q2 wordings are precise; only the verdict-basis parenthetical is loose. Verdict unaffected.",
+   "resolution": "none required for verdict; note for record"
+  },
+  {
+   "id": "F2",
+   "severity": "LOW",
+   "finding": "evaluation_contract lists margin_to_fail among per_cell_per_arm_metrics, but scored.py never computes/persists it (implemented at jrv2/metrics.py:200, named in the freeze builder's metric list; summary carries raw-delta margins only). Cannot flip any precondition: every decision-relevant comparison is decided by >=1,317 net against JEV (most by tens of thousands) on 4 folds.",
+   "resolution": "record; no effect on terminal verdict"
+  },
+  {
+   "id": "F3",
+   "severity": "LOW",
+   "finding": "REGIME_BACKTEST_REPORT Q7 misstates BTC costs as '12 bps/side'; the frozen law (mapping_arms_freeze.json) is 5 bps taker fee + 1 bp slippage = 6 bps/side (12 bps round-trip). Auditor verified from trade ledgers (e.g. H1 trade 1: fees 99.92 on 199,833 two-side notional = 5.0 bps/side; slip 19.98 = 1.0 bp/side). SPY '10 bps/fill' is correct. Prose slip only; all computations used the frozen 6 bps/side.",
+   "resolution": "correct in any future rendering; no effect on verdict"
+  },
+  {
+   "id": "F4",
+   "severity": "INFO",
+   "finding": "A7-2 F5 used-only arithmetic nit: 58,360,983 - 310,109 = 58,050,874 vs the recorded 58,050,872 (2-token discrepancy in the finding text; immaterial, both far below the verified 58,173,235 formula cap).",
+   "resolution": "none"
+  },
+  {
+   "id": "F5",
+   "severity": "INFO",
+   "finding": "runtime/ artifacts (including the 54 tier files and runtime/scored_repro) are gitignored by cycle design; git-tracked terminal evidence carries the byte-identical evidence/scored/scored_summary.json (auditor-verified identical to runtime copy) plus the reports. Byte-compare mandated by this audit was performed on the working tree and holds.",
+   "resolution": "none (by-design .gitignore)"
+  },
+  {
+   "id": "F6",
+   "severity": "INFO",
+   "finding": "tools/scored_worker.py was committed together with the results (bfbb6e78) rather than pre-run; it is a pure lock/subprocess launcher containing no computation, so no outcome-bearing code landed post-run (computation code scored.py frozen at b1b1494a before the run).",
+   "resolution": "none"
+  },
+  {
+   "id": "F7",
+   "severity": "INFO",
+   "finding": "Cosmetic: REGIME_BACKTEST_REPORT.md five-year-old summary contains garbled words (stray 'C6 \u5de8\u661f' insert and 'tribal') inside the Vietnamese paragraph; qualitative content unaffected.",
+   "resolution": "none"
+  }
+ ],
+ "final": "TERMINAL_VERDICT_AUTHORIZED_JEV_NO_INCREMENTAL_VALUE",
+ "numbers_not_reproduced": [],
+ "schema": "jrv2_a7_terminal_audit@1",
+ "strongest_allowed": "JEV_NO_INCREMENTAL_VALUE",
+ "verdict_assessment": {
+  "agree": true,
+  "alternatives_rejected": {
+   "JEV_INCREMENTAL_VALUE_SUPPORTED": "impossible: net-negative everywhere for JEV_ONLY and every Jev-routed arm; loses to ALWAYS_ON_MR on all 3 cells; loses to RANDOM on all 3 cells (null-weakened but not needed)",
+   "JEV_INCONSISTENT_ACROSS_FOLDS_OR_ASSETS": "wrong direction: the negative result is CONSISTENT across all 12 cell-folds (11/12 negative base tier, 12/12 at 1.5x) and all 3 assets",
+   "BLOCKED_*": "not applicable: run completed 18/18 under valid authority, data complete, no credential/cost/data/control blocker",
+   "TECHABORT": "not applicable: both scored runs FINISHED cleanly under heavy lock"
+  },
+  "proposed": "JEV_NO_INCREMENTAL_VALUE",
+  "refutation_attempt": "REFUTED \u2014 searched every cell x arm comparison for a JEV qualification: JEV_ONLY beats ALWAYS_ON_TREND on BTC (marginal, both deeply negative) and DETERMINISTIC on BTC; CONFIRM beats DETERMINISTIC on BTC. None of these satisfies the frozen contract, which requires net-positive after costs AND beating always-on arms (both), deterministic AND random, with confirmation-arm non-inferiority across cells. The random-null invalidity does not rescue or weaken the verdict (independent failing preconditions suffice)"
+ },
+ "zero_unresolved_high_critical": true
+}
