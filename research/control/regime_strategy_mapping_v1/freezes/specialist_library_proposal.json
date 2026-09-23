@@ -1,0 +1,405 @@
+{
+  "schema": "rsmv1_specialist_library_proposal@1",
+  "cycle_id": "REGIME-STRATEGY-MAPPING-V1",
+  "task_id": "RSMV1-A4-SPECIALISTS",
+  "role": "A4",
+  "lane": "a4-specialists",
+  "author": "A4 outcome-blind strategy architect",
+  "created_utc": "2026-09-23T01:31:56Z",
+  "dispatch_base_sha": "02167db05cb5d494c9ef992883e522c234c4391d",
+  "status": "PROPOSAL — ADVICE TO A1. A1 freezes the mapping and the library; A4 freezes nothing.",
+  "knowledge_boundary": {
+    "outcome_blind": true,
+    "design_basis": "regime economics (market-mechanics definitions) + repo-standard frozen indicator conventions only",
+    "not_read": [
+      "any evidence/ or runtime/ directory in any worktree",
+      "the V2 worktree (.worktrees/jev-regime-router-v2/**)",
+      "rsmv1/attribution.py, rsmv1/feasibility.py, rsmv1/arms.py",
+      "backtest results, PnL, fold returns, or which strategy won/lost (none sought)"
+    ]
+  },
+  "assets": {
+    "BTCUSDT": {
+      "instrument": "USD-margin perpetual future",
+      "authority": ["LONG", "SHORT"],
+      "costs": {
+        "taker_fee_bps_per_side": 5.0,
+        "slippage_bps_per_side": 1.0,
+        "round_trip_bps": 12.0,
+        "status": "DECLARED_CONSERVATIVE_BOUND, stress 2.0x"
+      },
+      "funding": {
+        "rate_per_8h_signed": 1.377e-05,
+        "sign_convention": "LONG pays, SHORT receives, on signed notional",
+        "cadence_exec_bars_15m_clock": 32,
+        "approx_bps_per_day": 0.41,
+        "status": "FROZEN rate"
+      }
+    },
+    "SPY": {
+      "instrument": "equity index (cash path)",
+      "authority": ["LONG"],
+      "costs": {
+        "cost_bps_per_fill": 10.0,
+        "round_trip_bps": 20.0,
+        "status": "FROZEN_BAND_MODEL_F6, stress 2.0x"
+      },
+      "funding": null
+    }
+  },
+  "execution_law": {
+    "signal_clock": "exec clock, completed bars only: BTCUSDT 15m in both BTC cells; SPY D1. Identical specialist spec across all regime-clock cells (H1/H4/D1); the regime machine owns the regime clock, the specialist owns the exec clock.",
+    "fill": "any signal evaluated on a completed exec bar is filled at the NEXT exec bar open (PIT law); no same-bar flips",
+    "one_position_per_asset": true,
+    "notional_fraction": 1.0,
+    "regime_machine": {
+      "min_dwell_regime_bars": 6,
+      "states": ["ACCUMULATION", "UPTREND", "DISTRIBUTION", "DOWNTREND", "TRANSITION_UNKNOWN"]
+    },
+    "anti_churn_law": "no close/reopen when the target direction is unchanged; a specialist switch mid-position takes effect only at flat or at a direction change; every switch declares its transition delay explicitly",
+    "exit_precedence": "fold force-flat > price stop (intrabar, overrides minimum holding) > maximum-holding time stop > rule exits and regime-change exits (both suppressed until minimum_holding_regime_bars elapse)",
+    "warmup_regime_bars": 192,
+    "notation": {
+      "close[i]/high[i]/low[i]": "completed exec bar i",
+      "HH(i,n)": "highest high of the n completed bars i-1 .. i-n (trailing only, excludes bar i)",
+      "LL(i,n)": "lowest low of the n completed bars i-1 .. i-n (trailing only, excludes bar i)",
+      "EMA20/EMA50": "recursive EMA alpha=2/(n+1) seeded with first close (rsmv1.indicators.ema)",
+      "SMA20": "simple 20-bar mean of close (rsmv1.indicators.sma; equals the BOLL(20,2) mid already in the engine)",
+      "ATR14": "Wilder ATR, period 14 (rsmv1.indicators.atr)"
+    }
+  },
+  "transition_unknown_policy": {
+    "fixed_target": "FLAT",
+    "selectable_in_library": false,
+    "rationale": "TRANSITION_UNKNOWN is code-owned abstention: the machine asserts no information, so no forced-flow mechanism can be stated. FLAT is FIXED for this state, not a selectable specialist."
+  },
+  "regimes": {
+    "ACCUMULATION": {
+      "definition_basis": "post-decline ranging base: sellers exhausted, downside failures, early accumulation",
+      "specialists": [
+        {
+          "id": "ACC-BASE-RECLAIM-L",
+          "regime": "ACCUMULATION",
+          "direction": "LONG",
+          "assets": ["BTCUSDT", "SPY"],
+          "economic_mechanism": "After a decline has driven price into a base, the forced sellers (liquidated leveraged longs, margin-call and stop-loss sellers, capitulating holders) have already sold; the base exists because passive demand absorbs the residual dribble of supply at the lows. A downside failure — price probes below the prior 20-bar low and the bar CLOSES back above it — proves the probe was absorbed: the sellers who pushed price down had no follow-through. The late traders who entered short on the new low are then trapped above their entry and their covering is forced buying, while value-based buyers who refused to sell at the lows provide the floor. The edge is the asymmetric resolution of that forced cover plus exhausted supply, entered before the mean (SMA20) has been reclaimed, exited at the mean.",
+          "entry": {
+            "side": "LONG",
+            "clock": "exec (completed bars)",
+            "indicators": [
+              {"name": "LL_trailing", "params": {"window": 20}},
+              {"name": "SMA20", "params": {"period": 20}},
+              {"name": "ATR14", "params": {"period": 14, "smoothing": "wilder"}}
+            ],
+            "condition": "low[i] < LL(i,20) AND close[i] > LL(i,20) AND close[i] < SMA20[i]  (failed-low reclaim, still below mean so reversion room remains); evaluated only while flat; fill next exec bar open"
+          },
+          "exits": [
+            {"name": "structural_stop", "rule": "intrabar: low <= stop_price, where stop_price = min(low[i_signal], LL(i_signal,20)) - 0.5 * ATR14[i_signal], fixed at entry; overrides minimum holding"},
+            {"name": "mean_reclaim_target", "rule": "close >= SMA20[i] on a completed bar -> exit next exec bar open (absorption realized at fair value; engine BOLL-mid exit convention)"},
+            {"name": "time_stop", "rule": "held >= maximum_holding (24 regime bars) -> exit next exec bar open (no follow-through within the absorption horizon means the base is not converting)"},
+            {"name": "regime_exit", "rule": "effective regime is no longer ACCUMULATION -> exit next exec bar open, subject to minimum holding (suppressed until it elapses)"},
+            {"name": "fold_force_flat", "rule": "position closed at fold boundary with close costs charged; overrides everything"}
+          ],
+          "sizing": {"notional_fraction": 1.0},
+          "stop": {
+            "type": "price_intrabar",
+            "rule": "half-ATR buffer beyond the structural invalidation (the spring low); if the market re-breaks the failed low the absorption thesis is factually dead",
+            "params": {"buffer_atr_mult": 0.5, "anchor": "min(signal-bar low, trailing 20-bar low)"}}
+          ,
+          "maximum_holding": {"kind": "regime_bars", "value": 24},
+          "minimum_holding_regime_bars": 6,
+          "transition_delay_regime_bars": 0,
+          "next_bar_execution_ack": true,
+          "noop_target_behavior": "If already long, target stays LONG and NO order is emitted (no close/reopen). A direction change requires exiting to flat first; no same-bar flip. One position per asset.",
+          "costs_funding_ack": "BTCUSDT: 12 bps round trip (5 bps taker + 1 bps slippage per side) and LONG pays funding 1.377e-5 per 8h on signed notional (frozen rate) ~0.41 bps/day, charged every 32 exec bars on the 15m clock. SPY: 10 bps per fill, no funding. The spring-to-mean span must clear these costs on average or the mechanism has no edge; this is stated economics, not a measured result.",
+          "expected_failure_mode": "Must lose when the 'base' is actually a pause in an ongoing decline (accumulation misread): the spring low keeps breaking for real and the structural stop pays the full distance repeatedly. Also bleeds in dead, narrow ranges where the spring-to-mean span is smaller than the 12 bps (BTCUSDT) / 20 bps (SPY) round trip plus long funding.",
+          "required_tests": [
+            "fixture:ACC-BASE-RECLAIM-L trigger (synthetic exec bars: probe below LL(20) then close back above while below SMA20 -> LONG target emitted, filled next open)",
+            "fixture:ACC-BASE-RECLAIM-L no-op (already long -> no fill on re-trigger)",
+            "fixture:ACC-BASE-RECLAIM-L structural stop (intrabar low breach exits even before min-hold elapses)",
+            "fixture:ACC-BASE-RECLAIM-L min-hold suppression (SMA20 reclaim before 6 regime bars does not exit; exits after)",
+            "fixture:ACC-BASE-RECLAIM-L SPY path emits LONG only (no SHORT anywhere)"
+          ]
+        }
+      ]
+    },
+    "UPTREND": {
+      "definition_basis": "sustained advance, higher highs/lows, dip-buying",
+      "specialists": [
+        {
+          "id": "UPT-DIPBUY-L",
+          "regime": "UPTREND",
+          "direction": "LONG",
+          "assets": ["BTCUSDT", "SPY"],
+          "economic_mechanism": "A sustained advance is funded by two semi-forced flows: late participants who missed the move and must buy strength to stay on benchmark, and traders positioned short against the trend whose risk covers sit above every shallow dip. Pullbacks occur when late longs' profit-taking temporarily exhausts new demand; the fast mean (EMA20) is where trend-aligned limit buyers (systematic re-levering, dip programs) rest. When price dips to touch EMA20 and the bar closes back above it, the dip was absorbed by resting demand and the trapped above-dip shorts face rising liquidation risk into a resuming advance. The edge is being the counterparty that dip-sellers need, with the trend filter (EMA20 > EMA50) ensuring the deeper bid of the established advance stands behind the entry.",
+          "entry": {
+            "side": "LONG",
+            "clock": "exec (completed bars)",
+            "indicators": [
+              {"name": "EMA20", "params": {"period": 20}},
+              {"name": "EMA50", "params": {"period": 50}}
+            ],
+            "condition": "EMA20[i] > EMA50[i] AND low[i] <= EMA20[i] AND close[i] > EMA20[i]  (established advance, dip to fast mean, dip held); evaluated only while flat; fill next exec bar open"
+          },
+          "exits": [
+            {"name": "price_stop", "rule": "intrabar: low <= entry_price - 3.0 * ATR14[i_entry] (repo TREND_STOP_ATR_MULT convention); overrides minimum holding"},
+            {"name": "trend_failure", "rule": "close < EMA20[i] on a completed bar -> exit next exec bar open (repo TREND_LONG exit convention), subject to minimum holding"},
+            {"name": "regime_exit", "rule": "effective regime is no longer UPTREND -> exit next exec bar open, subject to minimum holding"},
+            {"name": "fold_force_flat", "rule": "position closed at fold boundary with close costs charged; overrides everything"}
+          ],
+          "sizing": {"notional_fraction": 1.0},
+          "stop": {
+            "type": "price_intrabar",
+            "rule": "3.0 x ATR14 below entry (repo TREND family convention); wide enough that ordinary dip noise does not reach it, tight enough to bound the tail",
+            "params": {"stop_atr_mult": 3.0, "anchor": "entry fill price"}}
+          ,
+          "maximum_holding": {"kind": "fold_force_flat"},
+          "minimum_holding_regime_bars": 6,
+          "transition_delay_regime_bars": 0,
+          "next_bar_execution_ack": true,
+          "noop_target_behavior": "If already long, target stays LONG and NO order is emitted. Direction change requires flat first; no same-bar flip. One position per asset.",
+          "costs_funding_ack": "BTCUSDT: 12 bps round trip + LONG pays funding 1.377e-5 per 8h (frozen) ~0.41 bps/day on signed notional; SPY: 10 bps per fill. Trend hold amortizes costs over the regime length; the dip entry is chosen over the breakout chase precisely because it buys from forced sellers rather than paying the stop-run premium.",
+          "expected_failure_mode": "Must lose at trend exhaustion: when the advance is ending, dips stop being absorbed and the fast mean breaks downward — the specialist buys every early-stage top and pays the 3xATR stop repeatedly. Also bleeds in regime cells where UPTREND labeling persists over choppy, trendless advance (EMA whipsaw around the fast mean).",
+          "required_tests": [
+            "fixture:UPT-DIPBUY-L trigger (EMA20>EMA50, low touches EMA20, close holds above -> LONG target, filled next open)",
+            "fixture:UPT-DIPBUY-L no-op (already long -> no fill)",
+            "fixture:UPT-DIPBUY-L price stop (3xATR intrabar breach exits before min-hold elapses)",
+            "fixture:UPT-DIPBUY-L min-hold suppression (close<EMA20 before 6 regime bars suppressed; after, exits)",
+            "fixture:UPT-DIPBUY-L SPY path emits LONG only"
+          ]
+        },
+        {
+          "id": "UPT-BREAKOUT-L",
+          "regime": "UPTREND",
+          "direction": "LONG",
+          "assets": ["BTCUSDT", "SPY"],
+          "economic_mechanism": "In an established advance, the area just above the trailing 20-bar high is densely populated by resting sell-to-cover risk stops of traders positioned short against the trend, plus the trigger levels of momentum accounts waiting to buy strength. A close above that level mechanically converts short covering into market buying and pulls benchmark-aware capital off the sidelines — the move through the prior high is itself partially forced. The specialist does not predict the breakout; it positions as the immediate beneficiary of flows that are contractual (stops) or habitual (chase/benchmark buying) once the level trades. Turtle-convention windows make the trigger a public, non-tuned landmark that many forced flows already use.",
+          "entry": {
+            "side": "LONG",
+            "clock": "exec (completed bars)",
+            "indicators": [
+              {"name": "HH_trailing", "params": {"window": 20}}
+            ],
+            "condition": "close[i] > HH(i,20)  (close above the trailing 20-bar high, completed bars only); evaluated only while flat; fill next exec bar open"
+          },
+          "exits": [
+            {"name": "price_stop", "rule": "intrabar: low <= entry_price - 3.0 * ATR14[i_entry] (repo TREND convention); overrides minimum holding"},
+            {"name": "donchian_exit", "rule": "close < LL(i,10) on a completed bar -> exit next exec bar open (Turtle 10-bar exit convention), subject to minimum holding"},
+            {"name": "regime_exit", "rule": "effective regime is no longer UPTREND -> exit next exec bar open, subject to minimum holding"},
+            {"name": "fold_force_flat", "rule": "position closed at fold boundary with close costs charged; overrides everything"}
+          ],
+          "sizing": {"notional_fraction": 1.0},
+          "stop": {
+            "type": "price_intrabar",
+            "rule": "3.0 x ATR14 below entry (repo TREND family convention)",
+            "params": {"stop_atr_mult": 3.0, "anchor": "entry fill price"}}
+          ,
+          "maximum_holding": {"kind": "fold_force_flat"},
+          "minimum_holding_regime_bars": 6,
+          "transition_delay_regime_bars": 0,
+          "next_bar_execution_ack": true,
+          "noop_target_behavior": "If already long, target stays LONG and NO order is emitted (repeated breakout bars produce no churn). Direction change requires flat first; no same-bar flip. One position per asset.",
+          "costs_funding_ack": "BTCUSDT: 12 bps round trip + LONG pays funding 1.377e-5 per 8h (frozen); SPY: 10 bps per fill. Acknowledged adverse-selection: the entry buys at the level where the specialist's own fill worsens the average price (stop clustering), which the 20/10 Turtle pair's historical convention exists to amortize — economics stated, not measured.",
+          "expected_failure_mode": "Must lose where breakouts above 20-bar highs routinely fail (low-liquidity fakeout environments): the specialist systematically buys the top of failed probes and pays the spread plus the stop distance. This is the mechanism's known adverse-selection tax.",
+          "required_tests": [
+            "fixture:UPT-BREAKOUT-L trigger (close > HH(20) -> LONG target, filled next open)",
+            "fixture:UPT-BREAKOUT-L no-op (already long -> no fill on continued breakouts)",
+            "fixture:UPT-BREAKOUT-L donchian exit (close < LL(10) exits next open, subject to min-hold)",
+            "fixture:UPT-BREAKOUT-L price stop (3xATR intrabar breach overrides min-hold)",
+            "fixture:UPT-BREAKOUT-L SPY path emits LONG only"
+          ]
+        }
+      ]
+    },
+    "DISTRIBUTION": {
+      "definition_basis": "post-advance top range: supply meeting late demand, upside failures",
+      "specialists": [
+        {
+          "id": "DIS-FAILED-HIGH-S",
+          "regime": "DISTRIBUTION",
+          "direction": "SHORT",
+          "assets": ["BTCUSDT"],
+          "economic_mechanism": "After an advance, the remaining buyers are late, capital-constrained momentum chasers while early holders are selling into strength — supply meeting demand at the top. An upside failure — price probes above the prior 20-bar high and the bar CLOSES back below it — proves the probe was supplied, not absorbed. The late buyers who entered on the new high are immediately trapped underwater; their risk stops are forced sell orders resting just below, and range traders who bought the top for breakout follow-through must exit into the same book. The edge is the forced selling of trapped breakout buyers plus dominant supply, entered before the mean (SMA20) has been lost, covered at the mean. SPY is excluded: the long-only authority forbids the short, and no long mechanism exists in a supply-dominated top, so SPY's only conforming choice is FLAT.",
+          "entry": {
+            "side": "SHORT",
+            "clock": "exec (completed bars)",
+            "indicators": [
+              {"name": "HH_trailing", "params": {"window": 20}},
+              {"name": "SMA20", "params": {"period": 20}},
+              {"name": "ATR14", "params": {"period": 14, "smoothing": "wilder"}}
+            ],
+            "condition": "high[i] > HH(i,20) AND close[i] < HH(i,20) AND close[i] > SMA20[i]  (failed-high upthrust, still above mean so reversion room remains); BTCUSDT only; evaluated only while flat; fill next exec bar open"
+          },
+          "exits": [
+            {"name": "structural_stop", "rule": "intrabar: high >= stop_price, where stop_price = max(high[i_signal], HH(i_signal,20)) + 0.5 * ATR14[i_signal], fixed at entry; overrides minimum holding"},
+            {"name": "mean_revert_target", "rule": "close <= SMA20[i] on a completed bar -> cover next exec bar open (trapped-buyer flush realized at fair value)"},
+            {"name": "time_stop", "rule": "held >= maximum_holding (24 regime bars) -> cover next exec bar open (no flush within the event horizon means the top is resolving upward)"},
+            {"name": "regime_exit", "rule": "effective regime is no longer DISTRIBUTION -> cover next exec bar open, subject to minimum holding"},
+            {"name": "fold_force_flat", "rule": "position closed at fold boundary with close costs charged; overrides everything"}
+          ],
+          "sizing": {"notional_fraction": 1.0},
+          "stop": {
+            "type": "price_intrabar",
+            "rule": "half-ATR buffer beyond the structural invalidation (the upthrust high); if the market re-claims the failed high the top is resolving upward and the thesis is dead",
+            "params": {"buffer_atr_mult": 0.5, "anchor": "max(signal-bar high, trailing 20-bar high)"}}
+          ,
+          "maximum_holding": {"kind": "regime_bars", "value": 24},
+          "minimum_holding_regime_bars": 6,
+          "transition_delay_regime_bars": 0,
+          "next_bar_execution_ack": true,
+          "noop_target_behavior": "If already short, target stays SHORT and NO order is emitted. Direction change requires flat first; no same-bar flip. One position per asset. SPY never receives this specialist (asset_eligibility excludes it).",
+          "costs_funding_ack": "BTCUSDT: 12 bps round trip (5 bps taker + 1 bps slippage per side); SHORT RECEIVES funding 1.377e-5 per 8h on signed notional at the frozen rate (~0.41 bps/day positive carry, charged every 32 exec bars on the 15m clock). The upthrust-to-mean span must clear 12 bps on average net of the received carry, or the mechanism has no edge.",
+          "expected_failure_mode": "Must lose when the top range resolves UP (the consolidation was re-accumulation, not distribution): the failed-high short is run over by the true breakout and pays the structural stop repeatedly. Also bleeds in wide, tall ranges where upthrusts repeatedly close marginally below the mean target without covering the 12 bps round trip.",
+          "required_tests": [
+            "fixture:DIS-FAILED-HIGH-S trigger (BTCUSDT synthetic bars: probe above HH(20), close back below, still above SMA20 -> SHORT target, filled next open)",
+            "fixture:DIS-FAILED-HIGH-S no-op (already short -> no fill on repeated upthrusts)",
+            "fixture:DIS-FAILED-HIGH-S structural stop (intrabar high breach exits even before min-hold elapses)",
+            "fixture:DIS-FAILED-HIGH-S funding sign (short RECEIVES 1.377e-5 per 8h on signed notional)",
+            "fixture:DIS-FAILED-HIGH-S eligibility (SPY never receives this specialist; SPY in DISTRIBUTION is FLAT)"
+          ]
+        }
+      ]
+    },
+    "DOWNTREND": {
+      "definition_basis": "sustained decline: liquidation cascades, rallies sold",
+      "specialists": [
+        {
+          "id": "DNT-CASCADE-S",
+          "regime": "DOWNTREND",
+          "direction": "SHORT",
+          "assets": ["BTCUSDT"],
+          "economic_mechanism": "In a sustained decline, the dominant sellers are forced: venue auto-liquidation engines market-sell leveraged longs whose maintenance margin is breached, and those liquidations push price into the next cluster of liquidation levels, feeding the cascade. Discretionary longs' stop-losses are the same flow at smaller size. Sellers in a cascade are price-insensitive — they must execute — while buyers are dipping a falling knife with exhausted capital. The short positioned on a close below the trailing 20-bar low is positioned with the liquidation engine, not against it, and the short's funding receipt (shorts receive at the frozen rate) is a positive carry that the long side of the same trade does not enjoy. The 20-bar breakdown trigger is late by construction, which is the accepted price of only trading confirmed cascades.",
+          "entry": {
+            "side": "SHORT",
+            "clock": "exec (completed bars)",
+            "indicators": [
+              {"name": "LL_trailing", "params": {"window": 20}},
+              {"name": "EMA20", "params": {"period": 20}},
+              {"name": "EMA50", "params": {"period": 50}}
+            ],
+            "condition": "close[i] < LL(i,20) AND EMA20[i] < EMA50[i]  (downside breakdown within an established decline context); BTCUSDT only; evaluated only while flat; fill next exec bar open"
+          },
+          "exits": [
+            {"name": "price_stop", "rule": "intrabar: high >= entry_price + 3.0 * ATR14[i_entry] (repo TREND convention, mirrored); overrides minimum holding"},
+            {"name": "donchian_cover", "rule": "close > HH(i,10) on a completed bar -> cover next exec bar open (Turtle 10-bar exit, mirrored), subject to minimum holding"},
+            {"name": "regime_exit", "rule": "effective regime is no longer DOWNTREND -> cover next exec bar open, subject to minimum holding"},
+            {"name": "fold_force_flat", "rule": "position closed at fold boundary with close costs charged; overrides everything"}
+          ],
+          "sizing": {"notional_fraction": 1.0},
+          "stop": {
+            "type": "price_intrabar",
+            "rule": "3.0 x ATR14 above entry (repo TREND family convention, mirrored); bounds the cost of shorting into a cascade that exhausts",
+            "params": {"stop_atr_mult": 3.0, "anchor": "entry fill price"}}
+          ,
+          "maximum_holding": {"kind": "fold_force_flat"},
+          "minimum_holding_regime_bars": 6,
+          "transition_delay_regime_bars": 0,
+          "next_bar_execution_ack": true,
+          "noop_target_behavior": "If already short, target stays SHORT and NO order is emitted (extended cascades produce no churn). Direction change requires flat first; no same-bar flip. One position per asset. SPY never receives this specialist (no short authority).",
+          "costs_funding_ack": "BTCUSDT: 12 bps round trip; SHORT RECEIVES funding 1.377e-5 per 8h on signed notional at the frozen rate (~0.41 bps/day positive carry), charged every 32 exec bars on the 15m clock. SPY is excluded by the long-only authority; its DOWNTREND target is FLAT.",
+          "expected_failure_mode": "Must lose at cascade exhaustion: liquidation fuel (open interest of stoppable longs) is finite, and the 20-bar breakdown entry is systematically late — it shorts the final liquidation leg before bases form, paying the 3xATR stop and the cover at the first sustained rally.",
+          "required_tests": [
+            "fixture:DNT-CASCADE-S trigger (close < LL(20) with EMA20<EMA50 -> SHORT target, filled next open)",
+            "fixture:DNT-CASCADE-S no-op (already short -> no fill on continued breakdowns)",
+            "fixture:DNT-CASCADE-S donchian cover (close > HH(10) covers next open, subject to min-hold)",
+            "fixture:DNT-CASCADE-S price stop (3xATR intrabar breach overrides min-hold)",
+            "fixture:DNT-CASCADE-S funding sign (short RECEIVES frozen rate) + SPY never short"
+          ]
+        },
+        {
+          "id": "DNT-RALLY-SOLD-S",
+          "regime": "DOWNTREND",
+          "direction": "SHORT",
+          "assets": ["BTCUSDT"],
+          "economic_mechanism": "In a sustained decline, a standing population of holders has decided to exit but is waiting for a better price; their supply is dormant-contingent, activating only when a rally delivers the liquidity they want. Short-covering bounces give them exactly that: price rallies to the fast mean (EMA20), the waiting sellers execute into it, and the bounce dies — 'rallies sold'. The edge is being short at the price where a known contingent supply activates, with the trend filter (EMA20 < EMA50) ensuring the deeper forced flow (liquidation cascade) stands behind the entry. This is the mirror of dip-buying: the same absorption logic, with trapped longs instead of trapped shorts providing the forced flow.",
+          "entry": {
+            "side": "SHORT",
+            "clock": "exec (completed bars)",
+            "indicators": [
+              {"name": "EMA20", "params": {"period": 20}},
+              {"name": "EMA50", "params": {"period": 50}}
+            ],
+            "condition": "EMA20[i] < EMA50[i] AND high[i] >= EMA20[i] AND close[i] < EMA20[i]  (established decline, rally to fast mean, rally rejected); BTCUSDT only; evaluated only while flat; fill next exec bar open"
+          },
+          "exits": [
+            {"name": "price_stop", "rule": "intrabar: high >= entry_price + 3.0 * ATR14[i_entry] (repo TREND convention, mirrored); overrides minimum holding"},
+            {"name": "trend_failure_cover", "rule": "close > EMA20[i] on a completed bar -> cover next exec bar open (repo TREND_SHORT exit convention, mirrored), subject to minimum holding"},
+            {"name": "regime_exit", "rule": "effective regime is no longer DOWNTREND -> cover next exec bar open, subject to minimum holding"},
+            {"name": "fold_force_flat", "rule": "position closed at fold boundary with close costs charged; overrides everything"}
+          ],
+          "sizing": {"notional_fraction": 1.0},
+          "stop": {
+            "type": "price_intrabar",
+            "rule": "3.0 x ATR14 above entry (repo TREND family convention, mirrored)",
+            "params": {"stop_atr_mult": 3.0, "anchor": "entry fill price"}}
+          ,
+          "maximum_holding": {"kind": "regime_bars", "value": 24},
+          "minimum_holding_regime_bars": 6,
+          "transition_delay_regime_bars": 0,
+          "next_bar_execution_ack": true,
+          "noop_target_behavior": "If already short, target stays SHORT and NO order is emitted. Direction change requires flat first; no same-bar flip. One position per asset. SPY never receives this specialist (no short authority).",
+          "costs_funding_ack": "BTCUSDT: 12 bps round trip; SHORT RECEIVES funding 1.377e-5 per 8h on signed notional at the frozen rate (~0.41 bps/day positive carry). Rejection-to-exit spans are short; the received carry partially offsets costs but the rally-to-EMA20 rejection must clear 12 bps on average.",
+          "expected_failure_mode": "Must lose when the decline ends: rallies stop being sold at the fast mean, start holding above it, and become bases — the specialist shorts each new uptrend's first pullback and pays the 3xATR stop until the regime machine re-labels and the regime exit fires.",
+          "required_tests": [
+            "fixture:DNT-RALLY-SOLD-S trigger (EMA20<EMA50, high touches EMA20, close rejected below -> SHORT target, filled next open)",
+            "fixture:DNT-RALLY-SOLD-S no-op (already short -> no fill)",
+            "fixture:DNT-RALLY-SOLD-S price stop (3xATR intrabar breach overrides min-hold)",
+            "fixture:DNT-RALLY-SOLD-S min-hold suppression (close>EMA20 cover before 6 regime bars suppressed; after, exits)",
+            "fixture:DNT-RALLY-SOLD-S SPY never short"
+          ]
+        }
+      ]
+    }
+  },
+  "rejected_alternatives": [
+    {
+      "id": "REJ-DNT-DIPBUY-L",
+      "candidate": "counter-trend long: buy oversold dips inside DOWNTREND",
+      "reason": "No separate forced-flow mechanism: the bounce is short-covering, which is fuel the liquidation cascade consumes, not a durable edge. Default-excluded by the anti-counter-trend law and not overridden."
+    },
+    {
+      "id": "REJ-UPT-FADE-S",
+      "candidate": "counter-trend short: fade overbought pops inside UPTREND",
+      "reason": "Same law: no mechanism distinct from fighting dip-buyers with the trend behind them; also impossible for SPY (no short authority). Excluded."
+    },
+    {
+      "id": "REJ-ACC-BREAKOUT-L",
+      "candidate": "ACCUMULATION base-high breakout long",
+      "reason": "Duplicates UPT-BREAKOUT-L's mechanism one regime early, and a base WITHOUT a downside failure offers no observable absorption evidence — the spring trigger is the economic witness of seller exhaustion. Rejected for library boundedness."
+    },
+    {
+      "id": "REJ-DIS-SPY-ANY",
+      "candidate": "any investable DISTRIBUTION specialist for SPY",
+      "reason": "The only mechanism in a supply-dominated top is short-side; SPY has no short authority and no long mechanism exists there. SPY in DISTRIBUTION is FLAT; nothing to add without inventing an edge."
+    },
+    {
+      "id": "REJ-FUNDING-CARRY-S",
+      "candidate": "standalone BTCUSDT short funding-carry specialist",
+      "reason": "Frozen funding 1.377e-5 per 8h is ~0.41 bps/day; a 12 bps round trip needs ~30 days of pure carry to break even, with no directional edge and a direct regime conflict (carry harvesting is maximally short exactly in UPTREND). Rejected on cost arithmetic."
+    },
+    {
+      "id": "REJ-VOL-SIZING",
+      "candidate": "volatility-targeted or fractional sizing",
+      "reason": "Brief fixes notional fraction at 1.0 for every specialist. Sizing variation is not available as a degree of freedom; risk is expressed through stops and holding bounds only."
+    },
+    {
+      "id": "REJ-PER-CELL-PARAMS",
+      "candidate": "separate H1/H4 (and per-asset) parameter variants per specialist",
+      "reason": "Parameter-grid-adjacent and doubles the library. One frozen spec per specialist, evaluated on the exec clock (15m BTCUSDT, D1 SPY), serves every regime-clock cell; cell-level behavior is the regime machine's business."
+    },
+    {
+      "id": "REJ-DIS-UNCONFIRMED-FADE",
+      "candidate": "second DISTRIBUTION specialist: fade the range high without failure confirmation",
+      "reason": "Same forced-flow mechanism as DIS-FAILED-HIGH-S but with an earlier, noisier trigger (selling strength that has not yet failed). Bounded library keeps the confirmed version only."
+    }
+  ],
+  "baseline_expressibility_note": "The predecessor cycle's mapping (ACCUMULATION->MR_LONG, UPTREND->TREND_LONG, DISTRIBUTION->FLAT, DOWNTREND->TREND_SHORT BTC-only, TRANSITION_UNKNOWN->FLAT) is expressible from this library alone: ACC-BASE-RECLAIM-L, UPT-DIPBUY-L (or UPT-BREAKOUT-L), FLAT, DNT-CASCADE-S, FLAT-fixed. The single NEW optional element offered to A1 is DIS-FAILED-HIGH-S for BTCUSDT in DISTRIBUTION; choosing FLAT there instead reproduces the conservative baseline with nothing new. A1 owns that choice; A4 records no outcome information for or against it.",
+  "notes_for_a1": [
+    "Indicator vocabulary maps to existing rsmv1.indicators primitives: ema (EMA20/EMA50), sma / bollinger-mid (SMA20), atr Wilder (ATR14). The only new primitive needed is the trailing Donchian window HH/LL over completed bars — pure trailing max/min, must respect the PIT law (exclude the signal bar itself).",
+    "Stop model: intrabar (repo stop_hit semantics: low <= stop for LONG, high >= stop for SHORT). The structural stops of ACC-BASE-RECLAIM-L and DIS-FAILED-HIGH-S thread the probe extreme and ATR14 at the signal bar into the entry; implementer must carry both values through the next-open fill.",
+    "Exit precedence is declared in execution_law: fold force-flat > price stop > max-hold time stop > rule exits and regime-change exits (the latter two suppressed until minimum_holding_regime_bars elapses). Price stops and fold force-flat are risk controls and are never suppressed by min-hold.",
+    "All transition delays are 0 regime bars, declared explicitly: the regime machine's 6-bar min-dwell is the confirmation gate, and specialist indicators are trailing exec-clock windows that do not depend on regime age. No additional specialist-side latency is economically justified.",
+    "Sizing is fixed at notional fraction 1.0 everywhere; there are no grids, no per-cell variants, no outcome-informed parameters anywhere in this library.",
+    "FLAT is always a valid mapping choice for any (regime, asset); for SPY it is the REQUIRED choice in DISTRIBUTION and DOWNTREND (long-only authority + no long mechanism), and TRANSITION_UNKNOWN is FLAT-fixed by code, not selectable."
+  ]
+}
