@@ -58,7 +58,12 @@ class StrategySpec:
     entry: Callable[[int, Bars, ExecIndicators], bool]
     exit_: Callable[[int, Bars, ExecIndicators, int], bool]
     stop_atr_mult: float  # entry -/+ mult*ATR14; NaN disables until ATR
-    max_hold_exec_bars: int | None  # optional hard cap (checked in exit_)
+    max_hold_exec_bars: int | None  # V2-compat exec-bar cap (MR_LONG 96)
+    max_hold_regime_bars: int | None  # A4 specialists: regime-bar time stop
+    min_hold_regime_bars: int  # rule+regime exits suppressed until elapsed
+    structural_stop: Callable[[int], float] | None = None
+    # structural_stop(fill_bar) -> stop price or NaN; fill_bar's SIGNAL bar
+    # is fill_bar-1 (A4 ACC/DIS probes: anchor at the signal bar's extreme).
     tie_break_class: str = "LONG_CAPABLE"
     economic_mechanism: str = ""
     failure_mode: str = ""
@@ -74,6 +79,8 @@ def _v2_specs() -> dict[str, StrategySpec]:
             exit_=lambda i, b, x, h: trend_long_exit(i, b, x),
             stop_atr_mult=TREND_STOP_ATR_MULT,
             max_hold_exec_bars=None,
+            max_hold_regime_bars=None,
+            min_hold_regime_bars=0,
             economic_mechanism="V2 frozen anchor (equivalence reference)",
         ),
         TREND_SHORT: StrategySpec(
@@ -83,6 +90,8 @@ def _v2_specs() -> dict[str, StrategySpec]:
             exit_=lambda i, b, x, h: trend_short_exit(i, b, x),
             stop_atr_mult=TREND_STOP_ATR_MULT,
             max_hold_exec_bars=None,
+            max_hold_regime_bars=None,
+            min_hold_regime_bars=0,
             tie_break_class="BTC_ONLY_SHORT",
             economic_mechanism="V2 frozen anchor (equivalence reference)",
         ),
@@ -93,36 +102,64 @@ def _v2_specs() -> dict[str, StrategySpec]:
             exit_=lambda i, b, x, h: mr_long_exit(i, b, x, h),
             stop_atr_mult=MR_STOP_ATR_MULT,
             max_hold_exec_bars=MR_MAX_HOLD_BARS,
+            max_hold_regime_bars=None,
+            min_hold_regime_bars=0,
             economic_mechanism="V2 frozen anchor (equivalence reference)",
         ),
     }
 
 
 class SpecialistEngine(Engine):
-    """Engine with a strategy-spec registry; V2 laws inherited unchanged."""
+    """Engine with a strategy-spec registry; V2 laws inherited unchanged.
+
+    regime_ts (optional): the cell's regime-bar close timestamps; used to
+    count regime-bar boundaries crossed while a position is held (A4
+    specialists' min-hold/max-hold are REGIME-bar clocks, not exec bars).
+    """
 
     def __init__(self, bars, targets, folds, costs, specs: dict[str, StrategySpec],
-                 initial_equity: float = 100_000.0, ind: ExecIndicators | None = None):
+                 initial_equity: float = 100_000.0, ind: ExecIndicators | None = None,
+                 regime_ts: list[int] | None = None):
         missing = [s for s in {t for t in targets if t not in (None, FLAT, BUY_HOLD)}
                    if s not in specs]
         if missing:
             raise ValueError(f"targets reference unregistered strategies: {missing}")
         super().__init__(bars, targets, folds, costs, initial_equity, ind)
         self.specs = specs
+        self.regime_ts = sorted(regime_ts) if regime_ts is not None else []
 
     # -- dispatch points (the ONLY behavioral overrides) -------------------
+
+    def _held_regime_bars(self, entry_ts: int, now_ts: int) -> int:
+        import bisect
+
+        if not self.regime_ts:
+            return 0
+        a = bisect.bisect_right(self.regime_ts, entry_ts)
+        b = bisect.bisect_right(self.regime_ts, now_ts)
+        return b - a
 
     def _spec_entry(self, strategy: str, i: int) -> bool:
         if strategy in self.specs:
             return bool(self.specs[strategy].entry(i, self.bars, self.x))
         return bool(_entry_signal(strategy, i, self.bars, self.x))
 
-    def _spec_exit(self, strategy: str, i: int, held: int) -> bool:
+    def _spec_exit(self, strategy: str, i: int, held: int, entry_ts: int,
+                   now_ts: int) -> bool:
         spec = self.specs.get(strategy)
         if spec is None:
             return bool(_exit_signal(strategy, i, self.bars, self.x, held))
+        held_regime = self._held_regime_bars(entry_ts, now_ts)
+        # A4 exit precedence: intrabar stops + fold-flat are engine-side and
+        # never suppressed; the max-hold TIME STOP is likewise never
+        # suppressed; RULE exits are suppressed until min_hold_regime_bars.
         if spec.max_hold_exec_bars is not None and held >= spec.max_hold_exec_bars:
             return True
+        if (spec.max_hold_regime_bars is not None
+                and held_regime >= spec.max_hold_regime_bars):
+            return True
+        if held_regime < spec.min_hold_regime_bars:
+            return False
         return bool(spec.exit_(i, self.bars, self.x, held))
 
     def _open_position(self, strategy, i, ts, px, cash):  # noqa: ANN001
@@ -133,8 +170,11 @@ class SpecialistEngine(Engine):
             a = float(self.x.atr14[i])
         if spec is not None:
             direction = spec.direction
-            stop = (px - spec.direction * spec.stop_atr_mult * a
-                    if np.isfinite(a) and a > 0 else float("nan"))
+            if spec.structural_stop is not None:
+                stop = spec.structural_stop(i)
+            else:
+                stop = (px - spec.direction * spec.stop_atr_mult * a
+                        if np.isfinite(a) and a > 0 else float("nan"))
         else:  # V2 path (equivalence)
             from .strategies import stop_price
             direction = -1 if strategy == TREND_SHORT else 1
@@ -219,7 +259,7 @@ class SpecialistEngine(Engine):
                     pending_entry = tgt
             else:
                 held = i - pos.entry_bar + 1
-                if self._spec_exit(pos.strategy, i, held):  # <-- registry
+                if self._spec_exit(pos.strategy, i, held, pos.entry_ts, ts_c):
                     pending_exit = "strategy_exit"
         result = self._assemble(equity, invested, trades)
         _engine_mod._assert_engine_invariants(result, self.folds)
