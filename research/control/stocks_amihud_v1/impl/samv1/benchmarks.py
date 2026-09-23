@@ -26,7 +26,12 @@ N_RANDOM_CALENDARS = 200
 
 
 def spy_twin(spy: NameSeries, sessions: list[str], scored: bool) -> dict:
-    """SPY traded on the anchor grid — full-cycle single-position book."""
+    """SPY total-return BUY-AND-HOLD per fold (impl_contract v2): one entry
+    at the fold's first anchor-grid fill (t+1 adj-open), one exit at the
+    fold's LAST session close; band-A cost once per fill. No grid
+    round-tripping (A7 prelaunch H-2: round-trips add artificial drag and
+    flatter the SPY-excess gate). Exposure matching is applied at the
+    evaluation layer via the book's fold-average invested weight."""
     guards = E.Guards()
     sess_idx = {s: i for i, s in enumerate(sessions)}
     grid_all = E.build_grid(sessions)
@@ -35,33 +40,34 @@ def spy_twin(spy: NameSeries, sessions: list[str], scored: bool) -> dict:
         fold_sessions = [s for s in sessions if fa <= s <= fb]
         fold_last = fold_sessions[-1]
         grid = [s for s in grid_all if fa <= s <= fb]
-        open_h: list[HoldRec] = []
-        for t in grid:
-            for h in open_h:
-                if h.exit is None:
-                    h.exit = _exit_at(spy, t, fold_last, guards)
-            open_h = [h for h in open_h if h.exit is None]
-            t_i = sess_idx[t]
-            t1 = sessions[t_i + 1] if t_i + 1 < len(sessions) else None
-            if t1 is None or not (fa <= t1 <= fb):
-                continue
-            if spy.idx.get(t) is None or spy.idx.get(t1) is None:
-                continue
-            m = E.dvmed60(spy, spy.idx[t])
-            fi = spy.idx[t1]
-            band = E.band_bps(m or E.DV_FLOOR)
-            cost = band * 1e-4 * E.AUM_REF
-            h = HoldRec("SPY", fold, t, t1, spy.adj_open(fi), 1.0,
-                        E.AUM_REF, cost)
-            holds.append(h)
-            open_h.append(h)
-            guards.entries += 1
-        for h in open_h:
-            h.exit = _fold_exit(spy, fold_last, guards)
+        if not grid:
+            continue
+        t = grid[0]
+        t_i = sess_idx[t]
+        t1 = sessions[t_i + 1] if t_i + 1 < len(sessions) else None
+        if t1 is None or not (fa <= t1 <= fb) or spy.idx.get(t1) is None:
+            continue
+        fi = spy.idx[t1]
+        m = E.dvmed60(spy, spy.idx[t])
+        band = E.band_bps(m or E.DV_FLOOR)
+        h = HoldRec("SPY", fold, t, t1, spy.adj_open(fi), 1.0,
+                    E.AUM_REF, band * 1e-4 * E.AUM_REF)
+        li = spy.idx.get(fold_last)
+        if li is None:
+            li = max(i for i in range(len(spy.dates))
+                     if spy.dates[i] <= fold_last)
+        h.exit = _exit_rec_fold(spy, fold_last, li, band)
+        holds.append(h)
+        guards.entries += 1
     if scored:
         for h in holds:
             h.exit_cost = h.exit.band_bps * 1e-4 * h.notional
     return {"holds": holds, "guards": guards}
+
+
+def _exit_rec_fold(ns: NameSeries, fold_last: str, li: int, band: float):
+    from .portfolio import ExitRec
+    return ExitRec("fold", fold_last, ns.dates[li], ns.adj[li], band)
 
 
 def random_timing_twins(spy: NameSeries, sessions: list[str]) -> list[dict]:
@@ -114,10 +120,12 @@ def _vol60(ns: NameSeries, t_i: int) -> float | None:
     for i in range(lo, t_i + 1):
         if ns.adj_ok[i] and ns.adj_ok[i - 1] and ns.adj[i - 1] > 0:
             rets.append(ns.adj[i] / ns.adj[i - 1] - 1.0)
+    if len(rets) < 2:
+        raise E.FailLoud("_vol60 dof<=0 (class iv)")   # register law
     if len(rets) < 30:
-        return None
+        return None                                    # policy: too thin
     mu = sum(rets) / len(rets)
-    var = sum((r - mu) ** 2 for r in rets) / (len(rets) - 1)  # class iv: len>=30
+    var = sum((r - mu) ** 2 for r in rets) / (len(rets) - 1)  # dof>=29
     return math.sqrt(var)
 
 

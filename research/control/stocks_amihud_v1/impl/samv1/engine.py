@@ -52,6 +52,7 @@ class Guards:
     dv_excluded: int = 0
     formation_skip_ret: int = 0
     formation_skip_dv: int = 0
+    names_skipped_no_bar_at_t: int = 0
     names_skipped_no_t1: int = 0
     unbookable_dates: int = 0
     death_exits: int = 0
@@ -117,7 +118,7 @@ def illiq(ns: NameSeries, t_i: int, D: int, guards: Guards) -> float | None:
             continue
         terms.append(abs(r) / ns.dv[i])
     if len(terms) < max(D // 2, 1):
-        return None
+        return None          # formation quorum (pinned: family_contract v2)
     return sum(terms) / len(terms)
 
 

@@ -1,6 +1,6 @@
 {
-  "schema": "impl_contract/stocks_amihud_v1@1",
-  "pinned_utc": "2026-09-23T07:30:00Z",
+  "schema": "impl_contract/stocks_amihud_v1@2",
+  "pinned_utc": "2026-09-23T08:20:00Z (v2: A7 prelaunch r1 remediation H-2/H-3/H-4 + M-1/M-3)",
   "law": "Every implementation decision not fixed by the plan/D1 set is pinned HERE before any PnL exists; A7 prelaunch audits this file against the code; a divergence found after scored PnL is an incident, never a silent choice.",
   "decisions": {
     "fold_force_flat_price": "fold's LAST SESSION CLOSE on the adjusted series (consistent with the death-contract marking convention; no leak into the next fold's open)",
@@ -16,9 +16,16 @@
     "matched_book_construction": "for each anchor member at t: nearest eligible non-member by |log(DVmed60 ratio)| within the same realized-vol tercile (60-session, >=30 rets) and same price tier (adj in [1,5)/[5,20)/[20,100)/[100,inf)); fallback same vol tercile only; else skipped; >=10 picks required else the matched book is flat that date; EW min(1/N, cap) like the anchor; same exits/costs/clock",
     "random_timing_twin": "per calendar: per fold offset ~ UniformInt(0,20) sessions from fold start, step 21; SPY single-position round trips at t+1 adj-open with band-A; PCG64 seed 20260923, 200 calendars",
     "stress_accounting": "tier 2.0 multiplies the SUM of entry+exit band costs by 2.0 (both fills symmetric)",
-    "pf_zero_zero": "profit factor with gross_win==0 and gross_loss==0 => FailLoud (class iii); inf recorded when gross_loss==0 and gross_win>0",
+    "pf_zero_zero": "profit factor gross_win==0 and gross_loss==0 -> reported None (undefined), never 0; inf when gross_loss==0 and gross_win>0; concentration with total net <=0 -> explicit not-computable note, no signed share (M-2: all FailLoud paths RAISE, never return)",
     "concentration_when_total_negative": "FailLoud (shares undefined when total net PnL <= 0 — reported verbatim as not-computable instead of a signed share)",
-    "warmup_dynamic": "own-series index at t >= 252 served bars (253rd session law), evaluated per name per date"
+    "warmup_dynamic": "own-series index at t >= 252 served bars (253rd session law), evaluated per name per date",
+    "spy_benchmark": "PER-FOLD BUY-AND-HOLD (H-2): one entry at the fold first anchor-grid fill (t+1 adj-open), one exit at fold-last close, band-A once per fill; NO grid round-tripping; exposure matching applied at evaluation: spy_excess_folds = book fold net return - mean_invested_weight x SPY fold return",
+    "annual_split_construction": "F3 holds spanning 2021-12-31: linear time interpolation of gross PnL between entry/exit ISO dates at the mark; exit cost split half/half across years; mark-only, no trade",
+    "beta_construction": "entry-weighted average of member betas; member beta = OLS slope of member adjusted returns on SPY adjusted returns over the 60 sessions ending at the entry decision (>=30 pairs, sxx>0 guarded class iv)",
+    "drop_one_construction": "additive leave-one-out on per-hold net rows (exact): drop-one-ticker = min over tickers of (total - ticker net) > 0; drop-one-year likewise on the four calendar-year nets",
+    "gap_at_t_counter": "names whose alive interval covers t but serve no bar at t are counted in names_skipped_no_bar_at_t (M-3); names outside their alive interval are not counted as skipped",
+    "trial_identity_fields": "every record carries cycle_id, family_id, arm_id, arm_config_digest (sha256 of family+cost+impl contracts), cost_tier, fold_contract (M-1)",
+    "matched_book_wiring": "simulate per_date carries book_codes; matched_book consumes them and is wired into scored records as matched_book_folds (H-3)"
   },
   "engine_layout": {
     "samv1/panel.py": "loader + guard classes i/ii counting",
@@ -27,7 +34,7 @@
     "samv1/benchmarks.py": "SPY twin, random-timing twins, matched-characteristic book",
     "samv1/evaluate.py": "SCORED-ONLY metrics (fold summaries, equity curve, MDD, concentration)",
     "samv1/run_cells.py": "CLI: --mode dry-run|scored; exactly 3 cells; S1 refusal; leak scan; vacuous check",
-    "tests/test_golden.py": "14 golden tests per plan §8 (synthetic fixtures only)"
+    "tests/test_golden.py": "19 golden tests per plan §8 (synthetic fixtures only; control-path poison, benchmark class-iv fail-loud, register completeness, matched-book wiring, SPY B&H shape added in v2)"
   },
-  "test_results": "14/14 PASS (see z-phase artifacts; synthetic panel; production outcomes never touched)"
+  "test_results": "19/19 PASS (v2 post-remediation)"
 }

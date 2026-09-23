@@ -138,6 +138,9 @@ def simulate(panel: dict[str, NameSeries], sessions: list[str],
                 ns = panel[code]
                 bi = ns.idx.get(t)
                 if bi is None:
+                    # gap-at-t counter: alive interval covers t but no bar
+                    if ns.dates and ns.dates[0] <= t <= ns.dates[-1]:
+                        guards.names_skipped_no_bar_at_t += 1
                     continue
                 if t1 is None or ns.idx.get(t1) is None:
                     guards.names_skipped_no_t1 += 1
@@ -176,7 +179,7 @@ def simulate(panel: dict[str, NameSeries], sessions: list[str],
                     guards.entries += 1
                 per_date.append({"date": t, "fold": fold,
                                  "n_elig": len(scores), "n_book": len(book),
-                                 "bookable": True})
+                                 "bookable": True, "book_codes": list(book)})
             else:
                 if open_holds:
                     for h in open_holds:

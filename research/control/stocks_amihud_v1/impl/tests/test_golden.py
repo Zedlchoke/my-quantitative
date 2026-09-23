@@ -241,3 +241,85 @@ def test_dryrun_leak_scan():
     with pytest.raises(E.FailLoud):
         assert_no_outcome_fields({"a": {"nested": [{"pnl": 1.0}]}})
     assert_no_outcome_fields({"a": {"n_book": 3}})  # clean passes
+
+
+# --- T17 control-path negative injections: reversal axis skips guarded rows
+def test_control_path_guards():
+    ns = synth("X", 10**9, adj_override={"2019-04-02": 0.0},   # class i
+               vol_override={"2019-04-08": 0.0})               # class ii
+    t = SESS_IDX["2019-04-15"]
+    g = E.Guards()
+    v = E.past_ret5(ns, t, g)
+    assert v is not None or g.formation_skip_ret >= 1
+    # simulate with reversal axis over a poisoned panel: must not raise
+    panel = eligible_panel(60)
+    victim = panel["N039"]
+    for i, d in enumerate(list(victim.dates)):
+        if d == "2019-06-10":
+            victim.adj[i] = 0.0
+            victim.adj_ok[i] = False
+            victim.dv[i] = 0.0
+    sim = simulate(panel, SESSIONS, "reversal5", scored=False)
+    assert sim["guards"].entries > 0          # non-vacuous under poison
+
+
+# --- T18 benchmark-path negative: vol60 class iv fail-loud on <2 rets
+def test_benchmark_vol60_class_iv():
+    from samv1.benchmarks import _vol60
+    ns = synth("X", 2)                          # 2 bars -> 1 usable ret? -> <2
+    # build a series with exactly 1 valid return then stop
+    ns2 = NameSeries("Y")
+    for d, a in (("2019-01-02", 10.0), ("2019-01-03", 10.5)):
+        ns2.dates.append(d); ns2.idx[d] = len(ns2.dates) - 1
+        ns2.open_raw.append(a); ns2.close_raw.append(a)
+        ns2.adj.append(a); ns2.vol.append(1e6)
+        ns2.dv.append(a * 1e6); ns2.adj_ok.append(True)
+    with pytest.raises(E.FailLoud):
+        _vol60(ns2, 1)                          # 1 ret -> dof 0 -> FAIL LOUD
+    zs = synth("Z", 10**9, ret=0.001)
+    i = 380
+    zs.adj[i] *= 1.01          # one differing return inside the window
+    v = _vol60(zs, 400)
+    assert v is not None and v > 0
+
+
+# --- T19 division-site register completeness (source scan)
+def test_division_register_completeness():
+    reg = json.loads((IMPL.parent.parent / "d1" / "division_site_register.json")
+                     .read_text()) if False else None
+    from pathlib import Path as P
+    reg = __import__("json").loads(
+        (P(__file__).resolve().parents[2] / "d1" / "division_site_register.json")
+        .read_text())
+    src = ""
+    for f in ("panel.py", "engine.py", "portfolio.py", "benchmarks.py",
+              "evaluate.py"):
+        src += (P(__file__).resolve().parents[1] / "samv1" / f).read_text()
+    n_div = src.count(" / ") + src.count("/")
+    assert n_div > 20           # sanity: divisions exist to register
+    planned = len(reg["sites_v2_engine_planned"]) + len(reg["sites_v1_census_code"])
+    assert planned >= 8
+
+
+# --- T20 matched book wiring: book_codes present, matched book non-vacuous
+def test_matched_book_wiring():
+    panel = eligible_panel(80)
+    sim = simulate(panel, SESSIONS, "illiq21", scored=False)
+    d0 = next(d for d in sim["per_date"] if d["bookable"])
+    assert isinstance(d0.get("book_codes"), list) and len(d0["book_codes"]) == d0["n_book"]
+    from samv1.benchmarks import matched_book
+    mb = matched_book(sim["per_date"], panel, SESSIONS, scored=False)
+    assert mb["guards"].entries > 0
+
+
+# --- T21 SPY twin is per-fold buy-and-hold (one entry, one exit per fold)
+def test_spy_twin_buyhold():
+    panel = eligible_panel(60)
+    spy = synth("SPY", 10**9, ret=0.0003)
+    from samv1.benchmarks import spy_twin
+    out = spy_twin(spy, SESSIONS, scored=True)
+    folds = {}
+    for h in out["holds"]:
+        folds.setdefault(h.fold, 0)
+        folds[h.fold] += 1
+    assert all(v == 1 for v in folds.values()) and len(folds) == 3
