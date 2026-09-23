@@ -53,8 +53,9 @@ def fold_of(ts):
 def main():
     df = pd.read_parquet(BARS)
     leak = int((df["ts"] >= HOLDOUT_START).sum())
-    if leak:
-        raise SystemExit(f"FAIL_CLOSED: {leak} holdout bars present in dev runner")
+    df = df[df["ts"] < HOLDOUT_START].reset_index(drop=True)  # physical leak guard
+    if len(df) < 50_000:
+        raise SystemExit("FAIL_CLOSED: dev plane unexpectedly small")
     plane = E.Plane(df)
     man_sha = hashlib.sha256(MANIFEST.read_bytes()).hexdigest()
     code_sha = head_sha()

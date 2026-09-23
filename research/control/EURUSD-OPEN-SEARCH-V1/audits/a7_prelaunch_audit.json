@@ -1,0 +1,76 @@
+{
+  "schema": "eosv1.a7_prelaunch@1",
+  "cycle_id": "EURUSD-OPEN-SEARCH-V1",
+  "auditor": "A7 (independent fresh-context)",
+  "measured_utc": "2026-09-23T14:33:46Z",
+  "context_fresh": true,
+  "verdict": "AUTHORIZED",
+  "audit_scope": "prelaunch gate before the ONE historical-holdout check (program-S0) of frozen candidate FXOS-04-C4; audit-only, no repairs",
+  "code_freeze_sha": "bd61d20075cdda86a3d3b7743ed108d82d11cfad",
+  "outcome_commit": "bc14cb6dd25eff4b40527f6b67ca5c64491a2315",
+  "branch": "orca/eurusd-open-search-v1-integration",
+  "checks": [
+    {
+      "id": "C1_freeze_chain",
+      "result": "PASS",
+      "evidence": "git log: HEAD=bc14cb6d (outcomes), parent bd61d200 (freeze). selection_freeze.json ABSENT in bd61d200^ tree, PRESENT in bd61d200 tree; candidates_frozen.json + outcomes/ PRESENT only in bc14cb6d. engine.py sha256 cc868402e63db2f6b487fc544fe0799889db4c5e0e0df3f3689693f0871cb491 identical at bd61d200, bc14cb6d and working tree, == selection_freeze.engine_sha256. selection_freeze.json byte-identical committed vs working tree. Working-tree drift limited to run_campaign.py (finding F1)."
+    },
+    {
+      "id": "C2_leak_guards",
+      "result": "PASS_WITH_FINDING_F1",
+      "evidence": "holdout_check.py (committed, unmodified) loads ONLY bars ts >= 2023-07-01 with >=50,000-bar fail-closed floor; baselines + run_count tamper log. outcomes/ contains NO holdout-period metric: campaign_dev.jsonl has zero 2024/2025 strings, fold keys {F1,F2,F3} only; candidates_frozen.json holds holdout DATES only inside preregistered SUCCESS criteria. Committed run_campaign.py fail-closes on any bar >= HOLDOUT_START (leak detection, not silent filter); the physical filter exists only as uncommitted working-tree edit (F1). Decisive independent evidence: full 48/48 recompute on the dev-only plane (59,153 bars, ts<2023-07-01) reproduced every record EXACTLY (tiers k=1.0/1.5/2.0, folds, digests) - 0 mismatches - so dev outcomes are provably holdout-free regardless of which guard variant executed. bars15.parquet on disk spans the full corpus (max ts 2025-12-31 21:00; 59,885 holdout bars at rest, data plane only)."
+    },
+    {
+      "id": "C3_engine_semantics",
+      "result": "PASS",
+      "evidence": "engine.py (frozen sha): fills at OPPOSITE side with stress widening - open long b_o+k*s_o, open short a_o-k*s_o, close long a_c-k*s_c, close short b_c+k*s_c; k=1.0 recovers the exact opposite quote (b_o+1.0*s_o==a_o), k>1 widens beyond; cost charged exactly once per side. Force-flat: is_day_close marks each UTC day's last valid bar; open positions closed there at close prices with k; fill_ok=False on day-close bars and bar 0 => no fill on/into rollover. PIT: signal target[i-1] filled at bar i open. PIP=1e4. Fixture suite run by auditor: 7/7 PASSED (0.77s), incl. test_pit_truncation_invariance (4 families) and cost-only random-baseline-negative."
+    },
+    {
+      "id": "C4_trial_accounting",
+      "result": "PASS",
+      "evidence": "campaign_dev.jsonl: exactly 48 records, 48 distinct arm_ids, zero duplicates. config_digest recomputed via engine.config_digest for ALL 48 arms (exceeds the 5-arm sample requirement): 100% match to records AND to selection_freeze.config_digests. FXOS-04-C4 digest recomputed = 188a2070879d365a (matches frozen). Every record carries code_freeze_sha bd61d20075cd..., data_manifest_sha256 684163352..., d2 OWNER_WAIVED_EXPLORATORY. digest_correction disclosure present in candidates_frozen.json (hand-typed 9f2bd60e2545bd40 caught, recomputed to 188a2070879d365a). 48 <= budget cap 96."
+    },
+    {
+      "id": "C5_data_authority",
+      "result": "PASS",
+      "evidence": "census.json verdict BUILD_PASS (bars15_valid 119038; nonpos_spread_minutes 0; spread p50 0.3 pips; all 3 gates true; first_ts 2021-01-03T22:00Z, last_ts 2025-12-31T23:59Z). m1_manifest.json sha256 recomputed = 684163352fd0f3754976403de190c07a8cc50cf1f00f29d644777404e196aada == dev_distribution.data_manifest_sha256. probe_evidence.json PROBE_PASS 2026-09-23T13:49:56Z (C1 ohlc invariants 8640 rec 0 viol; C2 offsets; C3 tick-vs-candle 120 min 0 mismatches - 24B layout proven against tick ground truth; C4 price scale). build_bars.py verify-on-read per-file sha, fail-closed. Zero PnL before data plane: P1 close ac54f2fc was BLOCKED_SOURCE_LICENSE 0/96 trials 0 PnL; data plane landed under amendment A1 (7761ef1b) before any outcome. data_local/ gitignored."
+    },
+    {
+      "id": "C6_claim_consistency",
+      "result": "PASS",
+      "evidence": "dev_distribution.json recomputed from campaign_dev.jsonl: trials 48, positive@k1.0 5, negative 43, positive@k1.5 4, eligible 1, net@1.0 min/med/max -4520.3/-1496.7/1203.6, net@1.5 -8038.1/-2223.15/703.95, total trades k1 65756 - ALL match. FXOS-04-C4 is the ONLY eligible arm and ranks first by net@1.5 (703.95); its dev_stats match candidates_frozen.json (net_k1 1203.6, net_k2 204.3, PF 1.1445, trades 609, hit 0.5846; folds -162.2/545.2/496.7 -> frozen rounded -162/545/497; net_k15 703.95 -> frozen 704.0, 1-dp rounding, cosmetic). Near-miss FXOS-10-C3: PF 1.0919 in record, G2 False, eligible False, NOT frozen; disclosed margin 0.0081 accurate."
+    },
+    {
+      "id": "C7_boundaries",
+      "result": "PASS",
+      "evidence": "No orders/paper/live/broker code anywhere in scripts (imports: numpy/pandas/hashlib/json/subprocess/struct/lzma only); plan section 1: orders NONE, holdout = program-S0 NEVER S1, S1 SEALED_UNTOUCHED. No outcomes/holdout_check.json and no holdout_run_count.json => holdout untouched. Secret scan of committed files: all matches are prose about credential ABSENCE (env variable NAMES only, values never read); selection_freeze.json and probe_evidence.json zero matches. D2 recorded OWNER_WAIVED_EXPLORATORY in all 48 trial records and in plan (never evaluated, never PASS). Holdout SUCCESS criteria preregistered in candidates_frozen.json (frozen_utc 2026-09-23T14:23:25Z) before any holdout run."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "MEDIUM",
+      "title": "Uncommitted working-tree drift on frozen run_campaign.py; committed leak guard is fail-closed-detect, not physical filter",
+      "detail": "The committed runner (identical at bd61d200 and bc14cb6d) counts bars ts>=2023-07-01 and SystemExit FAIL_CLOSED if any - it does NOT physically filter - while its own docstring and selection_freeze.leak_guards[0] claim 'physically loads only bars ts<2023-07-01'. The physical filter (df[df.ts<HOLDOUT_START] + >=50k floor) exists ONLY as an uncommitted edit in the working tree. Drift direction is strictly safer and engine.py/holdout_check.py are byte-identical to freeze; outcome integrity was independently proven by the auditor's 48/48 exact recompute on dev-only data, so selection cannot have been contaminated under either variant. REQUIRED before the holdout run: commit (or revert) run_campaign.py so the prelaunch tree is clean and the freeze-artifact leak-guard claim is literally true of committed code.",
+      "blocking": false
+    },
+    {
+      "id": "F2",
+      "severity": "INFO",
+      "title": "Full-corpus plane incl. holdout-period data at rest before the holdout run",
+      "detail": "bars15.parquet on disk spans 2021-01-03..2025-12-31 (59,885 holdout bars) and census.json BUILD_PASS quality stats (incl. spread percentiles) cover the full window. Data-at-rest + aggregate quality census is not a selection leak (selection metrics proven dev-only by recompute); holdout_check.py filters ts>=2023-07-01 and its >=50,000-bar floor is satisfied (59,885). No action required."
+    },
+    {
+      "id": "F3",
+      "severity": "INFO",
+      "title": "Cosmetic rounding in candidates_frozen.json dev_stats",
+      "detail": "net_k15 frozen as 704.0 vs exact 703.95; folds frozen as integers (-162/545/497) vs exact (-162.2/545.2/496.7). Consistent 1-dp/integer rounding, no effect on gates or ranking."
+    }
+  ],
+  "holdout_conditions": [
+    "Resolve F1 first: commit or revert scripts/run_campaign.py so the working tree is clean at the holdout run.",
+    "Run holdout_check.py ONCE as committed; any second run must be visible via holdout_run_count.json and is forbidden against a failed result (plan section 5).",
+    "Holdout verdict against the preregistered SUCCESS criteria in candidates_frozen.json only; failure is final NO_CANDIDATE_NO_VALUE, no re-tune, no rescue of FXOS-10-C3."
+  ],
+  "verdict_rationale": "All seven prelaunch checks pass on independent byte-level recomputation: freeze chain intact (engine sha frozen across commits), 48/48 dev trials reproduce EXACTLY from dev-only data with the frozen engine and digests, data authority chain (probe -> manifest sha -> census) verifies, claims match records, boundaries clean. The single MEDIUM finding is commit hygiene on the dev runner (safer-direction drift) and does not undermine selection integrity, which is established by recomputation rather than by the runner's guard alone."
+}
