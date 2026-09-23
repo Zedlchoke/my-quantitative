@@ -1,0 +1,130 @@
+{
+ "schema": "rsmv1_a7r2_preoutcome_audit@1",
+ "cycle": "REGIME-STRATEGY-MAPPING-V1",
+ "role": "A7",
+ "round": 2,
+ "date_utc": "2026-09-23",
+ "base_sha": "5e72f36801aadef71aae152d900ec43c1cc7dcbf",
+ "branch": "orca/rsmv1-a7r2-preoutcome",
+ "fresh_context": true,
+ "remediation_under_audit": {
+  "commits": ["06bf30bd", "5e72f368"],
+  "round1_findings": {
+   "F1_HIGH_outer_thin_gate": {
+    "status": "CLOSED_FIXED",
+    "evidence": [
+     "arm_c_selection calls measure_cell_census (real self-verifying rebuild) BEFORE inner law; THIN => FLAT every fold, reason OUTER_FLOOR_THIN, fail-closed default for missing regimes",
+     "auditor own-code census (independent segmentation/fold/floor) reproduces thin set exactly: BTC_H1 DIST THIN (5 eps), ACC/UP/DOWN PASS (23/28/34); BTC_H4 all THIN (4/12/1/14); SPY_D1 all THIN (1/17/1/15)",
+     "live refutation with fake specialists on every regime + real census call: DIST routes FLAT x4 despite +100/fold fake evidence; counterfactual verdict-flip to PASS lets fold 4 select (inner 5 eps/1621 dec) - gate is load-bearing",
+     "arm_d/arm_e correctly NOT thin-gated (controls); arm F anchor inherits arm C mapping"
+    ]
+   },
+   "F2_MEDIUM_manifest_digest": {
+    "status": "CLOSED_FIXED",
+    "evidence": [
+     "7/7 files[] digests exactly 64 hex and recompute from data_local bytes",
+     "bulk_response_manifest_SPY_D1.json byte-identical to V2 original (re-verified)",
+     "disclosed amendment A7-R1-F2 in rsmv1_arms_freeze.proposal.json (old/new values, path input_pins/decision_cache_manifest/sha256)",
+     "self_sha256 recomputes 4/4 (canonical JSON, field removed)",
+     "4/4 wrapper parameter_source_of_truth pins match amended proposals; 5/5 freeze-manifest entries match; arms freeze pin == amendment new_value == on-disk manifest sha",
+     "3/3 V2 tier_1 artifact pins match (trades 978/1060/343)"
+    ]
+   },
+   "F3_MEDIUM_leak_test": {
+    "status": "PARTIAL_PRESENT_BUT_VACUOUS",
+    "see": "N2"
+   },
+   "F1b_LOW_fold_in": {
+    "status": "NOT_FOLDED_IN",
+    "see": "N3"
+   }
+  }
+ },
+ "verdict": "REMEDIATION_REQUIRED",
+ "verdict_rule": "zero unresolved HIGH/CRITICAL required for AUTHORIZED_FOR_DISCOVERY_STOP; N1 (HIGH, new) unresolved",
+ "blocking_findings": [
+  {
+   "id": "N1",
+   "severity": "HIGH",
+   "title": "Selection-law fold-numbering off-by-one: outer fold k=2 force-FLAT for every regime with false audit reason",
+   "law": "selection proposal nested_walk_forward_law: k in {1,2,3,4}; k=1 empty inner => FLAT (FOLD1_NO_INNER); inner = folds 1..k-1; rule FOLD1 predicate k==1",
+   "code": "rsmv1/selection.py::select_for_fold tests fold_id==1 but caller arm_c_selection passes 0-indexed fid (range(4); inner = starts < fid)",
+   "effect": [
+    "k=1 (fid=0): FLAT via inner_floor_failure instead of frozen reason FOLD1_NO_INNER (outcome coincidentally identical)",
+    "k=2 (fid=1): FLAT 'fold1_empty_inner_default' fired BEFORE floors/selection although inner evidence exists and passes floors - false reason recorded",
+    "live proof BTC_H1 fid=1: ACC 6 eps/396 dec, UP 9/642, DOWN 10/750 with floor_ok=True yet FLAT - law requires selection to proceed (ACC single-eligible; UP/DOWN pair resolution)",
+    "BTC_H4/SPY_D1 unaffected (all regimes census-THIN; OUTER gate FLAT regardless); arm F anchor inherits the deviant mapping"
+   ],
+   "why_blocking": "scored arm C would run frozen-law-deviant mapping for a whole outer fold; correction after PnL is forbidden (plan 10.3), so the run would either score an unfrozen law or force post-outcome TECHABORT",
+   "remediation": "empty-inner special case on the FIRST fold only (fold_id==0 at this call site or 1-indexed k consistently); FOLD1_NO_INNER for k=1; k=2 proceeds to floors+selection; re-run dryrun+tests; no freeze content change"
+  }
+ ],
+ "non_blocking_findings": [
+  {
+   "id": "N2",
+   "severity": "MEDIUM",
+   "title": "F3 remediation leak test exists but cannot detect the leak (vacuous fixture)",
+   "evidence": [
+    "shipped fixture stub ctx episodes=[] => every row FLAT via floor failure regardless of the f<fid filter",
+    "auditor executed CLEAN vs LEAKY (filter removed) implementations on the test's exact fixture: byte-identical outputs, assertion passes for both",
+    "single-candidate fixture could never flip even with floors passing (single_eligible ignores nets)",
+    "auditor-constructed floors-passing two-candidate race fixture DOES diverge clean vs leaky (inner_net_higher_stable vs FLAT/unstable) - detection possible in principle"
+   ],
+   "remediation": "replace fixture with floors-passing two-candidate races; mutate outer folds 2-3; assert identical selections (and assert mutated pooled values differ so the mutation is provably live)"
+  },
+  {
+   "id": "N3",
+   "severity": "LOW",
+   "title": "F1b not folded in: inner eligible-decision counter = full lengths of episodes>=6 vs frozen offset>=2 definition",
+   "materiality": "zero on this data: auditor recomputed both definitions for every (cell,regime,fold) - no floor pass/fail flips (e.g. BTC_H1 DIST fold-4 inner 1621 vs ~1611; thin cells fail on episodes not decisions)",
+   "remediation": "implement offset>=2 counter or amend the freeze with disclosure (pre-outcome)"
+  },
+  {
+   "id": "N4",
+   "severity": "LOW",
+   "title": "evidence/dryrun_sanitized.json stale at HEAD (config_digest d3ead114 committed vs 5de75dbd recomputed after 5e72f368 regenerated freeze wrappers)",
+   "evidence": "auditor re-run: all_pass True, exit 0, pnl_anywhere false, denominator_delta 0, 21 distinct identities; artifact carries counts/bools only - no PnL at any depth; refresh restored to HEAD",
+   "remediation": "re-run cmd_dryrun.py after the N1 fix and commit the refreshed artifact"
+  }
+ ],
+ "checklist": {
+  "1_predecessor_and_v2_integrity": "PASS",
+  "2_decision_identity_and_timeline": "PASS",
+  "3_sample_floors": "PASS (own-code census exact match)",
+  "4_specialist_library_verbatim": "PASS",
+  "5_a4_blindness_and_order": "PASS",
+  "6_selection_law": "FAIL (N1 HIGH)",
+  "7_no_lookahead": "PASS",
+  "8_turnover_law": "PASS (unnecessary_close_reopen hard counter raises on !=0)",
+  "9_cost_authority": "PASS",
+  "10_controls": "PASS (B gate before C; F fail-closed; D disclosed; D/E not thin-gated)",
+  "11_trial_accounting": "PASS (runtime/scored absent)",
+  "12_engine_equivalence": "PASS (MATCH x3, exit 0)",
+  "13_freeze_digests_and_amendment_chain": "PASS",
+  "14_test_suite": "PASS (117 passed + 1 xfailed)",
+  "15_dry_run": "PASS (no PnL at depth; N4 LOW staleness)",
+  "16_s1_and_broker": "PASS",
+  "17_go_quarantine": "PASS (exit 20; --check sha == exact-phrase sha256)",
+  "18_contamination": "PASS (ceiling DISCOVERY_CANDIDATE_FOR_PROSPECTIVE_VALIDATION)"
+ },
+ "re_measured": {
+  "a7r2_head": "5e72f36801aadef71aae152d900ec43c1cc7dcbf (clean at start)",
+  "v2_head": "0c277a94ba2831636cde423d51fd9251ed487bfd (clean)",
+  "timeline_switches": {"BTC_H1": 90, "BTC_H4": 31, "SPY_D1": 34},
+  "census_thin_set_independently_reproduced": true,
+  "tests": "117 passed, 1 xfailed in 8.76s",
+  "engine_equivalence": "all_match true, exit 0",
+  "dryrun": "all_pass true, exit 0, pnl_anywhere false, denominator_delta 0",
+  "go_refusal": "exit 20 REFUSED_BACKTEST_QUARANTINE",
+  "go_phrase_sha256": "47ee5e6f2bde5957149db8e8b0381ff0f3d6ffa7529fe6d4474c62f2bfb2c70c",
+  "registry": "PLANNED_NOT_STARTED, budget 0/21, s1 SEALED_UNTOUCHED, go REGISTERED_NOT_CONSUMED"
+ },
+ "auditor_scripts_tmp": [
+  "/tmp/a7r2_audit/own_census.py",
+  "/tmp/a7r2_audit/refute_arm_c.py",
+  "/tmp/a7r2_audit/refute_leak_test.py",
+  "/tmp/a7r2_audit/race_fixture.py"
+ ],
+ "incidents": [],
+ "workers": 0
+}
