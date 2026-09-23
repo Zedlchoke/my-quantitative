@@ -58,7 +58,9 @@ risk into strength with no evidenced forced counterparty to pay for it.
 - **Ancestry** — NOT `UP_TREND_SLOW_LONG` (a continuously-held regime
   long): this is an event-conditional breakout book with a structure stop.
   Not a §7.2 dead class (no reversal/imbalance/illiquidity/OI/vol-shock/
-  pair input). Measured |rho| ≤ 0.076 vs all reconstructible shadows.
+  pair input). Measured |rho| ≤ 0.119 vs all reconstructible shadows
+  (max = run_imbalance +0.119 after the A7-H1 remediation measurement;
+  still ≤ 0.20 ⇒ E3 discharged).
 
 ## PSV1-BTC_H1-ACC-FLOOR_PROVISION (long only)
 
@@ -91,7 +93,9 @@ risk into strength with no evidenced forced counterparty to pay for it.
 - **Ancestry** — NOT `ACC_RANGE_MR` (two-sided excursion-fading, mean-target
   exits, high trade count): this is one-sided liquidity provision with a
   structure stop and markup-ride exit. NOT `ACC_FLAT_BREAKOUT_WAIT` (no
-  breakout entries in ACC). Measured |rho| ≤ 0.066 vs all shadows.
+  breakout entries in ACC). Measured |rho| ≤ 0.066 vs all reconstructible
+  shadows (run_imbalance +0.006 after the A7-H1 remediation measurement;
+  ≤ 0.20 ⇒ E3 discharged).
 
 ## PSV1-BTC_H1-DOWNTREND-BREAKDOWN_CONT (short only)
 
@@ -118,7 +122,8 @@ risk into strength with no evidenced forced counterparty to pay for it.
 - **Ancestry** — NOT `DOWN_SHORT_BTC` (a continuously-held regime short):
   event-conditional breakdown entry with structure stop. Not a rev-style
   reversal: entries require a NEW 20d low under ADX≥22 structure, not a
-  fade. Measured |rho| ≤ 0.082 vs all shadows.
+  fade. Measured |rho| ≤ 0.085 vs all reconstructible shadows (run_imbalance
+  +0.085 after the A7-H1 remediation measurement; ≤ 0.20 ⇒ E3 discharged).
 
 ## Common contract (all three)
 

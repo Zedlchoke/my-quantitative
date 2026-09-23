@@ -37,6 +37,23 @@ def close_displace_fade_shadow(close: np.ndarray, window: int = 24) -> np.ndarra
     return -np.sign(close - sma)
 
 
+def run_imbalance_shadow(close: np.ndarray, window: int = 24) -> np.ndarray:
+    """Named shadow: `run_imbalance`.
+
+    A7-H1 REMEDIATION (2026-09-23): this shadow IS reconstructible from
+    closes alone. Construction is the frozen shadow_series formula:
+    sign of the 1-bar close return, rolled mean over `window` bars
+    (sign(ret1).rolling(win).sum()/win). Window win=24 follows this lane's
+    frozen convention for the other shadows (rev24 horizon, close-displace
+    window, amihud rolling window are all 24 hourly bars). Estimator is the
+    same signal-series Pearson on the common finite grid as every other
+    measurement here (information content of signals, NOT returns).
+    """
+    ret1 = np.diff(close, prepend=np.nan)
+    sgn = np.sign(ret1)
+    return pd.Series(sgn).rolling(window).sum().to_numpy() / window
+
+
 def amihud_illiquidity_shadow(close: np.ndarray, quote_volume: np.ndarray,
                               window: int = 24) -> np.ndarray:
     """Named shadow: `amihud-illiquidity proxy`.
@@ -66,16 +83,30 @@ def measure(close: np.ndarray, quote_volume: np.ndarray,
     shadows = {
         "rev24_reversal": rev24_reversal_shadow(close),
         "close_displace_fade": close_displace_fade_shadow(close),
+        "run_imbalance": run_imbalance_shadow(close),
     }
     amihud = amihud_illiquidity_shadow(close, quote_volume)
-    out: dict = {"rho_bar": RHO_BAR, "per_candidate": {}}
+    out: dict = {
+        "rho_bar": RHO_BAR,
+        "per_candidate": {},
+        "remediation": {
+            "id": "A7-H1",
+            "date": "2026-09-23",
+            "note": "run_imbalance was previously recorded NOT_MEASURED "
+                    "('not reconstructible from 1h OHLCV'); A7 found it "
+                    "reconstructible from closes alone. Reconstructed with "
+                    "the frozen shadow_series construction "
+                    "sign(ret1).rolling(24).sum()/24 (window 24 = this "
+                    "lane's convention for all other shadows), measured on "
+                    "the identical full-grid signal series and estimator "
+                    "(Pearson information-content correlation) as the "
+                    "original <=0.082 measurements. OI-level/OI-share, "
+                    "generic DVOL and pair-spread shadows remain "
+                    "NOT_MEASURED_WITH_REASON (observables absent from the "
+                    "cell contract).",
+        },
+    }
     not_measured = {
-        "run_imbalance": "requires trade-direction/run-level data; not "
-                         "reconstructible from 1h OHLCV (mechanism class: "
-                         "order-flow imbalance; candidate signals are "
-                         "multi-day structural trend/range books, distance "
-                         "argument: different horizon and different "
-                         "information source)",
         "oi_level_oi_share_stoch": "requires open-interest data absent from "
                                    "the kline manifest; not reconstructible "
                                    "(mechanism class: positioning leverage; "
@@ -107,7 +138,7 @@ def measure(close: np.ndarray, quote_volume: np.ndarray,
         rec["self_veto"] = any(
             not rec[k]["distinct_within_bar"]
             for k in ("rev24_reversal", "close_displace_fade",
-                      "amihud_illiquidity_proxy")
+                      "amihud_illiquidity_proxy", "run_imbalance")
         )
         out["per_candidate"][name] = rec
     return out
