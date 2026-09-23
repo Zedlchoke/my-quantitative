@@ -187,8 +187,11 @@ must be BLOCKED — each guard demonstrably fires.
 ## 7. Phases
 
 ```text
-P0 close predecessor (done before this cycle opens: reproduction + A7
-   terminal + two-half close; verdicts immutable)
+P0 close predecessor (done before this cycle opens: two-half close with
+   verdicts immutable — reproduction and A7 terminal were waived by
+   explicit owner instructions at close ('bỏ reproduction đi', 'không
+   dispatch A7 terminal gì hết'), recorded verbatim in the predecessor's
+   registry row and ledger row; this plan does not re-open them)
 R1 register this cycle; commit plan; A7 plan audit (fresh) — audit item
    #1 is the §11 standing-directive adjudication
 P0-I/B identity + bar censuses; quarantine manifest; universe re-frozen
