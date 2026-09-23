@@ -303,6 +303,20 @@ def main() -> None:
         "lane": "L1_BTC_H1",
         "pit_disclosure": PIT_DISCLOSURE,
         "xcheck_incident": XCHECK_INCIDENT,
+        "remediation_notes": [
+            {
+                "id": "A7-H1",
+                "date": "2026-09-23",
+                "note": "run_imbalance dead shadow measured (was "
+                        "NOT_MEASURED); construction "
+                        "sign(ret1).rolling(24).sum()/24 on the 1h close "
+                        "grid, same estimator/grid as the original rho "
+                        "measurements; results and per-arm disposition in "
+                        "census.json.ancestry; OI/DVOL/pair remain "
+                        "NOT_MEASURED_WITH_REASON (observables absent from "
+                        "the cell contract).",
+            }
+        ],
         "phase_slots": {},
         "proposals": {},
     }

@@ -96,18 +96,39 @@ Position-book series of each frozen candidate vs reconstructible dead
 shadows (Pearson rho on the common grid; shadows reconstructed by name
 assumptions documented in `code/ancestry.py`):
 
-| candidate | rev24_reversal | close_displace_fade | amihud_illiquidity |
-|---|---|---|---|
-| UPTREND-BREAKOUT_CONT | −0.076 | −0.048 | −0.053 |
-| ACC-FLOOR_PROVISION | −0.007 | −0.001 | −0.066 |
-| DOWNTREND-BREAKDOWN_CONT | −0.047 | −0.027 | −0.082 |
+| candidate | rev24_reversal | close_displace_fade | run_imbalance | amihud_illiquidity |
+|---|---|---|---|---|
+| UPTREND-BREAKOUT_CONT | −0.076 | −0.048 | **+0.119** | −0.053 |
+| ACC-FLOOR_PROVISION | −0.007 | −0.001 | **+0.006** | −0.066 |
+| DOWNTREND-BREAKDOWN_CONT | −0.047 | −0.027 | **+0.085** | −0.082 |
 
-All |rho| ≤ 0.082 — comfortably distinct under the E3 reading of the 0.20
+All |rho| ≤ 0.119 — comfortably distinct under the E3 reading of the 0.20
 bar (|rho| ≤ 0.20 ⇒ distinct; the plan §7.2 parenthetical states the bar
 inversely; the ambiguity is recorded in `census.json.ancestry.bar_reading`
-for A1 adjudication). NOT measured, with reason + mechanism-class distance:
-run_imbalance (needs trade-direction data), OI-level/OI-share/stoch (needs
-open interest), generic DVOL shock (needs DVOL), pair-spread-trend
-composites (needs a second asset). No candidate is a §7.1 RSM-V1 specialist
-or a phase-gated variant of one (argument per proposal in
-`proposals/PROPOSALS.md`); no V2 Jev label was read.
+for A1 adjudication). No arm is ANCESTRY_VETOED.
+
+> **A7-H1 remediation (2026-09-23)**: `run_imbalance` was originally
+> recorded NOT_MEASURED ("not reconstructible from 1h OHLCV"); A7 correctly
+> found it reconstructible from closes alone. It is now MEASURED with the
+> frozen construction `sign(ret1).rolling(24).sum()/24` on the 1h close
+> grid (window 24 = this lane's convention for all other shadows), sampled
+> on the identical candidate signal series and estimator (Pearson
+> information-content correlation) that produced the original ≤0.082
+> numbers; all previously measured shadows re-verified bit-identical on the
+> same grid. Disposition: all three arms |rho| ≤ 0.20 ⇒ E3 discharged, no
+> veto. OI-level/OI-share, generic DVOL and pair-spread-trend shadows remain
+> NOT_MEASURED_WITH_REASON (observables genuinely absent from the cell
+> contract; A7 accepted those).
+
+NOT measured, with reason + mechanism-class distance:
+- `oi_level_oi_share_stoch` — needs open-interest data absent from the
+  kline manifest (positioning-leverage class; candidates carry no
+  positioning input).
+- `generic_dvol_shock` — needs the DVOL index (implied-vol shock
+  conditioning; candidates have no options-vol input).
+- `pair_spread_trend_composites` — needs a second asset (cross-instrument
+  relative value; single-asset cell cannot express a spread).
+
+No candidate is a §7.1 RSM-V1 specialist or a phase-gated variant of one
+(argument per proposal in `proposals/PROPOSALS.md`); no V2 Jev label was
+read.

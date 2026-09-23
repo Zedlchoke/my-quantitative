@@ -7,7 +7,7 @@
   "dispatch_sha": "6e6ffa3bb1c6ad82fb1771b99abdecfb0bedf849",
   "actual_start_sha": "6e6ffa3bb1c6ad82fb1771b99abdecfb0bedf849",
   "commit_sha": "88a42ed5c669a52de24c8ad7a9e07894183a7df6",
-  "commit_note": "Single clean lane commit containing all lane artifacts (26 files, staged by pathspec, never git add -A). This handoff file itself is committed in a second commit on the same lane branch because it references the lane commit SHA; no push, no merge, no rebase.",
+  "commit_note": "Single clean lane commit containing all lane artifacts (26 files, staged by pathspec, never git add -A). This handoff file itself is committed in a second commit on the same lane branch because it references the lane commit SHA; no push, no merge, no rebase. A7-H1 remediation (2026-09-23) added a further commit updating the ancestry record; see remediation block below.",
   "changed_paths": [
     "research/control/phase_strategy_v1/lane_btc_h1/.gitignore",
     "research/control/phase_strategy_v1/lane_btc_h1/data/manifest.json",
@@ -40,9 +40,21 @@
     {
       "command": ".venv/bin/python -m pytest research/control/phase_strategy_v1/lane_btc_h1/tests_py -q",
       "exit_code": 0,
-      "summary": "35 passed in 2.67s (run from worktree root with repo .venv): phase-rule goldens incl. hand-computed Wilder ADX(3) fixture; no-lookahead future-perturbation invariance; UTC/leap-boundary; warmup exclusion; census determinism + margin-to-floor + thin->FLAT; signal-event goldens (single entry/exit, stop override, min-hold no-op law, fold force-flat, ACC markup ride); hand-computed cost fixtures (12 bps RT; funding signed, strict-inside accrual; tiers 1.0/1.5/2.0 exact on full stack); manifest digest chain over all 102 files + live deterministic re-retrieval; overlap cross-check pinned record + comparator sanity; S1 denial + broker-surface scan."
+      "summary": "38 passed in 1.94s after A7-H1 remediation (was 35 before): phase-rule goldens incl. hand-computed Wilder ADX(3) fixture; no-lookahead future-perturbation invariance; UTC/leap-boundary; warmup exclusion; census determinism + margin-to-floor + thin->FLAT; signal-event goldens (single entry/exit, stop override, min-hold no-op law, fold force-flat, ACC markup ride); hand-computed cost fixtures (12 bps RT; funding signed, strict-inside accrual; tiers 1.0/1.5/2.0 exact on full stack); manifest digest chain over all 102 files + live deterministic re-retrieval; overlap cross-check pinned record + comparator sanity; S1 denial + broker-surface scan; NEW ancestry goldens (run_imbalance shadow construction hand-computed uptrend/downtrend/alternating + default-window convention + estimator NaN/zero-variance handling)."
     }
   ],
+  "remediation": {
+    "id": "A7-H1",
+    "date": "2026-09-23",
+    "finding": "run_imbalance was marked NOT_MEASURED ('not reconstructible from 1h OHLCV') but is reconstructible from closes alone.",
+    "action": "Shadow reconstructed with the frozen construction sign(ret1).rolling(24).sum()/24 on the 1h close grid (window 24 = lane convention for all other shadows), measured with the identical estimator and candidate signal series as the original ancestry run; run_lane regenerated census.json/proposals.json deterministically (dry-run counts, sensitivity and all other rho values re-verified bit-identical).",
+    "measured_rho": {
+      "PSV1-BTC_H1-UPTREND-BREAKOUT_CONT": 0.119477,
+      "PSV1-BTC_H1-ACC-FLOOR_PROVISION": 0.005920,
+      "PSV1-BTC_H1-DOWNTREND-BREAKDOWN_CONT": 0.084990
+    },
+    "disposition": "all three arms |rho| <= 0.20 => E3 discharged for each; NO arm ANCESTRY_VETOED; OI-level/OI-share, generic DVOL and pair-spread-trend shadows remain NOT_MEASURED_WITH_REASON (observables absent from the cell contract; A7 accepted)."
+  },
   "authority_claims": [
     "Worktree/branch verified before work: HEAD 6e6ffa3bb1c6ad82fb1771b99abdecfb0bedf849 on orca/psv1-lane-btc-h1, clean tree at start; no push/merge/rebase; only allowed paths written.",
     "Data gate PASS (integrity): Binance Vision keyless USDT-M klines, BTCUSDT perp; 80 monthly zips 2020-01..2026-08 + 22 daily tail zips 2026-09-01..22 (2026-09-23 daily 404 at retrieval); 58,968 hourly bars 2020-01-01T00:00Z..2026-09-22T23:00Z open; 0 missing hours vs the UTC calendar, 0 duplicate timestamps, 0 OHLC violations, 1 zero-volume bar flagged; every file sha256-pinned in data/manifest.json; deterministic re-retrieval verified live.",
@@ -51,7 +63,7 @@
     "Outcome-blindness preserved: census and dry-runs are counts/occupancy/dwell/transition statistics and entry/exit events with hold durations only; no returns/equity/PnL code path exists in lane code (deny-list asserted by test); no predecessor PnL artifact read; no V2/RSMV1/Jev artifact read; S1 sealed; forbidden paths untouched.",
     "Floors (20/3/100) applied immutably with margin-to-floor reported per phase x fold; thin phase NOT scored and slot set FLAT; BTC_H1 never pooled with BTC_H4 or any other cell.",
     "Turnover/cost ceiling: cost arithmetic at 1.0x/1.5x/2.0x (12 bps RT at 1.0x + signed funding 1.377e-5 per 8h, tier multiplies the full stack) vs STATED per-episode edge assumptions (200/500/200 bps, mechanism-grounded, frozen pre-scoring) - margins 9.5x..23.8x at 1.5x, ceiling PASS; churn sane (switches 9.3-13.5% of 505 phase-label transitions; unnecessary_close_reopen structurally 0).",
-    "Ancestry self-check: signal-series rho vs reconstructible dead shadows all |rho| <= 0.082 (rev24_reversal, close_displace_fade, amihud_illiquidity); NOT measured with documented reason + mechanism-class distance for run_imbalance, OI-level/OI-share/stoch, generic DVOL shock, pair-spread composites; no candidate is an RSM-V1 specialist or a phase-gated variant of one (per-proposal arguments in PROPOSALS.md); no Jev label read.",
+    "Ancestry self-check: signal-series rho vs reconstructible dead shadows all |rho| <= 0.119 (rev24_reversal, close_displace_fade, run_imbalance [A7-H1 remediation measurement], amihud_illiquidity); run_imbalance was remediated 2026-09-23 per A7-H1 and is now MEASURED for all three arms (0.1195 / 0.0059 / 0.0850, all <= 0.20, no veto); NOT measured with documented reason + mechanism-class distance for OI-level/OI-share/stoch, generic DVOL shock, pair-spread composites (observables absent from the cell contract); no candidate is an RSM-V1 specialist or a phase-gated variant of one (per-proposal arguments in PROPOSALS.md); no Jev label read.",
     "PIT law: Vision snapshots disclosed; bar knowable at close, first executable fill at NEXT bar open; decision uses only bars closed at decision time (mutation tests prove causality)."
   ],
   "known_limitations": [
@@ -101,6 +113,6 @@
     "phase_rule": "ADX(14)/DI + SMA720 with margin band and 24-bar state machine; frozen pre-data; label-stability 89-94% on decision-knob notches.",
     "floors": "ACC 69 / UP 172 / DIST 75 / DOWN 190 episodes - all four phases data-sufficient; TRANSITION_UNKNOWN thin (3) -> FLAT.",
     "proposals": "UP BREAKOUT_CONT (long), ACC FLOOR_PROVISION (long), DOWN BREAKDOWN_CONT (short); DISTRIBUTION NO_ELIGIBLE_PROPOSAL; ceiling PASS at 1.0/1.5/2.0x; controls and failure modes preregistered.",
-    "ancestry": "all reconstructible-shadow |rho| <= 0.082; no §7.1 mapping-class reuse; rho bar reading ambiguity disclosed for A1."
+    "ancestry": "all reconstructible-shadow |rho| <= 0.119 incl. the A7-H1 remediation measurement of run_imbalance (no arm vetoed); no §7.1 mapping-class reuse; rho bar reading ambiguity disclosed for A1."
   }
 }
