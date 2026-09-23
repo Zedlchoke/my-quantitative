@@ -55,6 +55,24 @@
   btc_h4_two_regime_v1/` (census/, P2_ADJUDICATION_AND_CLOSE.json,
   audits_a7/). Denominators UNCHANGED: program 283/286 (P-9).
 
+- **EURUSD-RANGEEXP-SCORED-V1 CLOSED → `EURUSD_RANGEEXP_SCORED_V1_SCORED_RECONCILED_NO_DRIFT_FLAG`**
+  (2026-09-24, owner option "1" + verbatim GO consumed at own gate; branch
+  `orca/eurusd-rangeexp-scored-v1-integration` terminal 8326443; budget 6/6;
+  A7 prelaunch r1 REFUSED (unregistered + cell gaps — guard worked) →
+  remediated → r2 AUTHORIZED; A7 terminal CONFIRM 0 blocking): FX2-RANGEEXP
+  is now **formally scored, reconciled, and measured two-sided**.
+  S1 reproduction gate 12/12 byte-exact vs V2. Legs both long AND short
+  profitable in both windows (C3 DEV +3,783L/+3,364S; C3 HOLDOUT
+  +154.6L/+119.4S; C4 DEV +3,423L/+3,138S; C4 HOLDOUT +125.8L/+91.3S) — the
+  long leg made money inside the falling 2026-H1 holdout. S6 mechanical
+  drift rule **NO_DRIFT_FLAG ×4** (short share 42–48% < 50%). Mechanism
+  status unchanged: `CANDIDATE_PENDING_PROSPECTIVE_VERIFICATION`;
+  **short-beta control stays mandatory** for the paper-forward successor
+  (holdout margins −17.3/−17.6 pips). rng-continuation note disclosed
+  (RANDOM holdout −267.7 continuation vs −353.5 fresh-generator; both valid
+  cost-drag realizations). Denominators: forex 144→149/149; program
+  **reconciled union** 395/398 → 400/403 (concurrent-session collision with
+  BTC-H4-EDGE/BAND-RISK stamps documented in the RECONCILIATION stamp).
 - **EURUSD-OPEN-SEARCH-V2 CLOSED → `EURUSD_OPEN_SEARCH_V2_CANDIDATE_PENDING_PROSPECTIVE_VERIFICATION`**
   (2026-09-23, owner option (a) "A" — same-day successor on the V1 data
   plane; branch `orca/eurusd-open-search-v2-integration` terminal 86668a5f;
