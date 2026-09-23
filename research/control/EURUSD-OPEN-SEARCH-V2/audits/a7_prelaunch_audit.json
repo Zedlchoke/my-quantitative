@@ -1,0 +1,111 @@
+{
+ "schema": "eosv2.a7_prelaunch_audit@1",
+ "cycle_id": "EURUSD-OPEN-SEARCH-V2",
+ "auditor": "A7",
+ "fresh_context": true,
+ "fresh_context_declaration": "Cold-start audit: no prior session state, no access to implementing agents' reasoning; every claim re-derived from bytes (git objects, JSONL, parquet, manifest, live fixture runs, full trial re-runs).",
+ "measured_utc": "2026-09-23T15:13:49Z",
+ "branch": "orca/eurusd-open-search-v2-integration",
+ "head": "cb479046400f06e34160b9514fb2dc2ec4719cce",
+ "verdict": "AUTHORIZED",
+ "blocking": 0,
+ "checks": [
+  {
+   "id": "1_freeze_chain",
+   "status": "PASS",
+   "evidence": {
+    "commit_sequence": ["7d404138 plan", "8bbbd4ef code freeze", "4652c2fb remediation", "cb479046 outcomes (HEAD)"],
+    "plan_main_commit": "6e9b315f",
+    "plan_blob_sha256_main_branch_head_identical": "48cf91e1ba0cdf838939d17b793b6311b106471e4179f222d12a9238f9ff2c09",
+    "selection_freeze_v2_first_appears_at": "8bbbd4ef",
+    "selection_freeze_unchanged_through_remediation": true,
+    "candidates_frozen_v2_first_appears_at": "cb479046",
+    "engine_sha256_at_8bbbd4ef_4652c2fb_cb479046_HEAD_worktree_and_V1_bd61d200": "cc868402e63db2f6b487fc544fe0799889db4c5e0e0df3f3689693f0871cb491",
+    "engine_sha_matches_freeze_declaration": true
+   }
+  },
+  {
+   "id": "2_run1_void_handling",
+   "status": "PASS",
+   "evidence": {
+    "incident_artifact": "outcomes/INCIDENT_RUN1_VOID.json committed at 4652c2fb",
+    "f_daymom_fix_verified": "signal window ends days[j], traded day days[j+1]; traded day's own close never in signal (v2_lib.py)",
+    "f_rangeexp_first_day_guard": true,
+    "fixtures_run_by_auditor": "4 passed (test_v2_fixtures.py, truncation invariance covers daymom/rangeexp/dow + 5 more, masks, force-flat, cost-honesty random)",
+    "bug_mechanics_sanity": "buggy target for day d derived from day d's own close then filled at next-bar open => signal contained the traded move itself; explains fabricated +26297 pips / PF 4.21; whole-run VOID correct policy"
+   }
+  },
+  {
+   "id": "3_leak_guards",
+   "status": "PASS",
+   "evidence": {
+    "v2_campaign_physical_slice": "all plane arrays sliced to ts < 2026-01-01 before outcomes; FAIL_CLOSED assertion present and effective (auditor slice: 27748 bars, max ts 2025-12-31 20:00Z)",
+    "v2_holdout_loads_only": "ts >= 2026-01-01 with FAIL_CLOSED (len>=2000) and run_count log",
+    "holdout_check_v2_json_exists": false,
+    "holdout_metrics_in_outcomes": false,
+    "holdout_metrics_in_branch_history": false,
+    "history_search_note": "only matches for holdout_check_v2 are the runner script itself, never an artifact"
+   }
+  },
+  {
+   "id": "4_engine_semantics",
+   "status": "PASS",
+   "evidence": {
+    "engine_byte_identical_to_V1": true,
+    "h1plane_masks": "skip hour>=20; fill_ok hour<=18 (no fills at day-close bar or later); is_day_close on last tradable bar (19:00, close 20:00, one hour before 21:00 rollover)",
+    "force_flat": "run_strategy closes every position at day-close bar CLOSE price with k-adjusted opposite-side spread; fixture test_force_flat_before_rollover_h1 PASS (same-day exits, hour<=19)",
+    "overnight_hold_impossible": true
+   }
+  },
+  {
+   "id": "5_trial_accounting",
+   "status": "PASS",
+   "evidence": {
+    "records": 48,
+    "distinct_arm_ids": 48,
+    "d2_OWNER_WAIVED_EXPLORATORY_all": true,
+    "code_freeze_sha_all": "4652c2fb116e25eb7d98a307cc99002b32150d5c",
+    "data_manifest_sha256_matches_file": "ef154574c34af7b20f16c2850237ad3704904413d152f73b3a1e70d0791121c6",
+    "config_digests_hand_recomputed": 12,
+    "config_digest_mismatches": 0,
+    "frozen_digests_confirmed": ["020e645dbfec2cdc", "548bb8606af4beae"],
+    "rerun_FX2-RANGEEXP-C3": {"net@1.0": 7147.1, "net@1.5": 6822.1, "net@2.0": 6497.1, "pf": 1.7287, "trades": 1000, "folds": [872.8, 518.7, 868.9, 439.1, 339.0, 440.7], "match": "EXACT vs JSONL (all tiers + all folds)"},
+    "rerun_FX2-RANGEEXP-C4": {"net@1.0": 6561.1, "net@1.5": 6235.35, "net@2.0": 5909.6, "pf": 1.6497, "trades": 1003, "folds": [669.6, 495.4, 644.9, 283.1, 359.8, 604.9], "match": "EXACT vs JSONL (all tiers + all folds)"},
+    "budget": "48 observed <= 96 cap; RUN-1 voided by policy, excluded from denominator; even counted 48+48=96=cap"
+   }
+  },
+  {
+   "id": "6_claim_consistency",
+   "status": "PASS",
+   "evidence": {
+    "dev_distribution_recomputed_exact": {"trials": 48, "positive@1.0": 14, "positive@1.5": 10, "eligible": 3, "min/median/max@1.0": [-4569.7, -786.3, 7147.1], "min/median/max@1.5": [-5011.25, -1243.425, 6822.1], "total_trades_k1": 93820},
+    "gates_recomputed_all_48": "zero inconsistencies; eligibility == recomputed all-gates for every arm",
+    "selection_rule_applied": "eligible ranked by net@1.5: C3 6822.1 > C4 6235.35 > GAP-C4 670.35; freeze <=2 -> C3, C4",
+    "GAP-C4_disclosed_not_frozen": true,
+    "GAP-C4_decay_disclosure_true": "JSONL folds F5=-73.0, F6=-202.1 (matches 'decaying' claim)",
+    "D2_every_record": true,
+    "ancestry_disclosures_in_freeze": ["FX2-H1TSMOM", "FX2-H1DONCH", "FX2-HOURREV-C4", "all_others"],
+    "plan_preregistration_verified": ["owner option (a)", "D2 OWNER_WAIVED_EXPLORATORY", "G2 PF>=1.20 with V1 false-positive rationale", "V1 holdout demoted to dev, contamination disclosed", "FRESH holdout 2026-01..2026-06", "ONE look, failure final, no rescue", "force-flat 19:00 bar close 20:00", "12x4=48 planned / 96 cap"],
+    "data_verified": "manifest 4014 files (3652 pre-2026 + 362 in 2026), complete, 0 missing; 7/7 sampled files byte-exact vs manifest sha256; census BUILD_PASS; bars15=130911 and bars1h=30550 re-read from parquet; nonpos_spread_minutes=0"
+   }
+  },
+  {
+   "id": "7_boundaries",
+   "status": "PASS",
+   "evidence": {
+    "orders_none": "plan declares orders NONE; no order/paper/live/broker code in committed cycle tree (single regex hit 'order_violations' is an OHLC data-quality counter)",
+    "holdout_metrics_anywhere": false,
+    "secrets_in_committed_files": false,
+    "worktree_clean_except": "untracked .gitignore (content 'data_local/'), outside freeze chain"
+   }
+  }
+ ],
+ "findings": [
+  {"id": "F1", "severity": "MINOR", "finding": "v2_lib.f_rangeexp lines 296-297: dead first assignment to 'expand' immediately overwritten by the next line; effective semantics correct and outcomes reproduce exactly. Cleanup-only."},
+  {"id": "F2", "severity": "INFO", "finding": "candidates_frozen_v2.json discloses GAP-C4 net@1.5 as 670.4 vs JSONL 670.35 (0.05-pip rounding); zero materiality; C3/C4 exact."},
+  {"id": "F3", "severity": "INFO", "finding": "datetime.utcfromtimestamp deprecation warning in v2_lib.f_dow_simple (60 warnings in fixture run); cosmetic."},
+  {"id": "F4", "severity": "INFO", "finding": "Untracked .gitignore ('data_local/') in cycle dir; uncommitted housekeeping outside the freeze chain."}
+ ],
+ "authorization_scope": "ONE holdout look (2026-01-01..2026-06-30) of FX2-RANGEEXP-C3 and FX2-RANGEEXP-C4 via scripts/v2_holdout.py, judged against preregistered criteria (net>0 @1.0 AND @1.5), treated as ONE mechanism test, baselines reported; failure final, no rescue.",
+ "artifact_pair": ["audits/a7_prelaunch_audit.md", "audits/a7_prelaunch_audit.json"]
+}
