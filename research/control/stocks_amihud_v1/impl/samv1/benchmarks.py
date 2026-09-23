@@ -1,8 +1,8 @@
 """STOCKS-AMIHUD-V1 benchmarks (evaluation context, NOT scored cells).
 
-1. SPY exposure-matched twin: SPY bought/sold on the SAME grid dates and
-   fill conventions as the anchor book (t+1 adj-open entries/exits, fold
-   force-flat at fold-last close), band-A costs (SPY >= $50M DV).
+1. SPY benchmark: per-fold total-return BUY-AND-HOLD (one round trip:
+   entry at the fold's first anchor-grid fill, exit at the fold's last
+   close, band-A costs); exposure matching happens at the evaluation layer.
 2. Random-timing twin: PCG64 seed 20260923, 200 random calendars (per fold:
    random start offset 0..20 then step 21), SPY round trips, distribution
    reported. Same cost kernel.

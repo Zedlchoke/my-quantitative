@@ -1,28 +1,108 @@
 {
-  "schema": "division_site_register/stocks_amihud_v1@1",
+  "schema": "division_site_register/stocks_amihud_v1@2",
   "frozen_utc": "2026-09-23T06:40:00Z",
   "authority": "plan §4 F3b (owner-mandated; STOCKS-SEARCH-V1 TECHABORT_3 lesson) + A7 r1 H-3 / r2 N-4",
   "classes": {
-    "i_price_denominator": {"guard": "denominator > 0 and finite, else name-day excluded from that computation + counted", "fail_mode": "exclude+count+disclose"},
-    "ii_dv_denominator": {"guard": "DV > 0 and finite, else name-day excluded from the formation mean + counted", "fail_mode": "exclude+count+disclose"},
-    "iii_count_pnlsum_denominator": {"guard": "zero or negative denominator => FAIL LOUD", "fail_mode": "TECHABORT"},
-    "iv_statistical_denominator": {"guard": "zero or negative (realized-vol session counts, variance dof) => FAIL LOUD", "fail_mode": "TECHABORT"}
+    "i_price_denominator": {
+      "guard": "denominator > 0 and finite, else name-day excluded from that computation + counted",
+      "fail_mode": "exclude+count+disclose"
+    },
+    "ii_dv_denominator": {
+      "guard": "DV > 0 and finite, else name-day excluded from the formation mean + counted",
+      "fail_mode": "exclude+count+disclose"
+    },
+    "iii_count_pnlsum_denominator": {
+      "guard": "zero or negative denominator => FAIL LOUD",
+      "fail_mode": "TECHABORT"
+    },
+    "iv_statistical_denominator": {
+      "guard": "zero or negative (realized-vol session counts, variance dof) => FAIL LOUD",
+      "fail_mode": "TECHABORT"
+    }
   },
   "sites_v1_census_code": [
-    {"site": "p0_f4_census.py::dv = adj*vol guard", "class": "ii", "status": "implemented+counted (1047 class-i adj exclusions measured at census; 0 dv exclusions)"},
-    {"site": "p0_light_canaries.py::price_drop/vol_jump ratios", "class": "i+iii probe-only", "status": "probe context, not scored code"}
+    {
+      "site": "p0_f4_census.py::dv = adj*vol guard",
+      "class": "ii",
+      "status": "implemented+counted (1047 class-i adj exclusions measured at census; 0 dv exclusions)"
+    },
+    {
+      "site": "p0_light_canaries.py::price_drop/vol_jump ratios",
+      "class": "i+iii probe-only",
+      "status": "probe context, not scored code"
+    }
   ],
   "sites_v2_engine_planned": [
-    {"site": "engine.return_ratio adjclose_t/adjclose_prev", "class": "i"},
-    {"site": "engine.amihud_term |r|/DV", "class": "ii"},
-    {"site": "engine.dvmed60 median inputs", "class": "ii (zero/negative DV rows excluded+counted)"},
-    {"site": "engine.reversal_axis past-return ratio", "class": "i"},
-    {"site": "engine.booksize ceil(0.2*N)", "class": "iii (N=0 impossible: bookability floor precedes)"},
-    {"site": "engine.weights 0.15*DVmed/AUM", "class": "iii (AUM_ref constant >0 frozen)"},
-    {"site": "engine.matched_book realized-vol dof", "class": "iv"},
-    {"site": "engine.beta var(SPX) dof", "class": "iv"},
-    {"site": "report.pf gross_win/gross_loss, shares, concentration", "class": "iii"}
+    {
+      "site": "engine.return_ratio adjclose_t/adjclose_prev",
+      "class": "i"
+    },
+    {
+      "site": "engine.amihud_term |r|/DV",
+      "class": "ii"
+    },
+    {
+      "site": "engine.dvmed60 median inputs",
+      "class": "ii (zero/negative DV rows excluded+counted)"
+    },
+    {
+      "site": "engine.reversal_axis past-return ratio",
+      "class": "i"
+    },
+    {
+      "site": "engine.booksize ceil(0.2*N)",
+      "class": "iii (N=0 impossible: bookability floor precedes)"
+    },
+    {
+      "site": "engine.weights 0.15*DVmed/AUM",
+      "class": "iii (AUM_ref constant >0 frozen)"
+    },
+    {
+      "site": "engine.matched_book realized-vol dof",
+      "class": "iv"
+    },
+    {
+      "site": "engine.beta var(SPX) dof",
+      "class": "iv"
+    },
+    {
+      "site": "report.pf gross_win/gross_loss, shares, concentration",
+      "class": "iii"
+    }
   ],
   "law": "a division site found outside this register in review/audit = HIGH; register is appended (versioned) as implementation adds sites; unregistered division reaching a computed number = TECHABORT",
-  "negative_fixture_law": "golden tests inject adj=0/inf/NaN (class i), DV=0/inf (class ii), zero counts (class iii), zero dof (class iv) into anchor/neighbour/control/matched-book/benchmark paths; i/ii must exclude+count, iii/iv must FAIL LOUD"
+  "negative_fixture_law": "golden tests inject adj=0/inf/NaN (class i), DV=0/inf (class ii), zero counts (class iii), zero dof (class iv) into anchor/neighbour/control/matched-book/benchmark paths; i/ii must exclude+count, iii/iv must FAIL LOUD",
+  "amended_utc": "2026-09-23T09:05:00Z (v2: evaluate.py sites added per A7 prelaunch r2 L-5)",
+  "sites_v3_evaluate": [
+    {
+      "site": "evaluate.hold_row/hold_net exit_px/entry_px",
+      "class": "i (px>0 by construction; guarded upstream)",
+      "status": "registered"
+    },
+    {
+      "site": "evaluate.annual_split frac days()/days()",
+      "class": "iii (zero-span FAIL LOUD via the [0,1] check)",
+      "status": "registered"
+    },
+    {
+      "site": "evaluate.beta_from_panel sxx",
+      "class": "iv (sxx<=0 FAIL LOUD)",
+      "status": "registered"
+    },
+    {
+      "site": "evaluate.fold_summary len(hs)",
+      "class": "iii (empty fold FAIL LOUD for scored cells; matched-book folds guarded to None)",
+      "status": "registered"
+    },
+    {
+      "site": "evaluate.concentration total",
+      "class": "iii (total<=0 not-computable note)",
+      "status": "registered"
+    },
+    {
+      "site": "evaluate._vol60 (benchmarks) dof",
+      "class": "iv (<2 rets FAIL LOUD)",
+      "status": "registered"
+    }
+  ]
 }

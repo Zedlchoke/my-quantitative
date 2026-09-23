@@ -1,0 +1,143 @@
+{
+  "schema": "a7_prelaunch/stocks_amihud_v1@1",
+  "audited_at_utc": "2026-09-23T08:05:00Z",
+  "auditor": "A7-fresh-context-prelaunch-r2",
+  "round": 2,
+  "prior_audit": "research/control/stocks_amihud_v1/audits/a7_prelaunch_stocks_amihud_v1.json (r1 REFUSED 5H/3M/2L, verdict accepted by A1)",
+  "subject": {
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-amihud-v1/integration",
+    "worktree_head": "a5696b594486f791adaff97437df483025436915",
+    "plan_main_head": "025485d78e93374e6151b6f73531fcae3c6e4889",
+    "code_freeze_sha": "a5696b594486f791adaff97437df483025436915",
+    "branch": "orca/stocks-amihud-v1-integration",
+    "chain": "84f3fb07 (P0+D1) -> a3ccabbe (A3 pick) -> a80a7a69 (I+Z r1 subject) -> 0b82b84e (A4 pick of main 025485d7) -> a5696b59 (r1 remediation)"
+  },
+  "checklist": [
+    {
+      "item": 1,
+      "verdict": "PASS",
+      "evidence": "Main measured at 025485d7 (amendment A4, 2026-09-23T14:26:31+07); branch carries the pick as 0b82b84e (same committer timestamp, different sha as expected for a pick) then remediation a5696b59 (14:27:28+07) — all pre-PnL, budget still 0/3, no scored/ directory exists, GO REGISTERED_NOT_CONSUMED. Worktree plan byte-identical to main (empty diff). family_contract.json v2 amendment (formation_quorum) committed with provenance (amended_utc + plan A4 authority). D1 v2 contains zero outcome fields; only outcome-bearing artifact remains the sanitized dry-run (outcome-free, verified below)."
+    },
+    {
+      "item": 2,
+      "verdict": "FAIL",
+      "evidence": "r1 HIGHs re-verified in code: H-1 aligned at all three layers (plan §3 line 167 FORMATION QUORUM >= floor(D/2), anchor 10/21 neighbour 31/63; family_contract v2 formation_quorum verbatim; engine.py:121 comment references the pin; code max(D//2,1)==floor(D/2) for D in {21,63}). H-2 resolved: benchmarks.spy_twin is per-fold BUY-AND-HOLD (one entry at fold-first grid fill t+1 adj-open, one exit at fold-last adj close, band once per fill; T21 proves 1 hold/fold x3); impl_contract v2 'spy_benchmark' pinned; exposure matching at evaluation layer (spy_excess_folds = book fold net return - mean_invested_weight x SPY fold return, run_cells wires mean_invested_weight). H-3 resolved: simulate per_date carries book_codes (== n_book on every bookable date in the fresh dry-run, all cells); matched_book consumes them; wired into scored records as matched_book_folds; T20 proves non-vacuous. Signal/execution core unchanged from r1 (conforming). NEW HIGH H-6: the H-4 remediation added evaluate.annual_split with a fold-tag slicing bug that crashes the scored path unconditionally (details in findings); residual M-4/M-5, LOW L-3..L-6."
+    },
+    {
+      "item": 3,
+      "verdict": "PASS",
+      "evidence": "Core unchanged and still clean (formations strictly d<t; t+1 used for execution only; T1 mutation test passes in my rerun). New scored-path code checked for lookahead: annual_split marks use realized rows only (mark at 2021-12-31, linear interpolation between realized entry/exit); beta_from_panel uses the 60 sessions ending AT the entry decision di (bars <= t, PIT); drop_one/turnover/exposure are realized-row arithmetic. No post-t information enters selection."
+    },
+    {
+      "item": 4,
+      "verdict": "PASS",
+      "evidence": "Fresh z_dryrun_records.json (committed in a5696b59, elapsed_s 31.9) re-scanned by me: 3 records, IDs pairwise distinct; aggressive outcome-key regex (including *_pnl/*_net*/return/excess/benchmark/drawdown/expectancy patterns) => zero hits at any depth; non-vacuous (9,738 / 9,753 / 9,754 entries); bookable 12/12/23 per fold (unchanged from r1, as expected — the quorum was already in the r1 code, A4 only pinned it; gap counter is count-only); book_codes==n_book on all bookable dates; names_skipped_no_bar_at_t = 7,122 per cell; identity fields present on all records."
+    },
+    {
+      "item": 5,
+      "verdict": "PASS_WITH_GAP",
+      "evidence": "Rerun myself: 19 passed in 1.71s. New fixtures read and valid: T17 control-path poison (past_ret5 guard counting + full reversal-axis simulate under injected adj=0/DV=0 stays non-vacuous); T18 class-iv fail-loud (_vol60 with 1 ret raises FailLoud; normal path >0); T20 matched-book wiring (book_codes present, matched book non-vacuous on synthetic panel); T21 SPY B&H shape (exactly one entry/exit per fold x3). Residual gap: plan §8 explicitly requires 'annual split correctness' as a golden test — no such test exists, and the untested annual_split is broken (H-6). T19 register-completeness is toothless (L-5)."
+    },
+    {
+      "item": 6,
+      "verdict": "PASS_WITH_NOTE",
+      "evidence": "Exactly 3 cells unchanged; unknown axis still FailLoud; argparse mode restriction intact; runtime exact-3/distinct exit 8; only run_cells writes scored records; S1-flavored argv refusal intact (exit 9). Budget 0/3, dry-run consumed nothing. Identity fields on every record (M-1 core remediated) but data_snapshot_digest and code_freeze_sha required by plan §5 are still absent (M-4)."
+    },
+    {
+      "item": 7,
+      "verdict": "PASS",
+      "evidence": "No data-layer changes in the remediation commit (diff touches family_contract/impl_contract/samv1 code/tests/dry-run only). r1 assessment stands: /eod-only, universe_frozen sha256 c1e8bc61... pin, DV pair adjusted_close x volume frozen by 4/4 measured SPLIT_ADJUSTED F3a fixtures, bar-readable availability law; backward-adjusted retrieval basis disclosed and assessed immaterial to the rank cross-section (r1 L-1 carries)."
+    },
+    {
+      "item": 8,
+      "verdict": "PASS",
+      "evidence": "Unchanged: no S1 path in code/inputs; refusal logic intact and tested (T13); registry S1 SEALED_UNTOUCHED."
+    },
+    {
+      "item": 9,
+      "verdict": "PASS",
+      "evidence": "Regression greps clean: no key material, no orders/paper/live/broker paths, no network in impl; only run_cells writes scored records; no purchases. Staging raws still git-ignored with sha256 manifest committed."
+    },
+    {
+      "item": 10,
+      "verdict": "PASS",
+      "evidence": "Registry budget 0/3; the 31.9s re-run is a sanitized dry-run (leak-scan enforced, outcome-free verified); no scored directory exists; observed/published remain a scored-time duty (M-4 note applies)."
+    },
+    {
+      "item": 11,
+      "verdict": "PASS",
+      "evidence": "Live root registry: phase P_PRELAUNCH_R2, head a5696b594486f791adaff97437df483025436915 (matches measured HEAD), budget 0/3, go REGISTERED_NOT_CONSUMED, S1 SEALED_UNTOUCHED, updated 2026-09-23T07:27:28Z. Worktree clean except auditor artifacts (r1 pair untracked from my round; r2 pair added by this round) — dirty-audit-artifacts-only."
+    },
+    {
+      "item": 12,
+      "verdict": "REFUSED",
+      "evidence": "1 unresolved HIGH (H-6 annual_split KeyError — guaranteed crash of any non-vacuous scored run) plus non-blocking residuals M-4/M-5 and LOW L-3..L-6. Zero-HIGH bar not met."
+    }
+  ],
+  "findings": [
+    {
+      "id": "H-6",
+      "severity": "HIGH",
+      "title": "annual_split crashes with KeyError('F1_2') on real fold tags — any non-vacuous scored run is guaranteed to abort; §8 'annual split correctness' test absent",
+      "detail": "evaluate.annual_split line 75 does out[r['fold'][:4]] += r['net_pnl'] for F1/F2 rows, but 'F1_2019'[:4] == 'F1_2' (and 'F2_2020'[:4] == 'F2_0') while out's keys are '2019'/'2020'/'2021'/'2022'. Reproduced directly against the committed module: KeyError 'F1_2' on the first F1 row. run_cells scored mode calls annual_split unconditionally (line 108) AND via concentration (line 134) AND drop_one (line 152) — every cell, so the scored run cannot complete once any F1 row exists (always true for a non-vacuous book). Fail-closed (crash, no wrong numbers emitted) but it is a guaranteed mid-run abort with §5 observed-denominator ambiguity — the exact blocking class as r1 H-4, now by outright bug instead of absence. Root enablement: plan §8 mandates an 'annual split correctness' golden test; none exists, which is why 19/19 passed while the scored path is broken. (Repair is A1's prerogative; not specified here.)",
+      "blocking": true
+    },
+    {
+      "id": "M-4",
+      "severity": "MEDIUM",
+      "title": "M-1 partially resolved: data_snapshot_digest and code_freeze_sha still missing from trial identity (plan §5)",
+      "detail": "identity_digests() now stamps every record with cycle_id, family_id, arm_config_digest (sha256 over family+cost+impl contract bytes — verified present in the fresh dry-run), cost_tier, fold_contract. Plan §5 additionally requires data_snapshot_digest and code_freeze_sha per cell; both absent, and impl_contract v2 'trial_identity_fields' likewise omits them. Literal arm_id key also absent (cell_id carries the same value; contract text says arm_id). Non-blocking, binding into the scored run/report.",
+      "blocking": false
+    },
+    {
+      "id": "M-5",
+      "severity": "MEDIUM",
+      "title": "matched_book_folds: fold_summary raises on any fold-flat matched book — conditional scored-run crash",
+      "detail": "run_cells builds rec['matched_book_folds'] = {f: EV.fold_summary(mb_rows, f) for f in E.FOLDS}; fold_summary raises FailLoud when a fold has zero rows. If the matched book is flat in any fold (fewer than 10 picks on every date of that fold — plausible under the >=10-picks rule), the scored run aborts mid-way. Fail-closed direction, but same §5 trial-accounting ambiguity class as H-6/M-2. Benchmarks are evaluation context; a flat fold should be reportable as flat, not fatal (behavioral note, not a repair instruction).",
+      "blocking": false
+    },
+    {
+      "id": "L-3",
+      "severity": "LOW",
+      "title": "benchmarks.py module docstring still describes the r1 grid-round-trip SPY twin",
+      "detail": "Module header lines 3-5 say SPY is 'bought/sold on the SAME grid dates'; the v2 code and impl_contract 'spy_benchmark' define per-fold buy-and-hold, and the function docstring says so. Stale documentation contradicting the code it documents; code verified correct (T21).",
+      "blocking": false
+    },
+    {
+      "id": "L-4",
+      "severity": "LOW",
+      "title": "folds_stress2 rows carry stale derived fields",
+      "detail": "run_cells builds stress folds as dict(base) then overwrites costs (x2) and net_pnl; return_pct_on_aum_ref and expectancy_per_decision remain the BASE values. gross_pnl/costs/net_pnl are correct and profit_factor is gross-based (cost-independent, correct); the two stale fields are internally inconsistent within the stress rows.",
+      "blocking": false
+    },
+    {
+      "id": "L-5",
+      "severity": "LOW",
+      "title": "T19 register-completeness test is toothless; division register not re-versioned for r2 sites",
+      "detail": "T19 counts '/' occurrences in source (sanity >=20) and checks the register has >=8 planned sites — it cannot catch a fixture-built unregistered division site, which is what plan §8 demands. division_site_register.json was not appended for the r2 evaluate.py class-iv sites (beta sxx, _vol60 dof); both are semantically covered by existing register entries ('engine.beta var(SPX) dof', 'engine.matched_book realized-vol dof') and both carry real guards in code (verified by reading). Residual against r1 H-5's third sub-item; substance of H-5 (negative fixtures on control/matched/benchmark paths + class-iv fail-loud) is remediated via T17/T18/T20/T21.",
+      "blocking": false
+    },
+    {
+      "id": "L-6",
+      "severity": "LOW",
+      "title": "impl_contract v2 internal wording inconsistency on concentration total<=0",
+      "detail": "Decision 'concentration_when_total_negative' still says 'FailLoud' while 'pf_zero_zero' (updated for M-2) and the committed code (concentration returns an explicit not-computable dict) implement the not-computable reading. Code follows the correct reading; the contract file should not carry two contradictory statements of the same law.",
+      "blocking": false
+    }
+  ],
+  "r1_finding_dispositions": {
+    "H-1": "RESOLVED — pinned at plan A4 §3 (line 167), family_contract v2 formation_quorum, engine.py pin comment; code == floor(D/2) for both D.",
+    "H-2": "RESOLVED — per-fold B&H verified in code and T21; pinned in impl_contract v2 spy_benchmark; exposure matching at evaluation layer wired via mean_invested_weight; residual stale module docstring (L-3).",
+    "H-3": "RESOLVED — book_codes emitted (verified == n_book across the fresh dry-run), consumed by matched_book, wired as matched_book_folds, T20 non-vacuous; residual conditional crash M-5.",
+    "H-4": "PARTIALLY RESOLVED / SUPERSEDED BY H-6 — evaluation layer now exists in full (hold_rows, annual_split, concentration with largest-year+top-decile, drop_one, turnover_exposure, beta_from_panel with guarded sxx, spy_excess at matched exposure, stress folds) and is emitted by run_cells, but the annual_split implementation crashes unconditionally on the scored path (H-6) and stress rows carry stale derived fields (L-4).",
+    "H-5": "RESOLVED WITH RESIDUAL — 19/19 rerun by auditor; control-path poison, class-iv fail-loud, matched wiring, B&H shape covered (T17-T21); residual L-5 (toothless T19, un-versioned register) and the absent §8 annual-split test (subsumed by H-6).",
+    "M-1": "PARTIALLY RESOLVED — core identity fields on every record (M-4 residual: data_snapshot_digest, code_freeze_sha).",
+    "M-2": "RESOLVED — PF 0/0 reports None, inf preserved for win-only, concentration total<=0 returns not-computable dict; no returned-exception pattern remains in evaluate.py.",
+    "M-3": "RESOLVED — names_skipped_no_bar_at_t with alive-interval semantics (7,122 per cell in fresh dry-run), pinned as gap_at_t_counter in impl_contract v2.",
+    "L-1": "CARRIES unchanged (data layer untouched in r2).",
+    "L-2": "CARRIES unchanged (fold_contract.json folded into family_contract; v2 amendment block now also carries the quorum)."
+  },
+  "verdict": "REFUSED",
+  "verdict_rationale": "Round-2 remediation is substantively good: all five r1 HIGHs were addressed pre-PnL with plan A4 + family_contract v2 + impl_contract v2 pins, the SPY benchmark is now the frozen buy-and-hold, the matched book is live and non-vacuous, the evaluation layer exists in full, and the fresh 31.9s dry-run re-scans clean by my own recursive scan. But the H-4 fix introduced evaluate.annual_split with a fold-tag slicing bug ('F1_2019'[:4] == 'F1_2') that I reproduced directly against the committed module; scored mode calls it unconditionally three times over, so the first scored cell is guaranteed to abort — and the §8 'annual split correctness' golden test that would have caught it does not exist (hence 19/19 green over a broken scored path). One unresolved HIGH forces REFUSED under the unchanged zero-HIGH rule; a mid-scored-run crash also creates the §5 observed-denominator ambiguity flagged in r1. The asymmetry is acknowledged: this is likely a one-line slice defect plus one missing golden test, but repair is A1's prerogative and re-audit is mine.",
+  "tests_rerun_result": "19 passed in 1.71s — '.venv/bin/python -m pytest /Users/hoangminhlong/my-quantitative/.worktrees/stocks-amihud-v1/integration/research/control/stocks_amihud_v1/impl/tests/test_golden.py -q' (auditor rerun, round 2)"
+}

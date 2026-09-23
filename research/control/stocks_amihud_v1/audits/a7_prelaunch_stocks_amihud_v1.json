@@ -1,0 +1,149 @@
+{
+  "schema": "a7_prelaunch/stocks_amihud_v1@1",
+  "audited_at_utc": "2026-09-23T07:18:19Z",
+  "auditor": "A7-fresh-context-prelaunch",
+  "subject": {
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-amihud-v1/integration",
+    "worktree_head": "a80a7a697cf439b74f4f1db6fbd4fa3da1342324",
+    "plan_main_head": "8494268a46e9a632dc91ba6eb5ac3dae22ed693d",
+    "code_freeze_sha": "a80a7a697cf439b74f4f1db6fbd4fa3da1342324",
+    "branch": "orca/stocks-amihud-v1-integration"
+  },
+  "checklist": [
+    {
+      "item": 1,
+      "verdict": "PASS",
+      "evidence": "Main plan commits verified in main log: 2c10a33a (draft), 44513e71 (A1), 15d3f470 (A2), 8494268a (A3). Worktree plan copy byte-identical to main (git diff main:plans/PLAN_stocks_amihud_v1.md HEAD:plans/... empty). Commit chain verified: 84f3fb07 (P0+D1, 2026-09-23T13:38:31+07:00) -> a3ccabbe (A3 pick, 13:51:49+07) -> a80a7a69 (I+Z incl. dry-run, 14:02:26+07). D1 committed BEFORE impl/dry-run (git log --follow per path). d1/*.json contain zero outcome fields (read in full: family/cost/evaluation/dollar_volume/division_site_register/shadow_inventory). Plan §2b exists with consequence frozen: R0 rho gate NOT_RUN with mandatory R0_NOT_RUN disclosure on every outcome/report; D2 skip is owner authority order #1 (amendment A3), not a violation; d2/ dir empty consistent with skip."
+    },
+    {
+      "item": 2,
+      "verdict": "FAIL",
+      "evidence": "Conforming on the signal/execution core (verified by reading all of samv1): ILLIQ mean over D=21/63 most recent served sessions strictly d<t (engine.illiq window [max(0,t-D,1), t)); guarded r and DV (class i/ii exclude+count); rank-count quintile ceil(0.2N) with lexicographic tie-break (engine.rank_book, sort (-score, code)); bookability N_book>=10 i.e. N_eligible>=46 (portfolio bookable check, T10); weights min(1/N_book, 0.15*DVmed60/1e6) excess simply not invested; folds F1/F2/F3 force-flat at fold-last close; exit law next-served-bar-open -> death final-served-close counted; bands {10/15,25}bps at 50M/10M/2M thresholds via BANDS evaluated at decision date (entry) / last bar before fill (exit, pinned band_at_exit), cost once per fill, stress x2.0 on both fills (pinned stress_accounting); dynamic warmup own-series index >=252 (pinned warmup_dynamic); reversal control score = -(ret5) so descending rank longs biggest losers (pinned). DIVERGENCES (5 HIGH, see findings H-1..H-5): unpinned min-terms threshold in illiq; SPY twin not buy-and-hold and unpinned; matched book structurally vacuous (book_codes never produced) and unwired; annual-split/beta/drop-one rows of the frozen evaluation_contract implemented nowhere with per-hold rows not persisted; golden coverage below frozen §8 scope."
+    },
+    {
+      "item": 3,
+      "verdict": "PASS",
+      "evidence": "Code reading: all formations use strictly d<t (illiq range ends t_i-1; past_ret5 ends t_i-1); dvmed60 and eligibility use bars <= t plus the plan-frozen 'served bar at t and t+1' existence condition (a mild next-day-survivorship condition, disclosed verbatim in plan §3, implemented as frozen); t+1 bars are used only for execution (entry/exit fills at next served bar open), never for selection. test_no_lookahead (T1) mutates all post-t data and asserts illiq/dvmed60 invariance — ran in my rerun, PASSED. Death/fold marks use only past prices by construction."
+    },
+    {
+      "item": 4,
+      "verdict": "PASS",
+      "evidence": "z_dryrun_records.json recursively scanned by me at every depth: structured scan with a strict outcome-key regex (pnl|net_pnl|gross_pnl|pf|profit_factor|sharpe|drawdown|mdd|expectancy|break_even|stress|return_pct|gross|net|...) — zero hits; independent raw-string scan of the serialized file — zero hits. 3 records, IDs SAMV1-ANCHOR-ILLIQ21 / SAMV1-NEIGH-ILLIQ63 / SAMV1-C-REVERSAL5 pairwise distinct. Non-vacuous: entries 9,738 / 9,753 / 9,754. per_date fields exactly {date, fold, n_elig, n_book, bookable}. Bookable dates per fold 12/12/23 (F1/F2/F3; census said 13 in F2 — family_contract documents census counts as static lower bounds, engine dynamic law gives 12; floors >=6 hold; 1 unbookable date counted). Death exits 114/148/124. mode=dry-run; registry budget still 0/3."
+    },
+    {
+      "item": 5,
+      "verdict": "PASS_WITH_GAP",
+      "evidence": "Rerun myself: '.venv/bin/python -m pytest <worktree>/research/control/stocks_amihud_v1/impl/tests/test_golden.py -q' => 14 passed in 0.94s. Fixture validity read in full: covered — class-i/ii negative injection incl. counting (T6/T7, anchor path), class-iii fail-loud (T8 via weights_for/fold_summary), death contract with final-served-close mark + counted (T9), fold force-flat at fold-last close (T3), next-bar adjusted-open fills (T2), cost-once (T4), cap arithmetic incl. inertness (T5), rank/tie-break (T11), determinism (T12), S1 refusal + exact-3 (T13/T14), split-basis DV continuity (T15), leak scan (T16). NOT covered vs frozen §8: control-path (past_ret5) negative fixtures, matched-book and benchmark-path fixtures, class-(iv) fail-loud, division-register completeness => finding H-5."
+    },
+    {
+      "item": 6,
+      "verdict": "PASS_WITH_NOTE",
+      "evidence": "Exactly 3 cells hard-coded in run_cells.CELLS; unknown axis raises FailLoud ('unknown axis'); argparse --mode restricted to {dry-run, scored}; runtime exact-3/distinct check exits 8; grep of the committed tree: only run_cells.py writes scored records (scored/scored_records.json); benchmarks.py and evaluate.py never write; no other entry point constructs a fourth cell. Registry budget 0/3; dry-run consumed nothing. NOTE (M-1): records omit plan §5 trial-identity metadata (family_id, arm_config_digest, data_snapshot_digest, code_freeze_sha, cost_tier, fold contract)."
+    },
+    {
+      "item": 7,
+      "verdict": "PASS",
+      "evidence": "EODHD /eod-only confirmed (impl has zero network code; only p0 crawlers). universe_frozen.json rule verified: Type==Common Stock AND Exchange in {NASDAQ, NYSE MKT, NYSE, AMEX} on the delisted-inclusive symbol list, raw sha256 c1e8bc617731c8b162c7ade68fe193e55e2270ad222bc4ed687662336212b137 pinned, 16,572 codes. DV pair adjusted_close x volume frozen by measured F3a fixtures: verified 4/4 SPLIT_ADJUSTED in p0_light_canary_results.json (AAPL drop 3.87x/jump 1.20x; TSLA; CMG 50:1; TJX 2:1; adjusted smooth). Bar-readable availability law implemented (decision at t close, fills at next served bar open; per-name first/last served bar as availability/stop dates per plan F4). Backward-adjustment assessment (dispatch question): DISCLOSED in dollar_volume_contract.rationale and judged immaterial to the ILLIQ rank cross-section — splits (the material adjustments) are fully neutralized by the same-basis pair (both legs split-adjusted, DV = true dollars traded regardless of quote basis); the dividend component of backward adjustment rescales a name's DV/ILLIQ by ~1-2% per ex-date distance, orders of magnitude below the cross-sectional ILLIQ dispersion that drives a quintile rank; r is an adjacent-day same-name ratio so uniform level factors cancel; adjustments with ex-dates after 2022 (e.g., CMG 50:1 2024) put each name on a consistent within-name basis and import no cross-sectional information. => LOW (finding L-1), not HIGH."
+    },
+    {
+      "item": 8,
+      "verdict": "PASS",
+      "evidence": "No S1 path anywhere in code or inputs (grep). Only S1 artifact is the refusal logic in run_cells.main (argv scan, exit 9) and its golden test T13. S1 SEALED_UNTOUCHED in registry."
+    },
+    {
+      "item": 9,
+      "verdict": "PASS",
+      "evidence": "No orders/paper/live/broker/testnet code paths (grep hits: a local variable named 'order' only). No purchases. No network calls in impl. Committed tree contains no key material: api_token/EODHD_API_KEY hits are .env loader variable names and error strings in p0 crawlers; 'Bearer' hits are Swatch/Sika share-class names in the raw symbol CSV. .env key verified to EXIST and be non-empty without printing. Staging raw CSVs git-ignored by design (.gitignore committed; sha256 manifest committed)."
+    },
+    {
+      "item": 10,
+      "verdict": "PASS",
+      "evidence": "Registry budget 0/3, go_phrase REGISTERED_NOT_CONSUMED; dry-run mode computed no outcomes (leak-scan enforced) so nothing entered the observed denominator; observed/published separation is a scored-time duty per plan §5 (metadata gap M-1 noted)."
+    },
+    {
+      "item": 11,
+      "verdict": "PASS",
+      "evidence": "git status --porcelain empty at audit start (clean, before my two artifacts). Registry row phase P_CODE_FREEZE_DRYRUN_PASS (D2 skipped per A3) matches measured reality (impl committed, 14/14 tests, dry-run 3/3). head matches a80a7a69; workers 0; active_heavy false."
+    },
+    {
+      "item": 12,
+      "verdict": "REFUSED",
+      "evidence": "5 unresolved HIGH findings (H-1..H-5). Authorization requires zero unresolved HIGH/CRITICAL; AUTHORIZED_WITH_FINDINGS requires 0 HIGH. Neither bar met."
+    }
+  ],
+  "findings": [
+    {
+      "id": "H-1",
+      "severity": "HIGH",
+      "title": "Unpinned selection-affecting threshold in engine.illiq (violates impl_contract's own pinning law)",
+      "detail": "impl/samv1/engine.py:119 'if len(terms) < max(D // 2, 1): return None' silently drops a name from the eligible universe entirely when fewer than 10 (D=21) / 31 (D=63) valid formation terms survive the class-i/ii guards. Neither plan §3 (mean over the D most recent served sessions, no minimum), family_contract.json, division_site_register.json (which pins only per-name-day exclusion+counting), nor impl_contract.json decisions pin this threshold — while impl_contract declares 'Every implementation decision not fixed by the plan/D1 set is pinned HERE before any PnL exists'. The threshold shapes the ILLIQ cross-section (sparse-history names excluded rather than ranked on available terms), i.e. it is exactly the class of hidden parameter the freeze discipline exists to neutralize. Per audit law, divergence plan-vs-code-vs-impl_contract = HIGH.",
+      "blocking": true
+    },
+    {
+      "id": "H-2",
+      "severity": "HIGH",
+      "title": "SPY benchmark diverges from the frozen 'total-return buy-and-hold' definition, in the anchor-flattering direction, and is unpinned",
+      "detail": "Plan §4 F7 and d1/evaluation_contract.json freeze the comparison as 'SPY total-return buy-and-hold exposure-matched on the same clock'. benchmarks.spy_twin instead round-trips SPY on every 21-session grid date (~11-12 round trips per fold; band-A entry+exit each trip => roughly 2.2-2.4%/fold of artificial benchmark cost drag), inflating the frozen Stage-A gate 'SPY-excess positive >= 2/3 folds at matched exposure'. The spy-twin construction is also absent from impl_contract decisions (random twin and matched book are pinned; spy twin is not). Additionally the entire benchmarks module is dead code: run_cells never imports or invokes it, and no test exercises it.",
+      "blocking": true
+    },
+    {
+      "id": "H-3",
+      "severity": "HIGH",
+      "title": "Owner-required matched-characteristic book is structurally vacuous",
+      "detail": "benchmarks.matched_book reads drec['book_codes'] (benchmarks.py:169), but portfolio.simulate never emits 'book_codes' in per_date (keys: date/fold/n_elig/n_book/bookable), so anchor_members is always the empty set and the matched book is always flat — zero entries by construction. The module is also unwired from run_cells (never called in dry-run or scored mode) and untested. The plan's core question — whether apparent profit is size/volatility wearing an illiquidity label (§1), with the matched book as the owner-required peer comparison (§4 F7) — cannot be answered by the committed code.",
+      "blocking": true
+    },
+    {
+      "id": "H-4",
+      "severity": "HIGH",
+      "title": "Frozen evaluation-contract report shape is implemented nowhere; scored records cannot feed it without post-PnL evaluation-code changes",
+      "detail": "d1/evaluation_contract.json requires per-cell ANNUAL_SPLIT_2021/2022 rows (impl_contract pins annual_split_marks; engine.ANNUAL_MARKS is defined but referenced by nothing), Stage-A gates require drop-one-ticker and drop-one-year survival, and §9 requires market-beta vs SPY and vol-tercile attribution — none of these is implemented in any committed code path (grep: only docstring mentions). run_cells scored mode persists only per-fold summaries + mdd + concentration, not per-hold rows, so the missing pieces cannot be derived from the scored records without writing/changing evaluation code AFTER PnL exists — precisely the post-hoc-rescue pattern the plan's freeze law (§3, D1 evaluation freeze) exists to prevent. Combined with H-2/H-3 the evaluation layer as committed cannot produce the frozen §9 shape.",
+      "blocking": true
+    },
+    {
+      "id": "H-5",
+      "severity": "HIGH",
+      "title": "Golden-test coverage below the frozen §8 scope",
+      "detail": "Plan §8 mandates negative-division fixtures injected into 'anchor, neighbour, CONTROL, matched-book and benchmark paths', class-(iv) fail-loud, and division-site-register completeness. test_golden.py injects classes i/ii into the anchor (illiq) path only; there is no past_ret5 (control) negative fixture, no matched-book or benchmark fixtures (impossible while H-2/H-3 stand), no class-(iv) statistical-denominator fail-loud test (_vol60's len>=30 guard means the (len-1) dof division is unreachable — untested), and no register-completeness test. 14/14 pass, but the passing set is strictly smaller than the frozen contract, so 'golden tests PASS' as a scoring-gate precondition is not yet true in substance.",
+      "blocking": true
+    },
+    {
+      "id": "M-1",
+      "severity": "MEDIUM",
+      "title": "Plan §5 trial-identity fields missing from cell records",
+      "detail": "Plan §5 requires per-cell trial identity: cycle_id, family_id, arm_id, arm_config_digest, data_snapshot_digest, code_freeze_sha, cost_tier, fold contract. Records (dry-run and scored code path) carry cell_id/cycle_id/arm_id/axis/mode + counters only. Binding note if the cycle later proceeds: identity fields must accompany the scored records/report.",
+      "blocking": false
+    },
+    {
+      "id": "M-2",
+      "severity": "MEDIUM",
+      "title": "Fail-loud implemented as 'return E.FailLoud(...)' (returns, never raises) in two scored-mode sites",
+      "detail": "evaluate.fold_summary profit_factor 0/0 case and evaluate.concentration.share() return the FailLoud instance instead of raising it. Consequence: the pinned semantics (class-iii TECHABORT; concentration shares 'reported verbatim as not-computable') degrade to an accidental TypeError crash (share()*100) or a non-JSON-serializable value surfacing at record write. Direction is fail-closed (no wrong number can be emitted), but concentration is computed unconditionally in scored mode and crashes when total net PnL <= 0 — a plausible losing branch — which can abort the scored run mid-way and create §5 observed-denominator ambiguity (computed-but-unpersisted outcomes still count as observed).",
+      "blocking": false
+    },
+    {
+      "id": "M-3",
+      "severity": "MEDIUM",
+      "title": "Uncounted skip class: names with no served bar at the decision date",
+      "detail": "Plan §3 eligibility: 'served bar at t and t+1 (else name skipped, counted)'. portfolio.simulate counts the missing-t+1 class (guards.names_skipped_no_t1) but skips names with no bar at t via 'if bi is None: continue' with no counter increment. Disclosure duty partially unmet; N_eligible denominators exclude this class silently (selection outcome unaffected — such names are unpriceable at t).",
+      "blocking": false
+    },
+    {
+      "id": "L-1",
+      "severity": "LOW",
+      "title": "Backward-adjusted retrieval basis: disclosed, assessed immaterial to the rank cross-section",
+      "detail": "The pull is 2026 retrieval of 2017-2022 bars; adjusted_close is backward-adjusted with information through retrieval. Assessed NOT a material undisclosed lookahead: (a) disclosed in dollar_volume_contract.rationale; (b) splits — the material adjustments — fully neutralized by the frozen same-basis pair (DV = adjusted_close x split-adjusted volume = true dollars traded regardless of quote basis; F3a 4/4 SPLIT_ADJUSTED); (c) dividend components rescale a single name's DV/ILLIQ by ~1-2% per ex-date distance, orders of magnitude below cross-sectional ILLIQ dispersion driving quintile ranks; (d) r is an adjacent-day same-name ratio so uniform factors cancel; (e) post-2022 ex-date adjustments (CMG 50:1 2024) place each name on a consistent within-name basis and import no cross-sectional information. Carried as a documented caveat, not a blocker.",
+      "blocking": false
+    },
+    {
+      "id": "L-2",
+      "severity": "LOW",
+      "title": "fold_contract.json named in plan §6 but folds pinned inside family_contract.json",
+      "detail": "Plan §6 lists 'fold_contract.json' among the D1 commits; the D1 set pins folds in family_contract.json's 'folds' block (F1/F2/F3 boundaries, floors, annual split law) instead. Substance satisfied (folds frozen and committed before any PnL, byte-identical to plan §3); letter deviates. No action implied beyond recording the deviation.",
+      "blocking": false
+    }
+  ],
+  "verdict": "REFUSED",
+  "verdict_rationale": "Prelaunch (§19.3 first key) authorizes the scored execution of the 3 frozen cells. As committed at a80a7a69, that execution would (H-1) run with an unpinned selection-affecting threshold inside the ILLIQ formation, and (H-2/H-3/H-4) produce scored records that cannot be assembled into the frozen §9/evaluation_contract shape — SPY benchmark constructed divergently from its frozen buy-and-hold definition in the anchor-flattering direction, the owner-required matched book structurally incapable of producing a single entry, and annual-split/beta/drop-one rows implemented nowhere with per-hold rows not persisted — so conformance could only be reached by changing evaluation code after PnL exists, which the freeze law forbids. Golden coverage is below the frozen §8 scope (H-5), so the 'golden tests PASS' precondition is not true in substance. Five unresolved HIGHs force REFUSED under the zero-HIGH bar; the incentive asymmetry was weighed — authorizing would risk burning the entire 3-cell trial budget into a report shape the code cannot legally produce. The signal/execution core, dry-run hygiene, freeze chronology, S1 seal, boundaries and drift checks are clean; a fresh-context re-audit after remediation is the path back to the gate.",
+  "tests_rerun_result": "14 passed in 0.94s — '.venv/bin/python -m pytest /Users/hoangminhlong/my-quantitative/.worktrees/stocks-amihud-v1/integration/research/control/stocks_amihud_v1/impl/tests/test_golden.py -q' (auditor rerun, 2026-09-23)"
+}

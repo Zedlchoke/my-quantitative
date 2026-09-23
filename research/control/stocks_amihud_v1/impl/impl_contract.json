@@ -1,6 +1,6 @@
 {
-  "schema": "impl_contract/stocks_amihud_v1@2",
-  "pinned_utc": "2026-09-23T08:20:00Z (v2: A7 prelaunch r1 remediation H-2/H-3/H-4 + M-1/M-3)",
+  "schema": "impl_contract/stocks_amihud_v1@3",
+  "pinned_utc": "2026-09-23T09:05:00Z (v3: A7 prelaunch r2 residuals — H-6 fix, M-4 digests, M-5 guard, L-3/L-4/L-5/L-6)",
   "law": "Every implementation decision not fixed by the plan/D1 set is pinned HERE before any PnL exists; A7 prelaunch audits this file against the code; a divergence found after scored PnL is an incident, never a silent choice.",
   "decisions": {
     "fold_force_flat_price": "fold's LAST SESSION CLOSE on the adjusted series (consistent with the death-contract marking convention; no leak into the next fold's open)",
@@ -25,7 +25,12 @@
     "drop_one_construction": "additive leave-one-out on per-hold net rows (exact): drop-one-ticker = min over tickers of (total - ticker net) > 0; drop-one-year likewise on the four calendar-year nets",
     "gap_at_t_counter": "names whose alive interval covers t but serve no bar at t are counted in names_skipped_no_bar_at_t (M-3); names outside their alive interval are not counted as skipped",
     "trial_identity_fields": "every record carries cycle_id, family_id, arm_id, arm_config_digest (sha256 of family+cost+impl contracts), cost_tier, fold_contract (M-1)",
-    "matched_book_wiring": "simulate per_date carries book_codes; matched_book consumes them and is wired into scored records as matched_book_folds (H-3)"
+    "matched_book_wiring": "simulate per_date carries book_codes; matched_book consumes them and is wired into scored records as matched_book_folds (H-3)",
+    "annual_split_fold_map": "fold->year via explicit map {F1_2019:2019, F2_2020:2020}; F3 split at the 2021-12-31 mark (H-6 KeyError fixed; T22 regression test)",
+    "matched_book_empty_fold": "a fold with no matched rows reports None (flat), never crashes the scored run (M-5); anchor/neighbour/control cells keep the strict FailLoud (their empty fold = F8 violation)",
+    "stress_rows_shape": "stress fold rows carry ONLY n_holds/gross/costs/net (L-4: no stale return_pct/expectancy)",
+    "trial_identity_full": "records carry arm_config_digest + data_snapshot_digest (sha256 of crawl manifest + universe freeze) + code_freeze_sha (worktree HEAD at run time) (M-4)",
+    "concentration_wording": "concentration reports not-computable (explicit note + total) when total net <= 0; signed shares are NEVER emitted in that case (L-6)"
   },
   "engine_layout": {
     "samv1/panel.py": "loader + guard classes i/ii counting",

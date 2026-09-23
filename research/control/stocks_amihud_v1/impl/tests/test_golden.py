@@ -283,22 +283,46 @@ def test_benchmark_vol60_class_iv():
     assert v is not None and v > 0
 
 
-# --- T19 division-site register completeness (source scan)
+# --- T19 division-site register completeness: every REGISTERED class-iii/iv
+# guard marker must exist in the live source (toothless-scan fix, A7 L-5)
 def test_division_register_completeness():
-    reg = json.loads((IMPL.parent.parent / "d1" / "division_site_register.json")
-                     .read_text()) if False else None
+    import json as J
     from pathlib import Path as P
-    reg = __import__("json").loads(
-        (P(__file__).resolve().parents[2] / "d1" / "division_site_register.json")
-        .read_text())
-    src = ""
-    for f in ("panel.py", "engine.py", "portfolio.py", "benchmarks.py",
-              "evaluate.py"):
-        src += (P(__file__).resolve().parents[1] / "samv1" / f).read_text()
-    n_div = src.count(" / ") + src.count("/")
-    assert n_div > 20           # sanity: divisions exist to register
-    planned = len(reg["sites_v2_engine_planned"]) + len(reg["sites_v1_census_code"])
-    assert planned >= 8
+    reg = J.loads((P(__file__).resolve().parents[2]
+                   / "d1" / "division_site_register.json").read_text())
+    ev = (P(__file__).resolve().parents[1] / "samv1" / "evaluate.py").read_text()
+    bm = (P(__file__).resolve().parents[1] / "samv1" / "benchmarks.py").read_text()
+    assert "sxx" in ev and "FailLoud" in ev            # beta class iv
+    assert "outside [0,1]" in ev                        # annual frac class iii
+    assert "dof<=0" in bm                               # vol60 class iv
+    assert len(reg.get("sites_v3_evaluate", [])) >= 5   # register versioned
+
+
+# --- T22 annual split correctness (H-6 regression + mark math)
+def test_annual_split():
+    from samv1 import evaluate as EV
+    from samv1.portfolio import HoldRec, ExitRec
+    h1 = HoldRec("A", "F1_2019", "d", "2019-06-03", 10.0, 0.1, 1e5, 5.0)
+    h1.exit = ExitRec("rebalance", "d", "2019-12-20", 12.0, 10.0)
+    h1.exit_cost = 5.0
+    h2 = HoldRec("B", "F2_2020", "d", "2020-02-03", 10.0, 0.1, 1e5, 5.0)
+    h2.exit = ExitRec("rebalance", "d", "2020-11-20", 9.0, 10.0)
+    h2.exit_cost = 5.0
+    h3 = HoldRec("C", "F3_2021_22", "d", "2021-10-01", 10.0, 0.1, 1e5, 5.0)
+    h3.exit = ExitRec("rebalance", "d", "2022-06-01", 20.0, 10.0)
+    h3.exit_cost = 5.0
+    rows = [EV.hold_row(h) for h in (h1, h2, h3)]
+    ann = EV.annual_split(rows)      # must NOT raise KeyError (H-6)
+    assert set(ann) == {"2019", "2020", "2021", "2022"}
+    assert ann["2019"] == pytest.approx(EV.hold_net(h1))
+    assert ann["2020"] == pytest.approx(EV.hold_net(h2))
+    assert ann["2021"] + ann["2022"] == pytest.approx(EV.hold_net(h3))
+    # spanning hold splits gross pro-rata: 2021 part ~ 61/243 of gross
+    g3 = rows[2]["gross_pnl"]
+    frac = ( __import__("datetime").date(2021,12,31)
+             - __import__("datetime").date(2021,10,1) ).days /            ( __import__("datetime").date(2022,6,1)
+             - __import__("datetime").date(2021,10,1) ).days
+    assert ann["2021"] == pytest.approx(g3 * frac - (5.0 + 2.5), rel=1e-9)
 
 
 # --- T20 matched book wiring: book_codes present, matched book non-vacuous

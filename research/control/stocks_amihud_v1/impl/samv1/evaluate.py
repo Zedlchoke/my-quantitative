@@ -68,14 +68,14 @@ def annual_split(rows: list[dict]) -> dict:
     """Mark-to-market annual attribution; F3 splits at 2021-12-31 (holds
     spanning the mark contribute their pre/post parts pro-rata by the
     linear price path between entry and exit px — impl_contract v2)."""
+    fold_year = {"F1_2019": "2019", "F2_2020": "2020"}
     out = {"2019": 0.0, "2020": 0.0, "2021": 0.0, "2022": 0.0}
     mark = ANNUAL_MARKS["F3_2021_22"]
     for r in rows:
-        if r["fold"] in ("F1_2019", "F2_2020"):
-            out[r["fold"][:4]] += r["net_pnl"]
+        if r["fold"] in fold_year:
+            out[fold_year[r["fold"]]] += r["net_pnl"]
             continue
         if r["entry_fill"] <= mark < r["exit_fill"]:
-            span = (r["exit_fill"], r["entry_fill"])
             # linear time interpolation on ISO dates
             def days(a: str, b: str) -> float:
                 import datetime as dt

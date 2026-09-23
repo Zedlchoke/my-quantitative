@@ -44,9 +44,18 @@ def identity_digests() -> dict:
     cost = (HERE / "d1" / "cost_contract.json").read_bytes()
     implc = (IMPL / "impl_contract.json").read_bytes()
     dvh = hashlib.sha256(fam + cost + implc).hexdigest()
+    snap = hashlib.sha256(
+        (HERE / "p0" / "crawl_manifest_v2.jsonl").read_bytes()
+        + (HERE / "p0" / "universe_frozen.json").read_bytes()).hexdigest()
+    import subprocess
+    head = subprocess.run(
+        ["git", "-C", str(HERE.parents[1]), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True).stdout.strip()
     return {"cycle_id": "STOCKS-AMIHUD-V1",
             "family_id": "SAMV1-AMIHUD-LONG-ILLIQ",
             "arm_config_digest": dvh,
+            "data_snapshot_digest": snap,
+            "code_freeze_sha": head,
             "cost_tier": "BAND_BPS{10,15,25}@ADV{50M,10M,2M}+stress2.0",
             "fold_contract": "F1=CY2019|F2=CY2020|F3=CY2021-22"}
 
@@ -101,10 +110,11 @@ def main() -> int:
             rec["folds_stress2"] = {}
             for f in E.FOLDS:
                 base = rec["folds"][f]
-                st = dict(base)
-                st["costs"] = base["costs"] * E.STRESS_MULT
-                st["net_pnl"] = base["gross_pnl"] - st["costs"]
-                rec["folds_stress2"][f] = st
+                rec["folds_stress2"][f] = {
+                    "fold": f, "n_holds": base["n_holds"],
+                    "gross_pnl": base["gross_pnl"],
+                    "costs": base["costs"] * E.STRESS_MULT,
+                    "net_pnl": base["gross_pnl"] - base["costs"] * E.STRESS_MULT}
             rec["annual_split_net"] = EV.annual_split(rows)
             curve = EV.equity_curve(sim["holds"])
             rec["mdd_pct"] = EV.max_drawdown(curve)
@@ -126,8 +136,10 @@ def main() -> int:
                 spyb["holds"], te["mean_invested_weight"])
             mb = BM.matched_book(anchor_per_date, panel, sessions, scored=True)
             mb_rows = EV.hold_rows(mb["holds"])
-            rec["matched_book_folds"] = {f: EV.fold_summary(mb_rows, f)
-                                         for f in E.FOLDS} if mb_rows else {}
+            rec["matched_book_folds"] = {
+                f: (EV.fold_summary(mb_rows, f)
+                    if any(r["fold"] == f for r in mb_rows) else None)
+                for f in E.FOLDS} if mb_rows else {}
             rt = BM.random_timing_twins(spy, sessions)
             rt_nets = []
             for cal in rt:
