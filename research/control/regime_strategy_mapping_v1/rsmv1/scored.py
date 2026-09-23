@@ -255,27 +255,48 @@ def route_arm(ctx: CellCtx, mapping_by_fold: dict[int, dict], buffer_k: int,
                 and direction_of(a) != 0 and direction_of(a) == direction_of(b)
                 and emitted[i] != b):
             unnecessary_fired += 1  # suppressed label change (no fill)
-    # min-hold suppression fixed point
-    iters = 0
-    trades_prev: list = []
-    while iters < FIXED_POINT_MAX:
-        res = _run_engine(ctx, emitted, specs, tier)
-        trades = [asdict(t) for t in res.trades]
-        suppressed = _suppress_min_hold(emitted, trades, ctx)
-        iters += 1
-        if suppressed == emitted:
-            report = {"noop_target_updates": noop,
-                      "unnecessary_close_reopen_fired": unnecessary_fired,
-                      "unnecessary_close_reopen_law": "must be identically 0",
-                      "fixed_point_iters": iters,
-                      "converged": True}
-            if unnecessary_fired != 0:
-                raise RuntimeError(
-                    "unnecessary_close_reopen fired "
-                    f"{unnecessary_fired} times — no-op law violated")
-            return emitted, report, res
-        emitted = suppressed
-        trades_prev = trades
+    # A4 min-hold law, deterministic form (RSMV1-INC-1b remediation):
+    # a DIRECTION change of the desired series is DEFERRED until the current
+    # invested desired-segment is >= MIN_HOLD_REGIME_BARS old (counted on the
+    # buffered regime clock). Fully determined by the desired series + regime
+    # clock — no engine feedback (the engine-feedback fixed point could
+    # oscillate; TECHABORT of run-2 attempt 1). Strategy-native exits and
+    # stops are engine-side and never suppressed by this pass.
+    MIN_HOLD = 6
+    ts_open_l = ctx.exec_bars.ts_open.tolist()
+    held: list = [None] * ctx.n
+    cur, cur_d = None, 0
+    seg_start_ts: int | None = None
+    deferred = 0
+    for i, t in enumerate(desired):
+        if t is None:
+            held[i] = None
+            continue
+        d = direction_of(t)
+        if d != cur_d:
+            if cur_d != 0 and seg_start_ts is not None:
+                bars_held = bisect.bisect_right(ts_b, ts_open_l[i]) - \
+                    bisect.bisect_right(ts_b, seg_start_ts)
+                if bars_held < MIN_HOLD:
+                    deferred += 1
+                    held[i] = cur
+                    continue
+            cur, cur_d = t, d
+            seg_start_ts = ts_open_l[i] if d != 0 else None
+        held[i] = cur
+    emitted = held
+    res = _run_engine(ctx, emitted, specs, tier)
+    report = {"noop_target_updates": noop,
+              "unnecessary_close_reopen_fired": unnecessary_fired,
+              "unnecessary_close_reopen_law": "must be identically 0",
+              "min_hold_deferred_direction_changes": deferred,
+              "mechanism": "deterministic desired-series deferral "
+                           "(min-hold 6 regime bars, buffered clock)"}
+    if unnecessary_fired != 0:
+        raise RuntimeError(
+            "unnecessary_close_reopen fired "
+            f"{unnecessary_fired} times — no-op law violated")
+    return emitted, report, res
     raise RuntimeError(f"min-hold suppression did not converge in {FIXED_POINT_MAX} iters")
 
 
