@@ -808,3 +808,35 @@ promise.
   *.dukascopy.com for the predecessor), then lane A2 re-runs from the frozen
   manifest; both blockers re-arm and are decided by evidence, not assumption.
   Successor door CLOSED — no successor plan.
+
+## JEV-REGIME-ROUTER-V2 (CLOSED 2026-09-23, `JEV_NO_INCREMENTAL_VALUE`)
+
+- Owner-instruction successor to JEV-REGIME-ROUTER-V1 (V1 closed
+  `TECHABORT_OWNER_STOP_DESIGN_REVISION` at 990/8,567 bulk states after
+  persisted-regime 990/990 TRANSITION_UNKNOWN — failure class `UNKNOWN_COLLAPSE`;
+  partial outcome-observed, no PnL ever).
+- V2 design (forced-choice 4-phase provider — no model abstention; code-owned
+  UNKNOWN via confidence/margin/hierarchy-contradiction/staleness; named
+  semantic state; structure/direction/phase hierarchy in ONE systemOne call;
+  pin jev-1.13.0 VERIFIED_LIVE) FIXED the collapse: 13,315/13,315 historical
+  decisions across BTC_H1/BTC_H4/SPY_D1, effUNKNOWN 0.43/0.27/0.29, real
+  regime switching, 0.16% fail-closed errors, budget used-only 58.05M input
+  tokens (< formula cap 58.17M; 85% checkpoint disclosed mid-run).
+- Scored verdict (18/18 cells, one atomic run under GO authority, repro 54/54
+  byte-identical, A7 terminal authorized 0 HIGH/CRITICAL): JEV_ONLY
+  net-negative on ALL cells; loses to ALWAYS_ON_MEAN_REVERSION everywhere
+  (−35.0k/−31.4k/−50.7k) and to RANDOM everywhere (random-null Q-11 invalid,
+  disclosed); DETERMINISTIC+JEV_CONFIRM beats the deterministic router on BTC
+  only by trading less, both deeply negative; switching-cost attrition
+  decisive (monotonic 1.0/1.5/2.0x degradation); JEV fold nets negative 11/12.
+  SPY ALWAYS_ON_TREND +19,813 is a BASELINE, concentration 0.69 > 0.50 kill,
+  not promoted.
+- Durable assets: the whole forced-choice + code-owned-UNKNOWN + semantic-state
+  apparatus (tests 127 py + 47 ts), producer-digest/prompt-digest cache laws,
+  strict sequential replay + collapse stop-law, per-cell bulk manifests, and
+  the honest canary/preview pipeline — reusable for any future LLM-classifier
+  cycle at near-zero marginal engineering cost.
+- Reopening: an LLM-classifier cycle may reopen only with a CHANGED mechanism
+  class (see Phase-4 successor proposals in the terminal report), never by
+  prompt/threshold iteration on this corpus. EURUSD door: blocked on owner
+  source/license decision (packet in EURUSD-DATA-QUALIFICATION-V1).
