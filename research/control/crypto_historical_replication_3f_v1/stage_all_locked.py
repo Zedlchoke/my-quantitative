@@ -216,8 +216,10 @@ def build_items():
     items = []
     for s in SYMS20: items.append(("A_klines", s, lambda s=s: stage_klines_sym(s, A_KL_MONTHS)))
     for s in SYMS20: items.append(("A_funding", s, lambda s=s: stage_funding_sym(s, A_FUND)))
-    for s in SYMS20: items.append(("B_klines", s, lambda s=s: stage_klines_sym(s, B_KL_MONTHS)))
-    for s in SYMS20: items.append(("B_funding", s, lambda s=s: stage_funding_sym(s, B_FUND)))
+    XSECT8 = ["ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","LINKUSDT","ADAUSDT","BTCUSDT"]
+    rest = [s for s in SYMS20 if s not in XSECT8]
+    for s in XSECT8 + rest: items.append(("B_klines", s, lambda s=s: stage_klines_sym(s, B_KL_MONTHS)))
+    for s in XSECT8 + rest: items.append(("B_funding", s, lambda s=s: stage_funding_sym(s, B_FUND)))
     for s in SYMS19: items.append(("A_basis", s, lambda s=s: stage_basis_frozen(s, STAGE / "basis_orig")))
     for s in SYMS19: items.append(("B_basis", s, lambda s=s: stage_basis_window_sym(s, B_BASIS, STAGE / "basis_win")))
     for s in SYMS19: items.append(("A_index", s, lambda s=s: stage_index_sym(s, A_BASIS_WINDOW, "15m")))
