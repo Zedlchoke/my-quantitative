@@ -1,0 +1,46 @@
+{
+  "schema": "es1.freeze@1",
+  "cycle_id": "BTC-H4-EDGE-SEARCH-V1",
+  "frozen_utc": "2026-09-23T18:10:00Z",
+  "frozen_by": "A1 controller (Lead session), pre-PnL — NO arm PnL exists at freeze time",
+  "plan": "plans/PLAN_btc_h4_edge_search_v1.md",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/btc-h4-edge-search-v1/integration",
+  "branch": "orca/btc-h4-edge-search-v1-integration",
+  "engine_base": "PSV1 terminal anchor af52f3582270bcc19634add3d88858e0c28959bf (frozen engine inherited verbatim; V2/TRV1 machinery read-only)",
+  "data": {
+    "BTC_H4": {"manifest_sha256": "3f1a668798c82fbfe7311fadf65a300a583043cdbeba226164bd28c81885b66d", "source": "PSV1 frozen staging (read-only)"},
+    "ETH_H4": {"staged_by": "this cycle", "verdict": "GATE PASS", "months": 80, "span": "2020-01..2026-08", "digests": "freezes/staging_manifest.json"},
+    "SOL_H4": {"verdict": "GATE FAIL — 72h hole 2022-02-26..28 + 48h 2022-04-01..02 (0.23% > 0.05% law) -> FAIL_CLOSED, excluded from all scored cells", "digests": "freezes/staging_manifest.json"},
+    "funding_series": {"BTCUSDT": "2020-01..2026-08", "ETHUSDT": "2020-01..2026-08", "SOLUSDT": "unused (gate fail)", "digests": "freezes/staging_manifest.json"}
+  },
+  "folds": {"F1": "2020-01-01..2021-04-30", "F2": "2021-05-01..2022-12-31", "F3": "2023-01-01..2024-12-31", "F4": "2025-01-01..data_end", "warmup": 153, "ends_force_flat": true},
+  "costs": {"tiers": [1.0, 1.5, 2.0], "per_side_bps": 6.0,
+            "funding_laws": {"constant": "PSV1 frozen 1.377e-5 per 8h signed (comparability with ancestor record)",
+                              "measured": "lane D: per-settlement Vision fundingRate series applied on holding intervals (honesty); measured BTC mean = 11.798%/yr vs constant 1.508%/yr = 7.824x understatement (census freezes/feasibility_census.json)"}},
+  "scored_cells": [
+    {"cell": "A1", "family": "ES1-VOLMAN-ONLONG-0.60", "spec": "vol-managed ALWAYS_ON_LONG, scale=min(1, 0.60/rvol150_ann), re-priced 00:00 UTC"},
+    {"cell": "A2", "family": "ES1-VOLMAN-TRENDLF-0.60", "spec": "vol-managed TREND_LF (SMA200 gate x scale)"},
+    {"cell": "A3", "family": "ES1-VOLMAN-DONCHIAN-0.60", "spec": "vol-managed PSV1 Donchian arm (named ancestor, owner-waived in plan §3)"},
+    {"cell": "A4", "family": "ES1-VOLMAN-TRENDLF-0.40", "spec": "= A2 at TARGETVOL 0.40 (round notch)"},
+    {"cell": "C1", "family": "ES1-BAND-TREND-0.010", "spec": "TREND band law b=0.01 (enter >SMA200x1.01, exit <SMA200x0.99)"},
+    {"cell": "C2", "family": "ES1-BAND-TREND-0.020", "spec": "band b=0.02"},
+    {"cell": "C3", "family": "ES1-BAND-TREND-0.030", "spec": "band b=0.03"},
+    {"cell": "C4", "family": "ES1-BAND-TREND-0.005", "spec": "band b=0.005"}
+  ],
+  "struck_or_vetoed": [
+    {"cell": "B1", "family": "ES1-BASKET-BTCETH", "disposition": "ANCESTRY_VETOED", "evidence": "freezes/ancestry_rho.json: basket exposure vs xsect rank 42-bar |rho|=0.20509 > 0.20"},
+    {"cell": "B2", "family": "ES1-BASKET-BTCETHSOL", "disposition": "ANCESTRY_VETOED + SOL gate FAIL"},
+    {"cell": "B3", "family": "ES1-BASKET-BTCGATED", "disposition": "ANCESTRY_VETOED"},
+    {"cell": "B4", "family": "ES1-BASKET-BTCETHSOL-12BAR", "disposition": "ANCESTRY_VETOED + SOL gate FAIL"}
+  ],
+  "reference_computations": ["CASH", "ALWAYS_ON_LONG", "ALWAYS_ON_TREND_LF", "SPARSE_RISK_OFF", "Donchian COMPARATOR re-run",
+                              "G6-A block-shuffle(30) of vol-scale series", "G6-C block-shuffle(30) of band-state series"],
+  "ancestry": {"law": "plan §4 G11; |rho|<=0.20 pass", "results": "freezes/ancestry_rho.json",
+                "lane_A": "PASS (worst 0.0904 vs vol-shock proxy)", "lane_B": "VETOED razor 0.20509",
+                "lane_C": "declared same-family with TREND_LF; no novelty claim; G3 is the test"},
+  "gates": "plan §4 G1-G11 (G3 = beats ALL four frozen baselines at 1.0x — unchanged, the wall)",
+  "verdict_ceiling": "POSTHOC_DISCOVERY_CANDIDATE_FOR_PROSPECTIVE_VALIDATION",
+  "no_dev_holdout_note": "declared in plan §0: 2020-2026 is outcome-observed; a survivor earns a prospective-validation successor only",
+  "go_phrase": "GO BTC H4 EDGE SEARCH V1 SCORED EXECUTION",
+  "amendments": "none"
+}
