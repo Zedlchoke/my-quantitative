@@ -1,0 +1,106 @@
+{
+  "schema": "rsmv1_a7_preoutcome_audit@1",
+  "round": 3,
+  "cycle": "REGIME-STRATEGY-MAPPING-V1",
+  "auditor": "A7-R3 (fresh context; no involvement in R1/R2 audits or remediations)",
+  "date_utc": "2026-09-23",
+  "base_sha": "102ed5000fbc1f6ac4f1f2eb1aeeb27e7de31f97",
+  "branch": "orca/rsmv1-a7r3-preoutcome",
+  "tree_clean_at_start": true,
+  "verdict": "AUTHORIZED_FOR_DISCOVERY_STOP",
+  "verdict_rule": "zero unresolved HIGH/CRITICAL findings required for AUTHORIZED_FOR_DISCOVERY_STOP",
+  "unresolved_high_critical": 0,
+  "r2_remediation_verification": {
+    "N1_HIGH_fold_off_by_one": {
+      "status": "CLOSED_FIXED",
+      "evidence": "selection.py gate now fires at fold_id==0 ONLY (law's fold 1). Auditor-authored refutation (/tmp/a7r3_audit/refute_n1.py) with REAL census and REAL arm_c_selection: fid0 -> FLAT/fold1_empty_inner_default; fid1 -> ACC-BASE-RECLAIM-L/single_eligible_specialist and UPT-DIPBUY-L/inner_net_higher_stable with floor-passing pools; fid2/3 stability per freeze required_wins table; DIST (real THIN) -> OUTER_FLOOR_THIN in all 4 folds. Fold-index audit across scored.py/selection.py/census.py/feasibility.py: all 0-based, mutually consistent; unit fixtures updated to 0-based in same commit."
+    },
+    "N2_MEDIUM_leak_test": {
+      "status": "FIXED_IN_LETTER_RESIDUAL_N5",
+      "evidence": "test_selection_invariance_nonvacuous: floors pass so real selections occur; outer-fold mutations asserted not to change any (selected, reason). Residual: fixture mutation preserves fold-wise +50 candidate gap so no pooling rule can flip the winner, and the CLEAN!=LEAKY sensitivity proof passes via non-UPTREND stub-reason artifacts (0 UPTREND race rows differ). See finding N5."
+    },
+    "N3_LOW_real_census_thin_test": {
+      "status": "CLOSED_FIXED",
+      "evidence": "test_real_census_btc_h4_all_thin uses the REAL measure_cell_census(cd,'BTC_H4'); all regimes FLAT all folds with OUTER_FLOOR_THIN; monkeypatch restored in finally; no cross-test pollution (suite green)."
+    },
+    "N4_LOW_stale_dryrun": {
+      "status": "CLOSED_FIXED",
+      "evidence": "Auditor re-ran tools/cmd_dryrun.py at HEAD: all_pass True exit 0; regenerated evidence/dryrun_sanitized.json byte-identical to committed (git status clean; config_digest 5de75dbd...); only PnL-like key is boolean pnl_anywhere=false; denominator_delta 0; identities_pairwise_distinct n=21; selection_executed=false everywhere."
+    }
+  },
+  "findings": [
+    {
+      "id": "N5",
+      "severity": "MEDIUM",
+      "title": "Mandated leak test still cannot detect the leak class it exists for (residual N2)",
+      "detail": "Probe (/tmp/a7r3_audit/probe_n2.py) on the shipped fixture: (1) mutation applies v-50 to both candidates so the pairwise gap is +50 in every fold -> no pooled statistic (clean or leaky) can flip the winner, invariance holds trivially; (2) a faithful leaky re-implementation of arm_c_selection (f<=fid) is row-identical on BOTH evidence variants -> a scored.py:387 'f<fid'->'f<=fid' regression fails NO assertion in the file; (3) the shipped CLEAN!=LEAKY proof passes only because the test's leaky selector stubs 3 non-UPTREND regimes with reason 'stub' vs computed 'inner_floor_failure' — 0 UPTREND race rows differ; the code comment 'would flip fold 2's choice' is false on its own fixture.",
+      "mitigation": "Containment independently verified by construction and code-read: scored.py:387 'f < fid' is the only fold-window expression; N1 refutation exercised fold-window semantics against the law with the real census.",
+      "blocking": false,
+      "recommendation": "Non-blocking; ideally pre-scored-run: fixture where pooling fold fid flips the winner (near-tied inner folds + sign-reversing outer net), mutate exactly that fold, leaky proof computed from the same regime rows without stubs."
+    },
+    {
+      "id": "N6",
+      "severity": "LOW",
+      "title": "Emitted selection reason codes deviate from the frozen reason_code_vocabulary",
+      "detail": "Freeze vocabulary (11 codes, pinned on the freeze side by test_freeze_proposals): FOLD1_NO_INNER, INNER_FLOOR_FAIL, SINGLE_ELIGIBLE, POOLED_WIN_STABLE, STABILITY_FAIL, STABILITY_NO_COMPARATIVE_FOLDS, TIE_BREAK_BTC_SHORT, TIE_BREAK_FLAT, ASSET_INELIGIBLE, FIXED_FLAT_UNK, OUTER_FLOOR_THIN. Code emits fold1_empty_inner_default, inner_floor_failure, single_eligible_specialist, inner_net_higher_stable, inner_evidence_unstable, exact_tie_tiebreak, no_asset_eligible_specialist, OUTER_FLOOR_THIN. Only OUTER_FLOOR_THIN matches; no bridge test; R2 explicitly required FOLD1_NO_INNER. Tie-break recording law (delta + classes) not implemented; UNK produces no audit row. Outcomes and rule ORDER match the freeze.",
+      "blocking": false,
+      "recommendation": "Rename emitted strings to the frozen codes (code catching up to freeze; no freeze change) or disclosed freeze amendment."
+    },
+    {
+      "id": "N7",
+      "severity": "INFO",
+      "title": "Pair-stability comparative-fold set uses fold-net presence, not episode presence",
+      "detail": "Freeze: S = inner folds where BOTH candidates have >=1 episode in R. Code: folds present in both fold_nets dicts; arm_c_inner_evidence populates fold_nets for ALL folds (0.0 where no R-window) so S = all inner folds always. On this census every passing BTC_H1 regime has >=3 episodes in every fold -> definitions coincide, zero effect on this data. Deviation can go both directions in principle. Record-only.",
+      "blocking": false
+    },
+    {
+      "id": "N8",
+      "severity": "INFO",
+      "title": "Remediation commit message miscounts tests",
+      "detail": "47da824a says '122 tests green'; actual suite at that commit (code/test paths identical to HEAD) is 119 passed + 1 xfailed, exactly the mandated count. Message miscount only.",
+      "blocking": false
+    },
+    {
+      "id": "F1b-carried",
+      "severity": "LOW",
+      "title": "Carried from R2 (N3-R2): inner eligible-decision counter deviates from frozen offset>=2 definition",
+      "detail": "scored.py sums full lengths of episodes with length>=6; freeze defines eligible decision as in-episode bar with offset >= buffer_k+1 = 2. R2 recomputed both definitions for every (cell, regime, fold): no floor flips; with the OUTER gate first, affected regimes are census-THIN anyway. Neither code-fix nor disclosed amendment applied. Zero material effect; non-blocking.",
+      "blocking": false
+    }
+  ],
+  "invariants_reverified": {
+    "engine_equivalence": "MATCH x3, all_match true, exit 0",
+    "timeline_rebuild": "switches 90/31/34 OK, exit 0, deterministic",
+    "b_gate_ordering": "_assert_b_equivalence at scored.py:655 immediately after arm B, before arm_c at :658 and before any tier sweep; raises 'abort before any C outcome'",
+    "go_quarantine": "REFUSED_BACKTEST_QUARANTINE exit 20; --check expected sha 47ee5e6f2bde5957149db8e8b0381ff0f3d6ffa7529fe6d4474c62f2bfb2c70c == auditor sha256 recompute of exact GO phrase (no newline)",
+    "freeze_digests": "decision-cache 7/7; freeze-manifest 5/5; wrapper pins 4/4; proposal self_sha256 4/4 (canonical-json-minus-field)",
+    "arms_amendment": "A7-R1-F2 by A1 disclosed; new_value == frozen arms pin == on-disk decision-cache manifest digest (0187bdf2...)",
+    "v2_worktree": "0c277a94ba2831636cde423d51fd9251ed487bfd on orca/jev-regime-router-v2-integration, clean",
+    "v2_tier1_pins": "3/3 trades 978/1060/343 and artifact sha256 recomputes match",
+    "runtime_scored": "absent (runtime/ holds only 3 frozen timeline JSONs)",
+    "registry": "PLANNED_NOT_STARTED; budget 0/21; S1 SEALED_UNTOUCHED; go REGISTERED_NOT_CONSUMED; workers 0",
+    "specialists_verbatim": "ACC-BASE-RECLAIM-L, UPT-BREAKOUT-L, DNT-RALLY-SOLD-S: every parameter matches the A4 proposal (entries, windows 20/10, SMA20=BOLL-mid, ATR14 Wilder, structural stop min(low,LL20)-0.5*ATR14 at signal bar, 3.0*ATR14 entry-anchored, max-hold 24 regime bars vs fold-force-flat, min-hold 6, sizing 1.0, SPY filters -S)",
+    "turnover_caps": "V2_JEV_TRADE_PINS {BTC_H1:978, BTC_H4:1060, SPY_D1:343} == V2 stored totals == arms freeze pins",
+    "contamination_ceiling": "DISCOVERY_CANDIDATE_FOR_PROSPECTIVE_VALIDATION + promotion_ban + successor_law in frozen evaluation proposal and run_all disclosure",
+    "test_suite": "119 passed + 1 xfailed in 9.57s (exactly mandated; xfail = A5-F1 BUY_HOLD, ACCEPTED)",
+    "dryrun": "all_pass, exit 0, no PnL at any depth, 21 identities distinct, selection NOT executed, committed artifact byte-fresh at HEAD",
+    "arm_de_not_thin_gated": "arm_d/arm_e contain no census/thin references",
+    "selection_audit_rows": "arm C _persist extra carries selection_audit incl. OUTER_FLOOR_THIN rows for every fold of every census-thin regime",
+    "census_stub_real_interplay": "clean: function-local import sees the patch; try/finally restore; no cross-test pollution"
+  },
+  "commands_run": [
+    "git -C <a7r3 worktree> rev-parse HEAD / branch / status",
+    "/tmp/a7r3_audit/refute_n1.py (exit 0, all refutation checks passed)",
+    "/tmp/a7r3_audit/probe_n2.py (leak-undetectability confirmed)",
+    "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests_py -q",
+    "/Users/hoangminhlong/my-quantitative/.venv/bin/python tools/cmd_equivalence.py",
+    "/Users/hoangminhlong/my-quantitative/.venv/bin/python tools/run_diagnostics.py timeline",
+    "/Users/hoangminhlong/my-quantitative/.venv/bin/python tools/cmd_dryrun.py",
+    "/Users/hoangminhlong/my-quantitative/.venv/bin/python tools/cmd_scored.py (+ --check)",
+    "digest battery over freezes/*.json (manifest, wrappers, self_sha256, amendment, V2 pins)",
+    "git -C <v2 worktree> rev-parse HEAD / status",
+    "plans/CYCLE_REGISTRY.json read (read-only)"
+  ],
+  "nothing_repaired": true,
+  "refutation_scripts_location": "/tmp (not in repo)"
+}
