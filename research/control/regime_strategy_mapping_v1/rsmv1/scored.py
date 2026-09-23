@@ -244,6 +244,17 @@ def route_arm(ctx: CellCtx, mapping_by_fold: dict[int, dict], buffer_k: int,
         elif t != cur and d != 0:
             noop += 1
         emitted[i] = cur
+    # unnecessary_close_reopen counter (A7-R1 LOW): label changed while the
+    # direction did not and a fill WOULD have fired under V2 semantics
+    # (strategy-string change). The no-op law suppresses every one of them,
+    # so the fired count must be identically zero.
+    unnecessary_fired = 0
+    for i in range(1, ctx.n):
+        a, b = desired[i - 1], desired[i]
+        if (a is not None and b is not None and a != b
+                and direction_of(a) != 0 and direction_of(a) == direction_of(b)
+                and emitted[i] != b):
+            unnecessary_fired += 1  # suppressed label change (no fill)
     # min-hold suppression fixed point
     iters = 0
     trades_prev: list = []
@@ -253,9 +264,16 @@ def route_arm(ctx: CellCtx, mapping_by_fold: dict[int, dict], buffer_k: int,
         suppressed = _suppress_min_hold(emitted, trades, ctx)
         iters += 1
         if suppressed == emitted:
-            return emitted, {"noop_target_updates": noop,
-                             "fixed_point_iters": iters,
-                             "converged": True}, res
+            report = {"noop_target_updates": noop,
+                      "unnecessary_close_reopen_fired": unnecessary_fired,
+                      "unnecessary_close_reopen_law": "must be identically 0",
+                      "fixed_point_iters": iters,
+                      "converged": True}
+            if unnecessary_fired != 0:
+                raise RuntimeError(
+                    "unnecessary_close_reopen fired "
+                    f"{unnecessary_fired} times — no-op law violated")
+            return emitted, report, res
         emitted = suppressed
         trades_prev = trades
     raise RuntimeError(f"min-hold suppression did not converge in {FIXED_POINT_MAX} iters")
@@ -322,13 +340,37 @@ def arm_c_inner_evidence(ctx: CellCtx, tier: float):
 
 
 def arm_c_selection(ctx: CellCtx, evidence) -> tuple[dict[int, dict], list[dict]]:
-    """Nested selection: mapping per outer fold + audit trail."""
+    """Nested selection: mapping per outer fold + audit trail.
+
+    A7-R1 F1 fix: the OUTER sample floors (census 20/3/100 law) gate FIRST —
+    a census-THIN regime routes FLAT in EVERY fold (reason OUTER_FLOOR_THIN);
+    only non-thin regimes proceed to the inner-floor + inner-net law.
+    """
+    from .census import measure_cell_census
+
+    census = measure_cell_census(CYCLE_DIR, ctx.cell)
     mapping_by_fold: dict[int, dict] = {}
     audit: list[dict] = []
     base_map = {"TRANSITION_UNKNOWN": FLAT}
     for fid in range(4):
         mapping = dict(base_map)
         for regime in PHASES4:
+            c_reg = census["per_regime"].get(regime, {})
+            outer_verdict = c_reg.get("verdict", "NOT_RUN_THIN_REGIME")
+            if outer_verdict == "NOT_RUN_THIN_REGIME":
+                mapping[regime] = FLAT
+                audit.append({
+                    "regime": regime, "fold_id": fid, "selected": "FLAT",
+                    "reason": "OUTER_FLOOR_THIN",
+                    "outer_verdict": outer_verdict,
+                    "outer_episodes_total": c_reg.get("episodes_total"),
+                    "outer_margin_to_floor_min": c_reg.get(
+                        "margin_to_floor_min"),
+                    "inner_episodes": None,
+                    "inner_eligible_decisions": None,
+                    "floor_ok": False,
+                })
+                continue
             elig = eligible_for(ctx.asset, regime)
             # inner sample floors from census episodes starting in folds < fid
             inner_eps = [
@@ -355,7 +397,8 @@ def arm_c_selection(ctx: CellCtx, evidence) -> tuple[dict[int, dict], list[dict]
             mapping[regime] = out.selected if out.selected != "FLAT" else FLAT
             audit.append({
                 "regime": regime, "fold_id": fid, "selected": out.selected,
-                "reason": out.reason, "inner_episodes": inner_episodes,
+                "reason": out.reason, "outer_verdict": outer_verdict,
+                "inner_episodes": inner_episodes,
                 "inner_eligible_decisions": inner_dec,
                 "floor_ok": out.floor_ok,
             })
