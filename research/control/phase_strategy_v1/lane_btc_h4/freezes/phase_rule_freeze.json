@@ -1,0 +1,63 @@
+{
+  "schema": "psv1_lane_btc_h4_phase_rule_freeze@1",
+  "cycle_id": "PHASE-STRATEGY-V1",
+  "cell": "BTC_H4",
+  "dispatch_sha": "6e6ffa3bb1c6ad82fb1771b99abdecfb0bedf849",
+  "frozen_at": "2026-09-23",
+  "law": "deterministic causal rule on H4 closes (UTC); decision at close; first executable fill at NEXT H4 open; TRANSITION_UNKNOWN assigned by explicit uncertainty conditions U1-U4, never model abstention",
+  "observables": {
+    "sma": "SMA(close, 120 H4 bars = 20 days)",
+    "slope": "sma_t / sma_(t-30) - 1  (30 H4 bars = 5 days)",
+    "side": "close_t / sma_t - 1"
+  },
+  "classification": {
+    "U1_warmup": "bar index < 153 -> TRANSITION_UNKNOWN",
+    "U2_slope_deadband": "|slope| < 0.01 -> TRANSITION_UNKNOWN",
+    "U3_side_deadband": "|side| < 0.01 -> TRANSITION_UNKNOWN",
+    "quadrants": {
+      "slope>0, side<0": "ACCUMULATION",
+      "slope>0, side>=0": "UPTREND",
+      "slope<0, side>0": "DISTRIBUTION",
+      "slope<0, side<=0": "DOWNTREND"
+    },
+    "U4_confirmation": "raw state must repeat 3 consecutive bars, else TRANSITION_UNKNOWN"
+  },
+  "params": {
+    "n_sma": 120,
+    "m_slope": 30,
+    "deadband_slope": 0.01,
+    "deadband_side": 0.01,
+    "confirm": 3,
+    "warmup_bars": 153
+  },
+  "param_provenance": "round domain-standard constants fixed BEFORE any history-wide measurement (config.py, committed in the single lane commit); bins from conventions, not from PnL (none exists) and not from label sweeps",
+  "notch_ladder": {
+    "N_SMA": [
+      110,
+      120,
+      130
+    ],
+    "M_SLOPE": [
+      25,
+      30,
+      35
+    ],
+    "DEADBAND_SLOPE": [
+      0.005,
+      0.01,
+      0.015
+    ],
+    "DEADBAND_SIDE": [
+      0.005,
+      0.01,
+      0.015
+    ],
+    "CONFIRM": [
+      2,
+      3,
+      4
+    ]
+  },
+  "sensitivity_law": "+-1 notch => label-agreement % reported, NEVER optimized",
+  "no_jev_law": "no Jev label or cached V2 decision is an input anywhere"
+}
