@@ -8,8 +8,12 @@
 > families. Survey target 2020–2024; probe 2019 separately. No scored cell
 > before a fresh owner GO at this cycle's own gate.
 
-Status: `PLANNED_NOT_STARTED` (registered only after this plan is committed;
-registration via `researchctl cycle register` only).
+Status: `PLANNED_NOT_STARTED` → registered `ACTIVE_LIGHT` 2026-09-23 (budget
+0/24). **Amendment A1 (owner "xsect provenance", 2026-09-23): XSECT admitted
+under the provenance equivalence gate with `EQUIVALENCE_PROVENANCE_ONLY`
+labels (§5); fold law refined — primary folds Y2021/Y2022/Y2023 + fold-4
+Y2020P-if-census-passes-else-Y2024P (§6); all three bootstrap open items
+resolved (§11).**
 
 ## 0. Authority order and relationship to older laws
 
@@ -154,18 +158,36 @@ investigate, never a tolerance relaxation.
   compare against `research/control/v14_run/terminal_report_v14.json`
   (net 0.700216130953, PF 1.360046671971, MDD 0.11585342564,
   price-only 0.011550403641, fold shares) at ≤1e-9 relative, fold map exact.
-- XSECT: the V6 launch manifests (exact window + data hashes) and
-  `results/portfolio_v6/*` were never committed and their backup tarballs
-  (`legacy_root_data.tar.gz` sha `f116db23…`, `crypto-v14_full.tar.gz` sha
-  `bd5f7528…`) are deleted from disk (verified against
-  `research/control/staging_backups_manifest.md` and `~/staging_backups/`).
-  Therefore original-window equivalence is **NOT_RUN (baseline unavailable
-  from bytes)** — prose reconstruction is forbidden. DEFAULT (fail-closed):
-  all XSECT scored cells are `NOT_RUN_IDENTITY` this cycle. The XSECT
-  feasibility, data staging and cost/funding accounting are still prepared
-  and reported so that IF the owner restores the legacy archive (external
-  restore, owner action), the equivalence gate becomes runnable and XSECT
-  cells can be authorized by a plan amendment BEFORE PnL.
+- XSECT (AMENDED A1, owner decision "xsect provenance" 2026-09-23 — supersedes
+  the original NOT_RUN_IDENTITY default): output-equivalence on the original
+  window remains IMPOSSIBLE (V6 launch manifests and `results/portfolio_v6/*`
+  never committed; backup tarballs `legacy_root_data.tar.gz` sha `f116db23…`
+  and `crypto-v14_full.tar.gz` sha `bd5f7528…` deleted from disk — verified
+  against `research/control/staging_backups_manifest.md` and
+  `~/staging_backups/`); prose reconstruction stays forbidden. XSECT is
+  admitted under a **PROVENANCE equivalence gate**, all conditions fail-closed:
+  1. `git diff fbd2e9d36b5349489ef29deec4cdeb8bca2b89ad..HEAD --
+     research/funding_carry.py research/matrix_runner.py` EMPTY (kernel +
+     matrix runner byte-identical since the audited V6 closure — measured
+     2026-09-23);
+  2. `research/hypotheses/H-XSECT-FUNDING-CARRY-v1/{candidate.yaml,status.yaml}`
+     unchanged since the V6 closure era (last change `5b1415e7` lineage —
+     measured 2026-09-23);
+  3. independent identity recovery by the PROSPECTIVE-SHADOW-V1 P1 lane:
+     `research/control/prospective_shadow_v1/identity/identity_recovery.json`
+     @ `41f4f227` (branch `orca/prospective-shadow-v1-integration`), sha256
+     `845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8`,
+     with its recorded A7 identity cross-check PASS (0 HIGH/CRITICAL);
+  4. frozen engine tests PASS (`tests/test_funding_carry.py` 5/5 — M0
+     measured);
+  5. executor disclosure (permanent): `research/portfolio_runner.py` changed
+     since V6 closure (+815/−78) — XSECT replication cells run via a
+     cycle-local driver importing the frozen kernel; the executor is NOT the
+     V6 executor and this is disclosed on every XSECT record.
+  LABEL LAW: every XSECT cell record, table row and report line carries
+  `EQUIVALENCE_PROVENANCE_ONLY`; XSECT results are always reported as a
+  LOWER evidence tier than the output-equivalence families ILLIQ/BASISLV.
+  Any condition 1–4 breaking later = STOP for XSECT (fail-closed, no rescue).
 
 ## 6. Trial identity, arms, budget
 
@@ -179,11 +201,20 @@ investigate, never a tolerance relaxation.
 - Scored cell = (family, arm, fold) with base + frozen stresses (×1.5 fee,
   +2 ticks, +1 delay) + the owner-directed ×2.0-fee diagnostic reported
   inside the cell. Stresses do not consume extra trial identity.
-- Cell matrix (maximum): 3 families × 2 arms × 5 folds = 30; registered
-  budget cap **24 scored cells** (XSECT default-blocked: expected scored ≤16;
-  if Y2020P conditional folds fail census, minimum 12). Every computed
-  outcome counts in the OBSERVED denominator even if publication fails
-  (P-9); `dry-run` and equivalence runs are zero-denominator.
+- Cell matrix (AMENDED A1): PRIMARY scored folds per family = Y2021, Y2022,
+  Y2023 + fold-4 = **Y2020P if that family's P0 stamp census passes, else
+  Y2024P** (deterministic fallback, chosen now). 2 arms × 4 folds × 3
+  families = **24 cells = the registered budget cap exactly**. The
+  Y2020P-or-Y2024P choice is made per family BEFORE any of that family's
+  scored cells run and is recorded with the census evidence. The demoted
+  fold (Y2024P when Y2020P wins, or Y2020P when census fails) may be added
+  later ONLY through a lawful budget-max increase + plan amendment, never by
+  silently exceeding the cap. Stresses (×1.5 fee, +2 ticks, +1 delay) and the
+  owner-directed ×2.0-fee diagnostic are reported inside each cell and do not
+  consume extra trial identity. Every computed outcome counts in the OBSERVED
+  denominator even if publication fails (P-9); dry-run and equivalence runs
+  are zero-denominator. Exact-arm dry-run must show pairwise-distinct record
+  IDs and zero denominator delta.
 - Per-cell trial identity fields: cycle_id, family_id (frozen), arm_id
   (frozen), arm_config_digest (frozen, §2), window fold stamps,
   data_snapshot_digest (staged manifest sha256), code_freeze_sha (per-family
@@ -252,12 +283,15 @@ candidate evidence for a future owner-authorized validation path. No
 shadow/paper/live promotion, no orders, no parameter edits after any PnL is
 visible.
 
-## 11. Open items carried into bootstrap (decisions requested at the gate)
+## 11. Open items carried into bootstrap (AMENDED A1 — owner decisions 2026-09-23)
 
-1. XSECT default-block (§5): accept `NOT_RUN_IDENTITY` for XSECT cells, or
-   owner restores `legacy_root_data.tar.gz` externally so the equivalence
-   gate can run (then amend BEFORE PnL).
-2. Y2020P conditional folds: run if census proves all stamps (starts §3), or
-   drop to a clean 2021–2024 envelope only.
-3. Neighbour (56D) arms: excluded from scoring (§6) — confirm or include
-   (would raise budget cap to 36).
+1. XSECT: RESOLVED by owner decision "xsect provenance" — admitted under the
+   provenance equivalence gate with `EQUIVALENCE_PROVENANCE_ONLY` labels
+   (§5 amended); restoring `legacy_root_data.tar.gz` would additionally
+   ENABLE output-equivalence and is still welcome (upgrade path, amend
+   BEFORE PnL).
+2. Y2020P conditional folds: REFINED fold law §6 — Y2020P is each family's
+   PRIMARY fold-4 if its stamp census passes, else deterministic fallback
+   Y2024P; the demoted fold is amendment-gated (budget cap 24 is exact).
+3. Neighbour (56D) arms: RESOLVED by owner "mặc định hết" — excluded from
+   scoring (diagnostic namespace only).
