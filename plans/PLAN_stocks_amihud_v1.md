@@ -81,12 +81,23 @@ the mechanism is not illiquidity but reversal.
   therefore constructible on this cycle's own panel.
 - Standing stocks-frontier law (STOCKS-NG6 terminal): reopening needs "a
   materially new evidenced source or an owner plan naming a changed
-  killer." This cycle is an explicit owner plan naming a NEW family
-  (Amihud illiquidity long-only) never scored on this asset — the second
-  reserved branch (owner plan), exercised by the owner's own instruction,
-  never dressed up as new data. The 0.30 R0 relaxation was a
-  STOCKS-SEARCH-V1-only owner grant and is DEAD with that cycle: **the
-  standing rho bar 0.20 is binding here and immovable in-cycle.**
+  killer." The LITERAL clause says "changed killer"; this cycle invokes
+  the owner's explicit 2026-09-23 instruction opening a NEW family
+  (Amihud illiquidity long-only) never scored on this asset — an owner
+  plan that names a new family is the stronger form of the same reserved
+  owner-authority branch (a new family has no killer yet to change), and
+  the owner instruction is quoted in the header. A7 adjudicated this
+  reading lawful (r1 checklist A PASS); it is recorded here verbatim so
+  no later reader mistakes it for a data claim. The 0.30 R0 relaxation
+  was a STOCKS-SEARCH-V1-only owner grant and is DEAD with that cycle:
+  **the standing rho bar 0.20 is binding here and immovable in-cycle.**
+- Additional constructible scored ancestors added to the D2 inventory per
+  A7 r1 M-1 (verified in HYPOTHESIS_LEDGER §C): SFV3-A5 idio-shock
+  reversal; V2-A5 trend-defensive rotation. A7 r1's third proposed item
+  ("V13-A6-P2 split-direction") is PUSHED BACK with evidence: the ledger
+  carries no such family (V13 scored only SFV13-A6-P1 dividend-policy
+  transition; all A6-P2 rows are crypto/forex) — grep of
+  HYPOTHESIS_LEDGER.md 2026-09-23, recorded for A7 r2 re-verification.
 
 ## 3. What is frozen BEFORE any PnL exists (no grid search anywhere)
 
@@ -102,9 +113,35 @@ neighbour          same formula, D=63 sessions (the ONE neighbouring
 rebalance          ONE calendar: every 21 trading sessions from the first
                   eligible decision date; decision at session t close;
                   fills at t+1 open; book force-flat at each fold boundary
-book               long-only, equal weight w_i = min(1/N_eligible, cap law
-                  §5); membership = top quintile (>= 80th pct) of ILLIQ
-                  among eligible names at t, ties broken by name
+weights (frozen)   book members (top-quintile names actually held) get
+                  equal target weight 1/N_book, capped by the §4 F6
+                  participation law: w_i = min(1/N_book, 0.15 *
+                  DVmed60_i / AUM_ref) with reference AUM_ref =
+                  $1,000,000 FROZEN; weight released by a cap goes to
+                  CASH (zero return), never redistributed (redistribution
+                  could re-violate caps). Capacity number (reported, not
+                  tuned): the book AUM at which the binding member first
+                  hits its cap.
+membership         top quintile of ILLIQ among eligible names at t, by
+                  RANK-COUNT (no interpolation): sort eligible names by
+                  ILLIQ descending, book size N_book = min(ceil(0.20 *
+                  N_eligible), N_eligible); ties in ILLIQ broken by
+                  ticker lexicographic order (stable, deterministic).
+                  Winsorization: NONE anywhere (ranks only, equal weights)
+                  — stated so that absence is not read as freedom.
+bookability per    a scheduled rebalance date is bookable iff N_book >= 10
+date (frozen)      (equivalently N_eligible >= 50); if not, the book
+                  force-flattens at t+1 open and stays flat until the next
+                  bookable date (event counted, never silently held)
+death contract     if a HELD name's served series ends before its scheduled
+(mid-fold, frozen) exit (next rebalance t+21 or fold boundary), the
+                  position is closed and marked at that name's FINAL
+                  served bar close — the last price at which the name is
+                  evidenced to have traded under this channel; no forward
+                  fill, no synthetic bar, no invented delisting haircut
+                  (none is evidenced). Such exits are counted in the
+                  BC-7a death census and their PnL contribution is
+                  reported separately in §9 attribution.
 eligibility        common stock on the PIT cohort; >= 252 served sessions
                   before first eligible decision (first decision no
                   earlier than the 253rd served session); adjclose_t >=
@@ -159,19 +196,33 @@ F3a SPLIT-CONSISTENCY       OWNER-MANDATED FIXTURE. Split canaries INSIDE
                             split-adjusted volume (or any mixed pair) is
                             a hard fail and an A7 HIGH.
 F3b ZERO/NON-FINITE GUARD   OWNER-MANDATED LAW (STOCKS-SEARCH-V1 died
-     (every division)        here — TECHABORT_3 ZeroDivisionError at
+     (EVERY division site)   here — TECHABORT_3 ZeroDivisionError at
                             adj_close[prev]==0 in a CONTROL-side division).
-                            Before EVERY division whose denominator is a
-                            price or adjusted price — anchor, neighbour,
-                            reversal control, matched book, benchmarks,
-                            census code, no exceptions: denominator must
-                            be > 0 and finite; violation => name-day is
-                            excluded from that computation, counted in a
-                            fail-closed guard_counter, and disclosed in
-                            the final report. An unguarded division site
-                            found in review or audit = HIGH; a raised
-                            ZeroDivisionError/inf/nan reaching a scored
-                            number = TECHABORT, never a silent fill.
+                            EVERY division in this cycle — anchor,
+                            neighbour, reversal control, matched book,
+                            benchmarks, census and reporting code, no
+                            exceptions — belongs to one of three
+                            registered classes, each with its frozen
+                            guard: (i) PRICE-denominator divisions
+                            (return ratios adjclose_t / adjclose_prev):
+                            denominator must be > 0 and finite, else the
+                            name-day is excluded from that computation;
+                            (ii) DOLLAR-VOLUME-denominator divisions (the
+                            Amihud term |r| / DV): DV must be > 0 and
+                            finite, else the name-day is excluded from the
+                            formation mean; (iii) COUNT/PnL-SUM-denominator
+                            divisions in reported ratios (shares, PF,
+                            concentration): a zero denominator FAILS LOUD
+                            (TECHABORT), never silently returns 0. Every
+                            exclusion is counted in a fail-closed
+                            guard_counter and disclosed in the final
+                            report. D1 commits
+                            division_site_register.json enumerating every
+                            division site in the code with its class and
+                            guard; a division site found outside the
+                            register = HIGH; a raised ZeroDivisionError or
+                            inf/nan reaching any computed number =
+                            TECHABORT, never a silent fill or imputation.
 F4 COHORT + COVERAGE        death-inclusive PIT cohort: symbol-list seed
                             (incl. delisted) x per-name first/last served
                             bar => alive-interval per name; per-name
@@ -188,22 +239,34 @@ F5 CLOCK + EXECUTION        decision at t close; fills t+1 open; bar-
                             readable close+1 availability (V7 law); NY
                             calendar via exchange_calendars with DST
                             fixtures; no lookahead anywhere.
-F6 COSTS + PARTICIPATION    band schedule BAND_BPS = {A:10, B:15, C:25}
-                            bps/fill on ADV bands {50M, 10M, 2M} (RULES
-                            §9 lineage); cost exactly once per fill;
-                            STRESS TIER 2.0 PRIMARY; worst-case ceiling
-                            25bps x 2 fills x 2.0 = 100 bps round trip;
-                            band-C fraction measured on the FIRED
-                            population — majority band-C => the 100 bps
-                            ceiling is the operative stress number.
+F6 COSTS + PARTICIPATION    frozen band schedule BAND_BPS = {A:10, B:15,
+                            C:25} bps/fill on the per-name ADV-band
+                            statistic DVmed60_i (the SAME trailing
+                            60-session median dollar volume used for
+                            eligibility), evaluated at the fill's decision
+                            date t: DVmed60 >= $50M => A 10 bps;
+                            >= $10M => B 15 bps; >= $2M => C 25 bps
+                            (names below $2M cannot be held — eligibility
+                            floor). Numeric precedent: STOCKS-SEARCH-V1 F6
+                            values, restated as THIS cycle's own frozen
+                            schedule (no external kernel file is cited —
+                            none is pinned in this tree). Cost is debited
+                            exactly once per fill; STRESS TIER 2.0 PRIMARY
+                            (all bands x2.0); worst-case ceiling 25bps x 2
+                            fills x 2.0 = 100 bps round trip; band-C
+                            fraction measured on the FIRED population —
+                            majority band-C => the 100 bps ceiling is the
+                            operative stress number.
                             LIQUIDITY PARTICIPATION CAP (frozen): per-name
-                            trade notional <= 15% of the name's trailing
-                            60-session median DV at the rebalance date;
-                            weight w_i = min(1/N, cap_i); capacity number
-                            reported = the book AUM at which the binding
-                            name first hits the cap. All frozen before PnL.
+                            trade notional <= 15% of DVmed60_i; weight law
+                            and capacity reporting per §3. All frozen
+                            before PnL.
 F7 BENCHMARKS               SPY total-return buy-and-hold exposure-matched;
-                            C-RANDOM-TIMING clock twin; MATCHED-
+                            C-RANDOM-TIMING clock twin (deterministic:
+                            PCG64/seed 20260923, 200 random rebalance
+                            calendars over the same fold span, statistics
+                            reported as distribution; seed frozen here);
+                            MATCHED-
                             CHARACTERISTIC similar-stock book (EW book of
                             names matched at each rebalance on size-proxy
                             tercile = trailing median DV, volatility
@@ -217,8 +280,10 @@ F7 BENCHMARKS               SPY total-return buy-and-hold exposure-matched;
                             vol and market beta (vs SPY, from the panel)
                             are measured and reported per book.
 F8 FOLD FREEZE (Q-6)        folds frozen BEFORE any D2 diagnostic or PnL;
-                            >= 30 bookable decisions per fold measured at
-                            census (fail-closed kill); 2019, 2020 and
+                            per-fold population floors (two-part, measured
+                            at census, fail-closed kill): >= 30 executed
+                            position entries AND >= 6 bookable rebalance
+                            dates per fold; 2019, 2020 and
                             2020-03 never share a fold with any other
                             period.
 F9 REPRODUCIBILITY          census code, raw-request manifest, digest
@@ -255,14 +320,16 @@ dry-run must show record IDs pairwise distinct.
 D1 commits, hashed, BEFORE any outcome: `family_contract.json` (§3
 verbatim), `fold_contract.json`, `cost_contract.json` (§4 F6),
 `evaluation_contract.json` (§8), `dollar_volume_contract.json` (F3a
-verdict), `shadow_inventory.json` (the §2 ancestor list, constructible
+verdict), `division_site_register.json` (F3b: every division site, class,
+guard), `shadow_inventory.json` (the §2 ancestor list, constructible
 definitions pinned).
 
 D2 measures, on THIS cycle's staged panel and frozen decision grid, the
 pooled |rho| of the anchor's decision representation vs every enumerated
 stock shadow (vol-level, dvol-shock, reversal-5d, momentum-63, price-level
-placebo, DV-level, RELMOM-13W class, dividend-transition where
-constructible). Standing law: **any |rho| > 0.20 => R0 VETO, the family is
+placebo, DV-level, RELMOM-13W class, idio-shock-reversal (SFV3-A5),
+trend-defensive (V2-A5), dividend-transition where constructible).
+Standing law: **any |rho| > 0.20 => R0 VETO, the family is
 not scored, cycle closes `BLOCKED_DATA_OR_SELECTION` with 0 cells**;
 UNMEASURABLE shadows are recorded fail-closed per-shadow (they never
 silently pass); self-subsumption (control rho vs own anchor) reported.
@@ -307,13 +374,19 @@ authorizing · fresh owner GO.
 
 no-lookahead (information set <= t at every decision) · next-available-bar
 execution · fold force-flat + annual split correctness · cost exactly once
-per fill · participation cap arithmetic · **negative zero-division test:
-inject adj_close==0 / inf / NaN fixtures into anchor, neighbour, CONTROL
-and benchmark paths — must be excluded + counted + disclosed, never raise,
-never propagate** · split-basis fixture replay (DV formula pair locked) ·
-deterministic double-run · missing-data fail-closed · S1 access denial ·
-exactly-three-cell enforcement · dry-run leak scan (recursive, no outcome
-fields at any depth).
+per fill · participation cap arithmetic · **negative division tests for
+ALL THREE F3b classes: inject adj_close==0 / inf / NaN price fixtures AND
+DV==0 dollar-volume fixtures AND zero-count denominators into anchor,
+neighbour, CONTROL, matched-book and benchmark paths — classes (i)/(ii)
+must be excluded + counted + disclosed (never raise, never propagate),
+class (iii) must FAIL LOUD** · division-site register completeness (every
+division in the code is registered; a fixture-built unregistered site must
+be caught) · split-basis fixture replay (DV formula pair locked) ·
+deterministic double-run · missing-data fail-closed · mid-fold death
+contract fixture (held name's series ends => final-served-close mark,
+counted, attributed) · bookability floor fixture (N_book < 10 => flat,
+counted) · S1 access denial · exactly-three-cell enforcement · dry-run
+leak scan (recursive, no outcome fields at any depth).
 
 ## 9. Evaluation contract (frozen report shape; PASS/FAIL/NOT_RUN per item)
 
@@ -325,7 +398,12 @@ share (<= 50% bar), largest-calendar-year share, largest single-ticker PnL
 share, top-decile ticker share. Comparisons: SPY exposure-matched on the
 same clock; matched-characteristic book same clock; random-timing twin.
 Reversal adjudication: control earning >= 0.5x anchor same-sign in >= 2/3
-folds => falsification-by-control REJECT. Vol/beta attribution: measured
+folds => falsification-by-control REJECT. Attribution disclosures:
+mid-fold death exits reported separately (§3 death contract); the
+formation law's gap-halt interaction (a return spanning a multi-session
+halt enters the ILLIQ mean as one observation and can inflate ILLIQ for
+gappy names — F4 gap census cross-tabulated against book membership).
+Vol/beta attribution: measured
 market beta vs SPY and vol-tercile composition per book, reported. Stage-A
 gates (standing, unrelaxed): net expectancy > 0 after band costs; PF >=
 1.10; >= 2/3 folds positive net; MDD <= 15%; concentration <= 50%; SPY-
