@@ -28,6 +28,7 @@
   (re-stamped at PHASE-STRATEGY-V1 close 2026-09-23: +20/+20 arm×cell outcomes (4 candidates + 4 controls + 12 baseline-cells; 52 raw computations with tiers folded) — first shared/phase-class cells, program 283/286, 0 survivors; per P-9 the rows carry post-close truth)
   (re-stamped at BTC-H4-CONTINUATION-V2 close 2026-09-23: +0/+0 — NO scored run, NO candidate PnL ever computed (forensic rebuild + audit recomputes are reproductions of the predecessor's record, rel-err 0.0); program 283/286 UNCHANGED; per P-9 the rows carry post-close truth)
   (re-stamped at BTC-H4-TWO-REGIME-V1 close 2026-09-23: +0/+0 — NO scored run, no candidate PnL ever computed; the detector census is a descriptive PIT measurement, not a trial; program 283/286 UNCHANGED; per P-9 the rows carry post-close truth)
+  (re-stamped at EURUSD-OPEN-SEARCH-V1 close 2026-09-23: +48/+48 exploratory S0 trials after measured bid/ask costs (12 families x 4 configs, D2 OWNER_WAIVED_EXPLORATORY; tiers folded) — forex 48->96, program 283/286 -> 331/334; 5/48 dev-positive, 1 frozen candidate FAILED its one preregistered holdout look (-134.4 pips @1.0) -> 0 survivors, NO_CANDIDATE_NO_VALUE; data = Dukascopy public M1 bid/ask 2021-2025 under owner source delegation (TCU risk disclosed); per P-9 the rows carry post-close truth)
   The first Stage-A survivor (FXFV3-A6-P1) was invalidated by its own
   remediation cycle — see the Free-V3 row and `LESSONS.md` P-1..P-6.
 - **No strategy has ever been promoted.** Every governed scored cycle closed

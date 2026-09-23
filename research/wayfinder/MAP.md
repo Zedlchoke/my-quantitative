@@ -55,31 +55,39 @@
   btc_h4_two_regime_v1/` (census/, P2_ADJUDICATION_AND_CLOSE.json,
   audits_a7/). Denominators UNCHANGED: program 283/286 (P-9).
 
-- **EURUSD-OPEN-SEARCH-V1 REGISTERED BLOCKED → `BLOCKED_SOURCE_LICENSE` (P1,
-  2026-09-23)**; branch `orca/eurusd-open-search-v1-integration` head
-  ac54f2fc, plan `plans/PLAN_eurusd_open_search_v1.md`; owner directive
-  2026-09-23 opened an after-cost EURUSD open search with **D2 =
-  OWNER_WAIVED_EXPLORATORY** (novelty/mechanism veto waived pre-backtest in
-  the exploratory phase; recording D2 PASS forbidden; data/license/PIT,
-  costs, trial accounting, reproduction, A7, owner GO, S1 seal, heavy lock
-  NOT waived). P1 re-survey (owner-ordered, TrueFX from original terms):
-  historical tick downloads **login-gated, license text only behind free
-  login**, legacy anonymous archive URLs 404, live `webrates` endpoint is
-  not historical and has no public terms; **no OANDA credential exists**
-  (env names census); **no Dukascopy written consent**; no new rights
-  artifact since EURUSD-DATA-QUALIFICATION-V1 `BLOCKED_SOURCE_LICENSE`
-  2026-09-22. **0/96 trials, 0 PnL**; 24-family × 4-config preregistered
-  campaign (trend/MR/breakout-fail/vol/session/event-PIT/order-flow-proxy
-  classes), dev/holdout split with a sealed final-block holdout (program-S0,
-  never S1), measured-spread cost authority + 1.5×/2× stress, one-shot
-  holdout check, max 1–2 candidate freezes. Single unblock path: ONE owner
-  source decision — TrueFX free-registration license capture (recommended) /
-  OANDA v20 practice token / Dukascopy consent email / paid vendor; then
-  P1-bis bounded probe → data freeze → A7 prelaunch → owner GO at own gate
-  (`GO EURUSD OPEN SEARCH V1 EXPLORATORY SCORED` registered, NOT consumed).
-  Evidence: `.worktrees/eurusd-open-search-v1/integration/research/control/
-  EURUSD-OPEN-SEARCH-V1/` (P1_SOURCE_RESURVEY_2026-09-23.md, P1_VERDICT.json,
-  CYCLE_VERDICT.md). Denominators unchanged (forex 48/48, program 283/286).
+- **EURUSD-OPEN-SEARCH-V1 CLOSED → `EURUSD_OPEN_SEARCH_V1_NO_CANDIDATE_NO_VALUE`**
+  (2026-09-23 same-day lifecycle: registered BLOCKED at P1 → owner directive #2
+  delegated source choice + machine downloads → ACTIVE_LIGHT → TERMINAL at
+  2f5c6933; budget 48/96; S1 SEALED; no orders; GO phrase extinguished
+  UNCONSUMED; A7 prelaunch AUTHORIZED + A7 terminal CONFIRM 0 blocking):
+  - Data plane (new for forex): **Dukascopy public M1 BID/ASK candles
+    2021-2025** — 3,652/3,652 day files 0 missing; bi5 24-byte layout
+    PROVEN against tick ground truth (fail-closed probe caught a 20B-vs-24B
+    misalignment first); census BUILD_PASS (119,038 valid 15m bars, 0
+    non-positive-spread minutes, spread p50 0.3 pips; session/rollover
+    spread census in census.json). Recorded OWNER_DIRECTIVE_SOURCE_AUTHORIZATION
+    with TCU_RISK_DISCLOSED (site TCU posture unresolved with the vendor;
+    owner explicitly delegated source choice + authorized machine downloads
+    2026-09-23; no account/ToS/purchase; raw bytes machine-local, sha
+    manifests committed). **Unblocks future FX cost-authority work: measured
+    spread curves by session/rollover now exist sha-pinned on disk.**
+  - Campaign (D2 owner-waived exploratory): 12 families × 4 configs = 48
+    trials; engine v1 fixtures 7/7 (a pandas-3 datetime-unit bug broke
+    force-flat in early code — caught by a hand fixture BEFORE any outcome).
+    **5/48 positive after measured cost; 4/48 at 1.5× stress; 3/48 at 2.0×**;
+    exactly 1 gate-eligible → frozen FXOS-04-C4 (Bollinger fade N=192 z=2.5,
+    dev +1,203.6 pips PF 1.1445) → **FAILED its ONE preregistered holdout
+    look** (2023-07..2025-12: −134.4 pips @1.0, −585.1 @1.5; 630 trades) →
+    no rescue, terminal. Baselines same window: LONG_ALWAYS +286.7/−542.1,
+    RANDOM_MATCHED −8,948.6 (engine cost honesty). Lesson: 15m EURUSD
+    after-cost positives did not survive out-of-sample; dev edge here is
+    selection luck across a 48-trial denominator.
+  - Incidents: probe layout bug (pre-corpus, fail-closed); pandas-3 calendar
+    bug (pre-outcome, fixture-caught); hand-typed digest corrected (188a2070,
+    disclosed in candidates_frozen.json); A7-F4 verdict-text count corrected
+    in terminal anchor.
+  - Denominators: forex 48→96/96, program 283/286→331/334 (P-9 ledger
+    stamp). EURUSD-DATA-QUALIFICATION-V1 verdict untouched.
 
 - **PHASE-STRATEGY-V1 CLOSED → `PHASE_STRATEGY_V1_NO_INCREMENTAL_VALUE`**
   (2026-09-23, branch `orca/phase-strategy-v1-integration` terminal anchor
