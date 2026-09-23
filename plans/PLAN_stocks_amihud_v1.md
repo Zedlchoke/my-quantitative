@@ -163,7 +163,11 @@ eligibility        common stock on the PIT cohort; >= 252 served sessions
                   before first eligible decision (first decision no
                   earlier than the 253rd served session); adjclose_t >=
                   $1.00; trailing 60-session median DV >= $2,000,000;
-                  served bar at t and t+1 (else name skipped, counted)
+                  served bar at t and t+1 (else name skipped, counted);
+                  FORMATION QUORUM (amendment A4, pinned pre-PnL after A7
+                  prelaunch H-1): a name is scorable at t only if its
+                  formation window yields >= floor(D/2) valid guarded
+                  daily terms (anchor 10/21, neighbour 31/63)
 reversal control   same machinery, same calendar, same eligibility,
                   ranking axis = 5-session past return ASC (long the
                   biggest 5-session losers) — the ONE reversal control
@@ -281,7 +285,14 @@ F6 COSTS + PARTICIPATION    frozen band schedule BAND_BPS = {A:10, B:15,
                             trade notional <= 15% of DVmed60_i; weight law
                             and capacity reporting per §3. All frozen
                             before PnL.
-F7 BENCHMARKS               SPY total-return buy-and-hold exposure-matched;
+F7 BENCHMARKS               SPY total-return buy-and-hold exposure-matched
+                            (amendment A4 reading: PER-FOLD buy-and-hold —
+                            one entry at the fold's first anchor-grid
+                            fill, one exit at the fold's last close; the
+                            random-timing twin is the calendar control,
+                            NOT the SPY benchmark; exposure matching is
+                            applied at evaluation via the book's
+                            fold-average invested weight);
                             C-RANDOM-TIMING clock twin (deterministic:
                             PCG64/seed 20260923, 200 random rebalance
                             calendars over the same fold span, statistics
