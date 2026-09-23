@@ -130,7 +130,8 @@ membership         top quintile of ILLIQ among eligible names at t, by
                   Winsorization: NONE anywhere (ranks only, equal weights)
                   — stated so that absence is not read as freedom.
 bookability per    a scheduled rebalance date is bookable iff N_book >= 10
-date (frozen)      (equivalently N_eligible >= 50); if not, the book
+date (frozen)      (ceil(0.20*N_eligible) >= 10, i.e. N_eligible >= 46);
+                  if not, the book
                   force-flattens at t+1 open and stays flat until the next
                   bookable date (event counted, never silently held)
 death contract     if a HELD name's served series ends before its scheduled
@@ -212,7 +213,10 @@ F3b ZERO/NON-FINITE GUARD   OWNER-MANDATED LAW (STOCKS-SEARCH-V1 died
                             finite, else the name-day is excluded from the
                             formation mean; (iii) COUNT/PnL-SUM-denominator
                             divisions in reported ratios (shares, PF,
-                            concentration): a zero denominator FAILS LOUD
+                            concentration) and (iv) STATISTICAL
+                            denominators (realized-vol session counts,
+                            variance degrees of freedom): a zero or
+                            negative denominator FAILS LOUD
                             (TECHABORT), never silently returns 0. Every
                             exclusion is counted in a fail-closed
                             guard_counter and disclosed in the final
@@ -329,6 +333,11 @@ pooled |rho| of the anchor's decision representation vs every enumerated
 stock shadow (vol-level, dvol-shock, reversal-5d, momentum-63, price-level
 placebo, DV-level, RELMOM-13W class, idio-shock-reversal (SFV3-A5),
 trend-defensive (V2-A5), dividend-transition where constructible).
+`shadow_inventory.json` also RECORDS (A7 r2 N-3) the membership decision
+for every borderline ancestor — including SFV13-A6-P2 (FAMILY_FAILURES
+row: SELECTION_REJECTION, never scored; IN or OUT of the rho panel, with
+the reason) — so no ancestor is silently dropped.
+
 Standing law: **any |rho| > 0.20 => R0 VETO, the family is
 not scored, cycle closes `BLOCKED_DATA_OR_SELECTION` with 0 cells**;
 UNMEASURABLE shadows are recorded fail-closed per-shadow (they never
@@ -402,7 +411,14 @@ folds => falsification-by-control REJECT. Attribution disclosures:
 mid-fold death exits reported separately (§3 death contract); the
 formation law's gap-halt interaction (a return spanning a multi-session
 halt enters the ILLIQ mean as one observation and can inflate ILLIQ for
-gappy names — F4 gap census cross-tabulated against book membership).
+gappy names — F4 gap census cross-tabulated against book membership);
+PARTICIPATION-CAP INERTNESS DISCLOSURE (A7 r2 N-1): at the frozen
+AUM_ref $1,000,000 the cap term 0.15*DVmed60_i/AUM_ref >= 0.15*$2M/$1M
+= 0.30 for every legal name while 1/N_book <= 0.10 for N_book >= 10 —
+the cap cannot bind at the reference AUM; it exists to make the CAPACITY
+number (the book AUM at which the binding member first hits its cap)
+explicit, and §9 reports that number rather than implying the cap
+distorted weights at AUM_ref.
 Vol/beta attribution: measured
 market beta vs SPY and vol-tercile composition per book, reported. Stage-A
 gates (standing, unrelaxed): net expectancy > 0 after band costs; PF >=
