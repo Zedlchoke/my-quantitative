@@ -1,0 +1,57 @@
+{
+  "schema": "family_contract/stocks_amihud_v1@1",
+  "frozen_utc": "2026-09-23T06:40:00Z",
+  "authority": "plans/PLAN_stocks_amihud_v1.md §3 (amendments A1 44513e71 + A2 15d3f470), verbatim transcription",
+  "cycle_id": "STOCKS-AMIHUD-V1",
+  "family_id": "SAMV1-AMIHUD-LONG-ILLIQ",
+  "mechanism_source": "Amihud (2002), J. Fin. Markets 5(1), doi 10.1016/S1386-4181(01)00024-6",
+  "anchor": {
+    "arm_id": "SAMV1-ANCHOR-ILLIQ21",
+    "formula": "ILLIQ_i,t = mean over the D=21 most recent served sessions d<t of |r_i,d| / DV_i,d",
+    "r_definition": "adjusted_close_i,d / adjusted_close_i,d-1 - 1 (guard class i: denominator >0 finite else name-day excluded+counted)",
+    "dv_definition": "dollar_volume_contract.json frozen pair (adjusted_close x volume; guard class ii: DV >0 finite else name-day excluded+counted)",
+    "winsorization": "NONE (ranks only, equal weights)",
+    "direction": "LONG the most illiquid quintile (Amihud 2002 sign); frozen; never flipped after PnL"
+  },
+  "neighbour": {
+    "arm_id": "SAMV1-NEIGH-ILLIQ63",
+    "formula": "same with D=63 (the ONE neighbouring lookback; no other lookback ever computed)"
+  },
+  "reversal_control": {
+    "arm_id": "SAMV1-C-REVERSAL5",
+    "construction": "same machinery, same calendar, same eligibility, ranking axis = 5-session past return ASC (long the biggest 5-session losers)",
+    "adjudication": "control earning >= 0.5x anchor same-sign in >= 2/3 folds => falsification-by-control REJECT (Q-11 kill vs null distinguished in verdict)"
+  },
+  "rebalance_calendar": {
+    "step_sessions": 21,
+    "decision_clock": "decision at session t close; fills at t+1 open; book force-flat at each fold boundary",
+    "grid": "every 21 trading sessions from first eligible decision date (census grid 2019-01-02..2022-12-30, 48 dates, p0/f4_cohort_census.json)"
+  },
+  "membership": {
+    "rule": "top quintile by rank-count (no interpolation): sort eligible names by ILLIQ desc; N_book = min(ceil(0.20*N_eligible), N_eligible); ties by ticker lexicographic"
+  },
+  "weights": {
+    "law": "w_i = min(1/N_book, 0.15 * DVmed60_i / AUM_ref); AUM_ref = 1000000.00 USD frozen; cap excess to CASH (zero return), never redistributed; cap is provably inert at AUM_ref (disclosure in evaluation); capacity number = book AUM at which binding member first hits cap"
+  },
+  "bookability": {
+    "floor": "date bookable iff N_book >= 10 (i.e. N_eligible >= 46); else force-flat at t+1 open until next bookable date (counted)"
+  },
+  "eligibility": {
+    "type": "Common Stock, Exchange in {NASDAQ, NYSE, NYSE MKT, AMEX} (universe_frozen.json, 16572 codes)",
+    "warmup": ">= 252 served sessions before a name's first eligible decision (dynamic per name; first decision no earlier than its 253rd served session) — NOTE: p0 census warmup counts are static-at-grid-start lower bounds; the engine implements the dynamic law",
+    "price_floor": "adjusted_close_t >= 1.00 USD",
+    "dv_floor": "trailing 60-session median DV >= 2000000.00 USD (>=30 of 60 sessions present, else ineligible at t)",
+    "served_bars": "served bar at t and t+1 required (else name skipped, counted)"
+  },
+  "death_contract": {
+    "law": "held name whose served series ends before scheduled exit: position closed and marked at that name's FINAL served bar close; no forward fill, no synthetic bar, no invented haircut; counted in BC-7a census; PnL contribution reported separately"
+  },
+  "folds": {
+    "F1_2019": ["2019-01-01", "2019-12-31"],
+    "F2_2020": ["2020-01-01", "2020-12-31"],
+    "F3_2021_22": ["2021-01-01", "2022-12-31"],
+    "law": "frozen before any PnL; 2020-03 lives inside F2 alone; annual split reporting regardless (F3 also reported 2021 and 2022 separately); floors: >=30 executed position entries AND >=6 bookable dates per fold (bookable census: 12/13/23 PASS)"
+  },
+  "pull_window": ["2017-07-01", "2022-12-31"],
+  "no_grid_search": "no parameter of this contract may be varied inside the cycle; any change = new plan + new cycle"
+}
