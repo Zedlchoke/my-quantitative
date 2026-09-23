@@ -574,6 +574,12 @@ def cmd_backtest(fz: Freezes, args) -> dict:
         raise SystemExit(20)
 
     # scored-phase GO authority valid: run the 18 frozen cells atomically
+    if args.cell or args.arm:
+        print(json.dumps({
+            "status": "REFUSED_BACKTEST_QUARANTINE",
+            "reason": "the scored phase runs ALL cells x arms in ONE atomic run; per-cell/per-arm invocation is not the frozen path",
+        }, sort_keys=True))
+        raise SystemExit(20)
     from .scored import run_scored, ARMS, TIERS  # noqa: F401
 
     cells = ["BTC_H1", "BTC_H4", "SPY_D1"]
@@ -627,8 +633,8 @@ def main(argv=None) -> int:
     rp.add_argument("--mock", action="store_true")
 
     bt = sub.add_parser("backtest")
-    bt.add_argument("--cell", required=True, choices=list(CELLS))
-    bt.add_argument("--arm", required=True)
+    bt.add_argument("--cell", default=None, choices=list(CELLS) + [None])
+    bt.add_argument("--arm", default=None)
     bt.add_argument("--scored-go-token", default=None)
     bt.add_argument("--force-show-metrics", action="store_true", default=False)
 

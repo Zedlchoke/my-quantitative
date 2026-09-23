@@ -26,13 +26,28 @@ def _run_cli(argv):
         return int(e.code or 0)
 
 
-def test_backtest_refuses_without_token(capsys):
-    """QUARANTINE: no scored-phase GO authority exists -> refuse (exit 20)."""
-    assert not (default_cycle_dir() / jrv2_run.SCORED_GO_AUTHORITY).exists()
-    code = _run_cli(["backtest", "--cell", "BTC_H1", "--arm", "JEV_ONLY_ROUTER"])
+def test_backtest_refuses_without_token(capsys, tmp_path, monkeypatch):
+    """QUARANTINE teeth, post-GO: (a) real authority present + NO token ->
+    refuse; (b) authority absent (temp clone) -> refuse with does-not-exist."""
+    real = default_cycle_dir() / jrv2_run.SCORED_GO_AUTHORITY
+    if real.exists():
+        code = _run_cli(["backtest"])  # atomic invocation, no token
+        assert code == 20
+        out = json.loads(capsys.readouterr().out)
+        assert out["status"] == "REFUSED_BACKTEST_QUARANTINE"
+        assert "token" in out["reason"].lower()
+    else:
+        code = _run_cli(["backtest", "--cell", "BTC_H1", "--arm", "JEV_ONLY_ROUTER"])
+        assert code == 20
+    # file-absent branch on a clone
+    import shutil
+    clone = tmp_path / "cycle"
+    clone.mkdir()
+    shutil.copytree(default_cycle_dir() / "freezes", clone / "freezes")
+    monkeypatch.setattr(jrv2_run, "_default_cycle_dir", lambda: clone)
+    code = _run_cli(["backtest"])
     assert code == 20
     out = json.loads(capsys.readouterr().out)
-    assert out["status"] == "REFUSED_BACKTEST_QUARANTINE"
     assert "does not exist" in out["reason"]
 
 
@@ -41,7 +56,7 @@ def test_backtest_refuses_even_with_a_token(capsys):
     not exist (the token cannot be honored without the owner-registered
     sha256 pin)."""
     code = _run_cli([
-        "backtest", "--cell", "BTC_H1", "--arm", "DETERMINISTIC_PLUS_JEV_CONFIRMATION",
+        "backtest",
         "--scored-go-token", "deadbeef-deadbeef",
     ])
     assert code == 20
@@ -55,7 +70,8 @@ def test_backtest_quarantine_is_fail_closed_against_forced_authority(tmp_path, f
     import hashlib
     import shutil
 
-    assert not (fz.cycle_dir / jrv2_run.SCORED_GO_AUTHORITY).exists()  # real cycle untouched
+    # real cycle authority may legitimately exist post-GO (2026-09-23);
+    # this test operates exclusively on the clone below.
     clone = tmp_path / "cycle"
     clone.mkdir()
     shutil.copytree(fz.freezes_dir, clone / "freezes")
