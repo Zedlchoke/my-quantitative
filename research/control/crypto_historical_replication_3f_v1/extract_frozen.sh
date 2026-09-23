@@ -175,5 +175,5 @@ V6C=fbd2e9d36b5349489ef29deec4cdeb8bca2b89ad
 mkdir -p "$DEST/v6_root/research" "$DEST/v6_root/data"
 for f in $(git -C "$REPO" ls-tree --name-only "$V6C" research/ | grep '\.py$'); do git -C "$REPO" show "$V6C:$f" > "$DEST/v6_root/$f"; done
 for f in strategy_base.py strategy_funding_crowding_mr.py strategy.py strategy_breakout.py strategy_mean_reversion.py strategy_reclaim_mr.py strategy_trend_pullback.py; do git -C "$REPO" cat-file -e "$V6C:$f" 2>/dev/null && git -C "$REPO" show "$V6C:$f" > "$DEST/v6_root/$f" || true; done
-for f in $(git -C "$REPO" ls-tree --name-only "$V6C" data/); do mkdir -p "$DEST/v6_root/data"; git -C "$REPO" show "$V6C:data/$f" > "$DEST/v6_root/data/$f"; done
+for f in $(git -C "$REPO" ls-tree --name-only "$V6C" data/); do mkdir -p "$DEST/v6_root/data"; git -C "$REPO" show "$V6C:data/$f" > "$DEST/v6_root/data/$f" 2>/dev/null || { git -C "$REPO" show "$V6C:$f" > "$DEST/v6_root/$f"; }; done
 echo "v6_root extracted"
