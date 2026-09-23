@@ -244,17 +244,19 @@ def route_arm(ctx: CellCtx, mapping_by_fold: dict[int, dict], buffer_k: int,
         elif t != cur and d != 0:
             noop += 1
         emitted[i] = cur
-    # unnecessary_close_reopen counter (A7-R1 LOW): label changed while the
-    # direction did not and a fill WOULD have fired under V2 semantics
-    # (strategy-string change). The no-op law suppresses every one of them,
-    # so the fired count must be identically zero.
-    unnecessary_fired = 0
+    # no-op suppression counter (A7-R1 LOW, corrected RSMV1-INC-1c):
+    # label changed to a different SAME-DIRECTION strategy string and the
+    # no-op law kept the standing position (emitted != desired). These are
+    # SUPPRESSED changes — by construction they cause ZERO fills (the
+    # emitted string changes only on direction changes). The fill-level
+    # invariant (no regime_off exit immediately followed by a same-direction
+    # entry) is proven from the engine's trade stream below.
+    noop_suppressed_label_changes = 0
     for i in range(1, ctx.n):
         a, b = desired[i - 1], desired[i]
         if (a is not None and b is not None and a != b
-                and direction_of(a) != 0 and direction_of(a) == direction_of(b)
-                and emitted[i] != b):
-            unnecessary_fired += 1  # suppressed label change (no fill)
+                and direction_of(a) != 0 and direction_of(a) == direction_of(b)):
+            noop_suppressed_label_changes += 1
     # A4 min-hold law, deterministic form (RSMV1-INC-1b remediation):
     # a DIRECTION change of the desired series is DEFERRED until the current
     # invested desired-segment is >= MIN_HOLD_REGIME_BARS old (counted on the
@@ -286,16 +288,28 @@ def route_arm(ctx: CellCtx, mapping_by_fold: dict[int, dict], buffer_k: int,
         held[i] = cur
     emitted = held
     res = _run_engine(ctx, emitted, specs, tier)
+    # FILL-LEVEL no-op invariant: a regime_off exit must never be immediately
+    # followed by a same-direction entry (that would be the unnecessary
+    # close/reopen the turnover law forbids).
+    tr_list = res.trades
+    unnecessary_fills = sum(
+        1 for j in range(len(tr_list) - 1)
+        if tr_list[j].exit_reason == "regime_off"
+        and tr_list[j + 1].direction == tr_list[j].direction
+    )
     report = {"noop_target_updates": noop,
-              "unnecessary_close_reopen_fired": unnecessary_fired,
-              "unnecessary_close_reopen_law": "must be identically 0",
+              "noop_suppressed_label_changes": noop_suppressed_label_changes,
+              "unnecessary_close_reopen_fills": unnecessary_fills,
+              "unnecessary_close_reopen_law": "must be identically 0 "
+              "(proven from the trade stream)",
               "min_hold_deferred_direction_changes": deferred,
               "mechanism": "deterministic desired-series deferral "
                            "(min-hold 6 regime bars, buffered clock)"}
-    if unnecessary_fired != 0:
+    if unnecessary_fills != 0:
         raise RuntimeError(
-            "unnecessary_close_reopen fired "
-            f"{unnecessary_fired} times — no-op law violated")
+            "unnecessary_close_reopen FIRED "
+            f"{unnecessary_fills} same-direction close/reopen pairs — "
+            "no-op law violated")
     return emitted, report, res
     raise RuntimeError(f"min-hold suppression did not converge in {FIXED_POINT_MAX} iters")
 
