@@ -1,0 +1,49 @@
+{
+ "schema": "eosv1s.a7_prelaunch_audit_r2@1",
+ "cycle_id": "EURUSD-RANGEEXP-SCORED-V1",
+ "auditor": "A7",
+ "round": 2,
+ "audit_type": "DELTA RE-AUDIT after round-1 REFUSED (F1-F5); scope limited to the remediation",
+ "verdict": "AUTHORIZED",
+ "measured_utc": "2026-09-23T21:00:41Z",
+ "fresh_context": true,
+ "fresh_context_declaration": "A7 round-2: same audit-only discipline; all delta checks re-measured from bytes/commands in this session (git show/diff, registry JSON read, two independent dry-run executions, engine sha re-verification); no writes other than the audit artifacts; no commits.",
+ "remediation_commit": "8110dd26a693d17ad3d35b5212f51c03e260aa3e",
+ "registry_commit_on_main": "d7c9d2d345b3b4e8b54bd1ccb6d79ae3f3d78b19",
+ "branch": "orca/eurusd-rangeexp-scored-v1-integration",
+ "head_at_audit": "8110dd26a693d17ad3d35b5212f51c03e260aa3e",
+ "remediation_scope_verified": "git show --stat 8110dd26: touches ONLY research/control/EURUSD-RANGEEXP-SCORED-V1/scripts/scored_cells.py (+33/-8)",
+ "delta_checks": [
+  {"id": "R2_1_registry_row", "result": "PASS_RESOLVES_F1", "detail": "canonical plans/CYCLE_REGISTRY.json row verified: cycle_id EURUSD-RANGEEXP-SCORED-V1, lifecycle ACTIVE_LIGHT, budget {used:0, max:6}, head c5987372382f3a425c358406f238893c93b25693 (freeze commit), branch orca/eurusd-rangeexp-scored-v1-integration, plan plans/PLAN_eurusd_rangeexp_scored_v1.md, phase REGISTERED, s1 SEALED_UNTOUCHED, go_phrase 'GO EURUSD RANGEEXP SCORED V1', go_phrase_state REGISTERED_NOT_CONSUMED, workers 0, active_heavy false; `cycle list | grep RANGEEXP-SCORED` prints the row; registry commit d7c9d2d3 verified on main"},
+  {"id": "R2_2_five_metric_s1_dry_run", "result": "PASS", "detail": "code now uses real equity from run_strategy and the ok conjunction covers all five metrics (trades exact; net_pips <=1e-6; pf None-ness + <=1e-6; hit None-ness + <=1e-9; maxdd_pips <=1e-6); A7 independently ran scored_cells.py --dry-run twice from the worktree root: 12/12 reconciled:true; parsed stdout programmatically: per-check fields only {arm,k,window,reconciled}, zero PnL tokens in output; tail 'DRY_RUN: S1 all reconciled; no PnL printed'"},
+  {"id": "R2_3_diffs_match_plan", "result": "PASS", "detail": "F3 legs() emits long_pf/short_pf via leg_pf (gross win/gross loss, round 4, None on no-loss/empty leg) per plan section 2; F4 full baseline set per window at k=1.0 (CASH=0.0, LONG_ALWAYS ones, SHORT_ALWAYS -ones, RANDOM_MATCHED np.random.default_rng(20260923).integers(-1,2,size=n)) recorded as rec['baselines'] DEV_k1/HOLDOUT_k1, recipe byte-matches V2 v2_holdout.py; F5 S6 drift = short_net>0 AND total_net!=0 AND short_net >= 0.5*total_net AND SHORT_ALWAYS(k=1.0, same window)>0 — plan section 2 literal; diff contains nothing beyond these hunks; configs (CANDS/cfg_of indices 2/3), refs, slices, boundaries unchanged"},
+  {"id": "R2_4_no_scored_run_yet", "result": "PASS", "detail": "outcomes/ empty before and after dry-runs (no scored_cells.json); worktree clean except the untracked audits/ artifact pair"}
+ ],
+ "spot_reverification": [
+  {"id": "R2_engine_chain_intact", "result": "PASS", "detail": "sha256(engine.py)=cc868402e63db2f6b487fc544fe0799889db4c5e0e0df3f3689693f0871cb491; cmp byte-identical to EURUSD-OPEN-SEARCH-V2/scripts/engine.py in the same worktree; data plane untouched (remediation commit stat: 1 file)"},
+  {"id": "R2_locks", "result": "PASS", "detail": "no contention for this light compute; stale foreign row CRYPTO-HISTORICAL-REPLICATION-3F-V1 is that cycle's governance (round-1 F6 stands as recorded)"}
+ ],
+ "round1_findings_closure": {
+  "F1": "CLOSED_RESOLVED",
+  "F2": "CLOSED_RESOLVED_IN_CODE",
+  "F3": "CLOSED_RESOLVED_IN_CODE",
+  "F4": "CLOSED_RESOLVED_IN_CODE",
+  "F5": "CLOSED_RESOLVED_IN_CODE",
+  "F6": "STANDS_AS_RECORDED_FOREIGN_CYCLE"
+ },
+ "findings_round2": [
+  {"id": "F7", "severity": "LOW", "blocking": false, "finding": "registry row head (c5987372) one commit behind measured branch tip (8110dd26) because the tip advanced by the remediation commit one minute after registration; benign (freeze anchor unchanged, re-verified); recommend head refresh at next registry touch"},
+  {"id": "F8", "severity": "LOW", "blocking": false, "finding": "cosmetic: module docstring still says 'tolerance 1e-9 abs on pips' while code uses TOL=1e-6 on net_pips/maxdd and 1e-9 on hit only; dead no-op lines 'if name == DEV or not dry_run: pass'; no behavior impact"},
+  {"id": "F9", "severity": "LOW", "blocking": false, "finding": "informational: plan-literal S6 comparison is vacuous for a hypothetical negative-total book once short_net>0; outcome-identical for the actual books (C3/C4 totals positive in both windows per V2 refs); recorded per remediation intent"}
+ ],
+ "gate_arithmetic": {
+  "technical_readiness": "PASS",
+  "governance_readiness": "PASS",
+  "verdict": "AUTHORIZED",
+  "conditions": "key 1 only (A7). Scored cells S1-S6 may run under plan plans/PLAN_eurusd_rangeexp_scored_v1.md, budget cap 6, ONLY after the owner types the verbatim key-2 GO phrase 'GO EURUSD RANGEEXP SCORED V1' at this cycle's own gate. This AUTHORIZED is NOT the GO."
+ },
+ "artifacts": [
+  "audits/a7_prelaunch_audit.md (round-2 section appended)",
+  "audits/a7_prelaunch_audit_r2.json"
+ ]
+}

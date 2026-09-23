@@ -1,0 +1,54 @@
+{
+ "schema": "eosv1s.a7_prelaunch_audit@1",
+ "cycle_id": "EURUSD-RANGEEXP-SCORED-V1",
+ "auditor": "A7",
+ "verdict": "REFUSED",
+ "measured_utc": "2026-09-23T20:53:49Z",
+ "fresh_context": true,
+ "fresh_context_declaration": "A7 declares: this audit was produced in a single fresh session with zero prior context in EURUSD-RANGEEXP-SCORED-V1; no state was inherited from any prior audit, lane worker, or dispatch packet beyond the audit charter itself; all checks were independently recomputed (git patch-ids, sha256 digests, parquet re-read, dry-run execution, registry queries) and no artifact other than this audit pair (a7_prelaunch_audit.md + a7_prelaunch_audit.json) was created or modified.",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/eurusd-rangeexp-scored-v1/integration",
+ "branch": "orca/eurusd-rangeexp-scored-v1-integration",
+ "head": "c5987372382f3a425c358406f238893c93b25693",
+ "audit_type": "PRELAUNCH (before any scored cell; two-key law, owner verbatim GO is key 2)",
+ "checks": [
+  {"id": "CHAIN_plan_commit", "result": "PASS", "detail": "a846e2b869929dd5daf8a76841fab11f2ed5bf53 is tip of main; adds plans/PLAN_eurusd_rangeexp_scored_v1.md (80 lines) only"},
+  {"id": "CHAIN_cherry_pick", "result": "PASS", "detail": "branch commit 9352abef2f8dfcaf939413c98025b714a1d69584 has identical git patch-id --stable 55ab043a351c92e9a9f0c63aedab573bba6d0add as a846e2b8; plan file diff between commits = 0 lines; branch parent chain c5987372 -> 9352abef -> 86668a5f (V2 terminal anchor)"},
+  {"id": "CHAIN_freeze_commit_contents", "result": "PASS", "detail": "c5987372382f3a425c358406f238893c93b25693 adds code_freeze.json, scripts/scored_cells.py (167 ln), scripts/engine.py (464 ln), v2_lib.py, v2_campaign.py, build_bars.py, duka_lib.py, .gitignore (1672 insertions); exists only on the lane branch"},
+  {"id": "CHAIN_engine_sha", "result": "PASS", "detail": "sha256(engine.py)=cc868402e63db2f6b487fc544fe0799889db4c5e0e0df3f3689693f0871cb491 == code_freeze.json.engine_sha256, prefix cc868402e63d; cmp byte-identical to research/control/EURUSD-OPEN-SEARCH-V2/scripts/engine.py in the same worktree; v2_lib.py sha efb87e3783976f342cf49caa0e305293497844b678236597483d4dad28daa343 matches freeze; m1_manifest.json sha ef154574c34af7b20f16c2850237ad3704904413d152f73b3a1e70d0791121c6 matches freeze and census"},
+  {"id": "DATA_manifest", "result": "PASS", "detail": "data_local/duka/m1_manifest.json schema eosv1.m1_manifest@1, 4014 files, complete=true, missing=0"},
+  {"id": "DATA_raw_sample_sha", "result": "PASS", "detail": "12/12 sampled raw files (duka/M1/<key>, 2 per year 2021..2026 alternating ASK/BID, first+mid entries) sha256 and byte size match manifest exactly; 0 mismatches"},
+  {"id": "DATA_bars1h", "result": "PASS", "detail": "re-read data_local/derived/bars1h.parquet with pandas: exactly 30550 rows; cols b_o,b_h,b_l,b_c,a_o,a_c; ts 2021-01-03T23:00Z..2026-06-30T20:00Z"},
+  {"id": "DATA_census", "result": "PASS", "detail": "census.json verdict BUILD_PASS; gates midweek_tradable_share_gt_0.90 / nonpos_spread_share_lt_1pct / bars15_gt_100k all true; bars15_valid=130911; data_manifest.bars1h_rows=30550"},
+  {"id": "DRYRUN_independent", "result": "PASS", "detail": "A7 ran `.venv/bin/python research/control/EURUSD-RANGEEXP-SCORED-V1/scripts/scored_cells.py --dry-run` from the worktree root: printed 12/12 reconciled:true (C3/C4 x DEV/HOLDOUT x k in {1.0,1.5,2.0}); final line 'DRY_RUN: S1 all reconciled; no PnL printed'; zero PnL numbers in output"},
+  {"id": "DRYRUN_no_side_effects", "result": "PASS", "detail": "outcomes/ empty before and after dry-run (no scored_cells.json); git status --porcelain clean after run"},
+  {"id": "CELLS_S1_S6_implemented", "result": "PASS_WITH_FINDINGS", "detail": "S1 (12 checks), S2-S5 leg decompositions, S6 drift flags present; no computation beyond plan section 2 machinery exists; findings F2 (S1 compares 3 of 5 preregistered metrics), F3 (per-leg PF omitted), F4 (baseline set reduced to SHORT_ALWAYS)"},
+  {"id": "CELLS_S6_rule", "result": "PASS", "detail": "code: short_net > 0 AND total_net != 0 AND abs(short_net) >= 0.5*abs(total_net) AND SHORT_ALWAYS_net(k=1.0, same window) > 0 -> DRIFT_DEPENDED else NO_DRIFT_FLAG; matches charter phrasing with |total|; see F5 for plan-literal interpretation note"},
+  {"id": "CELLS_configs_match_frozen", "result": "PASS", "detail": "cfg_of: C3 -> FX2-RANGEEXP.configs[2] {lo_q 0.3, hi_q 0.7, use_breakout false} (fade); C4 -> configs[3] {0.25, 0.75, false}; equals candidates_frozen_v2.json (config_index 2/3, digests 020e645dbfec2cdc / 548bb8606af4beae) and code_freeze.json.candidates_immutable; V2 committed dev refs present (C3 7147.1/6822.1 PF 1.7287; C4 6561.1/6235.35 PF 1.6497)"},
+  {"id": "CELLS_no_selection_or_alteration", "result": "PASS", "detail": "CANDS hardcoded; only CLI switch is --dry-run; configs never assigned or mutated; plane slices are shallow copies with all array attrs replaced (source plane untouched); single write surface outcomes/scored_cells.json in full mode only"},
+  {"id": "BOUND_no_orders_no_secrets", "result": "PASS", "detail": "scored path (scored_cells -> v2_campaign -> v2_lib -> engine) has no network/order/paper/live code; only duka_lib.py (Dukascopy fetcher) uses HTTPS and is not imported by the scored path; no credentials/tokens in scripts"},
+  {"id": "BOUND_outcomes_absent", "result": "PASS", "detail": "outcomes/ contains no scored_cells.json at audit time"},
+  {"id": "GOV_go_phrase_in_plan", "result": "PASS", "detail": "plan section 0: go_phrase 'GO EURUSD RANGEEXP SCORED V1', typed verbatim by the owner at this cycle's own gate after A7 prelaunch"},
+  {"id": "GOV_registry_row_lifecycle_budget", "result": "FAIL_BLOCKING", "detail": "canonical plans/CYCLE_REGISTRY.json (main repo; researchctl REGISTRY_PATH) has 59 cycles, zero matching RANGEEXP; `researchctl.py cycle list | grep RANGEEXP-SCORED` prints nothing; worktree stale registry copy (54 cycles) also has none; therefore lifecycle is neither ACTIVE_LIGHT nor PLANNED, budget max 6 not machine-registered, go_phrase_state not anchored"},
+  {"id": "GOV_heavy_lock_foreign_only", "result": "PASS", "detail": "locks inspect: flock_state free; only registry row is foreign (CRYPTO-HISTORICAL-REPLICATION-3F-V1) and stale/dead (verdict CONTROL_STATE_DRIFT); no contention for this light compute (plan section 4); reclaim is round-2 discipline, not this audit's action"},
+  {"id": "GOV_budget_max_6_registered", "result": "FAIL_CONSEQUENCE_OF_REGISTRY_ABSENCE", "detail": "declared in plan section 0 (6 scored cells MAX) but not registered in the machine registry"},
+  {"id": "AUDIT_independent_full_metric_reproduction", "result": "PASS", "detail": "A7 independently recomputed all 12 arm x window x k books with the FULL preregistered metric set including hit and maxdd_pips using the equity curve returned by run_strategy (which scored_cells.py discards): 12/12 byte-exact on all five metrics vs campaign_dev_v2.jsonl + holdout_check_v2.json (e.g. C3 DEV k1: 1000 trades / 7147.1 / 1.7287 / 0.619 / 288.9; C4 HOLDOUT k2: 87 / 161.5 / 1.1718 / 0.5862 / 392.9); strictly reproduction-class, no S2-S6 cells computed by the auditor, scored budget untouched"}
+ ],
+ "findings": [
+  {"id": "F1", "severity": "HIGH", "blocking": true, "finding": "Cycle absent from canonical plans/CYCLE_REGISTRY.json: no lifecycle (required ACTIVE_LIGHT/PLANNED), no registered budget max 6, no machine-anchored go_phrase_state; `cycle list | grep RANGEEXP-SCORED` is empty. Two-key gate key 1 cannot attach to an unregistered cycle identity. Remedy: owner/lead registers the row via a registry commit (budget max 6, go_phrase 'GO EURUSD RANGEEXP SCORED V1'); delta re-audit of checks GOV_registry_row_lifecycle_budget and GOV_budget_max_6_registered alone can then flip this verdict."},
+  {"id": "F2", "severity": "MEDIUM", "blocking": false, "finding": "S1 gate narrower than preregistered: scored_cells.py reconciles only {trades, net_pips, pf}; plan section 2 requires 'every metric'; hit and maxdd_pips are not compared and the equity curve from run_strategy is discarded (zeros passed to metrics), making maxdd reconciliation impossible as written. Mitigated: A7 independent all-5-metric reconciliation passes 12/12 byte-exact, so widening would still pass. Recommend widening before the scored run or recording an owner-accepted deviation."},
+  {"id": "F3", "severity": "MEDIUM", "blocking": false, "finding": "S2-S5 leg decomposition omits per-leg PF; plan section 2 lists 'long-leg vs short-leg net pips, trades, hit, PF'. Under-computation only; recommend adding PF per leg or an owner waiver."},
+  {"id": "F4", "severity": "MEDIUM", "blocking": false, "finding": "Plan section 2 baseline paragraph ('Baselines recomputed identically per cell window: CASH, LONG_ALWAYS, SHORT_ALWAYS, RANDOM_MATCHED(seed 20260923)') only partially implemented: script recomputes SHORT_ALWAYS per window (k=1.0) only. Recommend completing the baseline set or an owner waiver before GO."},
+  {"id": "F5", "severity": "LOW", "blocking": false, "finding": "Interpretation note: script S6 uses abs(total_net) with a total_net != 0 guard where the plan literal reads '|short_leg_net| >= 0.5 * total_net' (unsigned RHS vacuous for negative totals). Script matches the charter's canonical phrasing (|total|) and is the conservative reading; identical outcome for positive-total books. Record in terminal report."},
+  {"id": "F6", "severity": "LOW", "blocking": false, "finding": "locks inspect verdict CONTROL_STATE_DRIFT: stale foreign registry row (CRYPTO-HISTORICAL-REPLICATION-3F-V1, pid dead, flock_state free). No contention for this light compute; reclaim belongs to round-2 discipline, not this audit."}
+ ],
+ "gate_arithmetic": {
+  "technical_readiness": "PASS",
+  "governance_readiness": "FAIL",
+  "verdict": "REFUSED",
+  "re_audit_scope_after_F1_remediation": ["GOV_registry_row_lifecycle_budget", "GOV_budget_max_6_registered"]
+ },
+ "artifacts": [
+  "audits/a7_prelaunch_audit.md",
+  "audits/a7_prelaunch_audit.json"
+ ]
+}
