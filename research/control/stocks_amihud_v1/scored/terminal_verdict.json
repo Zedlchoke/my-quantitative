@@ -1,0 +1,28 @@
+{
+  "schema": "terminal_verdict/stocks_amihud_v1@1",
+  "cycle_id": "STOCKS-AMIHUD-V1",
+  "verdict": "STOCKS_AMIHUD_V1_REJECT_ALL",
+  "closed_utc": "2026-09-23T17:10:00Z",
+  "terminal_head": "see branch orca/stocks-amihud-v1-integration (this commit)",
+  "code_freeze_chain": "b87c1ea7 (audited code) -> 84ebf214 (A7 r3 artifacts) -> ca3f372c (scored launcher, control-plane) -> 8b67b43a (scored records) -> this terminal commit",
+  "budget": {"used": 3, "max": 3, "note": "3/3 scored cells computed and committed; observed denominator stocks 42->45; published 3 (scored_records.json committed + ledger row)"},
+  "cells": {
+    "SAMV1-ANCHOR-ILLIQ21": {"net_total_usd_at_aum_ref": 93249306, "verdict": "REJECT", "gate_failures": ["MDD 59.25% > 15%", "largest-fold share 50.1% > 50% (razor)"], "note": "PF 54.26 and 3/3 positive folds are ARTIFACT-driven: 99.73% of total net is one ticker (HTV), itself one non-tradable print"},
+    "SAMV1-NEIGH-ILLIQ63": {"net_total_usd_at_aum_ref": 93000841, "verdict": "REJECT", "gate_failures": ["MDD 56.79% > 15%", "largest-fold share 50.0% > 50% (razor)"], "note": "99.76% single-ticker (HTV)"},
+    "SAMV1-C-REVERSAL5": {"net_total_usd_at_aum_ref": -330661, "verdict": "REJECT", "gate_failures": ["expectancy <= 0", "PF < 1.10 in 2/3 folds", "drop-one dead"], "note": "control does NOT reproduce the anchor — anchor PnL is the HTV print, not a reversal effect"}
+  },
+  "root_cause": "EODHD /eod identity/data-quality failure classes C1-C7 (terminal_forensics.json): ghost series for pre-window-dead companies (HTV = Hearst-Argyle, private since 2009, served 2017-2022 bars; NLG same pattern), same-security-dual-ticker (BYON/OSTK share ISIN US6903701018), reverse-split adjusted_close not smoothed (408-name extreme-print class), zero-volume bars carrying prices, 11,345 no-ISIN codes, vendor test tickers. The frozen $-floors did not exclude these; the frozen MDD/concentration gates caught the pathology.",
+  "waivers_by_owner_instruction": {
+    "reproduction": "NOT_RUN — owner instruction 2026-09-23 'bỏ reproduction đi' (verbatim recorded in registry events); deterministic engine + committed scored records remain the evidence",
+    "a7_terminal": "NOT_RUN — owner instruction 2026-09-23 'không dispatch A7 terminal gì hết' (verbatim recorded in registry events); verdict is the A1's per the FOREX-FREE-V6 disclosed-precedent (negatives are lower-risk per handbook §20.2); fresh-context A7 remains dispatchable if the owner later directs"
+  },
+  "successor": "STOCKS-AMIHUD-RETEST-V1 (owner directive 2026-09-23 STOCKS-AMIHUD-IDENTITY-EXECUTION-RETEST-V1; plan main 172074b5) — OUTCOME_OBSERVED_RETROSPECTIVE_RETEST",
+  "s1": "SEALED_UNTOUCHED",
+  "orders": "NONE",
+  "incidents": [
+    "crawl v1 sequential JSON measured per-connection-throttled ~5-13s/req; replaced by 8-worker CSV (43min); stale lock row reclaimed per round-2 discipline",
+    "dry-run artifact code_freeze_sha parent-stamped (ran pre-commit) — L-7 binding note; scored run executed on the clean verified tree",
+    "run_cells scored mode ~45min due to O(n^2) tercile scan in matched-book (correctness unaffected; perf lesson recorded)"
+  ],
+  "data_authority_status": "EODHD /eod entitlement PASS (F1-F9) for price/volume delivery; IDENTITY authority measured INSUFFICIENT for delisted single names (this cycle's root cause) — the retest cycle's gates exist to measure that boundary properly"
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "terminal_forensics/stocks_amihud_v1@1",
+  "measured_utc": "2026-09-23T16:20:00Z",
+  "purpose": "post-scoring forensics for the terminal report and the owner-directed retest cycle (read-only; no historical artifact modified)",
+  "anomaly_classes": {
+    "C1_ghost_series_pre_window_death": {
+      "evidence": "HTV (EODHD symbol list: NYSE Common Stock 'HEARST ARGYLE TELEVISION INC', no ISIN) served 1,175 bars 2017-07-03..2022-03-02; Hearst-Argyle went private 2009 (owner-supplied fact, consistent with the ghost reading). NLG ('National Gas & Oil Co', NYSE MKT, no ISIN) shares the IDENTICAL span and bar count (different close values). The anchor's entire PnL artifact sits on HTV: single bar 2019-12-06 close/adj 1.36 -> 13,050 on volume 10 (+9,594x).",
+      "impact_on_scored_cells": "single-ticker concentration 99.73% (anchor) / 99.76% (neighbour) of total net; PF 54/56 and fold nets are this one non-tradable print"
+    },
+    "C2_same_security_two_tickers": {
+      "evidence": "BYON and OSTK share ISIN US6903701018 (Beyond Inc = Overstock renamed); both staged full-window with identical last close 19.36 — the same security enters the universe twice. Census: 249 same-ISIN groups covering 512 staged codes (ISIN field itself noisy — e.g. ACY/MTMT sharing an ISIN — so collisions are REVIEW flags, not auto-dedupe)."
+    },
+    "C3_shared_death_date_batches": {
+      "evidence": "76 names share span 2017-07-03..2018-01-30; 38 names share 2017-07-03..2022-03-02 (incl. HTV/NLG); several with implausible price levels (VPS ~$20,100; DCM $23->$39,000) — vendor batch/identity suspects"
+    },
+    "C4_reverse_split_adjusted_basis_break": {
+      "evidence": "adjusted_close NOT smoothed across reverse splits (forward-split fixture F3a was smooth, reverse splits were never fixture-tested): UNT adj 0.0455->41.1 (2020-08-31), NCS 5.71->60, IOMT 0.0001->0.02; class census: 408 staged names carry >=1 single-bar 10x adjusted move",
+      "note": "these feed fake |r|/DV terms into ILLIQ formations and fake fills"
+    },
+    "C5_zero_volume_bars_with_price": {
+      "evidence": "bars with Volume=0 carrying a Close (e.g. BIOS last bar V=0); the frozen fill law did not require fill-bar volume>0 — execution-infeasible prints",
+    },
+    "C6_no_isin_codes": {
+      "evidence": "11,345 of 16,572 staged codes have no ISIN in the symbol list — identity unverifiable via that key"
+    },
+    "C7_vendor_test_tickers": {
+      "evidence": "'NTEST-T' present as a Common Stock row with staged series"
+    }
+  },
+  "gate_verdicts_of_record": {
+    "anchor_SAMV1-ANCHOR-ILLIQ21": "MDD 59.25% FAIL(>15); largest-fold share 50.1% FAIL(>50, razor); single-ticker 99.73%; PF 54.26 PASS-but-artifact; 3/3 folds positive PASS-but-artifact; stress2 positive PASS-but-artifact",
+    "neighbour_SAMV1-NEIGH-ILLIQ63": "MDD 56.79% FAIL; largest-fold 50.0% FAIL(razor); single-ticker 99.76%",
+    "control_SAMV1-C-REVERSAL5": "net -330,661 total; PF<1 in 2/3 folds; drop-one dead — the reversal control does NOT reproduce the anchor (anchor PnL is not a reversal effect; it is the HTV print)"
+  },
+  "owner_directed_retest": "STOCKS-AMIHUD-IDENTITY-EXECUTION-RETEST-V1 (owner instruction 2026-09-23) — this cycle's verdicts stay immutable; the retest is a NEW cycle with NEW trial identity"
+}
