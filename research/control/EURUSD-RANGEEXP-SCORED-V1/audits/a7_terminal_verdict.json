@@ -1,0 +1,50 @@
+{
+ "schema": "eosv1s.a7_terminal_verdict@1",
+ "cycle_id": "EURUSD-RANGEEXP-SCORED-V1",
+ "auditor": "A7",
+ "round": 3,
+ "audit_type": "TERMINAL CONFIRMATION (post-scored, after owner verbatim GO; audit-only)",
+ "verdict": "CONFIRM_SCORED_RECONCILED_NO_DRIFT_FLAG",
+ "terminal_enum": "SCORED_RECONCILED_NO_DRIFT_FLAG",
+ "measured_utc": "2026-09-23T21:12:41Z",
+ "fresh_context": true,
+ "fresh_context_declaration": "A7 round-3: same audit-only discipline; all terminal checks re-measured from bytes/commands in this session (git blob comparison of the committed artifact, full independent recomputation of S1-S6 with A7's own slice+legs+flag implementations over the frozen engine and data plane, rng counterfactual); no writes other than the audit artifacts; no commits.",
+ "results_commit": "777b0bed059b0f772eec5b2119398c8aa2c9c137",
+ "artifact": "research/control/EURUSD-RANGEEXP-SCORED-V1/outcomes/scored_cells.json",
+ "artifact_identity": {
+  "on_disk_equals_committed": true,
+  "code_freeze_sha_recorded": "1c49cba42de7f35a585d2761470ea3a8639e6a61",
+  "data_manifest_sha256_recorded": "ef154574c34af7b20f16c2850237ad3704904413d152f73b3a1e70d0791121c6",
+  "data_manifest_matches_freeze": true,
+  "go_evidence": "registry phase records: GO CONSUMED at own gate - verbatim owner phrase GO EURUSD RANGEEXP SCORED V1 received 2026-09-24 after A7 round-2 AUTHORIZED"
+ },
+ "checks": [
+  {"id": "T1_s1_reproduction_gate", "result": "PASS", "detail": "A7 independent five-metric recomputation (own slice + frozen engine) vs campaign_dev_v2.jsonl + holdout_check_v2.json: 12/12 byte-exact (trades, net_pips, pf, hit, maxdd_pips); artifact s1_reproduction 12/12 reconciled:true"},
+  {"id": "T2_legs_S2_S5", "result": "PASS", "detail": "A7's own legs implementation matches the artifact field-for-field on all four books: C3 DEV +3783.0L(499,PF 1.7858)/+3364.1S(501,PF 1.6738) total 7147.1 share 0.4707; C3 HOLDOUT +154.6L(45,PF 1.3948)/+119.4S(42,PF 1.2406) total 274.0 share 0.4358; C4 DEV +3423.1L(493,PF 1.6995)/+3138.0S(510,PF 1.6028) total 6561.1 share 0.4783; C4 HOLDOUT +125.8L(46,PF 1.3061)/+91.3S(41,PF 1.1805) total 217.1 share 0.4205; leg trade counts sum to V2's committed trade counts (1000/87/1003/87); book totals equal V2 net@1.0 exactly"},
+  {"id": "T3_s6_drift_flags", "result": "PASS", "detail": "A7 applied the plan-literal rule independently: short_net>0 holds in all four books but short_net - 0.5*total_net = -209.45/-17.60/-142.55/-17.25 (all negative; short shares 42.05-47.83% < 50%) -> NO_DRIFT_FLAG x4 matches artifact; SHORT_ALWAYS feeds match baselines (+811.3 DEV, +314.0 HOLDOUT); robust to the round-1 |total| reading (identical flags under both forms)"},
+  {"id": "T4_baselines", "result": "PASS", "detail": "A7 recomputation equals artifact: DEV_k1 {CASH 0, LONG_ALWAYS -1743.2, SHORT_ALWAYS +811.3, RANDOM_MATCHED -6199.7}; HOLDOUT_k1 {CASH 0, LONG_ALWAYS -395.4, SHORT_ALWAYS +314.0, RANDOM_MATCHED -267.7}; holdout LONG/SHORT equal V2's committed baselines exactly"},
+  {"id": "T5_rng_sequence_disclosure", "result": "VERIFIED_ACCURATE", "detail": "code: ONE default_rng(20260923) shared by baselines(dev) then baselines(hold): DEV consumes draws 1..27748, HOLDOUT target is draws 27749..30550 (continuation). A7 fresh-generator counterfactual on the holdout plane returns -353.5 == V2's committed RANDOM_MATCHED; the continuation draw returns -267.7 == the artifact. Difference fully explained by draw offset; both valid cost-drag realizations; no gate depends on RANDOM_MATCHED. Disclosure note is required in the terminal verdict and is recorded here and in the md"},
+  {"id": "T6_determinism", "result": "VERIFIED_STRUCTURAL", "detail": "artifact contains no timestamps/nonces; all computation deterministic given fixed seed; A7 independent recomputation reproduced every recorded value; on-disk blob identical to committed 777b0bed blob (git diff 0 lines); claimed byte-identical second run consistent"},
+  {"id": "T7_budget_and_cell_scope", "result": "PASS", "detail": "artifact keys = identity + s1_reproduction (S1) + legs (S2-S5) + s6_drift_flags (S6) + baselines (plan section 2 paragraph): exactly the 6 preregistered cells, nothing beyond plan section 2; cells executed once (single results commit); registry budget field still 0/6 pending the close (see N1)"}
+ ],
+ "substance": {
+  "reproduction": "V2 committed numbers reproduce byte-exact under the frozen engine on an independent A7 recomputation; V2 terminal evidence stands",
+  "decomposition": "BOTH legs profitable in BOTH windows; LONG leg profitable even in the falling 2026-H1 holdout (+154.6 C3 / +125.8 C4)",
+  "drift": "NO_DRIFT_FLAG x4; paper-forward successor's preregistered short-beta control gate receives NO_DRIFT_FLAG; no retroactive change to V2's verdict (plan section 2 S6)",
+  "required_disclosure_note": "RANDOM_MATCHED HOLDOUT here = -267.7 vs V2's -353.5: the generator is seeded identically but DEV consumed the first 27,748 draws, so HOLDOUT's draw is a continuation, not a fresh-generator draw; both are valid cost-drag realizations and no gate depends on it (verified quantitatively by A7: fresh-generator holdout draw reproduces -353.5 exactly)"
+ },
+ "findings_round3": [
+  {"id": "N1", "severity": "LOW", "blocking": false, "finding": "registry bookkeeping mid-flight by design: budget still 0/6, head 1c49cba (pre-results); per plan section 4 the close (budget 6/6, head 777b0bed, terminal lifecycle, two-half close) follows this A7 terminal confirmation"},
+  {"id": "N2", "severity": "LOW", "blocking": false, "finding": "go_phrase_state field still REGISTERED_NOT_CONSUMED while phase records the verbatim GO consumption; normalize to CONSUMED in the close batch"},
+  {"id": "N3", "severity": "INFO", "blocking": false, "finding": "holdout short-share margins modest but decisive (-17.6 / -17.25 pips below the 0.5*total threshold for C3/C4 HOLDOUT); note in close report that NO_DRIFT_FLAG is correct but not by a wide margin on the holdout books; the paper-forward short-beta control remains mandatory"}
+ ],
+ "round_history": {
+  "round1": "REFUSED (F1 registry absent, blocking; F2-F4 preregistration fidelity, non-blocking; F5/F6 notes)",
+  "round2": "AUTHORIZED (F1-F5 closed; key 1 granted)",
+  "round3": "CONFIRM_SCORED_RECONCILED_NO_DRIFT_FLAG (this verdict)"
+ },
+ "artifacts": [
+  "audits/a7_prelaunch_audit.md (round-3 terminal section appended)",
+  "audits/a7_terminal_verdict.json"
+ ]
+}

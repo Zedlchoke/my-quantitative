@@ -135,3 +135,60 @@ Round-1 F1–F5: CLOSED (verified above). Round-1 F2–F4 waivers no longer need
 
 - `audits/a7_prelaunch_audit.md` (this file, round-2 section appended)
 - `audits/a7_prelaunch_audit_r2.json` (machine-readable round-2 delta)
+
+---
+
+# ROUND 3 — TERMINAL CONFIRMATION (A7, audit-only)
+
+- Measured (UTC): 2026-09-23T21:12:41Z
+- Results commit: `777b0bed059b…` (adds `outcomes/scored_cells.json`, 178 lines; artifact on disk verified byte-identical to the committed blob via `git diff` = 0 lines)
+- Run identity inside artifact: `code_freeze_sha 1c49cba4…` (branch HEAD at run time = the commit recording A7 round-2 AUTHORIZED; run happened after key-1 grant and after the registry phase recorded GO consumption), `data_manifest_sha256 ef154574…` (matches code_freeze.json and census)
+- GO evidence (machine record): registry `phase` = "GO CONSUMED at own gate — verbatim owner phrase GO EURUSD RANGEEXP SCORED V1 received 2026-09-24 after A7 round-2 AUTHORIZED"
+
+## ROUND-3 VERDICT: CONFIRM_SCORED_RECONCILED_NO_DRIFT_FLAG
+
+S1 reproduction gate PASS (12/12) + zero drift flags on all four candidate×window
+books → terminal enum per plan §3: `SCORED_RECONCILED_NO_DRIFT_FLAG`.
+
+## Independent recomputation (A7's own slice + frozen engine, read-only, in-memory)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| S1 (12 combos, five metrics) | PASS | A7 recomputed C3/C4 × DEV/HOLDOUT × k∈{1.0,1.5,2.0} against V2's `campaign_dev_v2.jsonl` + `holdout_check_v2.json`: 12/12 byte-exact on trades, net_pips, pf, hit, maxdd; artifact's 12 s1 entries all true |
+| S2 C3 DEV legs | PASS | A7's own legs implementation matches the artifact field-for-field: L +3783.0 (499 tr, PF 1.7858, hit .6172) / S +3364.1 (501 tr, PF 1.6738, hit .6208), total 7147.1 = V2 net@1.0, short share .4707 |
+| S3 C3 HOLDOUT legs | PASS | L +154.6 (45 tr, PF 1.3948) / S +119.4 (42 tr, PF 1.2406), total 274.0 = V2, short share .4358 |
+| S4 C4 DEV legs | PASS | L +3423.1 (493 tr, PF 1.6995) / S +3138.0 (510 tr, PF 1.6028), total 6561.1 = V2, short share .4783 |
+| S5 C4 HOLDOUT legs | PASS | L +125.8 (46 tr, PF 1.3061) / S +91.3 (41 tr, PF 1.1805), total 217.1 = V2, short share .4205 |
+| Leg-count consistency | PASS | per-book leg trades sum exactly to V2's committed trade counts: 1000 / 87 / 1003 / 87 |
+| S6 flags (plan §2 literal) | PASS | A7 applied the rule independently: short_net>0 ✓ but short_net − 0.5·total_net = −209.45 / −17.60 / −142.55 / −17.25 (all negative; shares 42.05–47.83% < 50%) → NO_DRIFT_FLAG ×4, matching the artifact. Robustness: under the round-1 charter's stricter `abs(total)` reading the four flags are identical — the enum does not depend on the interpretation choice |
+| Baselines DEV_k1 | PASS | A7 recomputation {CASH 0, LONG −1743.2, SHORT +811.3, RANDOM −6199.7} == artifact |
+| Baselines HOLDOUT_k1 | PASS | A7 recomputation {CASH 0, LONG −395.4, SHORT +314.0, RANDOM −267.7} == artifact; LONG/SHORT equal V2's committed holdout baselines exactly (−395.4 / +314.0) |
+| RNG-sequence disclosure | VERIFIED ACCURATE | Code: ONE `default_rng(20260923)` shared by `baselines(dev)` then `baselines(hold)` — DEV consumes draws 1..27,748, HOLDOUT's target is draws 27,749..30,550 (a continuation). A7's fresh-generator counterfactual on the holdout plane returns −353.5 = V2's committed `RANDOM_MATCHED` exactly, while the continuation draw returns −267.7 = the artifact. The difference is fully explained by the draw offset; both are valid cost-drag realizations and no gate depends on RANDOM_MATCHED. Disclosure note required in the terminal verdict: present and accurate |
+| Deterministic reproduction | VERIFIED STRUCTURAL | The artifact contains no timestamps/nonces and all computations are deterministic given the fixed seed; A7's independent recomputation reproduced every recorded value, and the committed blob is identical to the on-disk file. The claimed byte-identical second run is consistent with this |
+| Budget / no extra cells | PASS | Artifact keys = identity + s1_reproduction (S1) + legs (S2–S5) + s6_drift_flags (S6) + baselines (plan §2 paragraph): exactly the 6 preregistered cells, nothing beyond plan §2. Cells executed once (single results commit) |
+
+## Terminal substance (for the close)
+
+- Reproduction gate: V2's committed numbers reproduce byte-exact under the frozen
+  engine on an independent A7 recomputation — the V2 terminal evidence stands.
+- Decomposition: BOTH legs profitable in BOTH windows (C3 DEV +3783.0L/+3364.1S;
+  C3 HOLDOUT +154.6L/+119.4S; C4 DEV +3423.1L/+3138.0S; C4 HOLDOUT +125.8L/+91.3S).
+  The LONG leg is profitable even in the falling 2026-H1 holdout (+154.6 / +125.8).
+- S6: NO_DRIFT_FLAG ×4 — the candidate PnL is not short-side-dependent; the
+  paper-forward successor's preregistered short-beta control gate receives
+  NO_DRIFT_FLAG. No retroactive change to V2's verdict (plan §2 S6).
+
+## Round-3 findings (all non-blocking)
+
+| ID | Severity | Blocking | Finding |
+|----|----------|----------|---------|
+| N1 | LOW | no | Registry bookkeeping is mid-flight by design: budget still 0/6 and head 1c49cba (pre-results). Per plan §4 the close (budget 6/6, head 777b0bed, terminal lifecycle, two-half close) follows this A7 terminal confirmation — update the row in the close batch. |
+| N2 | LOW | no | `go_phrase_state` field still reads REGISTERED_NOT_CONSUMED while `phase` records the verbatim GO consumption (2026-09-24). Field-level inconsistency; normalize to CONSUMED in the same close batch. |
+| N3 | INFO | no | Holdout short-share margins are modest but decisive (−17.6 / −17.25 pips below the 0.5·total threshold for C3/C4 HOLDOUT). Worth one sentence in the close report: the NO_DRIFT_FLAG is correct but not by a wide margin on the holdout books; the paper-forward short-beta control remains mandatory. |
+
+## Verdict line (round 3)
+
+`CONFIRM_SCORED_RECONCILED_NO_DRIFT_FLAG` — S1 12/12 byte-exact, S2–S5 legs
+verified independently, S6 NO_DRIFT_FLAG ×4, budget = 6/6 cells (S1..S6, executed
+once), no computation beyond plan §2, rng-continuation disclosure verified
+accurate and recorded in this verdict as required.
