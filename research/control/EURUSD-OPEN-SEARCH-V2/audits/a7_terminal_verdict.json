@@ -1,0 +1,84 @@
+{
+ "schema": "eosv2.a7_terminal_verdict@1",
+ "cycle_id": "EURUSD-OPEN-SEARCH-V2",
+ "auditor": "A7",
+ "auditor_continuity": "Same independent auditor as the prelaunch gate (audits/a7_prelaunch_audit.* AUTHORIZED at ea0a723c); all terminal claims re-derived from bytes, not inherited.",
+ "measured_utc": "2026-09-23T15:20:20Z",
+ "branch": "orca/eurusd-open-search-v2-integration",
+ "head": "bf4f07f18d2f63fcf9723a0001439eabe43d72af",
+ "verdict": "CONFIRM_CANDIDATE_PENDING_PROSPECTIVE",
+ "terminal_enum_confirmed": "CANDIDATE_PENDING_PROSPECTIVE_VERIFICATION",
+ "blocking": 0,
+ "checks": [
+  {
+   "id": "1_holdout_reproduction",
+   "status": "PASS",
+   "method": "Auditor's own independent holdout slice (ts >= 2026-01-01, FAIL_CLOSED asserted); committed frozen code only; v2_holdout.py main() deliberately NOT executed to preserve run_count=1.",
+   "evidence": {
+    "holdout_bars": 2802,
+    "window": ["2026-01-01 23:00:00+00:00", "2026-06-30 20:00:00+00:00"],
+    "bars_consistency": "2802 = 30550 full-plane minus 27748 audited dev slice",
+    "blocks_reproduced_exact": 15,
+    "blocks": [
+     "FX2-RANGEEXP-C3 @1.0/1.5/2.0: 274.0/246.2/218.4, PF 1.3086/1.2739/1.2400, 87 trades each",
+     "FX2-RANGEEXP-C4 @1.0/1.5/2.0: 217.1/189.3/161.5, PF 1.2368/1.2039/1.1718, 87 trades each",
+     "LONG_ALWAYS @1.0/1.5/2.0: -395.4/-436.1/-476.8",
+     "SHORT_ALWAYS @1.0/1.5/2.0: +314.0/+273.3/+232.6",
+     "RANDOM_MATCHED(seed=20260923) @1.0/1.5/2.0: -353.5/-682.6/-1011.7"
+    ],
+    "config_digests": ["020e645dbfec2cdc", "548bb8606af4beae"],
+    "preregistered_SUCCESS": "net>0 @1.0 AND @1.5 -> MET by BOTH candidates (verified against holdout_check_v2.json tiers)"
+   }
+  },
+  {
+   "id": "2_run_count_and_history",
+   "status": "PASS",
+   "evidence": {
+    "run_count_artifact": 1,
+    "holdout_artifacts_first_and_only_commit_all_refs": "bf4f07f1 (git log --all over both outcome files returns exactly this commit)",
+    "prelaunch_history_clean": "A7 prelaunch (HEAD cb479046 at audit time) verified zero holdout metrics in branch history; intervening commit ea0a723c added only audit artifacts + .gitignore",
+    "frozen_code_untouched_through_terminal": "git diff cb479046..bf4f07f1 over scripts/, selection_freeze_v2.json, candidates_frozen_v2.json is EMPTY; engine sha256 at bf4f07f1 = cc868402e63db2f6b487fc544fe0799889db4c5e0e0df3f3689693f0871cb491"
+   }
+  },
+  {
+   "id": "3_cycle_verdict_numbers",
+   "status": "PASS",
+   "evidence": {
+    "dev_row_matches_frozen_dev_stats": "C3 +7147.1 / PF 1.7287; C4 +6561.1 / 1.6497 (== candidates_frozen_v2.json, == A7 prelaunch byte-exact re-run)",
+    "holdout_rows_match_artifact_exact": true,
+    "trades_and_hit": "87 trades both, hit 0.5977/0.5862 (~59%)",
+    "baselines_match": "LONG -395.4, SHORT +314.0, RANDOM -353.5, CASH 0.0",
+    "census_claims_verified": "130,911 15m bars; 30,550 H1 bars; 0 non-positive-spread minutes; spread p50 0.3 pips (census.json)",
+    "denominator_disclosure": "48/96 observed; RUN-1 VOID per INCIDENT_RUN1_VOID.json; RUN-2 only admitted record — matches audit record"
+   }
+  },
+  {
+   "id": "4_short_always_disclosure",
+   "status": "PASS",
+   "evidence": {
+    "prominence": "FIRST bullet under 'Disclosed weaknesses (read before getting excited)', bolded, with the exact number (+314.0 @1.0) and honest epistemic reasoning (direction-agnostic mechanism, 6-month holdout cannot separate short-beta cleanly); also stated in the terminal commit message",
+    "auditor_note": "The disclosure is material, not cosmetic: naive SHORT_ALWAYS (+314.0) exceeded both candidates' absolute net @1.0 (274.0 / 217.1) on this window. The verdict's 'pending prospective verification, not works' calibration is the correct response to exactly this weakness."
+   }
+  },
+  {
+   "id": "5_terminal_enum_correctness",
+   "status": "PASS",
+   "evidence": {
+    "plan_6_enums": ["CANDIDATE_PENDING_PROSPECTIVE_VERIFICATION", "NO_CANDIDATE_NO_VALUE", "BLOCKED_SOURCE_LICENSE", "BLOCKED_COST_AUTHORITY", "TECHABORT"],
+    "enum_used_exactly_once": true,
+    "semantics": "Preregistered holdout SUCCESS met -> CANDIDATE_PENDING_PROSPECTIVE_VERIFICATION is the correct branch (not NO_CANDIDATE_NO_VALUE; no license/cost/tech abort condition exists)",
+    "no_overclaim": "Verdict explicitly states program-S0 evidence only, NOT real-money confirmation, opens no order/paper/live surface; S1 SEALED_UNTOUCHED (cycle has no S1); owner 'A' recorded as opener not GO (P-8), GO extinguished UNCONSUMED; next path is a separate paper-forward cycle with its own plan/freeze/gates and owner decision",
+    "secrets_scan_new_files": "clean",
+    "audit_only": "this audit wrote only its own verdict artifacts; no other writes, no commits"
+   }
+  }
+ ],
+ "findings": [
+  {"id": "T1", "severity": "INFO", "finding": "Alpha-vs-naive-short margin on the holdout window is negative-to-thin (SHORT_ALWAYS +314.0 vs candidates +274.0/+217.1 @1.0). Correctly and prominently disclosed by the cycle itself; this is precisely why the terminal state is PENDING_PROSPECTIVE, not a profitability claim. Any paper-forward cycle should carry a short-beta control as a preregistered gate."},
+  {"id": "T2", "severity": "INFO", "finding": "Holdout window starts 2026-01-01 23:00 UTC (first valid H1 bar of the year; thin New Year holiday trading), consistent with force-flat bar semantics; bar count 2802 as claimed."},
+  {"id": "T3", "severity": "INFO", "finding": "Carried from prelaunch (F2): GAP-C4 670.4 vs 670.35 rounding in disclosed stats; zero materiality, unrelated to the terminal result."}
+ ],
+ "blocking": [],
+ "authorization_scope": "Terminal state CANDIDATE_PENDING_PROSPECTIVE_VERIFICATION confirmed: holdout ran exactly once, reproduced byte-exact, both candidates met the preregistered criteria, verdict claims are calibrated (S0 evidence only, prospective paper-forward track is the next authorized path; no order/paper/live surface).",
+ "artifact": "audits/a7_terminal_verdict.json"
+}
