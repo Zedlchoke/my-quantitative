@@ -31,8 +31,13 @@ Pinned laws (each golden-tested):
   every run.
 - stale-data rejection: a governing decision older than 2 regime periods at
   an exec bar open maps to FLAT there.
-- BUY_HOLD (arm A): enters TREND_LONG at the first exec bar open of each
-  fold, exits only via fold force-flat (hold-to-end modulo fold law).
+- BUY_HOLD (reference metric): enters TREND_LONG at the first exec bar open
+  of each fold; while held, the position still takes TREND_LONG
+  strategy_exit/stop exits mid-fold and re-arms only at the NEXT fold start
+  (A5-F1 arbitration 2026-09-23: this docstring previously claimed "exits
+  only via fold force-flat" — the implemented behavior stands unchanged to
+  preserve the fork's V2 byte-equivalence; buy-hold is a REFERENCE metric,
+  never a scored arm).
 """
 
 from __future__ import annotations
