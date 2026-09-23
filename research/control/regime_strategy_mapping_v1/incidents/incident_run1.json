@@ -1,0 +1,18 @@
+{
+ "schema": "rsmv1_incident@1",
+ "incident_id": "RSMV1-INC-1",
+ "cycle": "REGIME-STRATEGY-MAPPING-V1",
+ "discovered_utc": "2026-09-23",
+ "what_happened": "Run 1 (27 observed cells, exit 0, heavy-locked) produced ZERO trades for arms C and C_RELAXED on every cell and NOT_RUN_CONTROL_MATCHING for F/F_RELAXED on every cell.",
+ "root_cause": "rsmv1/turnover.py::direction_of dispatched direction by V2 strategy NAME only; every A4 specialist name resolved to direction 0 (FLAT). The no-op pass in route_arm therefore collapsed all specialist targets to the standing FLAT string: 0 emitted specialist targets, 0 entries, 0 trades. Arm F's matcher then had an empty invested-label set and correctly failed closed (NOT_RUN_CONTROL_MATCHING) against a degenerate all-FLAT anchor.",
+ "evidence_non_pnl": "Routing diagnostic (BTC_H1, fold-1 mapping): desired target counts ACC-BASE-RECLAIM-L=9304 bars, UPT-BREAKOUT-L=3493, DNT-CASCADE-S=5828 — but emitted non-FLAT targets=0. The bug is in target emission, independent of any PnL value.",
+ "scope": {
+   "valid_run1": "A1_ALWAYS_ON_MR, A2_ALWAYS_ON_TREND, B_ORIGINAL_V2_MAPPING, D_SPARSE_JEV_RISK_OFF_VETO, E_DETERMINISTIC_PLUS_JEV_VETO on all 3 cells (15 cells) — these paths never touch direction_of with specialist names; engine equivalence re-verified MATCH after the fix.",
+   "invalid_run1": "C_REGIME_SPECIALIST_ROUTER, C_RELAXED_REGIME_SPECIALIST_ROUTER, F_EPISODE_SHUFFLED_MATCHED, F_RELAXED_EPISODE_SHUFFLED_MATCHED on all 3 cells (12 cells) — classified INVALID_DIRECTION_DISPATCH_BUG.",
+   "unaffected": "Arm C's SELECTION audit and inner evidence were computed correctly in run 1 (the evidence path never passes through direction_of): selections recorded (e.g. BTC_H1 fold1: ACC->ACC-BASE-RECLAIM-L, UP->UPT-BREAKOUT-L, DOWN->DNT-CASCADE-S; fold2 UP->FLAT inner_evidence_unstable; DIST OUTER_FLOOR_THIN) remain valid and are reproduced identically (deterministic) in run 2."
+ },
+ "exposure": "Run-1 summary and selection audits were READ by A1 after the run. No remediation decision depends on any PnL value: the bug is proven by routing counts alone. The A1/A2/B/D/E numbers are reproductions of TERMINAL V2 outcomes or unaffected control arms; C*/F* outcomes were degenerate (0 trades / fail-closed) and carried no selection information.",
+ "repair": "direction_of now dispatches specialist names through SPECIALIST_DIRECTIONS (authoritative library table); unknown non-FLAT names fail CLOSED to 0. Regression test test_specialist_directions_dispatch added; suite 121 passed + 1 xfailed; engine equivalence re-MATCH (V2-name dispatch unchanged).",
+ "accounting": "Run-1 artifacts preserved byte-exact under runtime/scored_run1_invalid/ (C*/F* moved; full run-1 summary copied). Observed denominators: run1 = 27 (15 valid + 12 invalid), run2 remediation = 12 (C*/F* recomputed), total observed across runs = 39. Multiple-testing disclosure: all 39 counted; the terminal verdict reads run-2 C*/F* and run-1 A1/A2/B/D/E.",
+ "law_applied": "CLAUDE.md §24 (bug after scoring): stop, no ledger overwrite, incident + exposure recorded, denominator kept, classification invalid/repairable, rerun as a remediation identity (run 2) — no post-PnL mapping/threshold/strategy edits; the fix is code-dispatch only and is proven outcome-independent."
+}

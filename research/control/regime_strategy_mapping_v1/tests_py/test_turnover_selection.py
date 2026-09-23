@@ -231,3 +231,19 @@ def test_registry_stop_hits_by_direction():
     res = SpecialistEngine(bars, ["T-LONG"] * n, folds,
                            CostModel(0.0, 0.0, 0.0), {"T-LONG": long_spec}).run()
     assert res.totals["trades"] >= 1
+
+
+def test_specialist_directions_dispatch():
+    """Run-1 incident regression: A4 specialist names MUST resolve to their
+    library directions; unknown names fail closed to 0 (never silently
+    long/short)."""
+    from rsmv1.turnover import direction_of
+
+    assert direction_of("ACC-BASE-RECLAIM-L") == 1
+    assert direction_of("UPT-DIPBUY-L") == 1
+    assert direction_of("UPT-BREAKOUT-L") == 1
+    assert direction_of("DIS-FAILED-HIGH-S") == -1
+    assert direction_of("DNT-CASCADE-S") == -1
+    assert direction_of("DNT-RALLY-SOLD-S") == -1
+    assert direction_of("TOTALLY-UNKNOWN-L") == 0
+    assert direction_of(FLAT) == 0 and direction_of(None) == 0

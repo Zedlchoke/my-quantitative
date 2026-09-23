@@ -36,11 +36,23 @@ BUFFER_REGIME_BARS = 1  # frozen k=1 (plan §6.2)
 
 
 def direction_of(strategy: str | None) -> int:
+    """Signed direction of a TARGET/strategy name.
+
+    V2 anchor names dispatch directly; A4 specialist names dispatch through
+    the library's authoritative SPECIALIST_DIRECTIONS (run-1 incident: this
+    function read every specialist name as 0/FLAT and the no-op pass
+    collapsed all specialist routing to FLAT). Unknown non-FLAT names fail
+    CLOSED to 0 — they can never silently route a position.
+    """
     if strategy in (TREND_LONG, MR_LONG):
         return 1
     if strategy == TREND_SHORT:
         return -1
-    return 0
+    if strategy in (FLAT, None, ""):
+        return 0
+    from .specialists import SPECIALIST_DIRECTIONS
+
+    return SPECIALIST_DIRECTIONS.get(strategy, 0)
 
 
 def buffered_labels(

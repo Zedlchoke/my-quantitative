@@ -227,6 +227,18 @@ LIBRARY_BY_REGIME = {
     "TRANSITION_UNKNOWN": [],  # fixed FLAT, not selectable
 }
 
+# Authoritative signed direction per specialist id (run-1 incident fix:
+# name-dispatched direction_of() in turnover.py read every A4 name as 0 and
+# the no-op pass collapsed all specialist targets to FLAT).
+SPECIALIST_DIRECTIONS = {
+    "ACC-BASE-RECLAIM-L": 1,
+    "UPT-DIPBUY-L": 1,
+    "UPT-BREAKOUT-L": 1,
+    "DIS-FAILED-HIGH-S": -1,
+    "DNT-CASCADE-S": -1,
+    "DNT-RALLY-SOLD-S": -1,
+}
+
 
 def eligible_for(asset: str, regime: str) -> list[str]:
     ids = LIBRARY_BY_REGIME.get(regime, [])
