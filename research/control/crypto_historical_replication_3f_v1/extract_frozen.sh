@@ -177,3 +177,15 @@ for f in $(git -C "$REPO" ls-tree --name-only "$V6C" research/ | grep '\.py$'); 
 for f in strategy_base.py strategy_funding_crowding_mr.py strategy.py strategy_breakout.py strategy_mean_reversion.py strategy_reclaim_mr.py strategy_trend_pullback.py; do git -C "$REPO" cat-file -e "$V6C:$f" 2>/dev/null && git -C "$REPO" show "$V6C:$f" > "$DEST/v6_root/$f" || true; done
 for f in $(git -C "$REPO" ls-tree --name-only "$V6C" data/); do mkdir -p "$DEST/v6_root/data"; git -C "$REPO" show "$V6C:data/$f" > "$DEST/v6_root/data/$f" 2>/dev/null || { git -C "$REPO" show "$V6C:$f" > "$DEST/v6_root/$f"; }; done
 echo "v6_root extracted"
+
+# v6_root import closure (contracts + shared research modules at closure commit)
+for f in $(git -C "$REPO" ls-tree -r --name-only "$V6C" contracts/ 2>/dev/null || true); do mkdir -p "$DEST/v6_root/$(dirname "$f")"; git -C "$REPO" show "$V6C:$f" > "$DEST/v6_root/$f"; done
+for f in $(git -C "$REPO" ls-tree --name-only "$V6C" research/ | grep '\.py$'); do git -C "$REPO" show "$V6C:$f" > "$DEST/v6_root/$f"; done
+for f in research/protocol research/hypotheses; do :; done
+mkdir -p "$DEST/v6_root/research/protocol" "$DEST/v6_root/research/hypotheses"
+for f in $(git -C "$REPO" ls-tree -r --name-only "$V6C" research/protocol/ 2>/dev/null || true); do git -C "$REPO" show "$V6C:$f" > "$DEST/v6_root/$f"; done
+git -C "$REPO" show "$V6C:config/research_baseline_altcoin.yaml" > "$DEST/v6_root/config/research_baseline_altcoin.yaml" 2>/dev/null || true
+echo "v6 closure extracted"
+for f in $(git -C "$REPO" ls-tree -r --name-only "$V6C" reports/ 2>/dev/null || true); do mkdir -p "$DEST/v6_root/$(dirname "$f")"; git -C "$REPO" show "$V6C:$f" > "$DEST/v6_root/$f"; done
+for f in $(git -C "$REPO" ls-tree -r --name-only "$V6C" data/ 2>/dev/null || true); do mkdir -p "$DEST/v6_root/$(dirname "$f")"; git -C "$REPO" show "$V6C:$f" > "$DEST/v6_root/$f"; done
+echo "v6 reports+data extracted"
