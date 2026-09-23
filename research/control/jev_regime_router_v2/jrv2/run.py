@@ -560,17 +560,26 @@ def cmd_backtest(fz: Freezes, args) -> dict:
         got = hashlib.sha256((args.scored_go_token or "").encode()).hexdigest()
         if not want or got != want:
             reason = "scored-go-token does not match the registered GO authority"
-    out = {
-        "status": "REFUSED_BACKTEST_QUARANTINE",
-        "cycle": CYCLE_ID,
-        "reason": reason,
-        "law": "NO arm backtest on real data until the scored-phase GO "
-        "authority exists (STOP-2 V2); this lane implements the refusal",
-    }
-    if args.force_show_metrics:
-        out["note"] = "--force-show-metrics cannot bypass the quarantine"
-    print(json.dumps(out, sort_keys=True, indent=1))
-    raise SystemExit(20)
+    if reason is not None:
+        out = {
+            "status": "REFUSED_BACKTEST_QUARANTINE",
+            "cycle": CYCLE_ID,
+            "reason": reason,
+            "law": "NO arm backtest on real data until the scored-phase GO "
+            "authority exists and the token matches (STOP-2 V2)",
+        }
+        if args.force_show_metrics:
+            out["note"] = "--force-show-metrics cannot bypass the quarantine"
+        print(json.dumps(out, sort_keys=True, indent=1))
+        raise SystemExit(20)
+
+    # scored-phase GO authority valid: run the 18 frozen cells atomically
+    from .scored import run_scored, ARMS, TIERS  # noqa: F401
+
+    cells = ["BTC_H1", "BTC_H4", "SPY_D1"]
+    out_root = runtime_dir(fz) / "scored"
+    summary = run_scored(fz, cells, out_root)
+    return summary
 
 
 def cmd_report(fz: Freezes, args) -> dict:
