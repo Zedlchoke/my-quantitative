@@ -1,0 +1,244 @@
+{
+  "schema": "psv1_a7_prelaunch_audit@1",
+  "cycle_id": "PHASE-STRATEGY-V1",
+  "audited_head": "4b7eae34f679e96857299142c1221ec39bc542f5",
+  "audited_branch": "orca/phase-strategy-v1-integration",
+  "audit_worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/phase-strategy-v1/a7-prelaunch",
+  "audit_branch": "orca/psv1-a7-prelaunch",
+  "measured_at_utc": "2026-09-23T09:06:06Z",
+  "auditor": "A7 prelaunch, fresh context, independent",
+  "method": "recompute from bytes and source; raw data re-hashed from lane-worktree data_staging; census arithmetic independently re-derived from raw bytes with auditor-owned run-length logic; test suites re-executed in the audit worktree; no predecessor PnL-bearing artifact opened (SPY.json.gz touched by sha256 digest computation only, content unread)",
+  "checklist": [
+    {
+      "id": "C1",
+      "name": "Freeze/commit chain + registry head + handoff JSONs",
+      "verdict": "PASS",
+      "evidence": [
+        "plans/CYCLE_REGISTRY.json: PHASE-STRATEGY-V1 head 4b7eae34f679e96857299142c1221ec39bc542f5 == audited head; lifecycle PLANNED_NOT_STARTED; go_phrase REGISTERED_NOT_CONSUMED; budget 0/15",
+        "chain resolved on integration branch: c6d80a9f (plan) -> 6e6ffa3b (wave/ownership) -> b75f35f7 (A1, byte-identical cherry-pick of eaef65d6 which lives on main; `git diff eaef65d6 b75f35f7 -- plans/PLAN_phase_strategy_v1.md` empty) -> df53abde/539e87db (L1) -> 2e6d0994 -> 92100b4a/8fd90f92 (L2) -> ab742398 -> 1854301f/45cfc1ad (L3) -> 4b7eae34 (P4 freeze)",
+        "lane subtree trees byte-identical lane-tip vs integration: L1 5a6531b6, L2 7f190729, L3 fb5c0f32; L1 handoff blob 9b96b94e identical both sides",
+        "handoffs: all three schema zcode_orch_v3_handoff@1, all core-16 fields present (18/16/18 with optional extras); commit_sha fields resolve (88a42ed5 / 8a427571 / 4c17b7f4)",
+        "predecessors NOT reopened: REGIME-STRATEGY-MAPPING-V1 TERMINAL (phase TERMINAL_NO_REGIME_STRATEGY_INCREMENTAL_VALUE, head 690b06c8); JEV-REGIME-ROUTER-V2 TERMINAL (JEV_NO_INCREMENTAL_VALUE, head 0c277a94); both go_phrase DEAD"
+      ],
+      "margin_to_fail": "n/a"
+    },
+    {
+      "id": "C2",
+      "name": "Data authority & PIT",
+      "verdict": "PASS",
+      "evidence": [
+        "L1 manifest research/control/phase_strategy_v1/lane_btc_h1/data/manifest.json: 102 files (80 monthly + 22 daily), 58,968 bars = expected calendar bars, 0 duplicates/gaps/OHLC violations, gap verdict PASS",
+        "auditor re-hashed 3 raw L1 zips from lane worktree data_staging (2020-01, 2023-06, 2026-09-22): all 3 sha256 match pinned digests",
+        "L2 manifest/data_gate: 182 files (80 1h_monthly + 80 4h_monthly + 22 1h_daily); auditor re-hashed 3 raw zips (1h 2021-03, 4h 2021-03, 4h 2022-07): all match; reretrieval DETERMINISTIC with digest_match evidence",
+        "SPY snapshot re-verified by auditor: sha256 3fd229f9a1b0188fd6037a9d642b144e85a596c4ac4fb9d5f00c7c97cced3803 byte-exact at the manifest-pinned path (digest computed over bytes only; file content not read; no decisions artifact touched)",
+        "PIT convention present and identical in all three cells' freezes/manifests: bar knowable at close, first executable fill at NEXT bar/open; L3 measured date-only stamps (no next-midnight defect clock present)",
+        "AMENDED catalog cross-check adjudication (plan 9.1/A1) judged HONEST and evidence-backed: L1 forensics quantitative (alignment optimum +0h, close corr 0.9999688, close diffs to -6798.4, volume ratio vision/catalog median 0.0827 i.e. ~12x, both decodes VWAP-sane so not a unit error); L2 independently non-corroborative on all 2,189 shared 4h buckets; native Vision 4h shadow MATCH_EXCEPT_3_DISCLOSED_BUCKETS at 1e-9 (14,607/14,610); FAIL verdict preserved, no smoothing, escalated and disclosed in every artifact; Vision integrity re-anchored on independent evidence"
+      ],
+      "margin_to_fail": "n/a"
+    },
+    {
+      "id": "C3",
+      "name": "Phase rules causality",
+      "verdict": "PASS",
+      "evidence": [
+        "L1 code/phase_rule.py: Wilder ADX/DI + SMA720, strictly trailing; TRANSITION_UNKNOWN code-owned (warmup + ADX margin band 18-22 + 24-bar persistence buffer); five named outputs; parameters round/domain-standard (Wilder 1978 period 14, ADX 20) frozen pre-computation",
+        "L2 pipeline/phase_rule.py: SMA120/slope30 quadrants + deadbands; U1-U4 explicit uncertainty conditions; warmup 153 = 120+30+3 (frozen formula); confirmation window strictly backward",
+        "L3 code/psv1_spy/phase_rule.py: SMA200/SLOPE20 quadrant law with explicit margin bands; warmup 219 = 200+20-1; no weekday/date input anywhere in the rule",
+        "no-lookahead tests GENUINELY mutate FUTURE bars and assert past labels unchanged: L1 test_no_lookahead.py replaces the ENTIRE future after t0=1500 (reversed+25.0) plus single-bar at t0+500; L2 test_phase_rule.py::test_no_lookahead_future_mutation_invariant sets close[200:]=1e9; L3 test_phase_rule_golden.py::test_no_lookahead_mutation iterates 4 paths x 4 cuts plus all-bars-after-t",
+        "warmup exclusion asserted per lane and census/fold freezes exclude warmup from eras/folds/floors"
+      ],
+      "margin_to_fail": "n/a"
+    },
+    {
+      "id": "C4",
+      "name": "Census arithmetic + NOT_RUN_THIN_PHASE fail-closed",
+      "verdict": "PASS",
+      "evidence": [
+        "L1: auditor rebuilt labels from the raw Vision parquet (58,968 bars) with auditor-owned run-length counting and reproduced census EXACTLY: ACC 69 eps/6,458 dec, UP 172/20,411, DIST 75/6,295, DOWN 190/24,913, UNKNOWN 3/171; floor margins +49/+152/+55/+170/-17; ACC/UP/DOWN per-fold episodes >= 8 and per-fold decisions >= 604 (floors 3/100) — all PASS with margin",
+        "L2: auditor rebuilt H4 from raw monthly+daily zips per the derivation law (complete iff 4 aligned H1 bars) and reproduced ALL 20 fold cells exactly (episodes and occupancy bars), including the thin calls: ACC cell 57 eps (>=20) but F4 decisions 71 < 100 -> NOT_RUN_THIN_PHASE; DIST F1 66 and F4 53 < 100 -> NOT_RUN_THIN_PHASE; UP 94 eps margin +74 all folds meet -> scored",
+        "SPY: auditor recomputed from the verified snapshot: ACC 15 (<20, margin -5), DIST 5 (margin -15), DOWN 10 global/11 fold-truncated (both < 20) -> NOT_RUN_THIN_PHASE fail-closed with margins reported; UPTREND floors met (23 fold-truncated eps, margin +3; per-fold dec 581/314/280/762 all >= 100)",
+        "UNKNOWN on BTC_H1 thin (3 eps < 20, slot FLAT); BTC_H4 TRANSITION_UNKNOWN disposition GATE_STATE_NOT_TRADABLE/FLAT recorded in lane proposals",
+        "no cross-cell pooling: no lane artifact references another lane's counts (cross-lane name hits are guard/hygiene forbidden-path lists only)"
+      ],
+      "margin_to_fail": "L1 min per-fold decision margin on scored phases: ACC F1 604-100 = +504; L2 UP F2 decisions margin +595; SPY UP F3 decisions margin +180; thin margins negative as disclosed (SPY ACC -5 etc.)"
+    },
+    {
+      "id": "C5",
+      "name": "Ancestry rho bar + forbidden set + NOT_MEASURED reasons",
+      "verdict": "FAIL",
+      "evidence": [
+        "amended bar applied consistently (VETO iff |rho| > 0.20): L1 measured worst |rho| 0.0822 (amihud, DOWN arm); L2 worst +0.168 (run_imbalance, UP Donchian) <= 0.20; L3 self-killed quarter-anchored timing at rho 0.55855 vs ex-div window dummy and independently killed month-settle as TOM-SETTLE measured-dead family",
+        "7.1 class checks: each candidate carries a recorded pre-outcome ancestry_self_check distinguishing it from the named specialists (event-conditional breakout/breakdown/floor books vs continuous regime holds); L2 DOWNTREND NO_ELIGIBLE_PROPOSAL with explicit mechanism-distance argument; SPY UPTREND zero candidates as valid result",
+        "FINDING H1: L1 recorded run_imbalance as NOT_MEASURED_WITH_REASON ('requires trade-direction/run-level data; not reconstructible from 1h OHLCV') for ALL THREE BTC_H1 arms — the reason is NOT legitimate: L2's frozen pipeline code (lane_btc_h4/pipeline/ancestry.py shadow_series) reconstructs run_imbalance from CLOSES ALONE (sign(ret1).rolling(win).sum()/win), and the same construction is trivially expressible on L1's H1 closes; run_imbalance is in the plan 7.2 BTC-applicable dead-shadow list; the plan obligates each lane to measure 'the applicable frozen shadows'; L1's other NOT_MEASURED reasons (OI, DVOL, pair) ARE legitimate — observables genuinely absent from the cell data contract",
+        "E3 is therefore not fully discharged for 3 of the 4 eligible arms at the P4 freeze; per the workspace law, missing evidence is NOT_RUN, never inferred PASS (L2's 0.168 was measured on L2's signal series, not L1's)"
+      ],
+      "margin_to_fail": "0 of 1 NOT_MEASURED reasons illegitimate tolerated; 1 found (run_imbalance, 3 arms affected)"
+    },
+    {
+      "id": "C6",
+      "name": "Proposal completeness (plan §6 fields)",
+      "verdict": "FAIL",
+      "evidence": [
+        "L1 arms (BREAKOUT_CONT, FLOOR_PROVISION, BREAKDOWN_CONT): ALL §6 fields present incl. mechanism+forced counterparty, PIT observable, phase-gated book, direction law, entry/exit/holding/sizing/stop, execution (close->next open), churn law with structural no-op, costs/capacity, ONE control with frozen semantics (seeds/KS bound), failure_mode, family_id AND arm_config_digest (4c4ab526…, f79ed997…, f70758ac…)",
+        "L2 PSV1-BTC_H4-UPTREND-DONCHIAN_CONTINUATION@freeze1: complete under its own key names (mechanism, observable, phase_rule, direction long-only, entry/exit/holding 12..450 bars, execution, churn_law with noop_law, cost_arithmetic = exact frozen stack 5+1 bps/side + funding 1.377e-5/8h + full-stack tiers, capacity_and_turnover 89 trades, control with frozen semantics, failure_mode, identity.family_id) BUT arm_config_digest is ABSENT from all frozen artifacts — the proposal defers it to 'digest computed at integration by A1' and no integration/freeze commit contains it (grep over the whole namespace)",
+        "FINDING M2: 1 of 4 scored arms misses a §6 identity field at freeze; digest is deterministically derivable from frozen bytes (no rescue involved) but as frozen the arm cannot satisfy §12 trial identity without post-freeze computation"
+      ],
+      "margin_to_fail": "16/16 §6 fields required per arm; BTC_H4 arm missing 1 (arm_config_digest)"
+    },
+    {
+      "id": "C7",
+      "name": "Outcome-blindness forensics",
+      "verdict": "PASS",
+      "evidence": [
+        "greps for pnl/equity/profit_factor/drawdown/sharpe/cum_return across all three lane trees: every hit is inside hygiene-test banned-identifier lists or docstring negations ('no PnL path exists'); zero computation sites",
+        "wealth-arithmetic greps (cumprod/cumsum/pct_change/1+/position*price): only pct_change use is L2 ancestry.py dead-shadow construction (information-content rho, pre-PnL, plan-sanctioned V2 D2 convention)",
+        "costs modules are pure arithmetic on notional fractions (fee 5+1 bps/side, funding signed, tiers 1.0/1.5/2.0)",
+        "no lane source references MAP.md/SURVIVORS/HYPOTHESIS_LEDGER/MECHANISM_ATTRIBUTION/jrv2/rsmv1/decisions jsonl — all such strings live only in guard forbidden-path lists; guards.py + test_hygiene suites pass (run by auditor)",
+        "permitted numbers only: counts, occupancy, dwell, entry counts, transitions, cost arithmetic (ceilings checked: L1 margins 9.5-35.6x vs stated edge assumptions at 1.0-2.0x; L2 20.4 bps/trade at 1.5x vs 100 bps bound)"
+      ],
+      "margin_to_fail": "n/a"
+    },
+    {
+      "id": "C8",
+      "name": "SPY Tuesday gate (§10)",
+      "verdict": "PASS",
+      "evidence": [
+        "auditor re-ran the full L3 suite in the audit worktree: 55 passed, incl. both calendar-gate regressions on the real snapshot",
+        "tests read and judged non-vacuous: test_tuesday_defect_fixture_reproduces_defect_shape reconstructs the V2 defect engine (test-only) and asserts forced-flat runs exist AND begin at Tuesday opens; test_lane_pipeline_zero_weekday_force_flats_on_defect_path asserts ZERO clock-attributable force-flats on the same dates where the defect engine produces them (a broken events reducer or any weekday-dependent exit would fail these)",
+        "weekday-rotation replay asserted invariant for +1..+4 day relabels on synthetic paths AND the real snapshot; runtime counter clock_attributable_force_flats exists as a runtime assert and evaluation_freeze.spy_calendar_gate schedules its re-run inside the scored run with BLOCKED_SPY_CALENDAR_DEFECT halt law",
+        "structural deletion of the defect class verified: no staleness/age-based flat rule anywhere in the lane (freeze + AST-hygiene test); L3 manifest measured date-only stamps"
+      ],
+      "margin_to_fail": "n/a"
+    },
+    {
+      "id": "C9",
+      "name": "Evaluation freeze integrity",
+      "verdict": "PASS",
+      "evidence": [
+        "baselines frozen and sane: CASH, ALWAYS_ON_LONG (fold re-entry), ALWAYS_ON_TREND_LF SMA200 on cell clock (200xH1/200xH4/200 sessions), SPARSE_RISK_OFF (DD-out >30% BTC / >20% SPY, re-entry <=10%, min-hold 5) — round frozen constants, reference-not-budget, SPY long/flat only",
+        "costs match plan exactly: BTC 6 bps/side + funding 1.377e-5/8h signed; SPY 10 bps/fill; tiers 1.0/1.5/2.0 on the FULL stack; zero-cost variants diagnostic-only",
+        "gates G1-G9 present in evaluation_freeze and equal (STRICTER-or-equal) to plan §16.3 — no weakening found (G3 = beats ALL FOUR baselines at 1.0x)",
+        "floors 20/3/100 immutable in all three era_fold_freezes; no relaxed-floor gate anywhere (the only 'relax' strings are incident prose 'no tolerance relaxation')",
+        "budget scored_cell_budget expected 4 <= max 15; registry 0/15 used"
+      ],
+      "margin_to_fail": "n/a"
+    },
+    {
+      "id": "C10",
+      "name": "Trial accounting & boundaries",
+      "verdict": "PASS",
+      "evidence": [
+        "budget 4 expected / 15 max, 0 consumed (no scored run exists pre-GO)",
+        "trial identity contract present (evaluation_freeze.trial_identity: cycle_id + arm_id + arm_config_digest + data manifest digest + code_freeze_sha + cost_tier + fold contract); subject to finding M2 for the BTC_H4 digest",
+        "S1 SEALED_UNTOUCHED (registry + freezes); no S1 path referenced in any lane; S1-denial guards in hygiene suites pass",
+        "no broker/order surface: only outbound calls are keyless GETs to data.binance.vision with plain User-Agent headers (no auth headers, no keys, no testnet/paper/live); network imports confined to the two ingest modules; hygiene suites pass",
+        "worktrees/branches match OWNERSHIP_MANIFEST (lane-btc-h1/h4/spy-d1 + a7-prelaunch all present at manifest paths); 0 merge commits created within the cycle on any lane or integration branch; 0 remote-tracking refs for any cycle branch (no push)",
+        "forbidden predecessor artifacts untouched: audit opened none (registry rows + plan only); SPY.json.gz touched by digest computation only"
+      ],
+      "margin_to_fail": "n/a"
+    },
+    {
+      "id": "C11",
+      "name": "Integrated test suites re-run by auditor",
+      "verdict": "PASS",
+      "evidence": [
+        "L3: 55 passed (matches handoff)",
+        "L1: 32 passed, 3 skipped — skip reasons verified honest: 2 staging-dependent manifest digest tests + 1 live re-retrieval test (raw bytes worktree-local by law; a transient staging-path absence also disclosed in the skip text)",
+        "L2: 44 passed, 1 skipped (same staging law)",
+        "finding M3: the skip text and integration commit messages claim BTC digest verification 'remains binding at scored-run/A7 time', but NO binding schedule for BTC digest re-verification exists in evaluation_freeze (only the SPY Tuesday re-run is scheduled). SPY digest verification IS code-enforced at load (snapshot.load_sessions(verify=True)); BTC ingest verifies at retrieval time only — run_lane reads vision_1h.parquet directly with no re-verify. A7 has NOW satisfied the 'A7 time' half by re-hashing 6 raw files byte-exact; the scored-run half is unscheduled",
+        "per-lane invocation required: combining lane suites in one pytest process fails on duplicate test basenames (no __init__.py); the contract's per-lane runs are what pass — scored-run harness must preserve this"
+      ],
+      "margin_to_fail": "n/a"
+    }
+  ],
+  "findings": [
+    {
+      "id": "A7-H1",
+      "severity": "HIGH",
+      "blocking": true,
+      "title": "E3 ancestry not discharged for all three BTC_H1 arms: run_imbalance shadow unmeasured on a non-legitimate reason",
+      "detail": "L1 census ancestry records run_imbalance NOT_MEASURED_WITH_REASON ('requires trade-direction/run-level data; not reconstructible from 1h OHLCV') for PSV1-BTC_H1-UPTREND-BREAKOUT_CONT, PSV1-BTC_H1-ACC-FLOOR_PROVISION and PSV1-BTC_H1-DOWNTREND-BREAKDOWN_CONT. The reason is factually wrong inside this cycle's own frozen tree: L2's lane_btc_h4/pipeline/ancestry.py reconstructs run_imbalance from closes alone (sign(ret1).rolling(win).sum()/win, daily-sampled), and run_imbalance is in the plan §7.2 BTC-applicable dead-shadow list whose measurement the plan obligates for each candidate. L1's other three NOT_MEASURED reasons (OI, DVOL, pair) are legitimate. Missing evidence is NOT_RUN, never inferred PASS; L2's measured 0.168 attaches to L2's signal series, not L1's.",
+      "remediation": "Measure the run_imbalance rho (close-based reconstruction per L2's frozen method or an explicitly frozen equivalent) for each of the three L1 candidate signal series vs the 0.20 bar; record results in lane census ancestry and eligible_candidates_freeze; re-commit the freeze at a new head. Any |rho| > 0.20 => that arm is ANCESTRY_VETOED and the freeze adjusts. No PnL exists; remediation is pre-outcome and cheap.",
+      "evidence_path": "research/control/phase_strategy_v1/lane_btc_h1/census/census.json (ancestry.per_candidate.*.not_measured.run_imbalance) vs research/control/phase_strategy_v1/lane_btc_h4/pipeline/ancestry.py (shadow_series)"
+    },
+    {
+      "id": "A7-M2",
+      "severity": "MEDIUM",
+      "blocking": false,
+      "title": "BTC_H4 scored arm has no arm_config_digest anywhere in the frozen artifacts",
+      "detail": "Plan §6 requires identity to freeze arm_config_digest; §12 requires it per scored arm. L2's proposal defers it to 'A1 at integration' (lane_btc_h4/proposals/proposals.json identity.arm_config_digest_source) but no integration or P4 commit added it. 1 of 4 arms affected; L1 arms all carry digests.",
+      "remediation": "Compute the digest from config.py frozen constants + the frozen proposal in the same remediation commit as A7-H1 and record it in the freeze.",
+      "evidence_path": "research/control/phase_strategy_v1/lane_btc_h4/proposals/proposals.json"
+    },
+    {
+      "id": "A7-M3",
+      "severity": "MEDIUM",
+      "blocking": false,
+      "title": "BTC manifest digest re-verification at scored-run time claimed in prose but not scheduled as a binding step",
+      "detail": "Test skip texts and the 2e6d0994/ab742398 commit messages assert the digest chain 'remains binding at scored-run/A7 time', but evaluation_freeze schedules no such step for BTC (only the SPY calendar gate re-run is scheduled). BTC verification is ingest-time only; run-time loaders read staged parquet without re-verification. SPY is code-enforced at load and is fine. A7 has re-verified 6 raw BTC files + the SPY snapshot byte-exact, satisfying the 'A7 time' claim.",
+      "remediation": "Add one binding sentence to evaluation_freeze scoring_run_law (and/or make the scored-run loader verify pinned digests before computing) in the remediation commit.",
+      "evidence_path": "research/control/phase_strategy_v1/freezes/evaluation_freeze.json; lane_btc_h1/tests_py/test_manifest_and_guards.py:21"
+    },
+    {
+      "id": "A7-L4",
+      "severity": "LOW",
+      "blocking": false,
+      "title": "eligible_candidates_freeze not_scored omits the BTC_H4 TRANSITION_UNKNOWN row",
+      "detail": "14 of 15 cell×phase slots are enumerated in the P4 freeze; BTC_H4 TRANSITION_UNKNOWN (DATA_SUFFICIENT 284 eps) has an explicit GATE_STATE_NOT_TRADABLE / NO_ELIGIBLE_PROPOSAL / FLAT disposition in the lane's proposals.json but no not_scored row in the freeze. The arms list is explicit (4 arms) so the scored run is not exposed; this is a completeness/documentation gap.",
+      "remediation": "Add the row in the remediation commit.",
+      "evidence_path": "research/control/phase_strategy_v1/freezes/eligible_candidates_freeze.json (not_scored); lane_btc_h4/proposals/proposals.json (TRANSITION_UNKNOWN)"
+    },
+    {
+      "id": "A7-L5",
+      "severity": "LOW",
+      "blocking": false,
+      "title": "OWNERSHIP_MANIFEST a7.status is stale ('NOT_SPAWNED') while the A7 audit runs",
+      "detail": "Cosmetic status-field drift; worktree/branch/owner fields match reality.",
+      "remediation": "Optional status update at close.",
+      "evidence_path": "research/control/phase_strategy_v1/OWNERSHIP_MANIFEST.json"
+    },
+    {
+      "id": "A7-I6",
+      "severity": "INFO",
+      "blocking": false,
+      "title": "SPY episode totals use fold-truncated (sum-of-folds) runs for floors; global-run counts also disclosed",
+      "detail": "Auditor global-run counts differ by +1 for UPTREND (22 vs 23) and DOWNTREND (10 vs 11); the census discloses both conventions (episode_count_global_runs and episode_count_sum_of_folds) and the fold-truncated convention matches the fold force-flat trading reality and §4.3. Thin-phase calls unaffected (both conventions below floor).",
+      "remediation": "None required.",
+      "evidence_path": "lane_spy_d1/census/census.json (census.cell.*)"
+    },
+    {
+      "id": "A7-I7",
+      "severity": "INFO",
+      "blocking": false,
+      "title": "Lane test suites must run per lane",
+      "detail": "Combining lane test dirs in one pytest process fails collection on duplicate test-module basenames (test_costs.py etc., no package __init__). Per-lane runs (the contract, and the lane handoffs' own commands) pass. Scored-run harness should keep per-lane invocation.",
+      "remediation": "None required.",
+      "evidence_path": "auditor re-run logs (this audit)"
+    },
+    {
+      "id": "A7-I8",
+      "severity": "INFO",
+      "blocking": false,
+      "title": "A1 amendment exists twice: eaef65d6 (main) and byte-identical cherry-pick b75f35f7 (integration chain)",
+      "detail": "The freeze text references eaef65d6; the integration chain carries the same plan bytes at b75f35f7 (git diff of the plan path between the two commits is empty). Chain integrity holds; dispatch references resolved.",
+      "remediation": "None required.",
+      "evidence_path": "git: eaef65d6, b75f35f7"
+    },
+    {
+      "id": "A7-I9",
+      "severity": "INFO",
+      "blocking": false,
+      "title": "§7.1 'phase-gated variant' breadth interpretation",
+      "detail": "All four candidates are phase-gated books; the veto targets reformulations of the named specialists. Each arm records a pre-outcome class argument distinguishing event-conditional structure books (Donchian/breakout/floor-provision, sparse, structure stop) from the continuous regime holds of the specialist library. The recorded distinctions are substantive (trade geometry, not parameters), and G6 controls (phase-shuffled with movement validation / clock-only) directly test gate-informativeness. A7 terminal should re-examine scored-arm behavior against these recorded arguments without opening PnL-bearing predecessor artifacts.",
+      "remediation": "None required at prelaunch.",
+      "evidence_path": "lane_btc_h1/proposals/proposals.json (ancestry_self_check); lane_btc_h4/proposals/proposals.json (mechanism + ancestry)"
+    }
+  ],
+  "top_level_verdict": "REMEDIATION_REQUIRED",
+  "blocking_findings": ["A7-H1"],
+  "required_at_remediation": [
+    "Fix A7-H1: measure run_imbalance rho for the three BTC_H1 candidate signal series (close-based reconstruction per lane_btc_h4/pipeline/ancestry.py or an explicitly frozen equivalent); apply the 0.20 bar; record in census ancestry + eligible_candidates_freeze; re-freeze at a new head; ANCESTRY_VETOED any arm with |rho| > 0.20.",
+    "Fold A7-M2 (BTC_H4 arm_config_digest) and A7-M3 (schedule BTC digest re-verification as a binding scored-run step in evaluation_freeze) and A7-L4 (missing not_scored row) into the same remediation commit."
+  ],
+  "note_to_owner": "All other checklist items PASS on independent recomputation from bytes: commit/freeze chain intact, data digests re-verified (6 BTC raw files + SPY snapshot), census arithmetic reproduced exactly (L1 5/5 phases, L2 20/20 fold cells, SPY floors), phase rules causal with genuine future-mutation tests, Tuesday defect class deleted and re-proven, outcome-blindness clean, no broker/S1/push/merge surface, gates/floors/costs equal to plan. The single blocking defect is an unmeasured mandatory ancestry shadow on the three BTC_H1 arms — pre-PnL, measurable in hours, and must not be waived: missing evidence is NOT_RUN, never inferred PASS. After remediation and re-freeze, a fresh A7 pass on the delta is required before STOP-1. No GO phrase is consumed by this audit; nothing here authorizes a scored run."
+}
