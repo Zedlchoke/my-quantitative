@@ -27,6 +27,7 @@ import threading
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
+from .pnl import build_pnl_periods, compose_combined_history
 from .resolve import RuntimePaths
 from .status import app_status, family_chip, load_heartbeat
 
@@ -389,6 +390,13 @@ class SnapshotStore:
             app["sl_na"] = snapshot.get("sl_na")
             app["tp_na"] = snapshot.get("tp_na")
             app["timezone_default"] = snapshot.get("timezone_default")
+            # Daily/Weekly PNL tab + combined chart: composed from the
+            # SAME fail-closed per-family series the engine published
+            # (no engine change, no invented numbers). Keeps pre-mount
+            # 3-sleeve history and reports late sleeve capital as a
+            # capital flow, never as PnL.
+            app["combined_history"] = compose_combined_history(valuation)
+            app["pnl_periods"] = build_pnl_periods(valuation, now_dt=now_dt)
 
         return {"snapshot": snapshot, "app": app}
 

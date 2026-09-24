@@ -26,6 +26,7 @@ FAMILIES = (
     "XSECT-FUND-CARRY-7D",
     "ILLIQ-AMIHUD-28D-W",
     "BASISLV-PREMFADE-28D",
+    "BTC4H-BANDRIDGE",  # sleeve 4, mounted 2026-09-24 (amendment A1)
 )
 
 # Marks files are ~1-2.5 MB; keep fixtures small. We slice the TAIL

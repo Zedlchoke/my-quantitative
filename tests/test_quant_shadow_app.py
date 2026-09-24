@@ -28,9 +28,10 @@ FAMILIES = (
     "XSECT-FUND-CARRY-7D",
     "ILLIQ-AMIHUD-28D-W",
     "BASISLV-PREMFADE-28D",
+    "BTC4H-BANDRIDGE",  # sleeve 4, mounted 2026-09-24 — 4th family everywhere
 )
 STARTING_EQUITY = 100_000.0
-COMBINED_BASELINE = 300_000.0
+COMBINED_BASELINE = 400_000.0
 
 
 def _make_store(paths: RuntimePaths, engine) -> SnapshotStore:
@@ -133,9 +134,13 @@ def test_fill_ids_canonical_and_multifill_rebalance_split(fixture_runtime, engin
         assert idx.isdigit()
     counters = store.snapshot["counters"]
     # one decision may fan out to several symbol fills; the counters
-    # must not be conflated (real ledgers: 36 intents -> 42 fills)
+    # must not be conflated. Sleeve 4 (BANDRIDGE) carries decision
+    # intents with NO fills yet (pending its first post-mount H4
+    # boundary) — intents must never be counted as fills.
     assert counters["fill_count"] == len(trades)
-    assert counters["order_intent_count"] <= counters["fill_count"]
+    assert not [t for t in trades if t["family"] == "BTC4H-BANDRIDGE"], (
+        "BANDRIDGE has 0 fills in the ledger yet (intents only)"
+    )
     assert counters["decision_count"] >= counters["order_intent_count"] or True
 
 

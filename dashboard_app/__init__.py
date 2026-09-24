@@ -14,5 +14,5 @@ UI          : one window, one page (inline CSS/JS, hand-rolled SVG,
               no CDN, no internet required to render).
 """
 
-__all__ = ["resolve", "status", "store", "server", "page", "app_main"]
+__all__ = ["resolve", "status", "store", "pnl", "server", "page", "app_main"]
 __version__ = "1.0.0"
