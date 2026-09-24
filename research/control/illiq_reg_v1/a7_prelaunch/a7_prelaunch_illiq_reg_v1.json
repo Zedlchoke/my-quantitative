@@ -1,0 +1,164 @@
+{
+ "schema": "chr3f_a7_prelaunch@1",
+ "cycle": "ILLIQ-REG-V1",
+ "audit_utc": "2026-09-24T05:09:04Z",
+ "auditor": "A7 independent prelaunch auditor (fresh session; no role in bootstrap or implementation)",
+ "head_sha": "eb86951eb468e6644a76dd9b9412e68f51b66d0f",
+ "branch": "orca/illiq-reg-v1-integration",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/illiq-reg-v1/integration",
+ "scope_audited": {
+  "plan": "plans/PLAN_illiq_reg_gate_v1.md (root checkout, committed clean)",
+  "draft_frozen_spec_source": [
+   "research/control/illiq_reg_gate_v1_draft/DOSSIER_illiq_reg_gate_v1.md",
+   "research/control/illiq_reg_gate_v1_draft/PREREG_ILLIQ-REG-V1.yaml",
+   "research/control/illiq_reg_gate_v1_draft/pit_conc_gate_single_shot.py + .json",
+   "research/control/illiq_reg_gate_v1_draft/forensic_compute.py + forensic_numbers.json"
+  ],
+  "implementation": ".worktrees/illiq-reg-v1/integration/research/control/illiq_reg_v1/ (gate_module.py, gate_series_build.py, gate_series.json, wiring.py, dryrun.py, dryrun_report.json, full_build_locked.py, full_build_retry.sh, full_build.log, MANIFEST.yaml, IMPLEMENT_HANDOFF.json, coverage_status.json, tests/)",
+  "ancestry": "research/control/CRYPTO-HISTORICAL-REPLICATION-3F-V1/bootstrap/amendment_a4_illiq_outcome_exposed.md (A4/A4b/A5 + A5-funded DIAG) + CHR3F recovered/v11_root/baseline_wave2.json"
+ },
+ "checks": [
+  {
+   "id": "C1",
+   "name": "Plan vs frozen spec (constants, gate law, falsification rule, budget)",
+   "status": "PASS",
+   "evidence": {
+    "constants_match_all_three_surfaces": {
+     "plan_ss3 / PREREG yaml / gate_module.py": {
+      "band_on_s90": 0.021317,
+      "band_off_s90": 0.057702,
+      "vol_floor_p10": 0.328930,
+      "vol_off": 0.296037,
+      "vol_off_is_floor_x_0.90": true,
+      "gated_law": "V1_state AND V2_state",
+      "hysteresis": "carry between thresholds; both machines initial ON",
+      "stamps": "Monday 00:00:00Z, PIT completed blocks strictly before T"
+     },
+     "threshold_provenance": "dossier pit_conc_gate_single_shot.json: band_on 0.021317207104321723, band_off 0.05770158783977025, vol_floor 0.32893024736001353, n_prewindow 242 (rvol n=238 per PREREG); frozen constants are the 6-dp roundings, identical on every surface (see NB5)"
+    },
+    "falsification_rule_verbatim": "plan SS6 == gate_module.FALSIFICATION_NET_BAR -0.2947 / FALSIFICATION_MDD_BAR 0.4372 == PREREG endpoints; 'FALSIFIED unless BOTH hold'; inclusive bars pinned by tests/test_gate_module.py::test_falsification_verdict_inclusive_bars",
+    "budget": "plan phase-1 cap 4 == plans/CYCLE_REGISTRY.json ILLIQ-REG-V1 budget {used: 0, max: 4}; lifecycle PLANNED_NOT_STARTED; go_phrase 'GO ILLIQ REG V1 SCORED EXECUTION' matches plan SS12 verbatim, state REGISTERED_NOT_CONSUMED",
+    "s0r_window": "2024-08-22..2025-08-21 identical in plan SS5, PREREG windows, wiring.FOLD_WINDOWS (test_s0r_window_matches_plan_ss5)"
+   }
+  },
+  {
+   "id": "C2",
+   "name": "Ancestry disclosure accuracy (outcome-exposed chain, verbatim and corroborated)",
+   "status": "PASS",
+   "evidence": {
+    "plan_ss2_chain": "V11 FAMILY_REJECT (fold-share 0.7055) -> CHR3F replication outcome-exposed (A3/A4/A4b/A5) -> DIAG S0R -58.9% (funded -56.3%) observed BEFORE gate design -> OUTCOME_EXPOSED_ANCESTRY, confirmation weight 0 on every historical window",
+    "corroboration": {
+     "v11_reject": "recovered/v11_root/baseline_wave2.json: A8-V11-ILLIQ-AMIHUD 'V11_FAMILY_REJECT (wave 2: ... share 0.7055 > 0.50...)'",
+     "a4_chain": "amendment_a4_illiq_outcome_exposed.md: A4 outcome-exposed + listed-at-start; A4b Y2024P-only; A5 S0R fold (all 20 listed by 2024-04-02, no divergence); A5-funded DIAG net_return_sum -0.5631, MDD 0.6012, n 336",
+     "no_funding_diag": "plan SS2 table: -0.589312 / MDD 0.624507 / funding 0.0 (B2), result_sha256-pinned in PREREG provenance_hashes",
+     "single_shot_disclosed": "pit_conc_gate_single_shot.json gated S0R: net -0.4030219597249999, mdd 0.4434988354599999, off_boundaries 6 == plan SS2/PREREG disclosure, with the honest reading that the combo misses loss phases A+B and 'is expected to FAIL the falsification rule' (both bars indeed missed: -0.403 < -0.2947 and 0.4435 > 0.4372)"
+    },
+    "confirmation_weight_zero_on_history": "declared plan SS1/SS2/SS5/SS13; PREREG ancestry_disclosure"
+   }
+  },
+  {
+   "id": "C3",
+   "name": "Gate-series determinism (independent rerun under heavy lock, byte comparison)",
+   "status": "PASS",
+   "evidence": {
+    "method": "auditor reran full_build_locked.py (acquires machine-wide heavy lock cycle ILLIQ-REG-V1, then gate_series_build.py --full-build); lock verdict FREE_PROVEN before acquire (no foreign worker; CHR3F basis watcher not holding), HELD_PROVEN enforced by the build guard",
+    "result": "rc 0; gate_series.json BYTE-IDENTICAL to the committed artifact (cmp silent); sha256 e09187f925e761cfabe94e0766ca2104b3b45f5def76fadc061cdbc09c51702d recomputed before and after; worktree still git-clean after the rerun (full_build.log also byte-identical)",
+    "digests_recomputed_from_bytes": {
+     "gate_series.json": "e09187f925e761cfabe94e0766ca2104b3b45f5def76fadc061cdbc09c51702d",
+     "gate_module.py": "bd0b00dab8b2acfa34adff8d0c5c7679d8e196f5584b943c3c04d659588485be",
+     "wiring.py": "f2dc5bf98b0a83d1c6181d2144b5c58b8f1f7ae5cbc33902b0a72bedbf754b52"
+    },
+    "cross_check_embedded": "s0r_s90_max_abs_diff 0.0 vs frozen dossier single-shot (bit-identical S90 at all 52 S0R stamps); M0 suite independently rerun by auditor: 35/35 PASS"
+   }
+  },
+  {
+   "id": "C4",
+   "name": "Dry-run validity + independent gate-state recompute",
+   "status": "PASS",
+   "evidence": {
+    "report_fields": "non_vacuous true (>=1 GATED-ON book constructible [34] AND >=1 GATED-OFF [9]); no_pnl_fields true (denylist scan enforced in dryrun.py over the serialized report; run_strategy never called)",
+    "counts": "43 ON / 9 OFF over 52 S0R stamps == gate_series.json S0R fold recomputed by auditor from per_day rows; skip breakdown 34 OK-with-book + 7 WEIGHT_CAP_BREACH (frozen engine's own fail-closed cap, exists ungated too) + 2 FOLD_BOUNDARY_FORCE_FLAT",
+    "independent_rewalk": "auditor re-typed the frozen constants from plan SS3/PREREG and re-walked the hysteresis state machines over ALL 52 S0R stamps from the stored observables WITHOUT calling gate_module: 0 mismatches on (v1_state, v2_state, gated)",
+    "spot_stamps": {
+     "2024-08-26": "s90 0.022941 (between 0.021317/0.057702 -> carry ON), rvol 0.663858 >= 0.328930 -> ON -> gated TRUE (stored TRUE)",
+     "2025-06-16": "s90 -0.014641 (<= p70 -> ON), rvol 0.343019 >= floor -> ON -> gated TRUE (stored TRUE)",
+     "2025-06-23": "s90 -0.025998 (ON), rvol 0.286173 < 0.296037 -> V2 OFF -> gated FALSE (stored FALSE); first stamp of the 9-stamp GATE_OFF run, reason_code GATE_OFF"
+    },
+    "hysteresis_carry_verified": "2025-06-30 rvol 0.311185 in [0.296037, 0.328930) -> state carried OFF; OFF-run rvol max 0.311185 < floor (never re-ONs)",
+    "digest_pinning": "dryrun_report.json gate_series_sha256 and gate_module_sha256 match the file bytes recomputed by auditor"
+   }
+  },
+  {
+   "id": "C5",
+   "name": "Cell-run conformance (scored-execution law vs specified runner)",
+   "status": "PASS",
+   "evidence": {
+    "funding_per_fold_r5_B2": "plan SS9 == wiring.FOLD_WIRING: S0R/FWD -> scan_2026_a, Y2021/Y2024P -> scan_2026; verify_funding_scan_coverage raises B2_FAIL_CLOSED on any zero in-window row BEFORE compute; live proof test test_live_s0r_scan_covers_all_20_symbols (20/20, 26208 rows) PASS; scan id must be recorded per row via FUNDING_WIRING label",
+    "bars_load_law": "pre = window_start - 125d, end_ext = window_end + 3d in illiq_cell_runner.py (lines 28-33) and wiring.bars_load_bounds; test asserts 2024-04-19 / 2025-08-24 for S0R",
+    "gate_off_semantics": "plan SS3 'book is flat for that week' == STATUS_SKIP with reason_code GATE_OFF (dryrun.py; same skip channel as the frozen engine's MIN_ELIGIBLE skips; the gated overlay adds no fill logic)",
+    "labels": "plan SS11 4-label invariant (WINDOW_FOLD, OUTCOME_EXPOSED_ANCESTRY, REPLICATION_NOT_PROSPECTIVE + scored=False, FUNDING_WIRING) == wiring.labels_for_row/validate_labels; 3 dedicated label tests PASS; see NB2 for the dispatch-premise label list",
+    "namespace": "all cycle writes confined to research/control/illiq_reg_v1/ (MANIFEST allowed_paths; every write observed by auditor is inside it); CHR3F referenced read-only by absolute path",
+    "heavy_lock": "plan SS10.7 cells under heavy lock; wrapper pattern (full_build_locked.py) demonstrates researchctl lock acquire/release with cycle id + expected artifacts; lock history shows only role=gate-series-build runs",
+    "stresses_inside_cells": "plan SS7: x1.5 and x2.0 fee are phase-1 cells 2-3 with baseline slip floor +1 tick kept; engine-native stress (x1.5 fee, +2 ticks, +1 event delay) additionally reported where the runner exposes it; INV-gated baseline is cell 4 on the SAME gate series",
+    "phase1_menu_matches_scope": "S0R ANCHOR-gated baseline / x1.5 / x2.0 / INV-gated baseline == dispatch scope 'gated ILLIQ anchor + INV control on S0R with stresses inside cells'"
+   }
+  },
+  {
+   "id": "C6",
+   "name": "Boundaries (S1, shadow/gateway, credentials, no scored cells)",
+   "status": "PASS",
+   "evidence": {
+    "s1": "registry ILLIQ-REG-V1 s1 = SEALED_UNTOUCHED; no S1 reference anywhere in the cycle namespace or code paths audited",
+    "chr3f_read_only": "CHR3F worktree git-clean (no modifications, no untracked files) after all cycle activity; dryrun.py sets sys.dont_write_bytecode before importing CHR3F modules; all catalogs/scans/engine referenced by absolute path only",
+    "shadow_gateway": "no gateway/shadow surface touched by this cycle; heavy lock history contains only ILLIQ-REG-V1 gate-series-build roles; lock FREE_PROVEN at audit time (no foreign worker starved)",
+    "credentials": "grep over the cycle namespace (py/json/md/yaml) found no api keys/secrets/passwords/tokens",
+    "no_scored_cells": "registry budget 0/4, go_phrase REGISTERED_NOT_CONSUMED, no illiq_scored_status.json exists in the cycle namespace, dry-run is scored=False with zero PnL surfaces; the only heavy jobs ever run were the three implementer full-build runs plus the auditor's verification rerun"
+   }
+  },
+  {
+   "id": "C7",
+   "name": "Terminal outcome vocabulary (FALSIFIED valid, no survivor promised)",
+   "status": "PASS",
+   "evidence": {
+    "falsified": "plan SS13 declares FALSIFIED a perfectly valid terminal state and the dossier-honest expected outcome; SS6 on fail: no gate variants, no tuning loop, family returns to NOT_PROSPECTIVE diagnostics",
+    "other_terminals": "NOT_FALSIFIED_BUT_NOT_CONFIRMED (zero confirmation weight; next step only phase-2 owner request), INCONCLUSIVE_GATE (<8/52 gate-ON stamps), NOT_RUN_DATA / NOT_RUN_IDENTITY / BLOCKED_DATA_AUTHORITY / BLOCKED_RESOURCE",
+    "no_survivor_promise": "SS1 non-mission excludes confirmation claims from any historical window; FWD is confirmation-only and NOT scored this cycle; phase 2 requires an owner amendment raising the cap; SS2 assigns confirmation weight 0 to all history"
+   }
+  }
+ ],
+ "verdict": "AUTHORIZED",
+ "blocking_findings": [],
+ "non_blocking_findings": [
+  {
+   "id": "NB1",
+   "finding": "S90 semantic prose vs frozen semantics: plan SS3 (and PREREG yaml) prose reads S90 = CONC28(T) minus 'mean of CONC28 over the trailing 90 days', but the frozen thresholds were generated by the dossier's single-shot code as CONC(28) - CONC(90) over the daily PIT DV-share (dossier: 'S = CONC28 - CONC90'; pit_conc_gate_single_shot.py conc_at). These are different functions of the share series.",
+   "why_not_blocking": "gate_module.s90_at implements the threshold-generating semantics, declares it binding in the module docstring ('any other reading of the prereg prose would silently invalidate the threshold semantics and is forbidden'), is pinned by test_s90_definition_matches_dossier_code, and the build cross-check measured s90 max abs diff 0.0 vs the dossier at all 52 S0R stamps. The p70/p90 quantile calibration is only valid under the generating semantics; the implementation chose the only correct reading and disclosed it. The plan prose is the imprecise surface."
+  },
+  {
+   "id": "NB2",
+   "finding": "Label-list divergence vs the dispatch premise: the dispatch's mandatory label list (OUTCOME_EXPOSED_ANCESTRY + REPLICATION_NOT_PROSPECTIVE + EQUIVALENCE_DATA_RESTAGE_UNPROVEN + UNIVERSE_LISTED_AT_WINDOW_START) is not the plan's SS11 invariant. The plan mandates WINDOW_FOLD + OUTCOME_EXPOSED_ANCESTRY + REPLICATION_NOT_PROSPECTIVE/scored=False + FUNDING_WIRING and the dispatch itself instructs to verify the exact list against the plan.",
+   "why_not_blocking": "The plan is the cycle's registered law and its invariant is mechanically enforced (wiring.validate_labels + 3 tests). The substance of the dispatch's two extra labels is carried elsewhere in the plan: the universe law is SS4 (PIT_LISTED_AT_WINDOW_START; S0R listed-at-start = full 20/20 universe, no divergence per A5), and the data-restage authority law is SS9 (per-fold scans, read-only catalogs). EQUIVALENCE_DATA_RESTAGE_UNPROVEN is the CHR3F-A3 cycle label; this cycle's rows are governed by the plan's own SS11 set. Future produced rows must carry the SS11 four labels exactly."
+  },
+  {
+   "id": "NB3",
+   "finding": "Plan SS10 step 3 says the build writes 'gate series + 200 random controls ... with digests'; the implementation serializes only the observables and generates the 200 permutations deterministically at cell time (seed = sha256('ILLIQ-REG-V1')[:8]; structure/determinism unit-tested).",
+   "why_not_blocking": "Disclosed in IMPLEMENT_HANDOFF known_limitations; PREREG requires only a 'declared, reproducible' seed, not serialization; determinism of the generation is unit-tested (same seed -> identical list; structure preservation: length, toggle count, min run 4, start state). The random gates bound PnL surfaces only, which do not exist pre-GO."
+  },
+  {
+   "id": "NB4",
+   "finding": "rvol30 window semantics: the frozen module uses completed closes strictly before the stamp (PIT); the dossier's descriptive single-shot replay read closes <= stamp, which at a Monday 00:00Z stamp includes the stamp day's own final 15m close (future data at the stamp). V2 states therefore differ at 3/52 S0R stamps and the GATE_OFF run is 9 stamps (2025-06-23..2025-08-18) vs the single-shot's 6 (from 2025-07-14).",
+   "why_not_blocking": "Disclosed verbatim in gate_series.json cross_check.rvol_semantics_note and in the handoff; S90 is bit-identical; the strictly-PIT reading is the no-lookahead-correct one (pinned by test_no_lookahead_mutation) and the frozen module is the cycle law; the delta direction is conservative (more flat weeks on the falsification surface, i.e. the gate shields more of the tail it was designed to avoid)."
+  },
+  {
+   "id": "NB5",
+   "finding": "Frozen constants are roundings of the dossier's full-precision quantiles: 0.02131720710... -> 0.021317, 0.05770158... -> 0.057702, 0.32893024... -> 0.328930; falsification bars -0.2947 / 0.4372 vs exact 50%/30% derivations -0.294656 / 0.437155.",
+   "why_not_blocking": "The rounded values are themselves the preregistered frozen law and are identical across plan SS3/SS6, PREREG yaml, gate_module.py, the M0 tests, and every artifact digest; max effect < 1e-4 on any bar. No surface diverges from any other surface."
+  },
+  {
+   "id": "NB6",
+   "finding": "Registry head for ILLIQ-REG-V1 (482dc81b, registration-time) lags the worktree HEAD (eb86951e: M0 commit 58b93de3, implementation b9ae22df, handoff eb86951e).",
+   "why_not_blocking": "Expected mid-cycle mechanics: the registry is written via researchctl at gate events (registration, close), lanes never touch it; the plan SS10 sequence places the A7 verdict, owner GO, cells and two-half close ahead. Recorded here for the trail; this audit's authoritative head is eb86951e."
+  }
+ ],
+ "notes": "The outcome-exposed ancestry is owner-accepted via the A4 chain and is NOT itself a blocker; the disclosure was verified accurate against baseline_wave2.json, amendments A3/A4/A4b/A5, and the pinned DIAG result hashes. Owner GO gate per plan SS12 remains: the exact phrase 'GO ILLIQ REG V1 SCORED EXECUTION' must be typed at its own gate before any phase-1 cell; this audit consumes nothing."
+}
