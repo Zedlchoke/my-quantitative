@@ -669,3 +669,37 @@ The immediate action is **not to run the three families**. It is:
 ```
 
 Until steps 1-6 are evidenced, status remains `NOT_RUNNING`.
+
+---
+
+## AMENDMENT A1 (2026-09-24, owner directive) — sleeve 4 BTC4H-BANDRIDGE mounted
+
+Owner 2026-09-24 (verbatim intent): "không cho dùng chung nữa. Giữ
+PROSPECTIVE-SHADOW-V1 như cũ và tôi muốn strategy đó sẽ được cấp 100k vào
+PROSPECTIVE-SHADOW-V1 và chạy như các strategy kia." — the shared-equity
+group design is WITHDRAWN before any prospective record exists.
+
+- Sleeve 4 added: **BTC4H-BANDRIDGE**, own virtual capital **$100,000**,
+  running under the SAME section-2 shadow law as sleeves 1–3 (forward-only,
+  no orders, no keys, append-only ledger, nothing before ACTIVATION
+  2026-09-24T00:00:00Z counts as prospective).
+- Frozen law: PSV1 Donchian 30/15 (min-hold 12, max-hold 450) gated by the
+  C3 band state (close > SMA200(H4)×1.03 on / < ×0.97 off; hysteretic, no
+  extra dilation); decision H4 close, fill next H4 open; 6 bps/side;
+  measured funding per settlement; fraction 1.0 of the sleeve's own capital.
+- Computation home (documented cross-worktree mount, P-13 convention):
+  `.worktrees/btc-h4-band-risk-v1/integration/research/control/
+  btc_h4_band_risk_v1/shadow_bandridge/` (SPEC.md + updater + ledger).
+  The inherited engine there is the RECONCILED one (9e-10 vs the PSV1
+  committed ledger); A7 is WAIVED this cycle by owner instruction
+  ("khỏi A7 lúc này", recorded 2026-09-23) — compensating controls:
+  identity-gated engine + 16/16 fixtures + mandatory repro twins already
+  on record.
+- S0 characterization (POSTHOC, descriptive only):
+  `.../freezes/shadow_group_s0.json` — BANDRIDGE 2020-01→2026-09:
+  +972,763 measured / +1,177,000-class constant on $100k; GATE-SHUFFLE
+  control +137,080 measured (the regime timing carries real information);
+  DD 0.2494; F2 only −15,081 measured; F4 +175,801 measured.
+- The three original sleeves (ILLIQ-AMIHUD-28D-W, BASISLV-PREMFADE-28D,
+  XSECT-FUND-CARRY-7D) are UNCHANGED and keep their historical rejection
+  labels. No shared capital anywhere.
