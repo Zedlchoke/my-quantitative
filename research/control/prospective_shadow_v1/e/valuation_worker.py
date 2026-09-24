@@ -54,6 +54,7 @@ from research.governance import heavy_lock  # noqa: E402  (inspect ONLY)
 from research.shadow_v1 import start_guard  # noqa: E402
 from research.shadow_v1 import valuation  # noqa: E402
 from research.shadow_v1.families import (  # noqa: E402
+    FAMILY_BANDRIDGE,
     FAMILY_CARRY,
     FAMILY_ILLIQ,
     FAMILY_PREMFADE,
@@ -64,7 +65,7 @@ HEARTBEAT_SCHEMA = "shv1_valuation_worker_heartbeat@1"
 
 #: Same FIXED family order as shadow_worker (plan 12-E: one scheduler
 #: serializes writes; the valuation lane only reads those ledgers).
-FAMILY_ORDER = (FAMILY_ILLIQ, FAMILY_PREMFADE, FAMILY_CARRY)
+FAMILY_ORDER = (FAMILY_ILLIQ, FAMILY_PREMFADE, FAMILY_CARRY, FAMILY_BANDRIDGE)
 
 #: Frozen mark-price source (research/control/prospective_shadow_v1/e/
 #: valuation_config.json): ONE bulk premiumIndex response covers every
