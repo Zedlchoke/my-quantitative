@@ -1,0 +1,98 @@
+{
+ "schema": "chr3f_a7_prelaunch@1",
+ "round": 4,
+ "audit_utc": "2026-09-24T03:03:04Z",
+ "head_sha": "2128cbcc4eda59c4c3132cd930807c4aded98c7a",
+ "root_head_sha": "c6f5bba8e1d0d5267236130cdb9cfc1a54f2fe08",
+ "auditor": "A7 independent delta re-audit r4, cycle CRYPTO-HISTORICAL-REPLICATION-3F-V1, family ILLIQ-AMIHUD-28D-W (delta scope: A4b fold narrowing to Y2024P-only, load-end +3d fix, truthful relabel, Y2024P DIAG; everything recomputed from bytes, nothing trusted)",
+ "supersedes": "round 3 REFUSED at this same path (audit_utc 2026-09-24T02:55:20Z, head adc6e7f99e5c1a282e4ed0f904a993070e0b1a0a); r1 AUTHORIZED 20/20 preserved at a7_prelaunch_illiq_r1_SUPERSEDED.json",
+ "delta_scope_declared": "Amendment A4b (owner): ILLIQ fold set = Y2024P ONLY (2024-01-01T00:00Z..2024-08-19T00:00Z, preregistered fold) => 2 cells: ANCHOR ILLIQ-AMIHUD-28D-W + INV ILLIQ-AMIHUD-28D-W-INV. Y2021/Y2022/Y2023 folds dropped BEFORE any of their scored cells ran. This round verifies the r3 blockers resolve FOR THE NARROWED SCOPE.",
+ "checks": [
+  {
+   "id": "r4c01_a4b_amendment_and_launcher_scope",
+   "method": "Read amendment_a4_illiq_outcome_exposed.md bytes incl. A4b section; git show 2128cbcc for the launcher; parse FOLDS/ARMS from current illiq_scored.py.",
+   "result": "PASS",
+   "detail": "A4b present verbatim: fold set = Y2024P only, 2 cells, window 2024-01-01..2024-08-19, budget impact 2 of 24; explicitly notes 'For Y2024P specifically, A7 r3's own A/B measured books IDENTICAL at all 33 stamps'. Launcher FOLDS = [('Y2024P','2024-01-01T00:00:00Z','2024-08-19T00:00:00Z')] with ARMS ANCHOR+INV => exactly 2 cells. Delta commit 2128cbcc touches ONLY 3 cycle files: chr3f_illiq_plugin.py (comment-only), illiq_cell_runner.py (load-end), illiq_scored.py (FOLDS)."
+  },
+  {
+   "id": "r4c02_r3_f1_out_of_scope_y2024p_identical_books_reproduced",
+   "method": "Reproduced r3's Y2024P identical-books fact from the r3 artifact bytes (a7_prelaunch_illiq_r3.md and the pre-overwrite r3 JSON), as dispatched.",
+   "result": "PASS",
+   "detail": "r3 md N1: 'Y2024P book-level identity DID hold - 33/33 stamps identical weights despite variant B's n_eligible growing 17->18->19 from 2024-05-20 (BOME/ENA obtained features but never reached a tail leg in that fold). If the owner amends the universe law knowingly, Y2024P is empirically unaffected.' r3 JSON F2: books 'IDENTICAL at all 33/33 stamps'. Therefore r3 F1 (Y2023 6/53-stamp divergence) is OUT OF SCOPE under A4b, and for the single remaining fold the listed-at-start universe is empirically leg-identical. r3's fact reproduced from its artifact as required."
+  },
+  {
+   "id": "r4c03_truthful_relabel",
+   "method": "Byte diff of chr3f_illiq_plugin.py universe() docstring in commit 2128cbcc; read current file.",
+   "result": "PASS",
+   "detail": "The universe() override no longer claims book-identical. New text: 'A4 (outcome-exposed, owner-authorized): universe = listed at window start. NOT book-identical (A7 r3 F1: mid-window listings such as SUIUSDT/1000PEPEUSDT in Y2023 would take legs under the frozen universe and are excluded here - 6/53 stamps differ). Accepted as a declared identity consequence under amendment A4; every ILLIQ cell carries the EQUIVALENCE_DATA_RESTAGE_UNPROVEN label.' The delta is COMMENT-ONLY (override body unchanged); disclosure now matches the measured truth."
+  },
+  {
+   "id": "r4c04_load_end_fix_touches_no_forbidden_data",
+   "method": "Read illiq_cell_runner.py delta; read frozen read_bars_15m source (research/hyp_a8_m01.py:337-365) to confirm the data source and filtering.",
+   "result": "PASS",
+   "detail": "Fix = end_ext = window_end + timedelta(days=3); bars via read_bars_15m(CATALOG, s, pre, end_ext), which reads ONLY catalog parquet parts under catalog_live_crypto_b20 and drops rows outside [start,end]. No S1, no gateway, no network fetch, no funding-scan change: the extension reads MORE ROWS from the SAME already-staged public month zips (catalog build report 2026-09-24T00:19Z, months 2020-01..2024-08). r3 F2 had already established the covering bars exist in staged data before the band. No forbidden data touched."
+  },
+  {
+   "id": "r4c05_covering_bars_present_in_catalog",
+   "method": "Queried the catalog parquet directly (pandas over all parts per symbol) for bars with ts_event in (2024-08-19T00:00Z, 2024-08-22T00:00Z).",
+   "result": "PASS",
+   "detail": "BTCUSDT, 1000PEPEUSDT, SUIUSDT: 288 bars each in the window, first = 2024-08-19T00:00Z (the covering bar the terminal Monday mark law consumes), last = 2024-08-21T23:45Z. Verified for all 3 queried symbols."
+  },
+  {
+   "id": "r4c06_diag_y2024p_completes_through_wall_not_scored",
+   "method": "Parsed illiq_diag/Y2024P-ANCHOR-A4/{logs,shards,results/artifact.json}; converted ns stamps to UTC; cross-checked the frozen runner's scored flag (adapter_v10/runner.py:220) and the status file.",
+   "result": "PASS",
+   "detail": "DIAG artifacts exist (log: cell=Y2024P-ANCHOR-A4 result_sha256 bf3e4a8c...). portfolio_metrics match the dispatch EXACTLY: net_return_sum 0.137736325744, position_pf 1.099712620819, max_drawdown 0.205030513488, n_positions 216. COMPLETED THROUGH THE FORMER WALL: 33/33 stamps (F1=10 2024-01-08..2024-03-11, F2=11 2024-03-18..2024-05-27, F3=12 2024-06-03..2024-08-19); portfolio_payload n_boundaries=33 with terminal row at 1724025600000000000 = 2024-08-19T00:00Z, action FORCE_FLAT, fill applied, cost charged - the exact instant that aborted r3 with DataUnavailable. No 'DataUnavailable' anywhere in the artifact. scored=false is hardcoded by the frozen runner - diagnostic-only by construction. NOT-SCORED booking verified: no row in illiq_scored_status.json, no denominator consumption. Outcome exposure disclosed per A4/A4b (umbrella 'every ILLIQ cell ... OUTCOME_EXPOSED_AMENDMENT_A4 ... can never be presented as preregistered evidence'; A4b commit message carries the four metrics)."
+  },
+  {
+   "id": "r4c07_engine_byte_identical_to_c97283e0",
+   "method": "sha256(worktree file) vs sha256(git show c97283e0:<path>) for research/v11/families/illiq_amihud/{__init__,audits,plugin,strategy}.py and research/adapter_v10/{runner,benchmarks,base,protocol}.py; git status of recovered/v11_root.",
+   "result": "PASS",
+   "detail": "All 8 files byte-identical to frozen commit c97283e0. recovered/v11_root tracked tree clean; only cycle-local untracked outputs in the control dir."
+  },
+  {
+   "id": "r4c08_census_y2024p_non_vacuous",
+   "method": "Read illiq_census_y2024p.json; cross-checked DIAG fold_membership, books, and portfolio summary.",
+   "result": "PASS",
+   "detail": "Y2024P census: 33 stamps, 30 ok, 3 skipped (2024-01-08/15/22; engine-authored targets_at eligibility, shape-only) - non-vacuous, and the engine handles skips (DIAG books[0] at 2024-01-08 is the 0-leg skip; portfolio summary skipped_boundaries=3, force_flat_present=true). All 3 window folds populated (10/11/12 stamps) so the subclass empty-fold ContractViolation cannot fire. Census law satisfied for the narrowed scope; weights_per_ok_stamp_head=8 legs on OK stamps."
+  },
+  {
+   "id": "r4c09_zero_scored_cells_labels_on_rows",
+   "method": "Parsed all 13 rows of illiq_scored_status.json; grepped the repo for the two amendment label strings.",
+   "result": "FAIL",
+   "detail": "Zero scored cells CONFIRMED: 13 rows, all rc=1 with null metrics (r3 failed-sweep TECHABORT family, incl. CHR3F-ILLIQ-Y2024P-ANCHOR and CHR3F-ILLIQ-Y2024P-INV); no rc==0 row; launcher resume (done = rc==0) intact so the 2 Y2024P cells will run under the sweep. Labels PARTIAL: every row carries namespace REPLICATION_NOT_PROSPECTIVE + label EQUIVALENCE_DATA_RESTAGE_UNPROVEN + authority string, but UNIVERSE_LISTED_AT_WINDOW_START and OUTCOME_EXPOSED_AMENDMENT_A4 are stamped NOWHERE - repo-wide search finds them in exactly one file, the amendment markdown itself; the launcher row builder (illiq_scored.py lines 61-71) emits only the two labels, and the DIAG payload carries neither. See blocking B1."
+  },
+  {
+   "id": "r4c10_budget_8_plus_2_le_24",
+   "method": "Counted cells in xsect_scored_summary.json; enumerated launcher FOLDS x ARMS.",
+   "result": "PASS",
+   "detail": "8 XSECT scored cells (Y2020P/Y2021/Y2022/Y2023 x ANCHOR/INV) + 2 ILLIQ pending (Y2024P x ANCHOR/INV) = 10 <= 24."
+  },
+  {
+   "id": "r4c11_boundaries_and_outputs",
+   "method": "git status (root + integration worktree) and git show of the delta commit; credential-pattern grep on the 3 changed files; mtime scan of live-data-gateway-v1 / prospective-shadow-v1 / xauusd-shadow-v1 / fx-rangefade-2m-shadow-v1; funding bundle boundary check.",
+   "result": "PASS",
+   "detail": "Integration worktree HEAD 2128cbcc touches only the 3 cycle files; untracked files are cycle-local artifacts only (a7_prelaunch_illiq r3 files, illiq_diag/, illiq_scored_out/, illiq_scored_status.json). Root repo tracked tree clean (3 pre-existing unrelated untracked dirs). Fresh files in the gateway/shadow worktrees are those cycles' own runtime outputs (gateway heartbeat/raw jsonl, shadow ledgers/status) - same attribution as r3; THIS cycle wrote nothing outside its control dir. No S1 access. No credential-like strings in changed files. Outputs strictly cycle-local. Heavy-lock registry stale row (pid 71445 dead, flock free) carried from r3 N3 - flock free, sweep acquire unobstructed. Funding B bundle verified: 4534 rows, last 2024-08-20T00:00Z (declared boundary)."
+  },
+  {
+   "id": "r4c12_launch_gate_path_round_robin",
+   "method": "Read the launch-gated artifact before overwrite; read the gate code in illiq_scored.py:26-31.",
+   "result": "PASS",
+   "detail": "The gated path held round:3 REFUSED (r1 preserved as a7_prelaunch_illiq_r1_SUPERSEDED.json); the launcher gates on exactly a7_prelaunch_illiq/a7_prelaunch_illiq.json and exits rc=5 unless verdict == AUTHORIZED. This r4 artifact overwrites that path with round:4. Verdict REFUSED keeps the gate at rc=5."
+  }
+ ],
+ "verdict": "REFUSED",
+ "blocking_findings": [
+  "B1 (r4c09): The A4/A4b amendment label mandate is not implemented in the sweep surface, so the dispatched invariant 'labels EQUIVALENCE_DATA_RESTAGE_UNPROVEN + REPLICATION_NOT_PROSPECTIVE + UNIVERSE_LISTED_AT_WINDOW_START + OUTCOME_EXPOSED_AMENDMENT_A4 on every cell row' is FALSE in the bytes. The launcher row builder (illiq_scored.py lines 61-71) stamps only namespace REPLICATION_NOT_PROSPECTIVE and label EQUIVALENCE_DATA_RESTAGE_UNPROVEN; all 13 existing status rows carry exactly those two. A repo-wide byte search finds UNIVERSE_LISTED_AT_WINDOW_START and OUTCOME_EXPOSED_AMENDMENT_A4 in exactly ONE file - the amendment markdown itself - and in NO code, NO status row, NO cell artifact (the DIAG payload carries neither). A4b's own text asserts the labels 'remain' on cells; they were never stamped. Authorizing as-is would open the gate and immediately write scored authority rows that violate A4's disclosure mandate ('Every ILLIQ cell therefore carries ... OUTCOME_EXPOSED_AMENDMENT_A4 ... can never be presented as preregistered evidence'), and retrofitting labels after the sweep would require mutating an authority surface post-hoc. This is the same disclosure-integrity failure class r3 refused for (F1), now on the labeling surface. Note this is a 2-line remediation; every other blocker from r3 is resolved for the narrowed scope."
+ ],
+ "non_blocking_findings": [
+  "N1: illiq_scored.py module docstring still says '8 cells = {Y2021,Y2022,Y2023,Y2024P} x {anchor, INV}' - stale vs FOLDS=Y2024P-only (2 cells); A4's process line likewise still says '8 cells under heavy lock' (superseded by A4b). Code is authoritative; fix the docstrings together with the B1 remediation.",
+  "N2 (carried r3 N3): heavy-lock registry stale row (pid 71445 dead, flock free); registry phase/head/budget fields stale. Reclaim per round-2 discipline before the sweep.",
+  "N3: A4's outcome-exposure paragraph names only the Y2021-ANCHOR-v2 DIAG (predating it). The second DIAG (Y2024P-ANCHOR-A4: net +0.137736325744 / PF 1.099712620819 / MDD 0.205030513488 / 216 positions) is outcome-exposed under A4's umbrella sentence and its numbers appear in the A4b commit message, but both DIAG results should be carried explicitly in the post-sweep narrative.",
+  "N4 (carried r1 N6 / r3 N7): frozen identity window strings in cell artifacts remain the historical 2025-08-22..2026-08-21 window (byte-frozen identity by design); the 1e-07 constant tick table and the B funding bundle's 2024-08-20T00:00Z boundary row still travel with every ILLIQ report line. State the fold window explicitly per line.",
+  "N5 (carried r3 N4): dead clause 'or s == self._benchmark' in the subclass universe() - the benchmark can never re-enter; harmless."
+ ],
+ "remediation_paths_for_owner": [
+  "Minimal path to AUTHORIZED: in illiq_scored.py, extend the row dict to carry all four labels (e.g. add 'labels': ['EQUIVALENCE_DATA_RESTAGE_UNPROVEN', 'UNIVERSE_LISTED_AT_WINDOW_START', 'OUTCOME_EXPOSED_AMENDMENT_A4'] alongside the existing namespace/label fields, or extend 'label' to the full conjunction) and optionally mirror them into the cell runner payload identity; correct the stale '8 cells' docstring; commit; return for an A7 r5 re-audit of that single-file delta. No engine, catalog, or funding surface is affected - the covering-bar, load-end, DIAG-through-the-wall, byte-identity, census, budget, and boundary evidence of this round remains valid for r5."
+ ]
+}
