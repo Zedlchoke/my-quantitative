@@ -110,6 +110,13 @@ def seed_bars(pair):
     df = pd.DataFrame({
         "ts": h1["ts"], "b_o": h1["b_o"], "b_h": h1["b_h"], "b_l": h1["b_l"], "b_c": h1["b_c"],
         "a_o": h1["a_o"], "a_c": h1["a_c"]})
+    # The parquet carries ms-unit timestamps (datetime64[ms, UTC]); live
+    # appends are ns-unit Timestamps, and pd.concat cannot unify ms/ns —
+    # it silently degrades the column to object and the frozen engine's
+    # .dt accessor then crashes at the first H1 boundary. Normalize the
+    # seed to ns ONCE at this ingest edge (lossless for hourly bars) so
+    # every later concat stays datetimelike.
+    df["ts"] = df["ts"].astype("datetime64[ns, UTC]")
     df["s_open"] = df["a_o"] - df["b_o"]
     df["s_close"] = df["a_c"] - df["b_c"]
     return df
