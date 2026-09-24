@@ -248,9 +248,12 @@ def build_items():
 
 def main() -> int:
     STAGE.mkdir(parents=True, exist_ok=True); STATE.mkdir(parents=True, exist_ok=True)
-    dirty = sh("git", "-C", str(WT), "status", "--porcelain=v1")
+    # Guard v2: only TRACKED modifications block (untracked artifacts are
+    # gitignored by policy now; a concurrent cycle's status-json writes must
+    # not starve the basis restage — the r4-era blanket refusal did exactly that).
+    dirty = sh("git", "-C", str(WT), "diff", "--name-only")
     if dirty:
-        print(f"REFUSED dirty tree: {dirty}", file=sys.stderr); return 4
+        print(f"REFUSED tracked modifications: {dirty}", file=sys.stderr); return 4
     status_path = STAGE / "stage_status.json"
     status = json.loads(status_path.read_text()) if status_path.exists() else {"items": []}
     status["last_run_utc"] = datetime.now(timezone.utc).isoformat()
