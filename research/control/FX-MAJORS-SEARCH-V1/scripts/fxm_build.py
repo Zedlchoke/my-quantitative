@@ -40,7 +40,7 @@ def load_day(side, rel_name):
     """Verify sha from manifest, decode 24B records -> ndarray [1440,5] float64."""
     path = RAW / side / rel_name
     raw = path.read_bytes()
-    man = MANIFEST_JSON["files"].get(f"{side}/{rel_name}")
+    man = MANIFEST_JSON["files"].get(f"M1/{side}/{rel_name}")  # fxm keys carry the M1 prefix
     if man is None or man.get("sha256") != hashlib.sha256(raw).hexdigest():
         raise SystemExit(f"FAIL_CLOSED manifest mismatch: {side}/{rel_name}")
     plain = lzma.decompress(raw)
