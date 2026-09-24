@@ -1,0 +1,60 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "sprv1-crypto",
+  "cycle_id": "SHADOW-PAPER-REVIEW-V1",
+  "lane": "lane_crypto_sleeves",
+  "role": "review-analyst",
+  "actual_start_sha": "f0a8e800c47de1800011d20bccd9bcb2cc7e8546",
+  "dispatch_sha": "f0a8e800c47de1800011d20bccd9bcb2cc7e8546",
+  "dispatched_base_sha": "f0a8e800c47de1800011d20bccd9bcb2cc7e8546",
+  "authority_claims": [],
+  "commit_sha": null,
+  "changed_files": [
+    "research/control/SHADOW-PAPER-REVIEW-V1/lane_crypto_sleeves/REPORT.md",
+    "research/control/SHADOW-PAPER-REVIEW-V1/lane_crypto_sleeves/HANDOFF.json"
+  ],
+  "changed_paths": [
+    "/Users/hoangminhlong/my-quantitative/research/control/SHADOW-PAPER-REVIEW-V1/lane_crypto_sleeves/"
+  ],
+  "incidents": [],
+  "known_limitations": [
+    "Round-trip win rate and per-trade gross PnL: NOT_RUN — ledger schema (results/prospective_shadow_v1/ledgers/*.jsonl, worktree integration) has no per-fill realized_pnl; only per-event fee/slippage/funding totals and MTM equity.",
+    "Funding regime over long horizons: NOT measured in this lane (9.5-day observe window); ancestor figures cited from artifacts (btc_h4_edge_search_v1/freezes/feasibility_census.json annualized_mean_drag_pct=11.798; shadow_group_s0.json measured-vs-constant funding grid).",
+    "plans/CYCLE_REGISTRY.json not read in this lane; 'registry head STALE' statements derive from GATES.md G0 (measured 2026-09-24) plus worktree HEAD re-measured at 236bf2f7 during this review.",
+    "Whether a 2026-09-15 weekly event for ILLIQ/BASISLV ever existed cannot be established from ledger bytes (no record); conclusion 'never scheduled' is based on heartbeat loop_results due:1 and scheduler.py::_first_decision_at_or_after logic, cited in REPORT.md section 3.2.",
+    "Root checkout results/prospective_shadow_v1/ does not exist; all ledger/mark statistics measured from .worktrees/prospective-shadow-v1/integration/results/prospective_shadow_v1/ (byte counts cross-checked against runtime/heartbeat.json).",
+    "No test suites were executed in this read-only lane; test-pass claims cited from A7-RELIABILITY-AUDIT-2026-09-24.md and GATES.md."
+  ],
+  "objective": "Review the 4 PROSPECTIVE-SHADOW-V1 crypto sleeves (XSECT-FUND-CARRY-7D, ILLIQ-AMIHUD-28D-W, BASISLV-PREMFADE-28D, BTC4H-BANDRIDGE): byte-level ledger statistics, plan/identity/cost freeze verification, economic-mechanism critique, improvement opinions with authority labels, and a sizing (A/B/C) + fill-law (A/B) recommendation for the open BANDRIDGE owner packet.",
+  "outputs": [
+    {
+      "path": "research/control/SHADOW-PAPER-REVIEW-V1/lane_crypto_sleeves/REPORT.md",
+      "result": "PASS — full lane report (Vietnamese) with measured status table, per-family economics, 8 labeled improvement opinions, and explicit BANDRIDGE A/B/C + fill-law recommendation",
+      "evidence": "All numbers cite artifact paths: ledgers + valuation_marks under .worktrees/prospective-shadow-v1/integration/results/prospective_shadow_v1/; identity/data_cost/activation/findings under .worktrees/prospective-shadow-v1/integration/research/control/prospective_shadow_v1/; DASHBOARD-AND-SHADOW-RELIABILITY-V1 GATES.md / A7 audit / owner packet under research/control/; scheduler/worker source lines cited for the 09-15 weekly-anchor finding and the 6bps-vs-5bps cost-law discrepancy."
+    },
+    {
+      "path": "research/control/SHADOW-PAPER-REVIEW-V1/lane_crypto_sleeves/HANDOFF.json",
+      "result": "PASS — this handoff",
+      "evidence": "schema zcode_orch_v3_handoff@1"
+    },
+    {
+      "path": ".worktrees/prospective-shadow-v1/integration (measured, read-only)",
+      "result": "Measured state: worktree HEAD 236bf2f7 clean (branch orca/prospective-shadow-v1-integration); worktree copy of PLAN_prospective_shadow_v1.md stale at 0d8b3008 (28,668 bytes, lacks AMENDMENT A1 present in root plan 30,644 bytes); ledger byte counts BASISLV 1292 / BANDRIDGE 70298 / ILLIQ 3922 / CARRY 27727 matching runtime/heartbeat.json",
+      "evidence": "git -C <worktree> rev-parse HEAD; diff of plan files; wc -c ledgers; heartbeat.json"
+    },
+    {
+      "path": "results/prospective_shadow_v1/ledgers/*.jsonl (worktree integration)",
+      "result": "CARRY: 10 OK decisions (09-15..09-24), 48 fills, fee 246.43 / slip 56.40 / funding +4.60, booked net -298.22, mark equity min 95443.05 / max 100507.00 / last 99662.87 (-337.13 vs seed), MDD 4.825%, 16 closed round trips 24-48h, turnover ~0.62x/day. ILLIQ: 1 OK decision (09-21), 8 fills +/-0.125, fee 50.00 / slip 13.21, booked -63.21, mark equity last 100083.70 (+83.70), MDD 3.732%, 2026-09-15 weekly event never scheduled (scheduler anchor). PREMFADE: 1 DATA_BLOCKED/UNAVAILABLE_FAIL_CLOSED decision (09-21, 286-bar vendor gap), 0 fills, flat 100000. BANDRIDGE: 57 records = 56 UNAVAILABLE_FAIL_CLOSED mount-backfill attempts + 1 OK no-trade (08:00Z, gate on, no breakout), 0 fills, flat 100000.",
+      "evidence": "Line-by-line python json parse of the four jsonl ledgers and valuation_marks (read-only), reported in REPORT.md sections 3.x"
+    },
+    {
+      "path": "BTC4H-BANDRIDGE owner packet answers (advisory, in REPORT.md section 5)",
+      "result": "Q1 sizing: recommend B (cost-aware sizing, qty = min(w*equity/ref, cash/(fill_price*(1+fee))), realized_weights disclosed, identity-manifest amendment, forward-only) — AMENDMENT_REQUIRED; restores symmetry with the already-accepted SIZING_AND_CAP_BASIS short-side remediation for the same law-defect family. Q2 fill law: recommend A (first-completed-15m-bar declared canonical; doc-only correction + identity re-pin; no re-pricing of booked fills) — OWNER_DECISION_REQUIRED, implementation AMENDMENT_REQUIRED-lite. NEW finding: SPEC/identity pin fee_bps_per_side 6.0 but executor prices 0.0005+1tick (shadow_worker.py L180/L508-524; ledger cost_regime_digest 130d2e7e) — must be settled before the first BANDRIDGE fill (0 fills so far).",
+      "evidence": "OWNER_DECISION_PACKET_bandridge_sizing_and_fill_law.md; A7-RELIABILITY-AUDIT-2026-09-24.md sections 2b/3; e/handoff_shv1-e-worker.json headline gross-1.0 tail-short finding; SPEC.md (sha 3a7591fb); feasibility_census.json annualized_mean_drag_pct 11.798"
+    }
+  ],
+  "recommended_next_action": "A1/owner: (1) answer the open BANDRIDGE packet — Q1=B (cost-aware sizing), Q2=A (15m fill law canonical, docs corrected), plus settle the newly-reported 6bps-vs-5bps cost-law discrepancy in the same forward-only amendment before the first BANDRIDGE fill; (2) land documentation-only alignment for the 2026-09-15 weekly-anchor skip (ENGINEERING_ALLOWABLE; do NOT change scheduler behavior mid-run); (3) consider prospective-only ledger schema addition of per-fill realized_pnl and a diagnostic maker-cost book for CARRY (both ENGINEERING_ALLOWABLE; primary cost book must stay byte-frozen). No implementation in this cycle — all opinions are advisory per lane laws.",
+  "tests": [],
+  "tree_status": "Root checkout main @ f0a8e800c47de1800011d20bccd9bcb2cc7e8546 with 5 untracked paths (.zcode/, plans/PLAN_shadow_paper_review_v1.md, research/control/DASHBOARD-AND-SHADOW-RELIABILITY-V1/, research/control/SANDBOX-OVERFIT-3ASSETS/, research/control/d2_curiosity_v1_sources/) — preserved, untouched by this lane. Integration worktree clean at 236bf2f7. This lane wrote only its two outputs under research/control/SHADOW-PAPER-REVIEW-V1/lane_crypto_sleeves/ (untracked); no ledger/registry/manifest writes, no commits, no worker/process touched, no heavy job.",
+  "workers": 0
+}
