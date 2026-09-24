@@ -46,6 +46,29 @@ class Chr3fIlliqPlugin(IlliqAmihudPlugin):
                 return label
         return None
 
+    # INC/DIAG-2: PIT-correct diagnostic context. The frozen
+    # benchmark_context_symbols returns the full 20-symbol universe, which
+    # only exists from 2024-04; the buy-and-hold context is
+    # context_only_scored_false (enters_denominator False), so restricting it
+    # to symbols listed at the window start changes NO scored surface.
+    # First-archive months = measured P0 census (vision_census_wave2).
+    FIRST_ARCHIVE_MONTH = {
+        "1000PEPEUSDT": (2023, 5), "AAVEUSDT": (2020, 10), "ACEUSDT": (2023, 12),
+        "ADAUSDT": (2020, 1), "AVAXUSDT": (2020, 9), "BCHUSDT": (2020, 1),
+        "BNBUSDT": (2020, 2), "BOMEUSDT": (2024, 3), "BTCUSDT": (2020, 1),
+        "DOGEUSDT": (2020, 7), "ENAUSDT": (2024, 4), "ETHUSDT": (2020, 1),
+        "LINKUSDT": (2020, 1), "NEARUSDT": (2020, 10), "ONGUSDT": (2023, 11),
+        "SOLUSDT": (2020, 9), "SUIUSDT": (2023, 5), "WLDUSDT": (2023, 7),
+        "XRPUSDT": (2020, 1), "ZECUSDT": (2020, 2),
+    }
+
+    def benchmark_context_symbols(self) -> tuple[str, ...]:
+        w0 = self._window_start_iso[:7]  # "YYYY-MM"
+        y, m = int(w0[:4]), int(w0[5:7])
+        listed = [s for s in self.tradeable_universe()
+                  if self.FIRST_ARCHIVE_MONTH.get(s, (9999, 1)) <= (y, m)]
+        return tuple(sorted(set(listed) | {self._benchmark}))
+
     def fold_instants(self) -> dict[str, tuple[int, ...]]:
         out: dict[str, list[int]] = {}
         for stamp in self._stamps:
