@@ -27,6 +27,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, "application/json", STATE.read_bytes())
             except FileNotFoundError:
                 self._send(200, "application/json", b'{"data_stale": true, "note": "daemon not started yet"}')
+        elif self.path == "/equity_curve.json":
+            try:
+                self._send(200, "application/json", (HERE.parent / "equity_curve.json").read_bytes())
+            except FileNotFoundError:
+                self._send(200, "application/json", b'{"points": []}')
         elif self.path == "/journal.jsonl":
             try:
                 self._send(200, "application/x-ndjson", JOURNAL.read_bytes())

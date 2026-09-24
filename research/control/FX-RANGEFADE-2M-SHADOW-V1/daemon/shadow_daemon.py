@@ -254,6 +254,24 @@ def main():
         }
         atomic_write(STATE, json.dumps(state, indent=1))
         atomic_write(HEARTBEAT, json.dumps({"pid_heartbeat_utc": now.isoformat(timespec="seconds")}))
+
+        # equity curve: one point per hour (bounded to last 90 days)
+        curve_p = ROOT / "equity_curve.json"
+        try:
+            curve = json.loads(curve_p.read_text()) if curve_p.exists() else {"schema": "phorec.equity_curve@1", "points": []}
+        except Exception:
+            curve = {"schema": "phorec.equity_curve@1", "points": []}
+        pts = curve.setdefault("points", [])
+        hour_key = now.replace(minute=0, second=0, microsecond=0).isoformat()
+        if not pts or pts[-1]["t"] != hour_key:
+            sleeves_cum = {p: round(SEED_EQUITY + b.realized_usd +
+                          (state["sleeves"][p]["unrealized_usd"] if state["sleeves"][p]["position"] != "FLAT" else 0.0)
+                          - SEED_EQUITY, 2) for p, b in books.items()}
+            pts.append({"t": hour_key, "equity": round(equity, 2), "pnl_day": state["pnl_today"],
+                         "sleeves": sleeves_cum})
+            cutoff = (now - dt.timedelta(days=90)).isoformat()
+            curve["points"] = [q for q in pts if q["t"] >= cutoff]
+            atomic_write(curve_p, json.dumps(curve))
         time.sleep(POLL_SEC)
 
 
