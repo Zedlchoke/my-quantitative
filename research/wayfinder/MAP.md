@@ -1132,3 +1132,33 @@ promise.
   cycles. Denominators: stocks 48/48, program 263/266 (P-9). Detail:
   `.worktrees/stocks-amihud-retest-v1/integration/research/control/
   stocks_amihud_retest_v1/scored/terminal_verdict.json`.
+
+## ILLIQ-REG-V1 (CLOSED 2026-09-24, `ILLIQ_REG_V1_GATE_FALSIFIED`) — preregistered regime gate on the ILLIQ anchor, falsified by its own bar
+
+- Owner-dispatched bootstrap (2026-09-24) → falsification-first cycle on the
+  V11-reject `A8-V11-ILLIQ-AMIHUD` anchor under standing
+  OUTCOME_EXPOSED_ANCESTRY (confirmation weight 0 on all history;
+  forward/shadow only confirmatory surface). Two-variable gate frozen from
+  the PREREG draft (V1 S90 rotation p70/p90 hysteresis; V2 BTC rvol30 p10
+  floor ×0.90; GATED = V1 AND V2, Monday 00Z PIT, weekly apply), overlay via
+  an engine-native skip suppressor on the frozen CHR3F plugin subclass —
+  engine `c97283e0` untouched, CHR3F tree read-only.
+- Staged budget phase-1-only (registry cap 4): 4/4 diagnostic cells on S0R
+  2024-08-22..2025-08-21 under heavy lock, funding-wired `scan_2026_a` (the
+  B2 law), 4-label invariant enforced on every row. Owner GO consumed at its
+  own gate after A7 prelaunch AUTHORIZED 0 blocking (an earlier
+  misclassification of that GO as "early" was retracted & corrected —
+  recorded incident).
+- Verdict **FALSIFIED** per the preregistered bar: gated ANCHOR baseline net
+  −0.345789 (bar ≥ −0.2947 FAIL, margin −0.0511; improvement 38.6% < 50%) /
+  MDD 0.419178 (bar ≤ 0.4372 PASS) — both required. Stress ×1.5/×2.0
+  −0.3498/−0.3537 (price-driven); INV-gated +0.3297 coherent sign flip.
+  Reproduction detached twin @31985732: 8/8 files byte-identical. A7
+  terminal CONFIRM 0 blocking (independent recompute).
+- Durable assets: the gate module + wiring law + 4-label invariant (M0 39/39),
+  the subprocess-isolation pattern for v11/root package collision, the
+  falsification-first template (negative terminal executed as designed, no
+  tuning loop, no gate variants). Denominators: 4/4 diag cells, program
+  303/306 (P-9). Detail:
+  `.worktrees/illiq-reg-v1/integration/research/control/illiq_reg_v1/
+  terminal_report.md`.

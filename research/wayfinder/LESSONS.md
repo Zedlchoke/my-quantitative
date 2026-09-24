@@ -891,3 +891,19 @@ terminal with the named single owner action — no lane burn, no audit arc.
   volume known ex post).
 - Consequence: X1/X2 execution law in the retest; unfillable entries are
   skipped and counted, never silently filled.
+
+## L-IRV1-1 (2026-09-24, ILLIQ-REG-V1): one process cannot import the v11 tree and the root repo's `research` package — isolate by subprocess
+
+- Source: the phase-1 launcher initially imported both `research.governance`
+  (root repo, for the heavy lock) and the v11 engine chain
+  (`chr3f_illiq_plugin` → `research.v11...`); whichever `research` package
+  binds first wins `sys.modules`, so the second import domain breaks
+  (`ModuleNotFoundError: research.governance`).
+- Lesson: any process that touches the recovered v11_root must treat the v11
+  `research` namespace as exclusive to that process; control-plane imports
+  (governance, heavy lock, registry) stay in the launcher, and every engine
+  cell runs as a SUBPROCESS owning only the v11 paths (the chr3f
+  `illiq_scored.py` pattern).
+- Consequence: ILLIQ-REG-V1's launcher/cell split (`phase1_sweep.py` /
+  `illiq_reg_cell.py`); future cycles reusing recovered trees must not mix
+  the two import domains in one process.
