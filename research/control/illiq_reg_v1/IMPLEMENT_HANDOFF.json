@@ -1,0 +1,54 @@
+{
+ "schema": "chr3f_a7_prelaunch@1",
+ "role": "implementer (prelaunch steps 3+4 of the gate sequence), cycle ILLIQ-REG-V1",
+ "implement_utc": "2026-09-24T05:12:00Z",
+ "head_sha": "b9ae22dfb4a1254081c3c2d493e50621d964a12b",
+ "head_at_cut": "58b93de35112604b5002b7a0ad69075421e14512 (M0 bootstrap)",
+ "branch": "orca/illiq-reg-v1-integration",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/illiq-reg-v1/integration",
+ "namespace": "research/control/illiq_reg_v1/",
+ "scope": "Two NOT_RUN prelaunch steps implemented per frozen spec: (1) gate_series_build.full_build over the READ-ONLY CHR3F catalogs, run under the machine-wide heavy lock via the wrapper; (2) sanitized dry-run of the GATED strategy over S0R with NO PnL surfaces. No scored cells; no writes outside research/control/illiq_reg_v1/; CHR3F tree untouched (imports only, sys.dont_write_bytecode set).",
+ "files": [
+  {"path": "research/control/illiq_reg_v1/gate_series_build.py", "change": "full_build(out) implemented: fold observables (daily PIT DV-share via gate_module.daily_dv_share, BTC daily closes, rvol30) from catalog parquet bytes; per-stamp PIT window-coverage check (90 daily blocks / 31 closes, fail-closed); single continuous gate_module.gate_walk over S0R+FWD stamps; per-day rows {date, dv_share, rvol30, s90, is_stamp, data_complete, v1_state, v2_state, gated}; sha256 digests of all 80 input parquet files + gate_module.py (spec) + wiring.py; soft cross-check vs the frozen dossier single-shot; deterministic JSON (no wall-clock fields); main() now writes gate_series.json in full mode (coverage_status.json no longer clobbered)"},
+  {"path": "research/control/illiq_reg_v1/dryrun.py", "change": "NEW: sanitized GATED traversal — loads gate_series.json, wires the frozen engine exactly like illiq_cell_runner.py (read_bars_15m bars -125d/+3d, scan_2026_a settlements, Chr3fIlliqPlugin, arm ILLIQ-AMIHUD-28D-W, StressSpec baseline), asserts frozen schedule() == gate-series stamps, then per stamp: GATE_OFF -> status SKIP_NO_SELECTION reason GATE_OFF (engine skip semantics, no new fill logic) else plugin.targets_at STATUS ONLY; run_strategy never called; report keys scanned against a PnL-substring denylist in-process"},
+  {"path": "research/control/illiq_reg_v1/gate_series.json", "change": "NEW artifact (the step-3 output)", "sha256": "e09187f925e761cfabe94e0766ca2104b3b45f5def76fadc061cdbc09c51702d"},
+  {"path": "research/control/illiq_reg_v1/dryrun_report.json", "change": "NEW artifact (the step-4 output)"},
+  {"path": "research/control/illiq_reg_v1/full_build_locked.py", "change": "committed (bootstrap-authored wrapper; acquires heavy_lock ILLIQ-REG-V1 then invokes --full-build)"},
+  {"path": "research/control/illiq_reg_v1/full_build_retry.sh", "change": "committed (bootstrap-authored retry loop, unused — lock was FREE on both runs)"},
+  {"path": "research/control/illiq_reg_v1/full_build.log", "change": "committed (wrapper run log; shows rc 0 from the second locked run)"},
+  {"path": "research/control/illiq_reg_v1/README.md", "change": "NOT-RUN inventory refreshed with the implementation outcome and remaining STOP gates"}
+ ],
+ "tests_run": [
+  {"cmd": ".venv/bin/python -m pytest tests/   (cwd = research/control/illiq_reg_v1)", "result": "35 passed in 0.78s", "note": "M0 gate/wiring suite 35/35 PASS. The dispatch's literal path 'python -m pytest ../../tests/' does not exist (no research/tests dir in this worktree); the 35 M0 tests live at research/control/illiq_reg_v1/tests/ and were run there."},
+  {"cmd": "full_build_locked.py run twice under the heavy lock", "result": "byte-identical gate_series.json both runs, sha256 e09187f925e761cfabe94e0766ca2104b3b45f5def76fadc061cdbc09c51702d", "note": "determinism proven; lock verdicts FREE_PROVEN before each acquire, HELD_PROVEN enforced by the build guard"},
+  {"cmd": "cross-check gate_series.json vs frozen dossier pit_conc_gate_single_shot.json (embedded in artifact as cross_check)", "result": "s0r_s90_max_abs_diff = 0.0 (bit-identical S90 at all 52 S0R stamps); states 49/52 match", "note": "the 3 state deltas are the strictly-PIT rvol30 window (gate_module: closes strictly before the stamp, pinned by the M0 no-lookahead test) vs the dossier replay's descriptive closes<=stamp reading — the frozen module is authoritative"},
+  {"cmd": "dryrun.py in-process sanitation check", "result": "no_pnl_fields=true; external serialized-report scan: only 'pnl' occurrence is the sentinel key itself, only 'weight' occurrence is the frozen reason string WEIGHT_CAP_BREACH"}
+ ],
+ "build_summary": {
+  "gate_series_sha256": "e09187f925e761cfabe94e0766ca2104b3b45f5def76fadc061cdbc09c51702d",
+  "spec_sha256_gate_module": "bd0b00dab8b2acfa34adff8d0c5c7679d8e196f5584b943c3c04d659588485be",
+  "walk": {"stamps_total": 104, "gated_on": 80, "gated_off": 24, "initial_state": true, "continuous_across_folds": true},
+  "S0R": {"status": "COMPLETE", "catalog": "catalog_live_crypto_s0r (wired)", "stamps": 52, "data_complete": 52, "gated_on": 43, "gated_off": 9, "off_stamps": ["2025-06-23", "2025-06-30", "2025-07-07", "2025-07-14", "2025-07-21", "2025-07-28", "2025-08-04", "2025-08-11", "2025-08-18"], "eligible_symbols": "20/20 all days"},
+  "FWD": {"status": "BUILT_FROM_UNPINNED_CATALOG_DIAGNOSTIC", "catalog": "catalog_live_crypto_a20 (NOT wired — wiring.FOLD_WIRING['FWD']['catalog'] stays None by law, pinned by test_fwd_catalog_unpinned_is_fail_closed)", "stamps": 52, "data_complete": 52, "gated_on": 37, "gated_off": 15}
+ },
+ "dryrun_summary": {
+  "fold": "S0R", "arm": "ILLIQ-AMIHUD-28D-W", "stamps_total": 52,
+  "gated_on": 43, "gated_off": 9, "skip_other": 7,
+  "gated_on_with_book": 34,
+  "breakdown": {"OK_with_book": 34, "FOLD_BOUNDARY_FORCE_FLAT": 2, "WEIGHT_CAP_BREACH_gated_on_engine_skip": 7, "GATE_OFF": 9},
+  "non_vacuous": true, "no_pnl_fields": true
+ },
+ "known_limitations": [
+  "FWD observables come from catalog_live_crypto_a20, which the wiring law does NOT pin (identity-unverified; fail-closed for any FWD strategy stage). The dispatch premise 'FWD bars end 2025-09 / NOT staged' was measured FALSE — a20 holds 20/20 symbols over the full FWD window 2025-08-22..2026-08-21 with zero gaps — so the FWD gate series was built as a diagnostic rather than declared NOT_RUN_COVERAGE, with the borrowed-catalog disclosure embedded verbatim in the artifact. The catalog-pinning coverage step is still REQUIRED before any FWD stage.",
+  "rvol30 in the frozen gate_module is strictly PIT (completed closes strictly before the stamp); the dossier's descriptive single-shot read closes<=stamp (leaking the stamp day's own block at a 00:00Z stamp). Consequence, disclosed and by design: S0R GATE_OFF window is 2025-06-23..2025-08-18 (9 stamps) vs the single-shot's 6 (from 2025-07-14); states match 49/52; S90 identical to the last bit.",
+  "skip_other=7 are WEIGHT_CAP_BREACH refusals from the FROZEN engine's own beta-hedge cap (fail-closed) on gated-ON stamps — identical behavior exists in ungated runs; not a gate artifact. 2 further gated-ON stamps are FOLD_BOUNDARY_FORCE_FLAT (empty book by the frozen fold law).",
+  "The 200 random-gate control permutations are NOT serialized in gate_series.json (deviating from the bootstrap header's earlier description): they gate PnL surfaces and are generated at cell time via gate_module.random_gate_permutations (seed from cycle id, deterministic); nothing in the frozen spec requires them in the observables artifact.",
+  "first_day listing proxy follows the dossier semantics (first DV day inside the queried load window, 2024-04-19 for S0R vs the single-shot's 2024-04-01); consumed S90 windows at every S0R stamp coincide (all 20 symbols eligible throughout), confirmed by the 0.0 s90 diff.",
+  "NOT RUN here (owner gates): A7 prelaunch verdict, any scored/gated cell (STOP until 'GO ILLIQ REG V1 SCORED EXECUTION' at its own gate), FWD strategy stage, falsification/random-gate PnL controls. No PnL for any fold exists after this lane."
+ ],
+ "handoff_paths": {
+  "artifact": "research/control/illiq_reg_v1/gate_series.json",
+  "dryrun": "research/control/illiq_reg_v1/dryrun_report.json",
+  "this_handoff": "research/control/illiq_reg_v1/IMPLEMENT_HANDOFF.json"
+ }
+}
