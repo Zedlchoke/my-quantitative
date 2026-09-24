@@ -1,0 +1,210 @@
+{
+ "schema": "a7_prelaunch_amendment@1",
+ "cycle_id": "ILLIQ-LOSS-MECH-V1",
+ "audited_utc": "2026-09-24T08:20:47Z",
+ "auditor": "A7-subagent-fresh",
+ "scope": "re-audit of amended law set (plan section 9 AMENDMENT A1, items A1-1..A1-9) at the pre-GO gate; prior A7 prelaunch (different context, AUTHORIZED 0 blocking on the pre-amendment plan) NOT trusted; every relied-on fact re-derived from bytes",
+ "main_amendment_sha": "87f239a19f984847afa62a48d58d2c0705500546",
+ "branch_amendment_sha": "26246d2032455c2a545c75b826f46e35a8d365f8",
+ "amendment_text_identity": {
+  "method": "git show 87f239a1:plans/PLAN_illiq_loss_mech_v1.md vs git show 26246d20:plans/PLAN_illiq_loss_mech_v1.md, diff",
+  "result": "IDENTICAL (byte-for-byte, 161 lines)",
+  "main_contains_87f239a1": true,
+  "plan_on_branch_head": "26246d20 (cycle branch HEAD, clean tree before this audit)"
+ },
+ "checks": {
+  "1_direction_check_h-a_h-b_void": {
+   "status": "PASS",
+   "A1-4_H-A_delta": {
+    "written_rule": "delta(fold) = sum(net_pnl_per_unit, long-leg, listing-age<365d at entry) - sum(same, age>=365d); PASS iff delta <= -0.03 on each non-void fold",
+    "pass_looks_like": "young long-leg cohort net sum at least 0.03 BELOW old cohort net sum on the fold (young loses more, or gains less)",
+    "fail_looks_like": "delta > -0.03, in particular any fold where the old cohort loses more than the young cohort gives delta > 0 and CANNOT pass",
+    "inversion_probe": "old-loses-more scenarios produce delta > 0 > -0.03 => FAIL; rule cannot be satisfied by the inverted direction; magnitude floor is on the sum at identical per-unit 100k scale and identical stamps (same-fold ANCHOR cell), so normalization is shared by construction",
+    "s0r_analog_recomputed_independently": {
+     "source": "CHR3F illiq_diag/S0R-ANCHOR-A5-funded/results/artifact.json (file_sha256 22fc7e4838956ebc... == recorded), positions ledger n=336, long leg isolated by signed_weight>0, listing proxy = b20 catalog first parquet per symbol",
+     "young_lt365d": {
+      "n": 40,
+      "net_sum": -0.107001
+     },
+     "old_ge365d": {
+      "n": 128,
+      "net_sum": 0.027162
+     },
+     "delta": -0.134162,
+     "bar": -0.03,
+     "verdict_if_rule_applied_to_s0r": "PASS (-0.134162 <= -0.03) — rule points toward 'young loses more', which is H-A's claim; young positions are the late listings (BOME 16, ACE 12, ONG 10, ENA 2), min age 146.5d so the A1-4 <365d bucket and the P1 90-365d proxy coincide exactly on this data",
+     "p1_recorded_crosscheck": "p1_forensics.json long_leg_by_listing_age_proxy: 90-365 net -0.107001 / gt365 +0.027162 — matches recomputation to the 6th decimal; position-level identity price+funding-cost=net holds to 1.4e-17 over 336 positions"
+    },
+    "additional_y2023_conditions": "young n_positions >= 20; MIN_ELIGIBLE >= 10 every stamp; SKIP <= 20%; cap 0.30 never breached; mandatory census — all computable from cell 2 (and cell 5 census); the n>=20 guard removes the small-sample fluke path to a trivial pass",
+    "conclusion": "PASS — no direction inversion; -0.03 cannot be satisfied by old losing more"
+   },
+   "A1-6_H-B": {
+    "written_rule": "(i) worst-decile short-leg weekly loss of v2-hedge <= 70% of baseline hedge's on BOTH Y2022 and Y2023; (ii) anchor fold net sign == baseline fold net sign; (iii) engagement >= 13 non-fallback stamps per fold; INV coherence on Y2023: (a) sign(INV v2 net_sum) == sign(INV baseline net_sum), (b) INV worst-decile short-leg weekly loss must NOT improve > 30%, (c) INV engagement >= 13",
+    "i_form_matches_claim": "loss_v2 <= 0.7 * loss_base <=> tail loss shrinks >= 30%: direction correct — a hedge that WORSENS the tail (loss_v2 > 0.7*loss_base) cannot pass; a hedge that shrinks the tail passes; ratio convention needs loss expressed as a non-negative loss magnitude (worst decile of weekly short-leg PnL, negated); recommend the executor record loss_base and loss_v2 explicitly (see NB-2)",
+    "unsatisfiability_probe": "tried to construct PASS-impossible coupling between (i),(ii),(iii): (i) constrains a decile tail statistic of the short leg, (ii) the fold net-sum sign, (iii) a count — no identity ties them; a book with shrunken short-leg tail and either net sign is constructible, so PASS is reachable by construction; no contradiction => not the blocking kind of defect",
+    "inv_coherence_sign_combinations": "(a) is a sign-equality on totals, (b) a magnitude-ratio guard on the INV tail, (c) a count — mutually consistent under all sign combinations; (b)'s direction is the mechanism-specificity guard: a large INV improvement would falsify H-B as generic deleveraging, which is the correct direction for the H-B claim (the spread tilt must bind on the majors-shorted ANCHOR book, not the illiquid-shorted INV book); edge case loss_inv_base == 0 logged as NB-2",
+    "conclusion": "PASS — written form matches the claim on every clause; no direction inversion; no PASS-impossible construction"
+   },
+   "A1-3_A1-1_void": {
+    "status": "PASS",
+    "y2022_void_justification": "pit_audit_y2022_y2023.json Y2022: young_lt365d_at_start_within_a4 == [] AND mid_fold_entrants_base_law == [] AND young_entrants_midfold_base_law == []; youngest A4 members (NEAR 2020-10-15, AAVE 2020-10-16) are ~444d old at the 2022-01-03 first stamp, and no staged-family symbol lists during 2022 (next listing SUI 2023-05-03) — under ANY universe law there is no young cohort in Y2022, so the age rule is vacuous there; VOID_BY_CONSTRUCTION with label NOT_RUN_VOID_CONSTRUCTION is justified",
+    "one_fold_disclosure": "the amendment SAYS so: A1-3 'After' = 'Y2023 only; Y2022 = VOID_BY_CONSTRUCTION' and A1-1 = 'on each fold where the test is non-void' — H-A evidence is explicitly restructured to a single non-void fold, not silently; A1-4 compensates with n>=20 young positions + eligibility/SKIP/cap/census conditions on the single fold (see NB-4 for a disclosure reinforcement)",
+    "y2023_young_cohort_exists": "young_entrants_midfold_base_law Y2023 = [1000PEPEUSDT, ACEUSDT, ONGUSDT, SUIUSDT, WLDUSDT] — the age rule is testable on Y2023 exactly because A1-2 admits these entrants"
+   }
+  },
+  "2_universe_law_A1-2": {
+   "status": "PASS",
+   "base_engine_admits_mid_fold_entrants": {
+    "evidence": "recovered/v11_root research/v11/families/illiq_amihud/plugin.py: tradeable_universe() = sorted(set(self._bars) - {benchmark}) i.e. the full staged 20-SYMS injected-bar list, NO listed-at-start filter; research/v11/families/illiq_amihud/strategy.py compute_stamp_features: per-stamp listing eligibility (listing_age_days < formation_days=28 => ineligible, fail-closed, MIN_DAY_COVERAGE_FRACTION 0.8) and beta >= BETA_MIN_OBS=60 paired obs fail-closed; MIN_ELIGIBLE=10, CAP=0.30 frozen constants",
+    "chr3f_a4_contrast": "chr3f_illiq_plugin.py universe() override IS the listed-at-start A4 law (documented in-code as excluding SUIUSDT/1000PEPEUSDT mid-Y2023, 6/53 stamps differ); the amended cycle drops exactly this override for fresh folds and keeps benchmark_context_symbols() listed-at-start",
+    "entrant_sets": "Y2022 mid-fold entrants under base law = [] ; Y2023 = [1000PEPE, ACE, ONG, SUI, WLD] (pit audit, reproduced) — matches A1-2's declared 'SUI/1000PEPE/WLD/ONG/ACE may take legs mid-Y2023'"
+   },
+   "benchmark_context_law": {
+    "frozen_law": "plugin.benchmark_context_symbols() (frozen) = full tradeable universe + benchmark — requires context marks for unlisted symbols (this is the structural block that aborted CHR3F Y2022/Y2023 sweeps: evidence a7_prelaunch_illiq/a7_prelaunch_illiq_r3.md — '5 full-traversal rows ending in the context ContractViolation for 1000PEPEUSDT'; differential probe: override variant completes end-to-end, frozen-context variant reproduces the ContractViolation)",
+    "amended_law": "context = listed-at-start (engine plugin law) — 13 names both folds, all with mark_at_first_stamp=true per pit audit => the ContractViolation is structurally prevented",
+    "scored_surface_neutrality": "verified in code: recovered/v11_root research/adapter_v10/benchmarks.py marks context rows enters_denominator False / role context_only / note context_only_scored_false; facade.py rows 564/612-613 same — restricting context to listed-at-start changes NO scored surface; the UNIVERSE change (A4 -> base per-stamp) is a separate, DECLARED identity consequence in A1-2 ('fresh-fold cells are NOT book-identical to CHR3F cells'), so nothing changes silently"
+   }
+  },
+  "3_census_reconciliation_A1-7": {
+   "status": "PASS",
+   "cells": [
+    "1 baseline ANCHOR x Y2022",
+    "2 baseline ANCHOR x Y2023",
+    "3 baseline INV x Y2022",
+    "4 baseline INV x Y2023",
+    "5 v2-age x Y2023",
+    "6 v2-hedge x Y2022",
+    "7 v2-hedge x Y2023",
+    "8 INV v2-hedge x Y2023"
+   ],
+   "bar_to_cell_map": {
+    "A1-4 H-A delta + conditions + census": "cell 2 (delta, n>=20, MIN_ELIGIBLE, SKIP, cap, census) + cell 5 (v2-age census)",
+    "A1-6 (i)(ii)(iii) Y2022": "cells 6 vs 1",
+    "A1-6 (i)(ii)(iii) Y2023": "cells 7 vs 2",
+    "A1-6 INV coherence (a)(b)(c) on Y2023": "cells 8 vs 4 — SAME fold Y2023, both cells present in the census: verified",
+    "Y2022 H-A": "no cell — VOID per A1-3 (no v2-age x Y2022 cell exists, explicitly stated)"
+   },
+   "every_bar_computable": true,
+   "budget": "8 cells == cap 8, not exceeded; registry budget 0/8",
+   "prereg_divergence": "A1-7 explicitly supersedes BOTH plan section 6 ('{INV x Y2022}=1; {INV x H-B Y2023}=1') and the PREREG yaml phase_1_budget line ('{INV controls, Y2022} = 2') — divergence resolved by naming the final 8, not left ambiguous; PREREG yaml left untouched as draft per the amendment's closing note"
+  },
+  "4_pit_audit_review": {
+   "status": "PASS",
+   "rerun": {
+    "method": "script copied to a7_prelaunch/a7_amendment_rerun_workdir/pit_audit_rerun.py with ONLY the output path redirected (input-evidence JSON not mutated); executed with .venv/bin/python, exit 0",
+    "reproduced": "output byte-identical to research/control/illiq_loss_mech_v1_draft/pit_audit_y2022_y2023.json modulo generated_utc; listing month mismatches: none",
+    "lightness": "file listings + funding.json reads only; no heavy job; machine heavy lock NOT acquired"
+   },
+   "verified_planes": {
+    "a4_universe_13_names_both_folds": true,
+    "bars_warmup_125d_all_13_both_folds": "bars_cover_warmup_start=true x13 x2 folds (Y2022 warmup from 2021-08-31, Y2023 from 2022-08-30); bars_cover_window_end=true for all 20 (b20 last bar 2024-08-31)",
+    "funding_scan_2026": "13 A4 names: in-fold coverage 1.0, n_rows_in_fold=1071 (~3/day over the ~357-day folds) both folds; entrants covered from listing: 1000PEPE 700 rows (from 2023-05-05 listing), SUI 706 (2023-05-03), WLD 460 (2023-07-24), ONG 164 (2023-11-27), ACE 39 (2023-12-18)",
+    "benchmark_marks_first_stamp": "mark_at_first_stamp=true for all 13 A4 names both folds; entrants need no context marks under the listed-at-start context law",
+    "btc_bars": "BTCUSDT present with full warmup coverage both folds (in the 13-name universe)",
+    "listing_crosscheck": "plugin FIRST_ARCHIVE_MONTH vs measured b20 first-bar month: 20/20 match"
+   },
+   "planes_checked_unnecessary": {
+    "oi_5m": "DECISION_CLOCK_TEXT mentions 'last COMPLETED OI 5m row' but grep over the entire frozen illiq family + adapter_v10 + runner finds NO open_interest data loaded or consumed anywhere — descriptive text only; no OI plane needed",
+    "tick_sizes": "static injected constants (illiq_cell_runner.py: tick_sizes={s: 1e-07 for s in SYMS}, all 20 incl. entrants); no PIT tick-size dataset exists or is read"
+   },
+   "data_quality_observations_non_blocking": "funding cadence anomalies: SOLUSDT Y2022 n_rows_in_fold=1146 (>1071, coverage 1.07); ACEUSDT Y2023 39 rows in final ~7 days (~5.6/day) — some symbols carry extra funding rows; the same loader reconciled CHR3F cells to 9e-12 on funding sums (p1_forensics), so identity risk is low; NB-3 recommends a duplicate-fundingTime assertion at cell run"
+  },
+  "5_governance": {
+   "status": "PASS",
+   "registry_head_matches_branch": "registry head 26246d2032455c2a545c75b826f46e35a8d365f8 == git rev-parse HEAD in .worktrees/illiq-loss-mech-v1/integration; branch orca/illiq-loss-mech-v1-integration; lifecycle PLANNED_NOT_STARTED",
+   "amendment_text": "byte-identical on main 87f239a1 and branch 26246d20 (diff empty)",
+   "go_phrase": "'GO ILLIQ LOSS MECH V1 SCORED EXECUTION' REGISTERED_NOT_CONSUMED; no AUTH/GO_RECORDED.json exists for this cycle",
+   "budget": "0/8 used",
+   "no_cells_run": "cycle control tree contains only a7_prelaunch/ (+ this audit's rerun workdir); no results/ dirs, no artifact.json anywhere in the cycle worktree",
+   "s1": "SEALED_UNTOUCHED (registry; all sibling cycles likewise)",
+   "heavy_lock": "HELD_PROVEN by CRYPTO-HISTORICAL-REPLICATION-3F-V1/data-staging (pid 22173 alive, process-start token matches, flock held) — audited via researchctl locks inspect; NOT acquired by this audit",
+   "engine_tree": "CHR3F worktree git status --porcelain EMPTY (recovered/ clean); engine files byte-identical to freeze c97283e0d1681c24ee9a637a4fb1628d0334b7e1 (diff empty on strategy.py/plugin.py/runner.py)",
+   "no_illiq_shadow": "PROSPECTIVE-SHADOW-V1 phase = BTC4H-BANDRIDGE sleeve via production e-worker — different family and surface; no ILLIQ shadow/prospective surface exists or is touched"
+  },
+  "6_trial_accounting_A1-8": {
+   "status": "PASS",
+   "no_double_count": "each of the 8 phase-1 cells executes at most once (single run per cell; no reruns or reproduction twins preregistered in phase-1), each execution enters the observed counter exactly once per P-9 regardless of PASS/FAIL/publication; scored=False + namespace REPLICATION_NOT_PROSPECTIVE on every cell — the phrase word 'SCORED' is explicitly decoupled from cell scoring semantics; the P1 forensics re-measurement consumed an EXISTING CHR3F artifact (sha 22fc7e48... already counted in CHR3F) and is input evidence, not a new counted cell",
+   "denominators": "observed and published kept separate by law (A1-8 + CLAUDE.md invariant)",
+   "go_consumption": "recorded at the gate in the cycle's AUTH/GO_RECORDED.json (file correctly absent pre-GO); phrase is registered-not-consumed and does not survive pause/close per P-8"
+  }
+ },
+ "direction_refutation_attempt": {
+  "method": "for each frozen bar, derived numeric PASS/FAIL forms independently from the artifact ledger and code, then tried to satisfy the bar with the hypothesis-inverted evidence and tried to make PASS unsatisfiable by combining clauses",
+  "A1-4_H-A": {
+   "inversion_tried": "old-cohort-loses-more evidence (young -0.05, old -0.10 style) => delta > 0",
+   "result": "bar unsatisfiable by inverted evidence; S0R evidence -0.134162 would PASS, matching H-A's direction — rule faithful; REFUTATION FAILED"
+  },
+  "A1-6_i": {
+   "inversion_tried": "v2-hedge worsens tail (loss_v2 > 0.7 loss_base)",
+   "result": "cannot pass — bar points the right way; REFUTATION FAILED"
+  },
+  "A1-6_ii": {
+   "inversion_tried": "sign guard passing while hedge worsens totals",
+   "result": "possible, but (ii) is a no-flip sanity guard by design; the effect bar is (i) — no inversion introduced"
+  },
+  "A1-6_inv_b": {
+   "inversion_tried": "INV improves hugely while ANCHOR improves >=30% => generic-deleveraging falsification",
+   "result": "clause correctly FALSIFIES in that scenario (direction = anti-generic, faithful to mechanism-specificity); edge case loss_inv_base == 0 logged NB-2; REFUTATION FAILED"
+  },
+  "A1-3_void": {
+   "inversion_tried": "VOID hiding a failing fold or silently making H-A one-fold",
+   "result": "VOID is construction-justified (no young cohort exists in Y2022 under any law) and the one-fold surface is stated in the amendment text itself; REFUTATION FAILED"
+  },
+  "A1-2_universe": {
+   "inversion_tried": "universe law silently changing scored surfaces vs declaration",
+   "result": "context restriction is denominator-neutral (context_only_scored_false, enters_denominator False, verified in code); universe change to per-stamp base law is itself the declared consequence (entrants take legs mid-Y2023); nothing silent; REFUTATION FAILED"
+  },
+  "summary": "no direction inversion found; no unsatisfiable-by-construction bar found"
+ },
+ "blocking_findings": [],
+ "non_blocking_findings": [
+  {
+   "id": "NB-A1-1",
+   "severity": "LOW",
+   "finding": "Cell 3 (baseline INV x Y2022) is consumed by no frozen bar in A1-4/A1-6 as written (INV coherence is scoped to Y2023, cells 4/8). It remains a legitimate fresh-fold context surface and enters the observed counter when run; the terminal report's executed-census disclosure should label its role.",
+   "evidence": "plan section 9 A1-6/A1-7"
+  },
+  {
+   "id": "NB-A1-2",
+   "severity": "LOW",
+   "finding": "A1-6(b) ratio edge case: if the INV baseline worst-decile short-leg weekly loss is exactly 0, 'improve by more than 30%' is undefined as a ratio; from a zero base no percentage improvement is possible, so (b) should be treated as trivially satisfied and the executor must record the base value in the artifact.",
+   "evidence": "plan section 9 A1-6 clause (b)"
+  },
+  {
+   "id": "NB-A1-3",
+   "severity": "LOW",
+   "finding": "Funding cadence anomalies in scan_2026: SOLUSDT Y2022 1146 in-fold rows (>3/day nominal, coverage 1.07); ACEUSDT Y2023 39 rows in the final ~7 days (~5.6/day). Same loader reconciled CHR3F cells to 9e-12, so identity risk low; recommend the cell runner assert unique fundingTime per symbol (or last-wins dedupe) and disclose row counts per fold.",
+   "evidence": "pit_audit_y2022_y2023.json Y2022.SOLUSDT.funding / Y2023.ACEUSDT.funding"
+  },
+  {
+   "id": "NB-A1-4",
+   "severity": "LOW",
+   "finding": "H-A evidence is single-fold (Y2023) after the A1-3 void. The amendment discloses this ('Y2023 only', 'each non-void fold') and adds single-fold guards (n>=20 young positions, eligibility/SKIP/cap/census); recommend the terminal report state the single-fold evidential weight explicitly next to the Y2022 NOT_RUN_VOID_CONSTRUCTION label.",
+   "evidence": "plan section 9 A1-1/A1-3/A1-4"
+  },
+  {
+   "id": "NB-A1-5",
+   "severity": "INFO",
+   "finding": "PIT plane documentation: the engine's DECISION_CLOCK_TEXT mentions a 'last COMPLETED OI 5m row' that no code path consumes (verified by grep over the frozen family + adapter + runner); tick sizes are static injected constants (1e-07 uniform, all 20 syms incl. entrants). Recording this prevents future readers from expecting an OI/tick PIT plane for fresh folds.",
+   "evidence": "recovered/v11_root strategy.py line 53; illiq_cell_runner.py line 43"
+  }
+ ],
+ "verdict": "AUTHORIZED",
+ "blocking_count": 0,
+ "evidence_paths": [
+  "plans/PLAN_illiq_loss_mech_v1.md @87f239a1 (main) and @26246d20 (branch)",
+  "plans/CYCLE_REGISTRY.json (ILLIQ-LOSS-MECH-V1 entry)",
+  "research/control/illiq_loss_mech_v1_draft/p1_forensics.json",
+  "research/control/illiq_loss_mech_v1_draft/pit_audit_y2022_y2023.json + .py",
+  "research/control/illiq_loss_mech_v1_draft/PREREG_ILLIQ-LOSS-MECH-V1.yaml",
+  ".worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/illiq_diag/S0R-ANCHOR-A5-funded/results/artifact.json (sha 22fc7e4838956ebc...)",
+  ".worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/chr3f_illiq_plugin.py",
+  ".worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/illiq_cell_runner.py",
+  ".worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/recovered/v11_root/research/v11/families/illiq_amihud/{plugin,strategy}.py",
+  ".worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/recovered/v11_root/research/adapter_v10/{runner,benchmarks,facade}.py",
+  ".worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/a7_prelaunch_illiq/a7_prelaunch_illiq_r3.md (failed Y2022 sweep forensics)",
+  "research/wayfinder/MAP.md + FAMILY_FAILURES.jsonl (no ILLIQ Y2022/Y2023 surface anywhere)",
+  "a7_prelaunch/a7_amendment_rerun_workdir/pit_audit_y2022_y2023_RERUN.json (this audit's reproduction)"
+ ],
+ "notes": "A7 wrote audit artifacts only; no plan/code repaired; no ledgers/registries written; heavy lock not acquired; no network. Rerun workdir left untracked intentionally (commit pathspec = this artifact only)."
+}
