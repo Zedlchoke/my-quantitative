@@ -3,7 +3,7 @@
 Bars loaded once; heavy lock held for the sweep (disclosed); cycle-local
 outputs under illiq_scored_out/; labels EQUIVALENCE_DATA_RESTAGE_UNPROVEN."""
 from __future__ import annotations
-import json, sys, time
+import json, subprocess, sys, time
 from datetime import datetime, timezone
 from pathlib import Path
 
