@@ -4,397 +4,439 @@
 <meta charset="utf-8">
 <title>Phorec — FX Shadow Dashboard</title>
 <style>
-  :root { --bg:#0d1117; --card:#161b22; --line:#21262d; --fg:#e6edf3; --dim:#8b949e;
-          --green:#3fb950; --red:#f85149; --amber:#d29922; --blue:#58a6ff; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg);
-         font:14px/1.45 -apple-system,'Segoe UI',Roboto,sans-serif; }
-  .wrap { max-width:1440px; margin:0 auto; padding:14px 18px 30px; }
-  header { display:flex; align-items:center; gap:14px; padding:12px 16px;
-           background:var(--card); border:1px solid var(--line); border-radius:12px; }
-  header img { width:64px; height:64px; border-radius:50%; object-fit:cover; border:2px solid #30363d; }
-  h1 { margin:0; font-size:20px; }
-  .sub { color:var(--dim); font-size:12.5px; margin-top:2px; }
-  .live { margin-left:auto; background:#12351f; color:var(--green); border:1px solid #1f4d2c;
-          padding:5px 14px; border-radius:999px; font-weight:700; font-size:13px; }
-  .live.stale { background:#3b2e0c; color:var(--amber); border-color:#5a4514; }
-  .live.off { background:#3b1212; color:var(--red); border-color:#5a1f1f; }
-  .statusline { margin-top:8px; color:var(--dim); font-size:13px; }
-  .tabs { display:flex; gap:8px; margin:14px 0; }
-  .tab { padding:9px 20px; border-radius:8px; border:1px solid var(--line);
-         background:var(--card); color:var(--dim); cursor:pointer; font-weight:600; }
-  .tab.on { color:var(--fg); border-color:#388bfd; background:#1c2a3a; }
-  .grid { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:12px; }
-  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:12px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:13px 16px; }
-  .lbl { color:var(--dim); font-size:12px; }
-  .val { font-size:23px; font-weight:700; margin-top:4px; }
-  .g { color:var(--green); } .r { color:var(--red); } .a { color:var(--amber); } .b { color:var(--blue); }
-  .bar { background:var(--card); border:1px solid var(--line); border-radius:10px;
-         padding:11px 16px; margin-bottom:12px; color:var(--dim); font-size:13px; }
-  .bar b { color:var(--fg); }
-  .sleeves { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
-  .sleeve { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
-  .sleeve h3 { margin:0 0 4px; display:flex; align-items:center; gap:10px; }
-  .badge { font-size:11px; font-weight:700; padding:2px 10px; border-radius:999px; }
-  .badge.run { background:#12351f; color:var(--green); border:1px solid #1f4d2c; }
-  .badge.flat { background:#1c2a3a; color:var(--blue); border:1px solid #26405e; }
-  table { width:100%; border-collapse:collapse; font-size:13px; }
-  td, th { padding:4px 6px; } td:first-child { color:var(--dim); }
-  td:last-child, th:last-child { text-align:right; font-weight:600; }
-  .note { padding:10px 14px; border-radius:8px; background:#242a12; color:#d8cf7a;
-          font-size:13px; margin-bottom:10px; }
-  .note.b { background:#12253a; color:#9ec3e8; }
-  .panel { background:var(--card); border:1px solid var(--line); border-radius:10px;
-           padding:14px 16px; margin-bottom:12px; }
-  .panel h3 { margin:0 0 10px; font-size:15px; }
-  .chartbox { position:relative; height:260px; }
-  .chips, .mnav { display:flex; gap:8px; margin-bottom:10px; align-items:center; }
-  .chip, .mbtn { padding:5px 14px; border-radius:999px; border:1px solid var(--line); color:var(--dim);
-          cursor:pointer; font-size:12.5px; font-weight:600; background:transparent; }
-  .chip.on { color:var(--fg); border-color:#388bfd; background:#1c2a3a; }
-  .mbtn { border-radius:8px; font-size:14px; }
-  .mlabel { color:var(--dim); font-size:13px; margin-right:6px; }
-  .cal { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; }
-  .cal .hd { text-align:center; color:var(--dim); font-size:12px; font-weight:700; padding:4px 0; }
-  .cell { min-height:76px; background:#10151c; border:1px solid var(--line); border-radius:8px;
-          padding:6px 8px; font-size:13px; cursor:pointer; }
-  .cell.empty { background:transparent; border-style:dashed; opacity:.4; }
-  .cell .dnum { color:var(--dim); font-size:11px; }
-  .cell .pnl { font-weight:700; margin-top:10px; }
-  .cell.today { border:2px solid var(--fg); }
-  .cell.none .pnl { color:var(--dim); font-weight:400; font-size:11px; }
-  .legend { margin-top:10px; color:var(--dim); font-size:12px; }
-  .lg { display:inline-block; width:12px; height:12px; border-radius:3px; margin:0 4px -2px 12px; }
-  .lg.g { background:rgba(63,185,80,.18); } .lg.r { background:rgba(248,81,73,.18); }
-  .lg.n { background:#10151c; border:1px solid var(--line); }
-  .refresh { color:var(--dim); font-size:12px; text-align:right; margin-top:6px; }
-  .journal { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 16px;
-             max-height:240px; overflow:auto; font-family:ui-monospace,Menlo,monospace;
-             font-size:12px; color:var(--dim); }
-  .hide { display:none; }
-  table.wk th { color:var(--dim); font-weight:600; text-align:right; }
-  table.wk th:first-child { text-align:left; }
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --ink: #1c1e21; --muted: #6b7280;
+    --line: #e3e5e8; --green: #1a7f37; --greenbg: #e6f4ea;
+    --red: #c62828; --redbg: #fdecea; --gray: #6b7280; --graybg: #f1f2f4;
+    --yellow: #9a6700; --yellowbg: #fff3d6; --blue: #1d4ed8;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:13px/1.45 -apple-system,"SF Pro Text","Helvetica Neue",sans-serif; }
+  header { display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+           padding:10px 18px; background:#101828; color:#fff; }
+  header img { height:52px; width:auto; border-radius:8px; display:block;
+               box-shadow:0 2px 8px rgba(0,0,0,.35); }
+  header h1 { font-size:15px; margin:0; font-weight:600; }
+  header .sub { color:#9fb0c9; font-size:11.5px; }
+  .badge { padding:3px 10px; border-radius:999px; font-weight:700; font-size:12px; letter-spacing:.3px; }
+  .badge.live { background:#0f5132; color:#d1fae5; }
+  .badge.stale { background:#7a4f00; color:#fff3d6; }
+  .badge.off { background:#8e2323; color:#fdecea; }
+  #lastupdate { margin-left:auto; color:#c3cedd; font-size:11.5px; text-align:right; }
+  #statusreason { width:100%; color:#c3cedd; font-size:11.5px; }
+  main { padding:14px 18px 26px; max-width:1440px; margin:0 auto; }
+  .strip { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+  .strip .box { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .box .lbl { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
+  .box .val { font-size:19px; font-weight:700; margin-top:3px; font-variant-numeric:tabular-nums; }
+  .box .sml { font-size:11.5px; color:var(--muted); margin-top:2px; font-variant-numeric:tabular-nums; }
+  .pos { color:var(--green); } .neg { color:var(--red); } .neu { color:var(--gray); }
+  .wide { grid-column:1 / -1; background:var(--card); border:1px solid var(--line);
+          border-radius:10px; padding:8px 12px; color:var(--muted); font-size:12px;
+          font-variant-numeric:tabular-nums; margin-top:10px; }
+  .wide b { color:var(--ink); }
+  .sleeves { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  .fam { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .fam h3 { margin:0 0 2px; font-size:13.5px; font-weight:700; }
+  .chiprow { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .chip { padding:2px 9px; border-radius:999px; font-size:11px; font-weight:700; }
+  .chip.ok { background:var(--greenbg); color:var(--green); }
+  .chip.flat { background:var(--graybg); color:var(--gray); }
+  .chip.warn { background:var(--yellowbg); color:var(--yellow); }
+  .fam table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  .fam td { padding:2.5px 0; vertical-align:top; }
+  .fam td:first-child { color:var(--muted); width:46%; }
+  .fam td:last-child { text-align:right; font-weight:600; }
+  .section { background:var(--card); border:1px solid var(--line); border-radius:10px;
+             margin-top:12px; padding:12px 14px; }
+  .section h2 { margin:0 0 8px; font-size:13.5px; }
+  .note { font-size:11px; color:var(--muted); }
+  .banner { background:var(--yellowbg); color:var(--yellow); border-radius:8px;
+            padding:6px 10px; font-size:11.5px; margin-top:8px; }
+  #chartwrap { position:relative; }
+  #chart { width:100%; height:auto; display:block; }
+  #tip { position:absolute; pointer-events:none; display:none; z-index:5; background:#101828;
+         color:#fff; border-radius:8px; padding:7px 10px; font-size:11.5px; white-space:nowrap;
+         box-shadow:0 4px 14px rgba(0,0,0,.25); font-variant-numeric:tabular-nums; }
+  .tblwrap { overflow:auto; max-height:430px; border:1px solid var(--line); border-radius:8px; }
+  table.trades { border-collapse:collapse; width:100%; font-size:11.5px; }
+  table.trades th { position:sticky; top:0; background:#f8f9fb; text-align:right; padding:6px 8px;
+                    border-bottom:1px solid var(--line); white-space:nowrap; color:var(--muted);
+                    font-weight:600; user-select:none; }
+  table.trades th.l, table.trades td.l { text-align:left; }
+  table.trades td { padding:4px 8px; text-align:right; white-space:nowrap; border-bottom:1px solid #f0f1f3;
+                    font-variant-numeric:tabular-nums; }
+  table.trades tr.row { cursor:pointer; }
+  table.trades tr.row:hover { background:#f6f8ff; }
+  tr.rp { background:var(--greenbg); } tr.rn { background:var(--redbg); }
+  .sidebuy { color:var(--green); font-weight:700; } .sidesell { color:var(--red); font-weight:700; }
+  #overlay { display:none; position:fixed; inset:0; background:rgba(16,24,40,.45); z-index:20;
+             align-items:center; justify-content:center; }
+  #popup { background:#fff; border-radius:12px; max-width:760px; width:92%; max-height:84vh;
+           overflow:auto; padding:16px 18px; }
+  #popup h3 { margin:0 0 8px; font-size:14px; }
+  #popup table { width:100%; border-collapse:collapse; font-size:12px; }
+  #popup td { border-bottom:1px solid #f0f1f3; padding:4px 6px; vertical-align:top; }
+  #popup td:first-child { color:var(--muted); width:40%; }
+  #popup pre { background:#f6f7f9; border-radius:8px; padding:8px; font-size:10.5px; overflow:auto; max-height:220px; }
+  #popup .close { float:right; border:1px solid var(--line); background:#fff; border-radius:8px;
+                  padding:3px 10px; cursor:pointer; }
+  footer { color:var(--muted); font-size:11px; margin-top:10px; line-height:1.6; word-break:break-all; }
+  @media (max-width:1100px) { .strip { grid-template-columns:repeat(2,1fr); } .sleeves { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <img src="/logo.jpg" alt="Phorec">
-    <div>
-      <h1>Phorec</h1>
-      <div class="sub">FX-RANGEFADE-2M-SHADOW-V1 · paper/shadow (không phải live trading) ·
-        EURUSD + GBPUSD · vốn mô phỏng $100,000 · 1.5 lot/cặp</div>
-    </div>
-    <div class="live" id="liveBadge">…</div>
-  </header>
-  <div class="statusline" id="statusline">Trạng thái: …</div>
+<header>
+  <img src="/logo.jpg" alt="Phorec">
+  <div>
+    <h1>Phorec</h1>
+    <div class="sub">FX-RANGEFADE-2M-SHADOW-V1 · paper/shadow (không phải live trading) ·
+      MỘT tài khoản mô phỏng $100,000 dùng chung cho EURUSD + GBPUSD · 1.5 lot/cặp ·
+      giá TrueFX chỉ mang tính tham khảo (indicative)</div>
+  </div>
+  <span id="badge" class="badge off">…</span>
+  <div id="lastupdate"></div>
+  <div id="statusreason"></div>
+</header>
 
-  <div class="tabs">
-    <div class="tab on" data-tab="ov">Tổng quan</div>
-    <div class="tab" data-tab="pnl">Daily/Weekly PNL</div>
+<main>
+  <div class="strip" id="strip"></div>
+  <div class="wide" id="ruBar">REALIZED / UNREALIZED …</div>
+  <div class="sleeves">
+    <div class="fam" id="sl-EURUSD"></div>
+    <div class="fam" id="sl-GBPUSD"></div>
   </div>
 
-  <div id="tab-ov">
-    <div class="grid">
-      <div class="card"><div class="lbl">TỔNG EQUITY (2 SLEEVE FX)</div><div class="val" id="kEquity">…</div><div class="lbl" id="kMark"></div></div>
-      <div class="card"><div class="lbl">TỔNG PNL</div><div class="val" id="kPnl">…</div><div class="lbl" id="kPnlSeed"></div></div>
-      <div class="card"><div class="lbl">TỔNG PNL %</div><div class="val" id="kPnlPct">…</div><div class="lbl">$100,000 gốc</div></div>
-      <div class="card"><div class="lbl">PNL HÔM NAY</div><div class="val" id="kToday">…</div><div class="lbl">realized · reset 00:00 UTC</div></div>
-      <div class="card"><div class="lbl">GROSS EXPOSURE</div><div class="val" id="kGross">…</div><div class="lbl" id="kGrossPct"></div></div>
+  <div class="section">
+    <h2>Equity tài khoản theo thời gian (một tài khoản $100,000)</h2>
+    <div id="chartwrap">
+      <svg id="chart" viewBox="0 0 1000 330" preserveAspectRatio="none"></svg>
+      <div id="tip"></div>
     </div>
-    <div class="bar" id="ruBar">REALIZED / UNREALIZED …</div>
-    <div class="sleeves">
-      <div class="sleeve" id="sl-EURUSD"></div>
-      <div class="sleeve" id="sl-GBPUSD"></div>
-    </div>
-    <div class="note">Shadow/paper: fill giả định tại giá TrueFX opposite-side mỗi giờ H1, size cố định
-      1.5 lot/cặp, chốt phẳng 20:00 UTC (không qua đêm, không swap). KHÔNG kết nối broker, KHÔNG lệnh thật.</div>
-    <div class="note b">Chương trình: EURUSD-RANGEEXP + GBPUSD-RANGEEXP đã qua holdout 2026-H1 và scored
-      reconciliation (NO_DRIFT_FLAG); USDJPY chờ carry-beta control. Chi tiết trong ledger chương trình.</div>
-    <div class="panel">
-      <h3>Equity theo thời gian</h3>
-      <div class="chips">
-        <button class="chip on" data-chip="TOTAL">FX 100K</button>
-        <button class="chip" data-chip="EURUSD">EURUSD</button>
-        <button class="chip" data-chip="GBPUSD">GBPUSD</button>
-      </div>
-      <div class="chartbox"><canvas id="chart"></canvas></div>
-    </div>
+    <div class="note">Đường đứt là vốn gốc $100,000. Khoảng trống = thiếu dữ liệu mark trong khoảng đó
+      (không nội suy, fail-closed) — đường bị NGẮT, không nối phóng tầm mắt.</div>
   </div>
 
-  <div id="tab-pnl" class="hide">
-    <div class="grid4">
-      <div class="card"><div class="lbl">PNL THÁNG NÀY</div><div class="val" id="mPnl">…</div><div class="lbl" id="mSub"></div></div>
-      <div class="card"><div class="lbl">PNL TUẦN NÀY (T4 → T3)</div><div class="val" id="wPnl">…</div><div class="lbl" id="wSub"></div></div>
-      <div class="card"><div class="lbl">PNL HÔM NAY</div><div class="val" id="dPnl">…</div><div class="lbl" id="dSub"></div></div>
-      <div class="card"><div class="lbl">VỐN GỐC / EQUITY MỚI NHẤT</div><div class="val" id="eqNow">…</div><div class="lbl" id="mcount"></div></div>
+  <div class="section">
+    <h2>Tín hiệu &amp; lệnh (toàn bộ journal — bấm dòng để xem chi tiết)</h2>
+    <div class="filters" style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; align-items:center">
+      <select id="fpair" style="border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px">
+        <option value="">Mọi cặp</option>
+        <option value="EURUSD">EURUSD</option>
+        <option value="GBPUSD">GBPUSD</option>
+      </select>
+      <select id="fkind" style="border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px">
+        <option value="">Mọi loại</option>
+        <option value="signal">Tín hiệu (bar đóng)</option>
+        <option value="fill_open">Vào lệnh</option>
+        <option value="fill_close">Thoát theo tín hiệu</option>
+        <option value="force_flat">Chốt phẳng 20:00</option>
+      </select>
+      <span class="note" id="rowcount"></span>
     </div>
-    <div class="panel">
-      <h3 style="display:flex; align-items:center; gap:14px">
-        Lịch PnL tháng <span class="mlabel" id="calMonth"></span>
-        <button class="mbtn" id="mPrev">◀</button><button class="mbtn" id="mNext">▶</button>
-        <span style="color:var(--dim); font-weight:400; font-size:13px" id="calNote"></span>
-      </h3>
-      <div class="cal" id="calGrid"></div>
-      <div class="legend">
-        <span class="lg g"></span>lãi (giờ VN) <span class="lg r"></span>lỗ
-        <span class="lg n"></span>không có mark hợp lệ (fail-closed)
-        · ô viền đậm = hôm nay · bấm ô để xem mark đầu/cuối
-      </div>
-      <div class="bar" id="cellDetail" style="margin-top:10px; display:none"></div>
-    </div>
-    <div class="panel">
-      <h3>PnL theo tuần (00:00 Thứ Tư → 24:00 Thứ Ba, giờ VN)</h3>
-      <table class="wk" id="weekTable">
-        <tr><th>Tuần</th><th>PnL $</th><th>PnL %</th><th>Equity cuối</th><th>Số mark</th><th>Mark cuối</th></tr>
+    <div class="tblwrap">
+      <table class="trades" id="evtable">
+        <thead><tr>
+          <th class="l">Thời gian (giờ VN)</th><th class="l">Cặp</th><th class="l">Loại</th><th class="l">Chiều</th>
+          <th>Giá</th><th>Lot</th><th>Spread $/lệnh</th><th>PnL $</th><th class="l">Lý do / ghi chú</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
       </table>
     </div>
   </div>
 
-  <div class="journal" id="journal">journal…</div>
-  <div class="refresh">Cập nhật lần cuối: <span id="upd">…</span> · làm mới sau <span id="cd">15</span>s</div>
-</div>
+  <footer id="footer"></footer>
+</main>
+
+<div id="overlay"><div id="popup">
+  <button class="close" onclick="closePopup()">Đóng</button>
+  <h3 id="popuptitle"></h3>
+  <div id="popupbody"></div>
+</div></div>
+
 <script>
-const $ = id => document.getElementById(id);
-const fmtUSD = x => (x<0?'-$':'$') + Math.abs(x).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-const cls = x => x>=0 ? 'g' : 'r';
-let CURVE = {points:[]}, CHIP='TOTAL', TAB='ov', COUNT=15, SEED=100000;
-let viewMonth = null;   // 'YYYY-MM', default = tháng hiện tại (giờ VN)
-let DAYS = [];          // [{day, pnl, marks, firstT, lastT, equityLast}] theo giờ VN
+"use strict";
+var $ = function(id){ return document.getElementById(id); };
+var S = {state:null, health:null, curve:null, journal:[], timer:null, count:15, baseMsg:""};
 
-const VN_OFF = 7*3600*1000;
-const vnDay = iso => new Date(new Date(iso).getTime()+VN_OFF).toISOString().slice(0,10);
-const vnNow = () => new Date(Date.now()+VN_OFF).toISOString();
-function weekStartVN(dayIso){ // Thứ Tư bắt đầu tuần
-  const d = new Date(dayIso+'T00:00:00Z');
-  const dow = d.getUTCDay(); // 0..6, Wed=3
-  const back = (dow-3+7)%7;
-  d.setUTCDate(d.getUTCDate()-back);
-  return d.toISOString().slice(0,10);
+function fmtUSD(x, dash){
+  if (x === null || x === undefined || !isFinite(x)) return (dash === undefined ? "UNAVAILABLE" : dash);
+  var sign = x < 0 ? "-" : "";
+  return sign + "$" + Math.abs(x).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 }
-
-function line(canvas, labels, series){
-  const dpr = window.devicePixelRatio||1;
-  const W = canvas.clientWidth, H = canvas.clientHeight;
-  canvas.width = W*dpr; canvas.height = H*dpr;
-  const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
-  ctx.clearRect(0,0,W,H);
-  const pad = {l:70,r:12,t:10,b:24};
-  const all = series.flatMap(s=>s.data);
-  if (!all.length) return;
-  let lo = Math.min(...all), hi = Math.max(...all);
-  if (lo===hi){ lo-=1; hi+=1; }
-  const padv = (hi-lo)*0.08; lo-=padv; hi+=padv;
-  const X = i => pad.l + (W-pad.l-pad.r) * (series[0].data.length===1?0.5:i/(series[0].data.length-1));
-  const Y = v => H-pad.b - (H-pad.t-pad.b)*(v-lo)/(hi-lo);
-  ctx.strokeStyle='#21262d'; ctx.fillStyle='#8b949e'; ctx.font='11px sans-serif';
-  for(let i=0;i<=4;i++){ const v=lo+(hi-lo)*i/4, y=Y(v);
-    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
-    ctx.fillText(v.toLocaleString('en-US',{maximumFractionDigits:0}), 6, y+4); }
-  const colors=['#58a6ff','#3fb950','#d29922'];
-  series.forEach((s,si)=>{ ctx.strokeStyle=colors[si%3]; ctx.lineWidth=1.8; ctx.beginPath();
-    s.data.forEach((v,i)=> i?ctx.lineTo(X(i),Y(v)):ctx.moveTo(X(i),Y(v))); ctx.stroke(); });
-  const step=Math.max(1,Math.floor(labels.length/6));
-  labels.forEach((l,i)=>{ if(i%step===0) ctx.fillText(l, X(i)-20, H-6); });
+function fmtPct(x){
+  if (x === null || x === undefined || !isFinite(x)) return "N/A";
+  return (x>=0?"+":"") + x.toFixed(3) + "%";
 }
+function cls(x){ return (x===null||x===undefined||!isFinite(x)||Math.abs(x)<1e-9) ? "neu" : (x>0?"pos":"neg"); }
+function fmtTimeVN(iso){
+  if (!iso) return "N/A";
+  var d = new Date(iso); if (isNaN(d)) return String(iso);
+  return new Intl.DateTimeFormat("vi-VN",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).format(d);
+}
+function esc(s){ return String(s===null||s===undefined?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function el(tag){ return document.createElement(tag); }
 
-function draw(){
-  const pts = CURVE.points||[];
-  if (TAB==='ov' && pts.length){
-    const labels = pts.map(p=>p.t.slice(5,16).replace('T',' '));
-    if (CHIP==='TOTAL') line($('chart'), labels, [{data:pts.map(p=>p.equity)}]);
-    else line($('chart'), labels, [{data:pts.map(p=> SEED + (p.sleeves?.[CHIP] ?? (p.equity-SEED)/2))}]);
+/* ---------- status: LIVE chỉ khi daemon sống VÀ marks tươi ---------- */
+function renderStatus(){
+  var badge = $("badge"), reason = $("statusreason");
+  var h = S.health, s = S.state;
+  if (!h || !h.server_utc) { badge.textContent = "OFFLINE"; badge.className = "badge off";
+    reason.textContent = "Không đọc được /health.json — web server không trả dữ liệu."; return; }
+  var stAge = h.state_age_s;
+  if (!h.daemon_alive || (stAge !== null && stAge > h.daemon_fresh_threshold_s)) {
+    badge.textContent = "OFFLINE"; badge.className = "badge off";
+    reason.textContent = "Shadow daemon KHÔNG chạy hoặc heartbeat quá hạn (> " + h.daemon_fresh_threshold_s +
+      "s). Số liệu hiển thị là dữ liệu cuối cùng, KHÔNG phải giá trị thời gian thực. Chạy lại daemon (launch_phorec.sh hoặc Phorec.app).";
+    return;
   }
-  if (TAB==='pnl' && DAYS.length){
-    const labels = DAYS.map(d=>d.day.slice(5));
-    line($('dchart'), labels, [{data:DAYS.map(d=>d.pnl)}]);
-  }
+  if (s && s.data_stale) { badge.textContent = "STALE"; badge.className = "badge stale";
+    reason.textContent = "Mark TrueFX trễ hơn 15 phút — fail-closed: KHÔNG ra quyết định từ giá cũ; equity/PnL hiển thị UNAVAILABLE."; return; }
+  badge.textContent = "LIVE (paper)"; badge.className = "badge live";
+  reason.textContent = "Daemon sống, heartbeat và marks tươi (TrueFX indicative poll 15s, chỉ tham khảo).";
 }
 
-document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
-  t.classList.add('on'); TAB=t.dataset.tab;
-  $('tab-ov').classList.toggle('hide', TAB!=='ov');
-  $('tab-pnl').classList.toggle('hide', TAB!=='pnl');
-  draw();
-});
-document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
-  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
-  c.classList.add('on'); CHIP=c.dataset.chip; draw();
-});
-$('mPrev').onclick=()=>{ shiftMonth(-1); renderCal(); };
-$('mNext').onclick=()=>{ shiftMonth(1); renderCal(); };
-function shiftMonth(n){
-  const [y,m] = viewMonth.split('-').map(Number);
-  const d = new Date(Date.UTC(y, m-1+n, 1));
-  viewMonth = d.toISOString().slice(0,7);
+function box(lbl, val, valCls, sml){
+  return '<div class="box"><div class="lbl">' + lbl + '</div><div class="val ' + (valCls||"") + '">' + val +
+    '</div><div class="sml">' + (sml||"") + '</div></div>';
 }
 
-function buildDays(){
-  const pts = (CURVE.points||[]).slice().sort((a,b)=>a.t<b.t?-1:1);
-  const byVN = new Map();
-  for (const p of pts){
-    const d = vnDay(p.t);
-    if (!byVN.has(d)) byVN.set(d, {first:p, last:p, marks:1});
-    else { const o=byVN.get(d); o.last=p; o.marks++; }
+function nextDecisionUTC(){
+  var now = Date.now();
+  var h = Math.floor(now/3600000);
+  for (var i=1;i<7;i++){
+    var hh = (h+i)%24;
+    if (hh <= 18) { var t=(h+i)*3600000; return t; }
   }
-  const days = [...byVN.entries()].sort((a,b)=>a[0]<b[0]?-1:1);
-  let prevEq = SEED;
-  DAYS = days.map(([day,o])=>{
-    const pnl = o.last.equity - prevEq;
-    const rec = {day, pnl:Math.round(pnl*100)/100,
-                  pct: prevEq? Math.round(pnl/prevEq*10000)/100 : 0,
-                  marks:o.marks, firstT:o.first.t, lastT:o.last.t,
-                  equityLast:o.last.equity};
-    prevEq = o.last.equity;
-    return rec;
+  return (h+7)*3600000; /* sau 18:00 UTC → xét ở 00:00 UTC hôm sau (hoặc 19:00 chỉ force-flat) */
+}
+
+function render(){
+  renderStatus();
+  var s = S.state;
+  if (!s) { $("strip").innerHTML = box("TRẠNG THÁI","OFFLINE","neu","chưa có dữ liệu state"); return; }
+  var a = s.account || {};
+  var fresh = s.marks_fresh === true;
+  var strip = [];
+  strip.push(box("EQUITY TÀI KHOẢN (1 TK $100K)", fresh ? fmtUSD(a.equity) : "UNAVAILABLE", "",
+    "mark " + fmtTimeVN(s.updated_utc)));
+  strip.push(box("TỔNG PNL", fresh ? fmtUSD(a.pnl_total) : "UNAVAILABLE", cls(a.pnl_total),
+    fmtPct(a.pnl_total_pct) + " · vốn gốc $100,000"));
+  strip.push(box("PNL HÔM NAY", fresh ? fmtUSD(a.pnl_today) : "UNAVAILABLE", cls(a.pnl_today),
+    "realized hôm nay " + fmtUSD(a.realized_today) + " · mốc 00:00 UTC (book flat theo luật chốt phẳng)"));
+  strip.push(box("GROSS EXPOSURE", fmtUSD(a.gross_exposure_usd), "",
+    "mức sử dụng vốn " + (a.capital_in_use_pct===null||a.capital_in_use_pct===undefined?"N/A":a.capital_in_use_pct+"% của $100,000")));
+  strip.push(box("XÉT LỆNH KẾ TIẾP", fmtTimeVN(new Date(nextDecisionUTC()).toISOString()), "",
+    "ranh giới H1 00:00–18:00 UTC · chốt phẳng 20:00 UTC"));
+  $("strip").innerHTML = strip.join("");
+  $("ruBar").innerHTML = 'REALIZED / UNREALIZED (mark ' + fmtTimeVN(s.updated_utc) + '): <b>realized ' +
+    fmtUSD(a.realized_usd) + '</b> · <b>unrealized ' + fmtUSD(a.unrealized_usd) + '</b>' +
+    (fresh ? "" : ' · <span class="neg">marks stale — các số equity/PnL bị ẨN (UNAVAILABLE), không giả $0</span>');
+
+  ["EURUSD","GBPUSD"].forEach(function(pair){
+    var sl = (s.sleeves||{})[pair] || {};
+    var pos = sl.position || "…";
+    var badge = pos==="LONG" ? '<span class="chip ok">LONG ' + (sl.lots||"") + ' lot</span>'
+      : pos==="SHORT" ? '<span class="chip warn">SHORT ' + (sl.lots||"") + ' lot</span>'
+      : pos==="FLAT" ? '<span class="chip flat">FLAT</span>' : '<span class="chip warn">' + esc(pos) + '</span>';
+    function row(k,v,c){ return '<tr><td>' + k + '</td><td class="' + (c||"") + '">' + v + '</td></tr>'; }
+    $("sl-"+pair).innerHTML = '<h3>' + pair + ' ' + badge + '</h3><div class="chiprow">' +
+      '<span class="note">PnL đóng góp vào TÀI KHOẢN CHUNG $100k — không phải tài khoản riêng</span></div><table>' +
+      row("PnL đóng góp", fmtUSD(sl.contribution_pnl_usd), cls(sl.contribution_pnl_usd)) +
+      row("Realized", fmtUSD(sl.realized_usd), cls(sl.realized_usd)) +
+      row("Unrealized", fmtUSD(sl.unrealized_usd), cls(sl.unrealized_usd)) +
+      row("Số lệnh (fill vào)", String(sl.fills!==undefined?sl.fills:"N/A")) +
+      row("Gross exposure", fmtUSD(sl.gross_exposure_usd)) +
+      row("Entry", sl.entry_px!==null&&sl.entry_px!==undefined?String(sl.entry_px):"—") +
+      row("Mark (bid/ask)", sl.mark? sl.mark.bid+" / "+sl.mark.ask+" ("+sl.mark.age_s+"s)":"—") +
+      row("Quyết định tiếp", '<span style="font-weight:400">' + esc(sl.next_decision||"") + '</span>') +
+      '</table>';
   });
+
+  drawChart();
+  renderEvents();
+  var h = S.health;
+  $("footer").innerHTML = 'Dữ liệu (chỉ đọc): state ' + esc(String(h&&h.state_age_s)) + 's tuổi · heartbeat ' +
+    esc(String(h&&h.heartbeat_age_s)) + 's tuổi (ngưỡng OFFLINE ' + (h?h.daemon_fresh_threshold_s:"90") + 's)' +
+    '<br>Paper/shadow: KHÔNG kết nối broker, KHÔNG lệnh thật; fill giả định tại giá TrueFX opposite-side, 1.5 lot/cặp, chốt phẳng 20:00 UTC (không qua đêm, không swap). Giá TrueFX indicative CHỈ MANG TÍNH THAM KHẢO.' +
+    '<br>Chương trình: EURUSD-RANGEEXP + GBPUSD-RANGEEXP (FX2-RANGEEXP-C3 lo_q 0.3 / hi_q 0.7 / fade) đã qua holdout 2026-H1 và scored reconciliation (NO_DRIFT_FLAG) — dashboard không phải bằng chứng strategy có lãi.';
 }
 
-function renderCal(){
-  const today = vnNow().slice(0,10);
-  if (!viewMonth) viewMonth = today.slice(0,7);
-  $('calMonth').textContent = viewMonth;
-  const [y,m] = viewMonth.split('-').map(Number);
-  const first = new Date(Date.UTC(y, m-1, 1));
-  const dim = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const lead = (first.getUTCDay()+6)%7; // T2=0
-  const byDay = Object.fromEntries(DAYS.map(d=>[d.day,d]));
-  const monthDays = DAYS.filter(d=>d.day.startsWith(viewMonth));
-  const html = ['T2','T3','T4','T5','T6','T7','CN'].map(h=>`<div class="hd">${h}</div>`).join('');
-  let cells = '';
-  for (let i=0;i<lead;i++) cells += '<div class="cell empty"></div>';
-  for (let dd=1; dd<=dim; dd++){
-    const dayIso = `${viewMonth}-${String(dd).padStart(2,'0')}`;
-    const rec = byDay[dayIso];
-    const isToday = dayIso===today;
-    let cls2 = 'cell', pnlHtml = '<div class="pnl">không có mark<br>(fail-closed)</div>';
-    if (rec){
-      const pc = rec.pct;
-      pnlHtml = `<div class="pnl ${cls(rec.pnl)}">${fmtUSD(rec.pnl)}</div><div class="dnum">${fmtS(pc)}%</div>`;
-    }
-    cells += `<div class="${cls2}${isToday?' today':''}${rec?'':' none'}" data-day="${dayIso}">
-      <div class="dnum">${dd}</div>${pnlHtml}</div>`;
+/* ---------- account chart: time-based, gaps break the line ---------- */
+function chartSeries(){
+  var pts = (S.curve && S.curve.points) || [];
+  return pts.map(function(p){ return {t:new Date(p.t).getTime(), v:p.equity}; });
+}
+function drawChart(){
+  var svg = $("chart"), tip = $("tip");
+  var pts = chartSeries().filter(function(p){ return isFinite(p.t) && p.v!==null && p.v!==undefined; });
+  var W=1000,H=330,L=70,R=14,T=12,B=26, out=[];
+  if (!pts.length){
+    svg.innerHTML = '<text x="500" y="160" text-anchor="middle" fill="#6b7280" font-size="14">Chưa có điểm equity (NOT_RUN)</text>';
+    tip.style.display="none"; return;
   }
-  $('calGrid').innerHTML = html + cells;
-  const inMonth = monthDays;
-  const mPnl = inMonth.length ? inMonth[inMonth.length-1].equityLast -
-      (DAYS.length && DAYS.find(d=>d.day<viewMonth) ? (DAYS.filter(d=>d.day<viewMonth).slice(-1)[0]).equityLast : SEED) : 0;
-  const closed = inMonth.length && inMonth[inMonth.length-1].day !== today;
-  $('calNote').textContent = `${viewMonth.slice(5)}/${viewMonth.slice(0,4)} · ${closed? 'đã đóng':'chưa đóng'}, tính tới mark mới nhất`;
-  // cell click -> mark detail
-  $('calGrid').querySelectorAll('.cell[data-day]').forEach(c=>{
-    c.onclick = ()=>{
-      const rec = byDay[c.dataset.day];
-      const det = $('cellDetail');
-      det.style.display='block';
-      det.innerHTML = rec ? `<b>${c.dataset.day}</b> · PnL ${fmtUSD(rec.pnl)} (${fmtS(rec.pct)}%) ·
-        ${rec.marks} mark · mark đầu ${rec.firstT.replace('T',' ').slice(0,16)} UTC · mark cuối ${rec.lastT.replace('T',' ').slice(0,16)} UTC · equity cuối ${fmtUSD(rec.equityLast)}`
-        : `<b>${c.dataset.day}</b> · không có mark hợp lệ (fail-closed, không nội suy)`;
-    };
+  var t0=pts[0].t, t1=pts[pts.length-1].t; if (!(t1>t0)) t1=t0+1;
+  var GAP_MS = 90*60*1000;
+  var ymin=Infinity, ymax=-Infinity;
+  pts.forEach(function(p){ ymin=Math.min(ymin,p.v); ymax=Math.max(ymax,p.v); });
+  ymin=Math.min(ymin,100000); ymax=Math.max(ymax,100000);
+  var pad=(ymax-ymin)*0.08||1; ymin-=pad; ymax+=pad;
+  function X(t){ return L+(t-t0)/(t1-t0)*(W-L-R); }
+  function Y(v){ return T+(1-(v-ymin)/(ymax-ymin))*(H-T-B); }
+  for (var i=0;i<=4;i++){
+    var v=ymin+(ymax-ymin)*i/4, y=Y(v);
+    out.push('<line x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'" stroke="#eef0f3"/>');
+    out.push('<text x="'+(L-6)+'" y="'+(y+3.5)+'" text-anchor="end" font-size="10" fill="#6b7280">'+Math.round(v).toLocaleString("en-US")+'</text>');
+  }
+  for (var j=0;j<=4;j++){
+    var t=t0+(t1-t0)*j/4, x=X(t), d=new Date(t);
+    var p2=function(n){return (n<10?"0":"")+n;};
+    out.push('<text x="'+x+'" y="'+(H-8)+'" text-anchor="middle" font-size="10" fill="#6b7280">'+
+      (d.getMonth()+1)+"/"+d.getDate()+" "+p2(d.getHours())+":"+p2(d.getMinutes())+'</text>');
+  }
+  out.push('<line x1="'+L+'" y1="'+(H-B)+'" x2="'+(W-R)+'" y2="'+(H-B)+'" stroke="#c8ccd2"/>');
+  var by=Y(100000);
+  out.push('<line x1="'+L+'" y1="'+by+'" x2="'+(W-R)+'" y2="'+by+'" stroke="#9aa2af" stroke-dasharray="6 5" stroke-width="1.2"/>');
+  out.push('<text x="'+(W-R-4)+'" y="'+(by-4)+'" text-anchor="end" font-size="10" fill="#6b7280">vốn gốc 100,000</text>');
+  var segs=[], cur=[];
+  for (var k=0;k<pts.length;k++){
+    if (k>0 && pts[k].t-pts[k-1].t > GAP_MS){ segs.push(cur); cur=[]; }
+    cur.push(pts[k]);
+  }
+  segs.push(cur);
+  var drawn=[];
+  segs.forEach(function(seg){
+    if (!seg.length) return;
+    if (seg.length===1 && drawn.length){ return; }
+    out.push('<path fill="none" stroke="#1d4ed8" stroke-width="1.7" d="' +
+      seg.map(function(p,i){ return (i?"L":"M")+X(p.t).toFixed(2)+" "+Y(p.v).toFixed(2); }).join(" ") + '"/>');
+    drawn=drawn.concat(seg);
   });
+  svg.innerHTML = out.join("");
+  svg._pts = drawn; svg._geom = {L:L,R:R,W:W,t0:t0,t1:t1,baseline:100000};
 }
+(function(){
+  var svg=$("chart"), tip=$("tip");
+  svg.addEventListener("mousemove", function(ev){
+    var pts=svg._pts, g=svg._geom;
+    if (!pts||!g){ tip.style.display="none"; return; }
+    var rect=svg.getBoundingClientRect();
+    var px=(ev.clientX-rect.left)*(g.W/rect.width);
+    var best=null,bd=Infinity;
+    pts.forEach(function(p){
+      var x=g.L+(p.t-g.t0)/(g.t1-g.t0)*(g.W-g.L-g.R);
+      var dx=Math.abs(x-px); if (dx<bd){bd=dx;best=p;}
+    });
+    if (!best||bd>18){ tip.style.display="none"; return; }
+    var pnl=best.v-g.baseline;
+    tip.innerHTML="<b>"+fmtTimeVN(new Date(best.t).toISOString())+"</b><br>Equity: "+fmtUSD(best.v)+
+      "<br>PnL: "+fmtUSD(pnl)+" ("+fmtPct(pnl/g.baseline*100)+")";
+    tip.style.display="block";
+    var wrap=$("chartwrap").getBoundingClientRect();
+    tip.style.left=Math.min(ev.clientX-wrap.left+12, wrap.width-190)+"px";
+    tip.style.top=(ev.clientY-wrap.top-10)+"px";
+  });
+  svg.addEventListener("mouseleave", function(){ tip.style.display="none"; });
+})();
 
-function renderWeekly(){
-  const weeks = new Map();
-  for (const d of DAYS){
-    const wk = weekStartVN(d.day);
-    if (!weeks.has(wk)) weeks.set(wk, {pnl:0, pct:0, eqLast:null, marks:0, lastT:null, prevEq:null, days:[]});
-    const w = weeks.get(wk);
-    if (w.prevEq===null) w.prevEq = d.equityLast - d.pnl;
-    w.pnl += d.pnl; w.marks += d.marks; w.eqLast = d.equityLast; w.lastT = d.lastT; w.days.push(d.day);
-  }
-  const today = vnNow().slice(0,10);
-  const rows = [...weeks.entries()].sort((a,b)=>a[0]<b[0]?-1:1).slice(-12).map(([wk,w])=>{
-    const end = new Date(wk+'T00:00:00Z'); end.setUTCDate(end.getUTCDate()+6);
-    const endIso = end.toISOString().slice(0,10);
-    const open = w.days.includes(today);
-    const base = w.prevEq || SEED;
-    const pct = base? Math.round(w.pnl/base*10000)/100 : 0;
-    return `<tr><td>${wk} → ${endIso} ${open?'· chưa đóng':''}</td>
-      <td class="${cls(w.pnl)}">${fmtUSD(w.pnl)}</td><td class="${cls(pct)}">${fmtS(pct)}%</td>
-      <td>${fmtUSD(w.eqLast)}</td><td>${w.marks}</td><td>${w.lastT? w.lastT.replace('T',' ').slice(0,16):''}</td></tr>`;
-  }).join('');
-  $('weekTable').innerHTML = '<tr><th style="text-align:left;color:var(--dim)">Tuần</th><th style="color:var(--dim)">PnL $</th><th style="color:var(--dim)">PnL %</th><th style="color:var(--dim)">Equity cuối</th><th style="color:var(--dim)">Số mark</th><th style="color:var(--dim)">Mark cuối</th></tr>' + rows;
-  // KPI tháng/tuần/hôm nay
-  const today = vnNow().slice(0,10);
-  const todayRec = DAYS.find(d=>d.day===today);
-  $('dPnl').textContent = fmtUSD(todayRec? todayRec.pnl : 0);
-  $('dPnl').className = 'val ' + cls(todayRec? todayRec.pnl : 0);
-  $('dSub').textContent = today + ' · ' + (todayRec && todayRec.day===DAYS[DAYS.length-1].day ? 'chưa đóng' : 'chưa có mark');
-  if (DAYS.length){
-    const curWk = weekStartVN(today);
-    const w = [...weeks.entries()].find(([k])=>k===curWk);
-    if (w){ $('wPnl').textContent = fmtUSD(w[1].pnl); $('wPnl').className='val '+cls(w[1].pnl);
-      const end = new Date(curWk+'T00:00:00Z'); end.setUTCDate(end.getUTCDate()+6);
-      $('wSub').textContent = curWk.slice(5) + ' → ' + end.toISOString().slice(5,10) + ' · chưa đóng'; }
-    const mm = today.slice(0,7);
-    const mdays = DAYS.filter(d=>d.day.startsWith(mm));
-    if (mdays.length){
-      const mPnl = mdays[mdays.length-1].equityLast -
-        (DAYS.find(d=>d.day<mm) ? (DAYS.filter(d=>d.day<mm).slice(-1)[0]).equityLast : SEED);
-      $('mPnl').textContent = fmtUSD(mPnl); $('mPnl').className='val '+cls(mPnl);
-      $('mSub').textContent = mm.slice(5)+'/'+mm.slice(0,4)+' · chưa đóng · '+fmtS(SEED? Math.round(mPnl/SEED*10000)/100:0)+'%';
-    }
-    $('eqNow').textContent = fmtUSD(DAYS[DAYS.length-1].equityLast);
-    $('mcount').textContent = 'mark cuối ' + DAYS[DAYS.length-1].lastT.replace('T',' ').slice(0,16) + ' UTC · ' + (CURVE.points||[]).length + ' mark hợp lệ';
-  }
-  renderCal();
+/* ---------- tín hiệu & lệnh ---------- */
+var KIND_LABEL = {signal:"TÍN HIỆU", fill_open:"VÀO LỆNH", fill_close:"THOÁT (tín hiệu)", force_flat:"CHỐT PHẲNG 20:00"};
+function eventRows(){
+  return (S.journal||[]).map(function(e){
+    var kind = e.event;
+    if (!(kind in KIND_LABEL)) return null;
+    var side = "", px = null, pnl = null, why = "";
+    if (kind==="signal") { side = e.target>0?"LONG":e.target<0?"SHORT":"FLAT"; px=e.b_c; why="bar đóng · target=" + e.target; }
+    if (kind==="fill_open") { side = e.dir>0?"LONG":"SHORT"; px=e.entry_px; why="mở vị thế tại opposite quote"; }
+    if (kind==="fill_close") { side = e.dir>0?"Đóng LONG":"Đóng SHORT"; px=e.exit_px; pnl=e.pnl_usd; why="lý do: " + (e.reason||""); }
+    if (kind==="force_flat") { side = e.dir>0?"Đóng LONG":"Đóng SHORT"; px=e.exit_px; pnl=e.pnl_usd; why="chốt phẳng 20:00 UTC (không qua đêm)"; }
+    var spread = e.spread!==undefined && e.spread!==null ? e.spread : null;
+    var spreadUsd = spread!==null ? spread*10000*10*1.5 : null; /* spread(pip=1e-4) × pip value × lots */
+    return {e:e, kind:kind, side:side, px:px, pnl:pnl, why:why, spreadUsd:spreadUsd};
+  }).filter(Boolean).reverse();
 }
+function renderEvents(){
+  var rows = eventRows();
+  var fp=$("fpair").value, fk=$("fkind").value;
+  rows = rows.filter(function(r){
+    if (fp && r.e.pair!==fp) return false;
+    if (fk && r.kind!==fk) return false;
+    return true;
+  });
+  var body = rows.map(function(r){
+    var e=r.e;
+    var sideHtml = r.side.indexOf("LONG")>=0 ? '<span class="sidebuy">'+r.side+'</span>'
+      : r.side.indexOf("SHORT")>=0 ? '<span class="sidesell">'+r.side+'</span>' : esc(r.side);
+    var pnlCls = r.pnl===null||r.pnl===undefined ? "" : (Math.abs(r.pnl)<1e-9?"":(r.pnl>0?"rp":"rn"));
+    return '<tr class="row '+pnlCls+'" data-seq="'+esc(e.seq)+'">' +
+      '<td class="l">'+fmtTimeVN(e.ts)+'</td>' +
+      '<td class="l"><b>'+esc(e.pair)+'</b></td>' +
+      '<td class="l">'+esc(KIND_LABEL[r.kind])+'</td>' +
+      '<td class="l">'+sideHtml+'</td>' +
+      '<td>'+(r.px!==null&&r.px!==undefined?Number(r.px).toFixed(5):"N/A")+'</td>' +
+      '<td>'+(e.lots!==undefined?e.lots:"")+'</td>' +
+      '<td>'+(r.spreadUsd!==null?fmtUSD(r.spreadUsd):"—")+'</td>' +
+      '<td class="'+cls(r.pnl)+'">'+(r.pnl!==null&&r.pnl!==undefined?fmtUSD(r.pnl):"")+'</td>' +
+      '<td class="l note">'+esc(r.why)+'</td></tr>';
+  }).join("");
+  $("tbody").innerHTML = body || '<tr><td colspan="9" class="l note">Chưa có sự kiện nào trong journal.</td></tr>';
+  $("rowcount").textContent = rows.length + " sự kiện";
+}
+$("tbody").addEventListener("click", function(ev){
+  var tr = ev.target.closest("tr.row"); if (!tr) return;
+  var seq = tr.getAttribute("data-seq");
+  var e = (S.journal||[]).filter(function(x){ return String(x.seq)===seq; })[0];
+  if (!e) return;
+  $("popuptitle").textContent = (e.pair||"") + " · " + (KIND_LABEL[e.event]||e.event) + " · seq " + e.seq;
+  var rowsHtml = "";
+  [["event_id","Event ID"],["ts","Thời điểm (UTC)"],["pair","Cặp"],["event","Loại sự kiện"],
+   ["dir","Chiều"],["entry_px","Giá vào"],["exit_px","Giá ra / giá đang định giá"],
+   ["b_c","Giá đóng bar (signal)"],["target","Target sau bar"],["lots","Lot"],
+   ["spread","Spread tại fill (giá)"],["quote_ts","Timestamp giá TrueFX"],
+   ["mark","Nguồn giá"],["pnl_usd","PnL (USD)"],["realized_total","Realized lũy kế"],
+   ["reason","Lý do"],["b_o","Bar open"],["b_h","Bar high (bid)"],["b_l","Bar low (bid)"],
+   ["a_c","Bar close (ask)"]
+  ].forEach(function(kv){
+    var k=kv[0], label=kv[1];
+    if (!(k in e)) return;
+    var v=e[k];
+    var txt = (v===null||v===undefined) ? "N/A" : (typeof v==="number" ? v.toLocaleString("en-US",{maximumFractionDigits:8}) : esc(v));
+    rowsHtml += "<tr><td>"+label+"</td><td>"+txt+"</td></tr>";
+  });
+  var rest={};
+  Object.keys(e).forEach(function(k){ if (!["event_id","ts","pair","event","dir","entry_px","exit_px","b_c","target","lots","spread","quote_ts","mark","pnl_usd","realized_total","reason","b_o","b_h","b_l","a_c","seq"].includes(k)) rest[k]=e[k]; });
+  $("popupbody").innerHTML = "<table>"+rowsHtml+"</table><p class='note'>Trường gốc còn lại (nguyên văn):</p><pre>"+esc(JSON.stringify(rest,null,2))+"</pre>";
+  $("overlay").style.display="flex";
+});
+function closePopup(){ $("overlay").style.display="none"; }
+$("overlay").addEventListener("click", function(ev){ if (ev.target===$("overlay")) closePopup(); });
+["fpair","fkind"].forEach(function(id){ $(id).addEventListener("change", renderEvents); });
 
+/* ---------- refresh loop: 15s, cache-buster URLs ---------- */
+async function getJSON(u){ var r = await fetch(u, {cache:"no-store"}); if (!r.ok) throw new Error("HTTP "+r.status); return r.json(); }
 async function tick(){
   try{
-    const s = await (await fetch('/state.json?'+Date.now())).json();
-    const badge = $('liveBadge');
-    badge.textContent = s.data_stale ? 'STALE' : 'LIVE';
-    badge.className = 'live' + (s.data_stale?' stale':'');
-    SEED = s.seed_equity||100000;
-    $('statusline').textContent = 'Trạng thái: ' + (s.data_stale?
-      'mark trễ hơn 15 phút — fail-closed, không ra quyết định từ giá cũ'
-      : 'heartbeat và valuation marks còn mới theo contract (TrueFX indicative, poll 15s)');
-    $('kEquity').textContent = fmtUSD(s.equity||0);
-    $('kMark').textContent = 'mark ' + (s.updated_utc||'');
-    const pt = s.pnl_total||0;
-    $('kPnl').textContent = fmtUSD(pt); $('kPnl').className='val '+cls(pt);
-    $('kPnlSeed').textContent = fmtS(s.pnl_total_pct||0) + '%';
-    const pd = s.pnl_today||0;
-    $('kToday').textContent = fmtUSD(pd); $('kToday').className='val '+cls(pd);
-    $('kGross').textContent = fmtUSD(s.gross_exposure_usd||0);
-    $('kGrossPct').textContent = '+' + (s.gross_pct_of_equity||0) + '% của equity · Σ|notional| 2 vị thế tối đa';
-    $('ruBar').innerHTML = 'REALIZED / UNREALIZED (2 SLEEVE FX, MARK ' + (s.updated_utc||'').replace('T',' ').slice(0,16) +
-      'Z): <b>realized ' + fmtUSD(s.realized_usd||0) + '</b> · <b>unrealized ' + fmtUSD(s.unrealized_usd||0) + '</b>';
-    for (const pair of ['EURUSD','GBPUSD']){
-      const sl=(s.sleeves||{})[pair]||{}; const u=sl.unrealized_usd||0, rz=sl.realized_usd||0;
-      const pos = sl.position||'…';
-      const bHtml = pos==='LONG' ? `<span class="badge run">RUNNING · LONG ${sl.lots||''} lot</span>`
-                  : pos==='SHORT'? `<span class="badge run">RUNNING · SHORT ${sl.lots||''} lot</span>`
-                  : `<span class="badge flat">FLAT</span>`;
-      $('sl-'+pair).innerHTML = `<h3>${pair} ${bHtml}</h3>
-        <table>
-        <tr><td>Equity sleeve</td><td>${fmtUSD(SEED + rz + u)}</td></tr>
-        <tr><td>PnL tổng</td><td class="${cls(rz+u)}">${fmtUSD(rz+u)}</td></tr>
-        <tr><td>Unrealized</td><td class="${cls(u)}">${fmtUSD(u)}</td></tr>
-        <tr><td>Realized</td><td class="${cls(rz)}">${fmtUSD(rz)}</td></tr>
-        <tr><td>Entry</td><td>${sl.entry_px??'—'}</td></tr>
-        <tr><td>Mark (bid/ask)</td><td>${sl.mark? sl.mark.bid+' / '+sl.mark.ask+' ('+sl.mark.age_s+'s)':'—'}</td></tr>
-        <tr><td>Số fill</td><td>${sl.fills??0}</td></tr>
-        <tr><td style="color:var(--dim)">Quyết định tiếp</td><td style="font-weight:400">${sl.next_decision||''}</td></tr>
-        </table>`;
-    }
-    try{
-      CURVE = await (await fetch('/equity_curve.json?'+Date.now())).json();
-      buildDays(); renderWeekly(); draw();
-    }catch{}
-    try{
-      const j=(await (await fetch('/journal.jsonl?'+Date.now())).text()).trim().split('\n').slice(-14).reverse();
-      $('journal').innerHTML = j.map(l=>{ try{ const e=JSON.parse(l);
-        return `<div>${e.ts} [${e.event}] ${e.pair||''} ${e.dir? (e.dir>0?'LONG':'SHORT'):''} ${e.pnl_usd!==undefined? fmtUSD(e.pnl_usd):''} ${e.result||''}</div>`;
-      }catch{ return ''; } }).join('');
-    }catch{}
-  }catch(e){ $('liveBadge').textContent='OFFLINE'; $('liveBadge').className='live off'; }
+    var h = await getJSON("/health.json?"+Date.now());
+    S.health = h;
+  }catch(e){ S.health = null; }
+  try{
+    S.state = await getJSON("/state.json?"+Date.now());
+  }catch(e){ S.state = null; }
+  try{ S.curve = await getJSON("/equity_curve.json?"+Date.now()); }catch(e){ S.curve = S.curve||{points:[]}; }
+  try{
+    var txt = await (await fetch("/journal.jsonl?limit=800&"+Date.now(), {cache:"no-store"})).text();
+    S.journal = txt.trim()? txt.trim().split("\n").map(function(l){ try{return JSON.parse(l);}catch{return null;} }).filter(Boolean) : [];
+  }catch(e){ /* giữ journal cũ */ }
+  render();
+  S.baseMsg = "Cập nhật lần cuối: " + fmtTimeVN(new Date().toISOString()) + " (giờ VN)";
+  $("lastupdate").textContent = S.baseMsg;
+  S.count = 15;
 }
-setInterval(()=>{ COUNT--; if(COUNT<=0){ COUNT=15; tick(); } $('cd').textContent=COUNT; },1000);
+setInterval(function(){
+  S.count--; if (S.count<=0){ S.count=15; tick(); }
+  $("lastupdate").textContent = (S.baseMsg||"") + " · làm mới sau " + Math.max(S.count,0) + "s";
+}, 1000);
 tick();
 </script>
 </body>
