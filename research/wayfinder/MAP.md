@@ -55,6 +55,30 @@
   btc_h4_two_regime_v1/` (census/, P2_ADJUDICATION_AND_CLOSE.json,
   audits_a7/). Denominators UNCHANGED: program 283/286 (P-9).
 
+- **FX-MAJORS-SEARCH-V1 CLOSED → per-pair `CANDIDATE_PENDING_PROSPECTIVE_VERIFICATION`
+  (GBPUSD with conviction / USDJPY thin)** (2026-09-24, owner: transfer the V2
+  design to GBPUSD+USDJPY; branch `orca/fx-majors-search-v1-integration`
+  terminal ff06fb74; budget 96/96; S1 SEALED; no orders; GO phrase
+  extinguished UNCONSUMED; A7 prelaunch AUTHORIZED + terminal CONFIRM 0
+  blocking): **the wide-range-day fade mechanism now generalizes across
+  THREE pairs.**
+  - GBPUSD (STRONG): dev +8,525.2 pips PF 1.642 **6/6 folds positive**;
+    holdout 2026-H1 +164.2/+105.3/+46.4 @1x/1.5x/2x — in a choppy half-year
+    where EVERY baseline lost (LONG −132.9, SHORT −47.1, RANDOM −1,546.9).
+    The mechanism earned in both directions without a drift tailwind — the
+    strongest anti-drift evidence in the program.
+  - USDJPY (THIN): dev +3,573.6 PF 1.306 (PDHLOC-C2) / +3,128.1 PF 1.355
+    (RANGEEXP-C3); holdout +35.4/+30.6 @1.0, die at 2× stress, and
+    **LONG_ALWAYS +532.5 dominates the carry-rally window** — pass is
+    technically valid but drift-confounded; **JPY carry-beta control
+    MANDATORY** in the successor (alongside the EURUSD short-beta control).
+  - Data plane: per-pair Dukascopy M1 bid/ask corpora (4,014 files/pair,
+    0 missing); USDJPY 1e-3 price scale PROVEN by probe-vs-ticks; census
+    BUILD_PASS both pairs (spread p50 0.8 / 0.5 pips).
+  - Successor note: seed RANDOM_MATCHED deterministically (salted
+    hash(pair) is not process-reproducible — A7-T1 LOW).
+  - Denominators: forex 149→245/245 (this session's authority); program
+    delta +96 (union reconciliation across concurrent sessions per §7).
 - **EURUSD-RANGEEXP-SCORED-V1 CLOSED → `EURUSD_RANGEEXP_SCORED_V1_SCORED_RECONCILED_NO_DRIFT_FLAG`**
   (2026-09-24, owner option "1" + verbatim GO consumed at own gate; branch
   `orca/eurusd-rangeexp-scored-v1-integration` terminal 8326443; budget 6/6;
