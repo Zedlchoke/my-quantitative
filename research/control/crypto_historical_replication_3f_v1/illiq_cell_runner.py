@@ -9,7 +9,7 @@ from research.adapter_v10.protocol import SettlementPoint  # noqa: E402
 from research.adapter_v10.runner import run_strategy  # noqa: E402
 from chr3f_illiq_plugin import Chr3fIlliqPlugin  # noqa: E402
 
-CD = V11.parent
+CD = V11.parents[1]
 ap = argparse.ArgumentParser()
 ap.add_argument("--fold", required=True)
 ap.add_argument("--window-start", required=True)
