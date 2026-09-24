@@ -38,6 +38,26 @@ NOT RUN at bootstrap (honest inventory):
 - Phase 2 / FWD window: not authorized by this cycle's budget (4 = phase 1
   only).
 
+Implementation update (2026-09-24, prelaunch implementer lane):
+
+- `gate_series_build.full_build` IMPLEMENTED and RUN under the heavy lock
+  (wrapper `full_build_locked.py`): S0R COMPLETE from catalog_live_crypto_s0r;
+  FWD observables from catalog_live_crypto_a20 as an UNPINNED-CATALOG
+  DIAGNOSTIC (the wiring law keeps `FOLD_WIRING["FWD"]["catalog"] = None`;
+  measured a20 coverage is 20/20 symbols across the full FWD window, zero
+  gaps — the "bars end 2025-09" premise was outdated). Artifact
+  `gate_series.json` sha256 `e09187f925e761cfabe94e0766ca2104b3b45f5def76fad
+  c061cdbc09c51702d`, byte-identical across two locked runs (determinism).
+  Cross-check vs the frozen dossier single-shot: S0R s90 max abs diff 0.0;
+  states 49/52 match — the 3 deltas are the strictly-PIT rvol30 window
+  (gate_module) vs the dossier's descriptive `<= stamp` reading, by design.
+- `dryrun.py` IMPLEMENTED and RUN: sanitized GATED traversal over S0R —
+  52 stamps, 43 gated ON (34 with constructible book, 7 frozen
+  WEIGHT_CAP_BREACH skips, 2 fold-boundary force-flat), 9 GATE_OFF skips,
+  non_vacuous true, no PnL fields (report `dryrun_report.json`).
+- Still NOT RUN: A7 prelaunch verdict, any cell (owner GO gate), FWD strategy
+  stage (catalog pinning step pending), random-gate PnL controls (cell time).
+
 READ-ONLY boundaries: everything under
 `.worktrees/crypto-historical-replication-3f-v1/` is referenced by absolute
 path only, never copied over, never edited. The frozen engine
