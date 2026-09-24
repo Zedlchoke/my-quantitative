@@ -31,13 +31,39 @@ EXPECTED_VERDICTS = {
     "ILLIQ-AMIHUD-28D-W": "V11_FAMILY_REJECT",
     "BASISLV-PREMFADE-28D": "V14_FAMILY_REJECT",
     "XSECT-FUND-CARRY-7D": "CANDIDATE_FAIL",
+    # composite label (owner mount directive 2026-09-24): its factual
+    # segments are byte-pinned via manifest.verbatim_source_checks —
+    # see test_historical_verdict_labels_verbatim for the composite rule.
+    "BTC4H-BANDRIDGE": (
+        "POSTHOC_DISCOVERY_CANDIDATE (PSV1 arm G6-control-killed; "
+        "ES1 C3 G5-killed; prospective observation only — never OOS, never live)"
+    ),
 }
 
 
 def _git(*args: str, check: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["git", "-C", str(WORKTREE), *args], capture_output=True, check=check
+        ["git", "-C", str(WORKTREE), *args], capture_output=True, check=True
     )
+
+
+def _resolve_working_tree_path(rel: str) -> Path:
+    """WORKING_TREE_TRACKED paths live under one of two bases.
+
+    Own-cycle files are worktree-relative; the BTC4H-BANDRIDGE entry
+    (mounted 2026-09-24) points into SIBLING cycle worktrees, recorded
+    main-checkout-relative (`.worktrees/<cycle>/...`). Both are real
+    files on this machine; resolve each against its documented base.
+    """
+    p = Path(rel)
+    if p.parts and p.parts[0] == ".worktrees":
+        common = subprocess.run(
+            ["git", "-C", str(WORKTREE), "rev-parse",
+             "--path-format=absolute", "--git-common-dir"],
+            capture_output=True, check=True,
+        ).stdout.decode().strip()
+        return Path(common).parent / p
+    return WORKTREE / p
 
 
 @pytest.fixture(scope="module")
@@ -49,7 +75,7 @@ def manifest() -> dict:
 def _raw_bytes(commit: str, path: str) -> bytes:
     """Exact bytes of a manifest-listed file, from git or the working tree."""
     if commit == "WORKING_TREE_TRACKED":
-        p = WORKTREE / path
+        p = _resolve_working_tree_path(path)
         assert p.is_file(), f"MISSING working-tree file: {p}"
         return p.read_bytes()
     proc = _git("show", f"{commit}:{path}", check=False)
@@ -62,7 +88,7 @@ def _raw_bytes(commit: str, path: str) -> bytes:
 
 def _expected_blob_sha(commit: str, path: str) -> str:
     if commit == "WORKING_TREE_TRACKED":
-        return _git("hash-object", path).stdout.decode().strip()
+        return _git("hash-object", str(_resolve_working_tree_path(path))).stdout.decode().strip()
     out = _git("ls-tree", commit, "--", path).stdout.decode().strip()
     assert out, f"git ls-tree returned nothing for {commit}:{path}"
     parts = out.split()
@@ -75,11 +101,11 @@ def _expected_blob_sha(commit: str, path: str) -> str:
 # --------------------------------------------------------------------------- #
 
 
-def test_manifest_schema_and_three_families(manifest: dict) -> None:
+def test_manifest_schema_and_family_set(manifest: dict) -> None:
     assert manifest["schema"] == "shv1_identity_recovery_v1"
     assert manifest["cycle_id"] == "PROSPECTIVE-SHADOW-V1"
     families = manifest["families"]
-    assert len(families) == 3
+    assert len(families) == 4  # 3 founding + BTC4H-BANDRIDGE (mount 2026-09-24)
     assert [f["family_id"] for f in families] == list(EXPECTED_VERDICTS)
 
 
@@ -111,7 +137,8 @@ def _iter_all_file_entries(manifest: dict):
 
 def test_every_listed_file_exists_and_hashes_match(manifest: dict) -> None:
     entries = list(_iter_all_file_entries(manifest))
-    assert len(entries) >= 24  # 8+2 (f1) + 11+1 (f2) + 7 (f3), some overlap
+    # 8+2 (f1) + 11+1 (f2) + 7 (f3) + 3 (BTC4H-BANDRIDGE), some overlap
+    assert len(entries) >= 27
     for owner, e in entries:
         commit, path = e["commit"], e["path"]
         raw = _raw_bytes(commit, path)  # asserts existence loudly
@@ -161,6 +188,20 @@ def test_historical_verdict_labels_verbatim(manifest: dict) -> None:
     for fam in manifest["families"]:
         expected = EXPECTED_VERDICTS[fam["family_id"]]
         assert fam["historical_verdict_label"] == expected
+        if fam.get("label_kind") == "composite":
+            # The whole string is a composition (disclosed in
+            # label_composite_note); the anti-invention rule still holds:
+            # every factual segment must be byte-pinned via the family's
+            # verbatim_source_checks, and the label must be covered by
+            # the not-rewritable policy.
+            checks = manifest["verbatim_source_checks"][fam["family_id"]]
+            assert checks, f"composite label with no byte-pinned segments: {fam['family_id']}"
+            assert fam["label_byte_components"], "composite label without component map"
+            assert expected in manifest["verdict_labels_policy"], (
+                f"composite label not covered by the not-rewritable policy: "
+                f"{fam['family_id']}"
+            )
+            continue
         found = False
         for e in fam["files"] + (fam.get("verdict_evidence") or {}).get("files", []):
             raw = _raw_bytes(e["commit"], e["path"])
@@ -222,6 +263,12 @@ def test_score_affecting_parameters_present(manifest: dict) -> None:
             "long_rule", "short_rule", "rebalance", "folds", "purge_embargo",
             "target_gross", "hard_gross_cap", "hard_abs_net_cap",
             "max_abs_weight_per_symbol",
+        ],
+        "BTC4H-BANDRIDGE": [
+            "band_up", "band_down", "sma_len_h4", "donch_entry_h4",
+            "donch_stop_h4", "min_hold_h4", "max_hold_h4", "symbol",
+            "target_gross", "hard_gross_cap", "hard_abs_net_cap",
+            "max_abs_weight", "fee_bps_per_side",
         ],
     }
     for fam in manifest["families"]:
