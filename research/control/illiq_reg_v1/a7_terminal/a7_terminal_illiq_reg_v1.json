@@ -1,0 +1,103 @@
+{
+ "schema": "illiq_reg_v1.a7_terminal@1",
+ "cycle": "ILLIQ-REG-V1",
+ "verdict": "CONFIRM",
+ "head_audited": "0995044cbe4a736050b46b6693eac7491164278a",
+ "branch": "orca/illiq-reg-v1-integration",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/illiq-reg-v1/integration",
+ "audit_utc": "2026-09-24T06:27:29Z",
+ "auditor": "A7 independent TERMINAL auditor (fresh context; no role in bootstrap, implementation, launch or reproduction; read-only except this artifact)",
+ "summary": "Independent recompute from artifact bytes confirms the terminal claims: phase-1 falsification verdict FALSIFIED is arithmetically correct on the preregistered rule; gate law held (9/52 GATE_OFF stamps verifiably flat); the reproduction claim (8/8 byte-identical, status/verdict identical modulo worktree path + wall-clock) reproduced exactly under my own hashing; SS11 labels, budget denominator (exactly 4 cells, cap 4, no overspend) and boundaries (S1 sealed, CHR3F read-only and clean, no credentials) all verify. Zero blocking findings.",
+ "blocking_findings": [],
+ "non_blocking_findings": [
+  {
+   "id": "NB-1",
+   "severity": "MEDIUM",
+   "finding": "Live registry structured fields are stale relative to the phase narrative the same write carried: plans/CYCLE_REGISTRY.json ILLIQ-REG-V1 row (updated_at_utc 2026-09-24T06:02:00Z, uncommitted A1 control-plane write in the root checkout) has budget.used=0 (phase text says 'Budget 4/4'), go_phrase_state=REGISTERED_NOT_CONSUMED (GO consumed ~05:40:00Z per journal + GO_RECORDED.json), head=482dc81b (registration head; worktree is 0995044c), active_heavy=false. The committed registry is older still (7444b113, PLANNED_NOT_STARTED).",
+   "why_not_blocking": "No overspend is possible or observed: exactly 4 computed cells exist in the namespace against cap 4, verified from artifacts, not from the registry field. The row self-documents the pending step ('NEXT per plan SS10.8: reproduction twin + A7 terminal + two-half close'); the two-half close is the sanctioned normalization point (lanes never touch the registry). Recorded so the close MUST sync budget.used=4, go_phrase_state=CONSUMED and head before TERMINAL."
+  },
+  {
+   "id": "NB-2",
+   "severity": "LOW",
+   "finding": "All four artifacts' identity.window_start_iso/window_end_iso read 2025-08-22..2026-08-21 (the FWD template window), not the executed S0R window.",
+   "why_not_blocking": "Pre-declared by plan SS5: 'artifact metadata identity.window_* fields are template-frozen and are NOT window evidence (A7-r5 N6)'. The binding window evidence was re-measured from the artifact bytes: 52 unique Monday 00:00Z decision stamps 2024-08-26..2025-08-18, entirely inside S0R 2024-08-22..2025-08-21, identical across all 4 cells and equal to the gate-series stamp set; every row carries WINDOW_FOLD=S0R."
+  },
+  {
+   "id": "NB-3",
+   "severity": "LOW",
+   "finding": "Post-freeze drift question (explicit judgment, dispatch item 10): the prelaunch audit (AUTHORIZED, audit_utc 2026-09-24T05:09:04Z, head audited eb86951e) did not audit the launcher files themselves (gated_plugin.py / illiq_reg_cell.py / phase1_sweep.py did not exist at eb86951e; commit bcaa34dc). The owner GO was consumed at head 8f476744, i.e. BEFORE the launcher commit; the launcher was written after the GO and before cells ran (31985732).",
+   "why_not_blocking": "Judged CONSISTENT WITH A LAWFUL LAUNCH. Plan SS10 requires A7 prelaunch -> owner GO -> cells under heavy lock; it nowhere requires the launcher to be frozen before A7. The gap is closed three ways, each independently verified here: (a) the launcher is fail-closed and re-verifies at run time A7 verdict AUTHORIZED, GO record (exact phrase + received_after_a7_prelaunch + registered_phrase_matches), gate_series digest == e09187f9..., registry lifecycle ACTIVE_HEAVY, budget 0/4, and per-fold funding coverage before any compute; (b) the executed cells demonstrably implement the audited conformance description (GATE_OFF -> engine-native STATUS_SKIP/SKIP_NO_SELECTION with weights {} and reason GATE_OFF; per-fold scan_2026_a with non-zero funding; bars -125d/+3d = 2024-04-19..2025-08-24; 4-label invariant; heavy lock held 05:50:47-06:00:14Z and released FINISHED); (c) this terminal audit recomputed all decisive numbers from bytes."
+  },
+  {
+   "id": "NB-4",
+   "severity": "LOW",
+   "finding": "Scan-id recording surface nuance: the engine artifact.json carries no explicit scan-id field; the scan id travels via the FUNDING_WIRING=funded(scan_2026_a) label on the cell rows (status/verdict, validated by wiring.validate_labels in the sweep) while the artifact carries the wired funding itself (funding_sum +0.027317931467 C1-C3, exactly negated in INV C4 - non-zero proves the B2 zero-funding failure did not recur).",
+   "why_not_blocking": "Plan SS9's requirement ('records the scan id in its artifact') is met by the cell's produced record set; the substantive risk (hardcoded wrong scan) is excluded by the non-zero funding, the pre-compute wiring.verify_funding_scan_coverage call in illiq_reg_cell.py, and the M0 live-coverage test (20/20, 26208 rows)."
+  },
+  {
+   "id": "NB-5",
+   "severity": "LOW",
+   "finding": "Registry event journal contains no explicit budget field event (0->4); the increment is documented only in the phase narrative and the cell artifacts.",
+   "why_not_blocking": "Same normalization point as NB-1; the denominator truth (exactly 4 computed outcomes) is independently established from the namespace inventory (exactly 4 results/artifact.json; dryrun_report no_pnl_fields=true; no other PnL surface in the namespace; the dossier single-shot replay is pre-cycle input evidence in a read-only draft namespace)."
+  }
+ ],
+ "checks": {
+  "freeze_chain": {
+   "verdict": "PASS",
+   "evidence": "git log 482dc81b..0995044c on orca/illiq-reg-v1-integration shows exactly the claimed sequence 58b93de3 (M0) -> b9ae22df (full build) -> eb86951e (handoff; prelaunch-audited head) -> 8f476744 (A7 artifact + incident correction; GO consumption head) -> bcaa34dc (launch machinery) -> 31985732 (phase-1 scored complete) -> 0995044c (reproduction). 31985732 and 0995044c exist; 31985732 is an ancestor of 0995044c. Integration worktree at 0995044c is git-clean."
+  },
+  "cell_truth": {
+   "verdict": "PASS",
+   "evidence": "Recomputed from each artifact's own daily_returns rows (52 rows/cell): net_sum and additive peak-to-trough MDD on the cumsum of net_return_per_unit. C1: net -0.345788758154 / MDD 0.419177956499 (== portfolio_metrics == claimed). C2: -0.349759248019 / 0.421401422724 (fee x1.5). C3: -0.353729737883 / 0.423624888948 (fee x2.0). C4 INV: +0.329724146812 / 0.165130031833. Internal additivity holds (cost+funding+price re-sum == net per cell; C4 price/funding are exact negatives of C1 — coherent INV). All artifacts scored=False; arm ILLIQ-AMIHUD-28D-W for C1-C3, ILLIQ-AMIHUD-28D-W-INV for C4; stress signatures baseline/1.0, fee_slippage_x1_5/1.5, fee_x2_0_prereg/2.0, baseline/1.0. Decomposition: C1 price_pnl -0.36507438395, costs +0.008032305671, funding +0.027317931467 — loss is price-driven, costs immaterial, as claimed.",
+   "recomputed": {
+    "P1-C1": {"net_sum": -0.345788758154, "mdd": 0.419177956499},
+    "P1-C2": {"net_sum": -0.349759248019, "mdd": 0.42140142272400005},
+    "P1-C3": {"net_sum": -0.353729737883, "mdd": 0.4236248889480001},
+    "P1-C4": {"net_sum": 0.329724146812, "mdd": 0.165130031833}
+   }
+  },
+  "falsification_verdict": {
+   "verdict": "PASS",
+   "evidence": "Independent recompute on the preregistered rule (FALSIFIED unless net >= -0.2947 AND MDD <= 0.4372, both must hold), from C1: net -0.345788758154 < -0.2947 -> net_ok FALSE (margin -0.051088758154); MDD 0.419177956499 <= 0.4372 -> mdd_ok TRUE (margin +0.018022043501). Not both -> FALSIFIED. Identical to phase1_verdict.json (margins -0.05108875815399999 / 0.01802204350099995). INV-gated +0.329724146812 sign-flip coherent (plan SS7 control)."
+  },
+  "gate_law": {
+   "verdict": "PASS",
+   "evidence": "gate_series.json sha256 == e09187f925e761cfabe94e0766ca2104b3b45f5def76fadc061cdbc09c51702d (recomputed, both worktrees). S0R fold: 52 stamps, 43 ON / 9 OFF (per_day walk). The 9 OFF stamps 2025-06-23..2025-08-18: 8 have book entries with n_legs=0, gross_realised=0.0, status SKIP_NO_SELECTION, weights {} and reason GATE_OFF; the terminal stamp 2025-08-18 is FORCE_FLAT. The first OFF stamp (2025-06-23) additionally carries the settlement fills of the prior week's book (exact reversals of prior_weights) — engine-native transition-to-flat, no NEW book formation at any OFF stamp, verified in all 4 cells (0 violations). phase1_sweep.py refuses to run unless gate_series.json digest equals the pinned audited digest; illiq_reg_cell.py loads gate_series.json (schema-checked) and gated_plugin.py binds the full stamp map fail-closed and is a pure suppressor delegating verbatim to the frozen plugin at ON stamps. Artifact stamp set == gate-series S0R stamp set."
+  },
+  "reproduction": {
+   "verdict": "PASS",
+   "evidence": "Repro twin HEAD == 3198573254082ea1b82b62cbeefb480dfc2c73a7 == reproduction_verdict.json primary_freeze_sha (detached; the commit at which the original cells ran). Independently sha256'd all 8 files in BOTH worktrees: 4x results/artifact.json (P1-C1 51360cab688b624b..., P1-C2 880a535684aaa0aa..., P1-C3 803de1cdb66b5aa9..., P1-C4 955dd1973ebab3f7...) and 4x shard.json (11068057f27bb9e1... common) — ALL byte-identical across worktrees, and the 16-hex prefixes match the values recorded in reproduction_verdict.json. Structural walk of phase1_status.json and phase1_verdict.json across twins: identical modulo worktree absolute path and wall-clock fields (finished_utc); every metric, margin, label and verdict identical. Artifact self-hashes (hashes.result_sha256) match the per-cell logs for all 4 cells. Caveat verified as disclosed: reproduction proves computational self-consistency of the frozen computation, not the economics.",
+   "digests": {
+    "P1-C1_artifact": "51360cab688b624bdfa21190d7f1f0896dc12e2d59dc9ac16c65015a10f406a7",
+    "P1-C2_artifact": "880a535684aaa0aac633dbe253f39c431490e2fc8653ea391806d3d65745a830",
+    "P1-C3_artifact": "803de1cdb66b5aa993b23287d680410c3938acb57034d1cf97c36a59a1029393",
+    "P1-C4_artifact": "955dd1973ebab3f7ee6a72feeed7d6db90382af8da209d4ce2202b4cd1558503",
+    "shard_common": "11068057f27bb9e1b0f7fa586be225a947108318a9757b56fd541dad5c97cc8d"
+   },
+   "digest_note": "Full 64-hex sha256 recomputed by this audit from the integration worktree bytes and compared as full strings (not prefixes) against the repro twin — all 8 MATCH. The source reproduction_verdict.json recorded only 16-hex prefixes; its prefixes equal these digests' first 16 hex chars."
+  },
+  "labels": {
+   "verdict": "PASS",
+   "evidence": "Every row of phase1_status.json (4 cells) and phase1_verdict.json (labels_base_cell + 4 cells) carries the plan SS11 four labels: WINDOW_FOLD=S0R; ANCESTRY=OUTCOME_EXPOSED_ANCESTRY; NAMESPACE=REPLICATION_NOT_PROSPECTIVE with scored=false; FUNDING_WIRING=funded(scan_2026_a). Validated by executing research/control/illiq_reg_v1/wiring.py::validate_labels on all 9 rows: all VALID. Artifacts carry scored=False."
+  },
+  "budget_denominator": {
+   "verdict": "PASS",
+   "evidence": "Exactly 4 computed outcomes exist in the namespace (find: exactly 4 results/artifact.json, P1-C1..C4; dryrun_report non_vacuous=true with no_pnl_fields=true; no other PnL surface; the draft single-shot replay is pre-cycle input evidence in the read-only draft namespace). Cap 4 (plan SS8 staged phase-1-only): no overspend. Registry row (root checkout, json read): lifecycle ACTIVE_HEAVY, budget.max=4, phase text documents 'PHASE 1 COMPLETE: FALSIFIED ... Budget 4/4'. See NB-1/NB-5: the structured budget.used=0 and go_phrase_state fields in the live row are stale pending the two-half close normalization."
+  },
+  "go_chain": {
+   "verdict": "PASS",
+   "evidence": "AUTH/GO_RECORDED.json: exact registered phrase, received_after_a7_prelaunch=true, a7_verdict AUTHORIZED, a7_audit_utc 2026-09-24T05:09:04Z, a7_head_audited eb86951e..., branch_head_at_consumption 8f476744... (the commit that carries the A7 artifact + the corrected incident). Registry journal (plans/CYCLE_REGISTRY.events.jsonl): 05:31:59Z early-GO misclassification (DEAD UNCONSUMED, lifecycle->ACTIVE_LIGHT) then 05:40:00Z two-key completion (phase->LAUNCHING, lifecycle->ACTIVE_HEAVY). The early-go incident correction (incidents/2026-09-24_early_go_dead_unconsumed.md) is judged HONEST AND COMPLETE: it names its own error (stale-context classification measured at 58b93de3), documents the re-measured commits (b9ae22df/eb86951e + A7 artifact at 05:09:04Z preceding the phrase), and the corrected classification; the committed trail shows both the error and its repair. Timeline coheres end-to-end: A7 05:09:04Z -> journal 05:31:59/05:40:00Z -> failed launch attempts (archived stale row pid 15924, started 05:46:31Z, reclaim_reason pid_dead) -> successful sweep 05:50:47-06:00:14Z (FINISHED) -> cells 05:53:09..06:00:13Z -> verdict 06:00:14Z -> registry 06:02:00Z -> repro sweep 06:02:35-06:12:03Z -> 0995044c."
+  },
+  "incidents_launcher_bugs": {
+   "verdict": "PASS",
+   "evidence": "incidents/2026-09-24_phase1_launcher_bugs.md judged PLAUSIBLE from independent evidence: (1) the package-binding failure is structurally real (gated_plugin.py prepends v11_root to sys.path, which would bind the research package to v11_root if imported in-process — exactly what the process-isolation fix in phase1_sweep.py docstring describes); (2) the stale RUNNING lock row exists in heavy-runtime history (pid 15924, started 05:46:31Z, status RUNNING, reclaim_reason pid_dead) with the lock now FREE_PROVEN and the successful sweep in a separate row — the archived-stale recovery is the sanctioned path; (3) both failures precede the first cell (earliest cell finished_utc 05:53:09Z > failed attempt start 05:46:31Z; the KeyError/release-API failure mode cannot have produced artifacts); (4) budget 0/4 at the time and the sweep's fail-closed preconditions bound exposure. No outcome exposure: consistent with all measured evidence."
+  }
+ },
+ "boundaries": {
+  "s1": "SEALED_UNTOUCHED — registry s1=SEALED_UNTOUCHED; namespace-wide scan finds no S1 access surface (only the audit text mentioning the boundary check itself)",
+  "chr3f_read_only": "CLEAN — CHR3F integration worktree git status porcelain empty (head 25504fb9...); all catalogs/scans/engine referenced by absolute read-only paths; gated_plugin composes frozen classes without modifying them; sys.dont_write_bytecode guards pycache leakage into read-only trees",
+  "credentials": "NONE — credential scan over the cycle namespace (py/json/md/yaml/log) found no keys/secrets/tokens (only the prelaunch audit's own note text saying none were found)",
+  "namespace_discipline": "All cycle writes confined to research/control/illiq_reg_v1/ in the integration worktree; root plan + prereg draft committed clean (unmodified); no pushes/merges in the audited range"
+ },
+ "bottom_line": "The cycle's terminal claims survive adversarial recompute from bytes. Phase-1 verdict FALSIFIED stands on the preregistered rule; the negative outcome is the dossier's honest expected reading, carries zero confirmation weight on history, permits no gate variants, and returns the family to NOT_PROSPECTIVE diagnostics. The two-half close must normalize the stale registry structured fields (NB-1/NB-5) before TERMINAL."
+}
