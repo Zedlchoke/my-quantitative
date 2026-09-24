@@ -41,6 +41,7 @@ from research.shadow_v1.data_feed import DataBlocked
 FAMILY_ILLIQ = "ILLIQ-AMIHUD-28D-W"
 FAMILY_PREMFADE = "BASISLV-PREMFADE-28D"
 FAMILY_CARRY = "XSECT-FUND-CARRY-7D"
+FAMILY_BANDRIDGE = "BTC4H-BANDRIDGE"
 
 DECISION_CLOCK_WEEKLY_MONDAY = "WEEKLY_MONDAY_00Z"
 DECISION_CLOCK_DAILY = "DAILY_00Z"
@@ -303,12 +304,16 @@ from research.shadow_v1.families.basislv_premfade import (  # noqa: E402
 from research.shadow_v1.families.xsect_fund_carry import (  # noqa: E402
     XsectFundCarryAdapter,
 )
+from research.shadow_v1.families.btc4h_bandridge import (  # noqa: E402
+    Btc4hBandridgeAdapter,
+)
 
 #: family_id -> adapter class (the three active anchor sleeves only).
 FAMILY_REGISTRY: Dict[str, type] = {
     IlliqAmihudAdapter.FAMILY_ID: IlliqAmihudAdapter,
     BasislvPremfadeAdapter.FAMILY_ID: BasislvPremfadeAdapter,
     XsectFundCarryAdapter.FAMILY_ID: XsectFundCarryAdapter,
+    Btc4hBandridgeAdapter.FAMILY_ID: Btc4hBandridgeAdapter,
 }
 
 __all__ = [
@@ -326,4 +331,6 @@ __all__ = [
     "IlliqAmihudAdapter",
     "BasislvPremfadeAdapter",
     "XsectFundCarryAdapter",
+    "Btc4hBandridgeAdapter",
+    "FAMILY_BANDRIDGE",
 ]

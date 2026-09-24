@@ -127,6 +127,7 @@ from research.shadow_v1 import (  # noqa: E402
 from research.shadow_v1.data_feed import KeylessBinanceFuturesClient  # noqa: E402
 from research.shadow_v1.executor import ForwardExecutor  # noqa: E402
 from research.shadow_v1.families import (  # noqa: E402
+    FAMILY_BANDRIDGE,
     FAMILY_CARRY,
     FAMILY_ILLIQ,
     FAMILY_PREMFADE,
@@ -141,7 +142,7 @@ HEARTBEAT_SCHEMA = "shv1_e_worker_heartbeat@1"
 LABEL_PROSPECTIVE = start_guard.NAMESPACE_PROSPECTIVE
 
 #: FIXED execution order (plan 12-E: one scheduler serializes writes).
-FAMILY_ORDER = (FAMILY_ILLIQ, FAMILY_PREMFADE, FAMILY_CARRY)
+FAMILY_ORDER = (FAMILY_ILLIQ, FAMILY_PREMFADE, FAMILY_CARRY, FAMILY_BANDRIDGE)
 
 IDENTITY_MANIFEST_PATH = os.path.join(
     WORKTREE_ROOT,
@@ -476,6 +477,8 @@ def tick_mapping_for(
     declared candidates (never expected)."""
     if family_id == FAMILY_CARRY:
         symbols: tuple = CARRY_TRADED_UNIVERSE
+    elif family_id == FAMILY_BANDRIDGE:
+        symbols = ("BTCUSDT",)
     else:
         symbols = tuple(
             dict.fromkeys(ILLIQ_CANDIDATE_UNIVERSE + PREMFADE_CANDIDATE_UNIVERSE)
@@ -568,6 +571,16 @@ def snapshot_spec_for(family_id: str) -> Dict[str, Dict[str, Any]]:
             "funding_settlements": {
                 "symbols": list(CARRY_TRADED_UNIVERSE),
                 "lookback_seconds": CARRY_LOOKBACK_SECONDS,
+            }
+        }
+    if family_id == FAMILY_BANDRIDGE:
+        # 200 H4 buckets SMA + 30-bar entry channel => 230 H4 = 3680 15m
+        # bars = 53.33 days; 60d gives margin. Single symbol BTCUSDT.
+        return {
+            "bars": {
+                "symbols": ["BTCUSDT"],
+                "interval": "15m",
+                "lookback_seconds": float(60 * 86400),
             }
         }
     raise WorkerConfigError(f"unknown family {family_id!r}")

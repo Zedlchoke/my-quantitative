@@ -107,6 +107,7 @@ DEFAULT_NAMESPACE = start_guard.NAMESPACE_PROSPECTIVE
 _ALLOWED_SCHEDULES = (
     scheduler.SCHEDULE_WEEKLY_MONDAY_0000Z,
     scheduler.SCHEDULE_DAILY_0000Z,
+    scheduler.SCHEDULE_H4_0000Z,
 )
 
 _SNAPSHOT_KINDS = ("bars", "basis_buckets", "funding_settlements")

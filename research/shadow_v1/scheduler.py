@@ -30,17 +30,20 @@ FAMILY_CARRY = "XSECT-FUND-CARRY-7D"
 
 SCHEDULE_WEEKLY_MONDAY_0000Z = "weekly_monday_0000z"
 SCHEDULE_DAILY_0000Z = "daily_0000z"
+SCHEDULE_H4_0000Z = "h4_every_4h_0000z"
 
 #: Frozen decision clocks per identity manifest / dispatch packet.
 FAMILY_SCHEDULES: Dict[str, str] = {
     FAMILY_ILLIQ: SCHEDULE_WEEKLY_MONDAY_0000Z,
     FAMILY_PREMFADE: SCHEDULE_WEEKLY_MONDAY_0000Z,
     FAMILY_CARRY: SCHEDULE_DAILY_0000Z,
+    "BTC4H-BANDRIDGE": SCHEDULE_H4_0000Z,
 }
 
 ISO_FMT = "%Y-%m-%dT%H:%M:%SZ"
 _WEEK = dt.timedelta(days=7)
 _DAY = dt.timedelta(days=1)
+_H4 = dt.timedelta(hours=4)
 
 HeartbeatExecutor = Callable[[str, str, str], Dict[str, Any]]
 
@@ -78,6 +81,13 @@ def _first_decision_at_or_after(schedule: str, from_utc: dt.datetime) -> dt.date
         if day < from_utc:
             day += _WEEK
         return day
+    if schedule == SCHEDULE_H4_0000Z:
+        # 00/04/08/12/16/20 UTC grid
+        h4day = from_utc.astimezone(dt.timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0)
+        slot = int((from_utc - h4day).total_seconds() // (4 * 3600))
+        nxt = h4day + dt.timedelta(hours=4 * (slot + 1))
+        return nxt
     raise SchedulerError(f"unknown schedule {schedule!r}")
 
 
@@ -101,7 +111,7 @@ def pending_decisions(
     if end < start:
         raise SchedulerError("to_utc earlier than from_utc")
     out: List[str] = []
-    step = _DAY if schedule == SCHEDULE_DAILY_0000Z else _WEEK
+    step = _H4 if schedule == SCHEDULE_H4_0000Z else (_DAY if schedule == SCHEDULE_DAILY_0000Z else _WEEK)
     cursor = _first_decision_at_or_after(schedule, start)
     while cursor < end:
         out.append(to_iso_z(cursor))

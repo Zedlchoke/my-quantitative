@@ -153,6 +153,17 @@ def caps_from_identity_params(
         config["btc_beta_neutral"] = True
         config["source"] = "identity_manifest:ILLIQ-AMIHUD-28D-W"
         return caps_from_config(family_id, config)
+    if family_id == "BTC4H-BANDRIDGE":
+        # owner-mounted sleeve 4 (amendment A1): long-only single symbol,
+        # fraction 1.0 of the sleeve's own capital, no neutrality
+        config.setdefault("target_gross", 1.0)
+        config.setdefault("hard_gross_cap", 1.0)
+        config.setdefault("hard_abs_net_cap", 1.0)
+        config.setdefault("max_abs_weight", 1.0)
+        config["dollar_neutral"] = False
+        config["btc_beta_neutral"] = False
+        config["source"] = "identity_manifest:BTC4H-BANDRIDGE"
+        return caps_from_config(family_id, config)
     raise RiskConfigError(f"unknown family_id {family_id!r}; refusing to guess caps")
 
 
