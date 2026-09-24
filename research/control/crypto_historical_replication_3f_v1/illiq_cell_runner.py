@@ -16,12 +16,13 @@ ap.add_argument("--window-start", required=True)
 ap.add_argument("--window-end", required=True)
 ap.add_argument("--arm-id", required=True)
 ap.add_argument("--out", required=True)
-a = ap.parse_args()
+ap.add_argument("--catalog", required=True)
 SYMS = ["1000PEPEUSDT","AAVEUSDT","ACEUSDT","ADAUSDT","AVAXUSDT","BCHUSDT","BNBUSDT",
         "BOMEUSDT","BTCUSDT","DOGEUSDT","ENAUSDT","ETHUSDT","LINKUSDT","NEARUSDT",
         "ONGUSDT","SOLUSDT","SUIUSDT","WLDUSDT","XRPUSDT","ZECUSDT"]
-CATALOG = str(CD / "catalog_live_crypto_b20")
 SCAN = str(CD / "funding_data_scan/scan_2026")
+a = ap.parse_args()
+CATALOG = a.catalog
 st = datetime.fromisoformat(a.window_start.replace("Z", "+00:00"))
 pre = datetime.fromtimestamp(st.timestamp() - 125*86400, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 # A4/F2: load 3 days PAST the window end so the terminal Monday stamp has a

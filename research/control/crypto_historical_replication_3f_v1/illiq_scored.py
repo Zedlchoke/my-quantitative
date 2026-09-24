@@ -19,7 +19,8 @@ SCAN = str(CD / "funding_data_scan/scan_2026")  # B window (INC-3 layout law)
 SYMS = ["1000PEPEUSDT","AAVEUSDT","ACEUSDT","ADAUSDT","AVAXUSDT","BCHUSDT","BNBUSDT",
         "BOMEUSDT","BTCUSDT","DOGEUSDT","ENAUSDT","ETHUSDT","LINKUSDT","NEARUSDT",
         "ONGUSDT","SOLUSDT","SUIUSDT","WLDUSDT","XRPUSDT","ZECUSDT"]
-FOLDS = [("Y2024P", "2024-01-01T00:00:00Z", "2024-08-19T00:00:00Z")]  # A4b: owner "chạy từ 2024"
+FOLDS = [("Y2024P", "2024-01-01T00:00:00Z", "2024-08-19T00:00:00Z", "catalog_live_crypto_b20"),
+         ("S0R", "2024-08-22T00:00:00Z", "2025-08-21T00:00:00Z", "catalog_live_crypto_s0r")]  # A4b + A5
 ARMS = [("ANCHOR", "ILLIQ-AMIHUD-28D-W"), ("INV", "ILLIQ-AMIHUD-28D-W-INV")]
 CYCLE = "CRYPTO-HISTORICAL-REPLICATION-3F-V1"
 
@@ -38,7 +39,7 @@ def main() -> int:
                                 expected_artifacts=[str(status_path)])
     try:
         import os
-        for fold, w0, w1 in FOLDS:
+        for fold, w0, w1, catalog in FOLDS:
             for arm_label, arm_id in ARMS:
                 cell_id = f"CHR3F-ILLIQ-{fold}-{arm_label}"
                 if cell_id in done:
@@ -48,7 +49,8 @@ def main() -> int:
                 r = subprocess.run([str(PY), str(CD / "illiq_cell_runner.py"),
                                     "--fold", fold, "--window-start", w0,
                                     "--window-end", w1, "--arm-id", arm_id,
-                                    "--out", str(CD / "illiq_scored_out" / cell_id)],
+                                    "--out", str(CD / "illiq_scored_out" / cell_id),
+                                    "--catalog", str(CD / catalog)],
                                    cwd=str(V11), capture_output=True, text=True, env=env)
                 (CD / "illiq_scored_out").mkdir(parents=True, exist_ok=True)
                 (CD / "illiq_scored_out" / f"{cell_id}.log").write_text(r.stdout + "\n" + r.stderr)
