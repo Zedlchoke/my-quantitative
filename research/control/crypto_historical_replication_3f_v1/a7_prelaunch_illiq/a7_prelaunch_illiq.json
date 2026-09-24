@@ -1,82 +1,81 @@
 {
  "schema": "chr3f_a7_prelaunch@1",
- "round": 5,
- "audit_utc": "2026-09-24T03:21:29Z",
- "head_sha": "ed3e466e0345773e1b2ce2157baaa069fd03690e",
- "root_head_sha": "7d1db60a5e99823effc109b585e9a1797a1b68fc",
- "auditor": "A7 independent delta re-audit r5, cycle CRYPTO-HISTORICAL-REPLICATION-3F-V1, family ILLIQ-AMIHUD-28D-W (delta scope: A5/S0R fold addition, per-fold catalog wiring, r4-B1 label fix, S0R DIAG disclosure; everything recomputed from bytes, nothing trusted)",
- "supersedes": "round 4 REFUSED at this same path (audit_utc 2026-09-24T03:03:04Z, lane head 2128cbcc4eda59c4c3132cd930807c4aded98c7a, root head c6f5bba8e1d0d5267236130cdb9cfc1a54f2fe08); r1 AUTHORIZED 20/20 preserved at a7_prelaunch_illiq_r1_SUPERSEDED.json",
- "delta_scope_declared": "Amendment A5 (owner, committed at root in 7d1db60a): ILLIQ fold S0R = 2024-08-22T00:00Z..2025-08-21T00:00Z (the frozen V12 replication brief, lawfully reopened per the V13 reopening law) added alongside A4b's Y2024P fold => sweep = 4 cells (Y2024P x ANCHOR/INV, S0R x ANCHOR/INV), prospective cycle budget 8 (XSECT) + 4 (ILLIQ) = 12 <= 24. Launcher FOLDS now carries per-fold bar catalogs (Y2024P->catalog_live_crypto_b20, S0R->catalog_live_crypto_s0r) and the cell runner takes --catalog. r4 blocking B1 (labels) claimed fixed in bytes. DIAG S0R-ANCHOR-A5 completed and disclosed before any scored run.",
- "mid_audit_head_move": "Lane HEAD moved c2bee0c8 -> ed3e466e during this audit (commit 'bulk artifact dirs gitignored'). Verified byte-level: ed3e466e touches ONLY the cycle .gitignore (+6) and illiq_scored_status.json (+199, the 13 rc=1 pre-fix rows); zero delta on illiq_scored.py / illiq_cell_runner.py / chr3f_illiq_plugin.py. All checks below re-verified at ed3e466e.",
+ "round": 6,
+ "audit_utc": "2026-09-24T03:43:20Z",
+ "head_sha": "4fc94350152f29f8f9ad2c4a75e96e3fbded8a65",
+ "root_head_sha": "8ec3965d2e0c4342e798c6d8ffee425085885d44",
+ "auditor": "A7 independent delta re-audit r6, cycle CRYPTO-HISTORICAL-REPLICATION-3F-V1, family ILLIQ-AMIHUD-28D-W (delta scope: r5 blocking B2 remediation only — per-fold funding wiring, funded S0R DIAG re-run, root disclosure, no-regression sweep; everything recomputed from bytes, nothing trusted)",
+ "supersedes": "round 5 REFUSED at this same path (audit_utc 2026-09-24T03:21:29Z, lane head ed3e466e0345773e1b2ce2157baaa069fd03690e, root head 7d1db60a5e99823effc109b585e9a1797a1b68fc); r1 AUTHORIZED 20/20 preserved at a7_prelaunch_illiq_r1_SUPERSEDED.json",
+ "delta_scope_declared": "B2 remediation: (1) FOLDS rows carry per-fold funding-scan (Y2024P->funding_data_scan/scan_2026, S0R->funding_data_scan/scan_2026_a) passed as --funding-scan; runner SCAN binds after parse_args (fix committed b94e9d5b). (2) Funded S0R DIAG re-run at illiq_diag/S0R-ANCHOR-A5-funded with funding_sum nonzero. (3) Root amendment A4 sec A5-funded discloses the new numbers to the owner. (4) No regression: Y2024P fold, engine bytes, budget, scored-cell count, boundaries, launcher self-gate.",
+ "mid_audit_head_move": null,
  "checks": [
   {
-   "id": "r5c01_b1_fix_labels_in_bytes",
-   "method": "Read illiq_scored.py bytes at lane HEAD; parsed the scored-row dict literal.",
+   "id": "r6c01_b2_wiring_per_fold_funding_scan",
+   "method": "Read illiq_scored.py + illiq_cell_runner.py bytes at lane HEAD 4fc94350; git show 2404f5d4 (per-fold wiring) and b94e9d5b (binding-order fix).",
    "result": "PASS",
-   "detail": "The row builder now stamps a 'labels' list with all four mandatory labels: ['REPLICATION_NOT_PROSPECTIVE', 'EQUIVALENCE_DATA_RESTAGE_UNPROVEN', 'UNIVERSE_LISTED_AT_WINDOW_START', 'OUTCOME_EXPOSED_AMENDMENT_A4'] (illiq_scored.py lines 67-70), plus namespace and authority fields. r4 B1 is resolved in the bytes that the sweep will write. Minor: the row literal contains a duplicate 'rc' key (line 65 'rc': 0 dead, overwritten by line 72 'rc': r.returncode) - later key wins, behavior correct, see N1."
+   "detail": "FOLDS rows are now 5-tuples (fold, w0, w1, catalog, funding_scan): ('Y2024P',...,'catalog_live_crypto_b20','funding_data_scan/scan_2026') and ('S0R','2024-08-22T00:00:00Z','2025-08-21T00:00:00Z','catalog_live_crypto_s0r','funding_data_scan/scan_2026_a'); the launcher passes '--funding-scan', str(CD/funding_scan) per cell (line 54). The runner declares ap.add_argument('--funding-scan', required=True) (line 20) and binds SCAN = a.funding_scan AFTER a = ap.parse_args() (lines 24-25). git show b94e9d5b proves the earlier scrambled order (SCAN assigned before parse_args) existed and was fixed by moving parse_args first; commit touches only this file. Wiring commit 2404f5d4 touches only illiq_scored.py, illiq_cell_runner.py and the r5 verdict JSON."
   },
   {
-   "id": "r5c02_sweep_4_cells_per_fold_catalog_wiring",
-   "method": "Parsed FOLDS/ARMS from illiq_scored.py; read illiq_cell_runner.py argparse and bar-loading bytes; grep for --catalog plumbing.",
+   "id": "r6c02_funded_s0r_diag_funding_nonzero_numbers",
+   "method": "Parsed illiq_diag/S0R-ANCHOR-A5-funded/results/artifact.json (file sha256 22fc7e4838956ebc7ba92ca743f95cded106a9a990d72a4e6b15af1b99f251d3) and compared to the disclosed numbers.",
    "result": "PASS",
-   "detail": "FOLDS = [('Y2024P','2024-01-01T00:00:00Z','2024-08-19T00:00:00Z','catalog_live_crypto_b20'), ('S0R','2024-08-22T00:00:00Z','2025-08-21T00:00:00Z','catalog_live_crypto_s0r')] x ARMS [ANCHOR ILLIQ-AMIHUD-28D-W, INV ILLIQ-AMIHUD-28D-W-INV] = exactly 4 cells; resume filter (rc==0 and no outcome_class) skips nothing since all 13 status rows are rc=1. The runner declares --catalog (required) and passes it to read_bars_15m for every symbol; the launcher passes str(CD/catalog) per fold. 125d warmup (pre = window_start - 125d) and the A4/F2 load-end +3d fix are present in the runner bytes."
+   "detail": "portfolio_metrics.funding_sum = +0.026254351928 (NONZERO — B2's core defect was funding_sum effectively zero for S0R). net_return_sum = -0.563057513256 (disclosed -0.5631), position_pf = 0.782120763557 (0.7821), max_drawdown = 0.601152076924 (0.6012), n_positions = 336. All five match the disclosure exactly. Internal identity reconciles: price_pnl_sum -0.580743409342 + funding_sum 0.026254351928 - cost_charged_sum 0.008568455842 = net_return_sum -0.563057513256."
   },
   {
-   "id": "r5c03_s0r_catalog_built_committed_and_rowverified",
-   "method": "Counted symbol dirs under catalog_live_crypto_s0r/data/binance_bar; read catalog_live_crypto_s0r_build_report.json; pyarrow row counts and part-file name spans for BTCUSDT and ENAUSDT vs the report.",
+   "id": "r6c03_funded_run_completeness_and_position_identity",
+   "method": "Read run log; compared funded vs funding-free artifact field-by-field; derived the funding delta.",
    "result": "PASS",
-   "detail": "catalog_live_crypto_s0r/data/binance_bar has exactly 20 symbol dirs matching the runner SYMS list. Build report (generated 2026-09-24T03:03:01Z, months 2024-04..2025-09) is tracked on the lane branch (absent from git status untracked list). Spot-check EXACT: BTCUSDT 52608 parquet rows == report 52608; ENAUSDT 52462 == report 52462 (146-row deficit consistent with an early-April-2024 listing, matching A5's 'all 20 symbols listed by 2024-04-02' claim direction). Part names span 2024-04-01T00:00Z..2025-09-30T23:45Z, which covers warmup start 2024-04-19 (window_start - 125d), the full S0R window, and the +3d load-end (2025-08-24)."
+   "detail": "rc path completed: log tail 'adapter_v10 cell=S0R-ANCHOR-A5-funded result_sha256=8c8e12423a43cd54bcdd3748c21f54790829c1df7c6219c0d690594f7cd1bdf1' with a full 435KB artifact on disk (mtime 2026-09-24 10:29 local). Position-level identity vs the funding-free run S0R-ANCHOR-A5: price_pnl_sum, cost_charged_sum, n_positions (336), n_days_with_records (52), daily_hit_rate (0.25) all EQUAL; the entire net delta is funding: -0.589311865184 + 0.026254351928 = -0.563057513256 EXACT. Since scan_2026 contains ZERO funding rows in 2024-08-22..2025-08-21 (measured: its coverage ends 2024-08-20T00:00Z) and scan_2026_a is the only root spanning that window, funding_sum>0 on identical positions proves the funded run read scan_2026_a over the S0R window."
   },
   {
-   "id": "r5c04_a5_authority_window_nonoverlap",
-   "method": "Read the root amendment bytes (section A5); git log on the amendment file; parsed FOLDS window strings; compared against the V11 scored window and the Y2024P fold.",
+   "id": "r6c04_funding_scan_coverage_both_roots",
+   "method": "min/max fundingTime (ms epoch) across all 20 symbol funding.json files in both scan roots.",
    "result": "PASS",
-   "detail": "A5 is present verbatim at research/control/CRYPTO-HISTORICAL-REPLICATION-3F-V1/bootstrap/amendment_a4_illiq_outcome_exposed.md lines 38-49 with the owner quote ('2024-08-20 -> 2025-08-21... Tôi cho phép chạy', 2026-09-24), the V12-brief reopening law, and the budget statement (4 ILLIQ cells, 12/24). The amendment file's last commit is 7d1db60a (current root HEAD) - committed at root. FOLDS S0R window equals the amendment exactly (2024-08-22T00:00Z..2025-08-21T00:00Z). Non-overlap verified three ways: S0R ends 2025-08-21T00:00Z, the V11 scored window starts 2025-08-22 (adjacent, zero overlap); Y2024P ends 2024-08-19 (zero overlap with S0R start)."
+   "detail": "scan_2026: 20 symbols, 66746 rows, coverage 2020-07-01T00:00Z..2024-08-20T00:00Z — fully covers the Y2024P fold (window end 2024-08-19, +1d margin). scan_2026_a: 20 symbols, 52975 rows, coverage 2024-08-20T00:00Z..2026-08-21T23:00Z — fully covers the S0R fold 2024-08-22..2025-08-21 plus the +3d load extension (2025-08-24). The roots join contiguously at 2024-08-20. Early starts for BOME/ENA/ACE/ONG are listing dates, not gaps."
   },
   {
-   "id": "r5c05_funding_coverage_data_exists_but_wiring_broken_for_s0r",
-   "method": "Measured funding.json coverage for BTCUSDT in BOTH funding_data_scan/scan_2026 and scan_2026_a; grepped every consumer of the scans; read portfolio_metrics.funding_sum in all three DIAG artifacts.",
-   "result": "FAIL",
-   "detail": "DATA: scan_2026_a exists with 20 symbol dirs and covers 2024-08-20..2026-08-21 (BTCUSDT 2196 rows measured) - a superset of S0R, exactly the dataset A5 cites. WIRING: illiq_cell_runner.py line 23 hardcodes SCAN = funding_data_scan/scan_2026, whose measured coverage is 2020-07-01..2024-08-20 (BTCUSDT 4534 rows) - ZERO rows inside S0R. No per-fold funding selection exists anywhere (unlike bars, which got per-fold catalogs); nothing reads scan_2026_a. EMPIRICAL PROOF the zero is missing-data, not a genuine zero: S0R-ANCHOR-A5 portfolio_metrics.funding_sum = 0.0, while folds with coverage charge real funding - Y2024P-ANCHOR-A4 funding_sum = +0.020439531331 and Y2021-ANCHOR-v2 funding_sum = +0.028862963716. Y2024P scored cells are UNAFFECTED (window 2024-01-01..2024-08-19 is fully covered by scan_2026 incl. the terminal stamp; last funding row 2024-08-20). See blocking B2."
-  },
-  {
-   "id": "r5c06_diag_s0r_artifacts_not_scored_disclosure_before_scored_run",
-   "method": "Parsed illiq_diag/S0R-ANCHOR-A5/{logs,shards,results/artifact.json}; converted ns stamps to UTC; checked scored flag, enters_denominator flags, scored-status rows and illiq_scored_out contents; git-tracked the disclosure commit.",
-   "result": "PASS_WITH_CAVEAT",
-   "detail": "Artifacts exist and are committed at lane HEAD (c2bee0c8 'r4 audit artifacts + S0R DIAG record (net -0.589, outcome-exposed DIAG, disclosed)'). portfolio_metrics match the dispatch EXACTLY: net_return_sum -0.589311865184, position_pf 0.774223024221, max_drawdown 0.624506837125, n_positions 336; the three fold thirds sum exactly (-0.042406124475 + -0.347927165361 + -0.198978575348 = -0.589311865184; 96+128+112 = 336 positions). Anchor book entry 2024-08-26T00:00Z / exit 2025-08-18T00:00Z (weekly Monday stamps) inside the window. scored = False (frozen runner, diagnostic-only by construction); all three benchmarks enter_denominator = false. NOT-SCORED booking verified: no S0R row in illiq_scored_status.json; illiq_scored_out contains only 8 rc=1 failed-attempt logs; zero scored ILLIQ cells exist, so the disclosure (commit c2bee0c8 + A5 plan commit 7d1db60a) necessarily precedes any scored run. CAVEAT (feeds B2): the disclosed -0.589 is a NO-FUNDING number - accurate as to what was run, but materially incomplete as the outcome-exposure figure for the V12-brief methodology, which the metrics schema itself treats funding as first-class (funding_sum)."
-  },
-  {
-   "id": "r5c07_no_regression_engine_zero_scored_boundaries_lock",
-   "method": "sha256(worktree file) vs sha256(git show c97283e0:<path>) for research/adapter_v10/*.py, research/hyp_a8_m01.py, research/v11/families/illiq_amihud/*.py; parsed all illiq_scored_status.json rows; git status root + integration worktree; researchctl locks inspect.",
+   "id": "r6c05_both_diag_versions_preserved_summaries",
+   "method": "stat+sha256 both illiq_diag/S0R-ANCHOR-A5{,-funded} trees; git ls-files + git show --stat 4fc94350.",
    "result": "PASS",
-   "detail": "ENGINE FROZEN: 18 unique engine files (research/adapter_v10/*.py incl. runner/benchmarks/base/protocol, research/hyp_a8_m01.py, research/v11/families/illiq_amihud/*.py) byte-identical to freeze commit c97283e0 - zero drift. ZERO SCORED ILLIQ CELLS: 13 status rows, every one rc=1 with null metrics (pre-fix failed sweeps); no rc==0 row; no scored output artifacts. BOUNDARIES: root tracked tree unmodified (only 3 pre-existing unrelated untracked dirs); lane worktree clean except cycle-local untracked data dirs (catalog_live_crypto_s0r/ parquet, illiq_scored_out/, illiq_scored_status.json - the latter committed at ed3e466e after my initial read); no S1 access, nothing written outside the cycle control dir. HEAVY LOCK: flock free; registry carries a stale RUNNING row (pid 71445, dead, from the 01:42-01:52Z pre-fix sweep) so locks inspect reports CONTROL_STATE_DRIFT - reclaim per discipline only, sweep acquire unobstructed (carried N2)."
+   "detail": "Funding-free S0R-ANCHOR-A5 preserved intact (funding_sum 0.0, net -0.589311865184, artifact sha256 8f823d11f959efe5ae829e0b926b4db7c5debe4f781e5c0c4a05fd5dde6cb1cc) alongside S0R-ANCHOR-A5-funded. Tracked evidence per the layout law (control .gitignore keeps illiq_diag/ machine-local): funded small-json shard committed at illiq_diag_summary/shards/S0R-ANCHOR-A5-funded/shard.json (commit 4fc94350); free-run log+shard tracked from c2bee0c8; byte-identical working copy of the funded artifact at illiq_diag_summary/results/artifact.json (sha 22fc7e48... == funded artifact). Root main commit 8ec3965d discloses the funded numbers."
   },
   {
-   "id": "r5c08_y2024p_carryover_budget_boundaries",
-   "method": "Counted cells in xsect_scored_summary.json; enumerated launcher FOLDS x ARMS; re-checked Y2024P fold invariants from r4 against current bytes.",
+   "id": "r6c06_root_disclosure_amendment_a4_a5_funded",
+   "method": "Read /Users/hoangminhlong/my-quantitative/research/control/CRYPTO-HISTORICAL-REPLICATION-3F-V1/bootstrap/amendment_a4_illiq_outcome_exposed.md; git -C root show --stat 8ec3965d.",
    "result": "PASS",
-   "detail": "Budget: 8 XSECT scored cells (Y2020P/Y2021/Y2022/Y2023 x ANCHOR/INV) + 4 ILLIQ pending = 12 <= 24, matching A5's own statement. Y2024P fold unchanged from r4-verified state: window 2024-01-01T00:00Z..2024-08-19T00:00Z per A4b, catalog b20 (parts from 2020-01-01, warmup covered), funding fully covered by scan_2026 through 2024-08-20, Y2024P DIAG (+0.137736325744) unchanged, labels now in bytes (r5c01). Boundaries re-verified clean (r5c07)."
+   "detail": "Section 'A5-funded DIAG (post A7-r5 B2 remediation, disclosed to owner 2026-09-24)' states: scan_2026_a wiring, net_return_sum -0.5631, position_pf 0.7821, max_drawdown 0.6012, n_positions 336, funding ~ +0.026 vs funding-free -0.5893, both DIAG versions preserved — all verified true against the artifact bytes. The same file documents owner decision A4 ('B va lam song song BASISLV' — outcome-exposed option B), A4b ('chay tu 2024 cho ILLIQ cung duoc'), and A5 ('2024-08-20 -> 2025-08-21... Toi cho phep chay') — the owner accepted outcome exposure and authorized the S0R fold BEFORE this audit, as claimed."
   },
   {
-   "id": "r5c09_launch_gate_path_round_robin",
-   "method": "Read the gated artifact before overwrite (round 4 REFUSED, preserved in lane git history via c2bee0c8); read the gate code illiq_scored.py lines 28-32.",
+   "id": "r6c07_no_regression_engine_bytes_c97283e0",
+   "method": "git ls-tree -r c97283e0 -- research/ (484 blobs, resolved as orca/v11-integration~13 'V11: push completed + remote tip verified') vs git hash-object of every on-disk recovered/v11_root/research file; runtime-module checklist.",
    "result": "PASS",
-   "detail": "The launcher gates on exactly a7_prelaunch_illiq/a7_prelaunch_illiq.json and exits rc=5 unless verdict == AUTHORIZED. This artifact overwrites that path with round:5; verdict REFUSED keeps the gate at rc=5 - the S0R cells cannot run with the broken funding wiring."
+   "detail": "Note: recovered/ is gitignored in the worktree so a plain git diff is vacuous; the comparison was done blob-by-blob. 123/123 engine files present on disk are byte-identical to their c97283e0 blobs (0 diffs); on-disk extras are __pycache__/*.pyc only; the 361 tree files absent on disk are bulk records/scratch (audits *.json/*.md, v10r_run tools, yaml/log/csv) with NO runtime .py missing. All 10 runtime-critical modules for the ILLIQ path verified present+matched: research/hyp_a8_m01.py, research/adapter_v10/{runner,protocol,stress,converters,base}.py, research/v11/families/illiq_amihud/plugin.py, research/protocol/{registry,metrics,manifest}.py. Engine is byte-identical to c97283e0 for everything that executes."
+  },
+  {
+   "id": "r6c08_y2024p_fold_unaffected",
+   "method": "Fold-wiring review + funding-coverage math + prior Y2024P DIAG artifact.",
+   "result": "PASS",
+   "detail": "The launcher passes scan_2026 for Y2024P — byte-for-byte the same root the runner hardcoded pre-fix, so Y2024P behavior is unchanged by the remediation. scan_2026 covers the Y2024P funding needs (window 2024-01-01..2024-08-19, coverage to 2024-08-20T00:00Z). The pre-remediation Y2024P-ANCHOR-A4 DIAG (funding_sum 0.020439531331, nonzero) remains valid and preserved at illiq_diag/Y2024P-ANCHOR-A4."
+  },
+  {
+   "id": "r6c09_state_budget_boundaries_selfgate",
+   "method": "Parsed illiq_scored_status.json (13 rows), xsect_scored_status.json (16 rows), listed illiq_scored_out/, read launcher gate code, git status of lane worktree + root main; researchctl locks inspect.",
+   "result": "PASS",
+   "detail": "0 ILLIQ scored cells: all 13 illiq_scored_status rows have rc=1 with null metrics (pre-fix failed attempts) and no cell result dirs exist under illiq_scored_out/ (8 stale .log files only); the launcher resume filter (rc==0 and no outcome_class) therefore skips nothing. XSECT: exactly 8 rows with rc=0 (Y2021/Y2022/Y2023/Y2020P x ANCHOR/INV). Budget: 8 used + 4 ILLIQ pending = 12 <= 24, documented in amendment A4b ('Budget impact: 2 of 24') and A5 ('ILLIQ total 4 cells, cycle budget 12/24'). Launcher self-gate intact: illiq_scored.py lines 28-32 read a7_prelaunch_illiq/a7_prelaunch_illiq.json and exit 5 REFUSED unless verdict==AUTHORIZED — this r6 AUTHORIZED verdict now satisfies it at the launch-gated path. Boundaries: remediation commits touch only cycle control files on orca/crypto-historical-replication-3f-v1-integration; root main 8ec3965d touches only the cycle bootstrap amendment; lane worktree clean except untracked r5.md (N3)."
   }
  ],
- "verdict": "REFUSED",
- "blocking_findings": [
-  "B2 (r5c05): The A5 data-completeness premise is true of the DATA but false of the WIRING for funding. illiq_cell_runner.py hardcodes the funding scan to funding_data_scan/scan_2026 (line 23), whose measured coverage ends 2024-08-20T00:00Z - the S0R window (2024-08-22..2025-08-21, +3d load-end) contains ZERO funding rows in the wired scan. The covering scan_2026_a (2024-08-20..2026-08-21, 20 symbols, BTCUSDT 2196 rows measured) - the exact dataset A5 cites to fire the V13 reopening law - is never read by any code path: per-fold selection was added for BAR catalogs only (A5 commit 0ac412ec), not for funding. Consequences, all measured: (1) the S0R DIAG charged funding_sum = 0.0 while every fold with coverage charges real funding (Y2024P +0.020439531331, Y2021 +0.028862963716) - the disclosed outcome exposure net = -0.589 is a NO-FUNDING number, so the DIAG disclosure is materially inaccurate as the V12-brief outcome figure; (2) authorizing as-is would run both S0R scored cells on a funding-free stream inside their window, booking 'net' returns that are not net of funding and are cross-fold non-comparable with the Y2024P cells - the same failure class r3 refused for (F2: covering bars existed but were not loaded), now recurring on the funding leg of the very amendment that added the fold. This is a data-identity break on a scored surface: NOT_RUN must not be inferred as a genuine zero funding."
- ],
+ "verdict": "AUTHORIZED",
+ "blocking_findings": [],
  "non_blocking_findings": [
-  "N1: illiq_scored.py row literal carries a duplicate 'rc' key (line 65 'rc': 0 dead code, overwritten by line 72 'rc': r.returncode). Behavior correct (later key wins); remove the dead key together with the B2 remediation.",
-  "N2 (carried r4 N2 / r3 N3): heavy-lock registry stale RUNNING row pid 71445 (dead, heartbeat 2026-09-24T01:42:23Z, from the pre-fix sweep) - locks inspect verdict CONTROL_STATE_DRIFT; flock free. Reclaim per round-2 discipline before the sweep, never by inspection.",
-  "N3: cycle registry row (plans/CYCLE_REGISTRY.json) is stale vs the amendment chain: phase text still describes the pre-A4b 8-cell fold set, budget.used reads 0, head reads 21e4f1be. The A4b/A5 amendments (committed on main) are the newer authority and the prospective arithmetic 8+4=12<=24 holds; refresh the row at the next owner registry write.",
-  "N4: no shape-only census artifact exists for S0R (censuses on file: Y2021/Y2022/Y2023/Y2020P + Y2024P). A5 instead relies on engine-authored runtime eligibility and the claim 'all 20 symbols listed by 2024-04-02, listed-at-start = full universe, no divergence'. A7 did not independently re-verify the 20 listing dates; ENAUSDT's 146-row catalog deficit is directionally consistent with an early-April-2024 listing. If the owner wants the claim audited, add it to the r6 delta scope.",
-  "N5: illiq_scored.py module docstring still says '8 cells = {Y2021,Y2022,Y2023,Y2024P}' - now stale twice over (actual sweep: 4 cells = Y2024P + S0R). Launcher line 18 SCAN constant is vestigial (unused; the runner owns funding). Fix with B2.",
-  "N6 (carried r4 N4/N5): frozen identity window strings in cell artifacts remain the historical 2025-08-22..2026-08-21 window (byte-frozen identity by design) - state the fold window explicitly per report line; dead clause 'or s == self._benchmark' in the subclass universe() remains harmless."
+  "N1 (carried r5 N1): illiq_scored.py status-row literal still carries the dead duplicate key \"rc\": 0 (line 65) overwritten by \"rc\": r.returncode (line 72). r5 asked for removal with the B2 remediation; it was not removed. Behavior remains correct (later key wins in a dict literal). Remove in the next housekeeping commit.",
+  "N2 (carried r5 N2): heavy-lock registry holds a stale RUNNING row pid 71445 (dead; last heartbeat 2026-09-24T01:42:23Z; flock state free) from the pre-fix scored sweep; locks inspect verdict CONTROL_STATE_DRIFT ('reclaim only per round-2 discipline, never by inspection'). Reclaim BEFORE the scored sweep, otherwise heavy_lock.acquire may refuse (NOT_RUN_RESOURCE_CONFLICT). The foreign/dead worker was never killed.",
+  "N3: a7_prelaunch_illiq_r5.md is untracked in the lane worktree (r3/r4 mds are tracked). Commit it together with the r6 artifacts.",
+  "N4: tracked evidence for the funded DIAG is a 4-line shard descriptor only; the full artifact (sha256 22fc7e4838956ebc7ba92ca743f95cded106a9a990d72a4e6b15af1b99f251d3) is machine-local per the layout law. Optional hardening: record the artifact digest in a tracked file so the byte-level evidence survives host loss.",
+  "N5: root plans/CYCLE_REGISTRY.json CHR3F row is stale (phase still '8 cells Y2021/Y2022/Y2023/Y2024P', head 21e4f1be, budget.used 0, updated_at 2026-09-24T01:32:09Z — it predates A4b/A5 and the r5 refusal). The 12/24 budget law lives in the root bootstrap amendment; refresh the registry row at the next registry write."
  ],
  "remediation_paths_for_owner": [
-  "Minimal path to AUTHORIZED: (1) add per-fold funding-scan selection mirroring the bar-catalog fix - e.g. extend FOLDS tuples and --catalog with a funding-scan argument (Y2024P -> funding_data_scan/scan_2026, S0R -> funding_data_scan/scan_2026_a), or point the runner at a merged/verified-union scan, in illiq_cell_runner.py + illiq_scored.py; (2) re-run the S0R DIAG (S0R-ANCHOR-A5-v2) with funding applied and re-disclose the new outcome-exposed numbers to the owner BEFORE the scored run (the current -0.589 is funding-free and must be superseded in the narrative); (3) optionally clean N1/N5 while in the file; (4) commit on the lane branch and return for an A7 r6 delta re-audit of that surface. Everything else verified this round - B1 label fix in bytes, 4-cell sweep shape, s0r catalog row-exact vs its build report, A5 window/authority/non-overlap, engine byte-identity to c97283e0, 0 scored cells, budget 12<=24, boundaries - remains valid for r6. The Y2024P pair is independently sound; if the owner prefers, the gate could alternatively be narrowed to Y2024P-only pending the S0R funding fix, but that is an owner call, not an auditor edit."
+  "The ILLIQ scored sweep may now be launched via illiq_scored.py: 4 cells = {Y2024P, S0R} x {ANCHOR ILLIQ-AMIHUD-28D-W, INV ILLIQ-AMIHUD-28D-W-INV} under the machine-wide heavy lock, labels REPLICATION_NOT_PROSPECTIVE + EQUIVALENCE_DATA_RESTAGE_UNPROVEN + UNIVERSE_LISTED_AT_WINDOW_START + OUTCOME_EXPOSED_AMENDMENT_A4. The self-gate is satisfied by this AUTHORIZED verdict at a7_prelaunch_illiq/a7_prelaunch_illiq.json (round 6).",
+  "Resolve N2 (heavy-lock registry reclaim per round-2 discipline) before launching, or the acquire may refuse.",
+  "S0R outcome now includes funding: funded DIAG net -0.5631 (funding +0.026); loss story unchanged from the disclosed funding-free -0.5893. Owner acceptance of outcome exposure is recorded in root amendment A4/A4b/A5; these results remain non-preregistered evidence forever."
  ]
 }
