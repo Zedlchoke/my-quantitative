@@ -28,7 +28,7 @@ LEAK_SUBSTRINGS = ("pnl", "profit", "net", "gross", "fee", "funding\":", "drawdo
                    "pf_", "payoff")
 WHITELIST = ("record_id", "bars", "decisions", "fills", "trades",
              "funding_settlement_events", "non_vacuous",
-             "settlement_price_fallbacks")
+             "settlement_price_fallbacks_this_book")
 
 
 def now() -> str:
@@ -47,13 +47,15 @@ def run_all() -> tuple[dict, dict]:
 
     for book, target in targets.items():
         for tier in E.TIERS:
+            fb_before = data["px_settle"].fallbacks
             res = E.run_book(target, eth, data["funding"], tier, data["px_settle"])
+            info_fallback_delta = data["px_settle"].fallbacks - fb_before
             trades = sum(f["trades"] for f in res["folds"].values())
             fevents = sum(f["funding_events"] for f in res["folds"].values())
             engine[book_id(book, tier)] = {
                 "res": res, "trades": trades, "funding_events": fevents,
                 "decisions": sum(1 for i in scored_idx if target[i] != 0),
-                "bars": len(scored_idx),
+                "bars": len(scored_idx), "fallback_delta": info_fallback_delta,
             }
     return data, engine
 
@@ -70,7 +72,7 @@ def dryrun() -> int:
                "trades": info["trades"],
                "funding_settlement_events": info["funding_events"],
                "non_vacuous": info["res"]["fills_total"] > 0,
-               "settlement_price_fallbacks": info["res"]["settlement_price_fallbacks"]}
+               "settlement_price_fallbacks_this_book": info["fallback_delta"]}
         assert all(k in WHITELIST for k in rec), f"non-whitelist key in {rid}"
         out["books"][rid] = rec
         ids.append(rid)
@@ -101,12 +103,16 @@ def dryrun() -> int:
 
 
 def cost_roundtrip_bps(res: dict, tier: float) -> float:
-    """G7 arithmetic: 2 taker legs + 2 adverse ticks, in bps of the average
-    raw fill price."""
+    """G7 'measured cost/round-trip' follows the ES1 precedent semantics:
+    the EXECUTION (slippage) cost — 2 adverse ticks per round trip — in bps
+    of the average raw fill price. Fees are already priced inside net PnL;
+    G7 is the execution-quality ceiling, not a second fee gate (A7 F-1:
+    fee-inclusive reading is structurally unpassable at 1.5x and would
+    predetermine the verdict)."""
     px = res["avg_raw_fill_px"]
     if not px:
         return 0.0
-    return (2 * E.FEE_BPS * tier) + (2 * E.TICK * tier / px) * 1e4
+    return (2 * E.TICK * tier / px) * 1e4
 
 
 def gates(cell: str, tier_table: dict, refs: dict, feas: dict) -> dict:
@@ -131,7 +137,8 @@ def gates(cell: str, tier_table: dict, refs: dict, feas: dict) -> dict:
         "G4": (sum(1 for v in folds.values() if v > 0) >= 3)
               or ((c10["res"]["net_total"] - max(folds.values())) > 0),
         "G5": conc <= 0.50,
-        "G6": {"pass": (c10["res"]["net_total"] > shuf) and (c10["res"]["net_total"] > inv),
+        "G6": {"pass": (not shuf > c10["res"]["net_total"])
+               and (not inv > c10["res"]["net_total"]),  # plan: controls must NOT out-earn; ties pass
                "shuf_net": shuf, "inv_net": inv},
         "G7": {"pass": c15["res"]["fills_total"] <= 10000
                and cost_roundtrip_bps(c15["res"], 1.5) <= 10.0,

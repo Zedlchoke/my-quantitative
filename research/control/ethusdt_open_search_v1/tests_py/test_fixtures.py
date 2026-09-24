@@ -256,6 +256,26 @@ def test_tiers():
     check("gross = -qty*2*tick*k", approx(g10, -qty * 0.02) and approx(g15, -qty * 0.03))
 
 
+def test_settlement_pricing_pit():
+    print("10. Settlement pricing PIT law (A7 E-1 remediation fixture)")
+    h0 = _F1_MS                      # an exact hour boundary
+    bars = [{"ts": h0 - 3600_000, "open": 100.0, "high": 105.0, "low": 99.0, "close": 110.0},
+            {"ts": h0, "open": 130.0, "high": 135.0, "low": 129.0, "close": 150.0},
+            {"ts": h0 + 3600_000, "open": 151.0, "high": 155.0, "low": 150.0, "close": 152.0}]
+    ps = E.PriceAtSettlement(bars)
+    # exact stamp -> floor-hour open
+    check("exact stamp uses floor-hour open", ps.price(h0) == 130.0)
+    # odd-millisecond stamp (00:00:00.002) MUST be the floor-hour OPEN,
+    # never that bar's CLOSE (finalizes 1h later — future price)
+    check("odd-ms stamp uses floor-hour open, not close",
+          ps.price(h0 + 2) == 130.0, f"got {ps.price(h0 + 2)}")
+    # missing floor-hour bar -> close of the last bar ENDING at floor
+    bars2 = bars[:1] + bars[2:]
+    ps2 = E.PriceAtSettlement(bars2)
+    check("missing floor bar -> previous bar close (price AT floor instant)",
+          ps2.price(h0 + 2) == 110.0, f"got {ps2.price(h0 + 2)}")
+
+
 def main() -> int:
     test_resample()
     test_indicators()
@@ -266,6 +286,7 @@ def main() -> int:
     test_controls()
     test_no_lookahead()
     test_tiers()
+    test_settlement_pricing_pit()
     print()
     if FAILURES:
         print(f"FIXTURES FAILED: {len(FAILURES)} -> {FAILURES}")

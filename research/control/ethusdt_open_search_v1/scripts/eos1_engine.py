@@ -276,8 +276,14 @@ def fold_of(ts: int) -> str | None:
 
 
 class PriceAtSettlement:
-    """Settlement priced at the 1h OPEN of the settlement timestamp; if
-    that 1h bar is missing, the last 1h CLOSE strictly <= ts (counted)."""
+    """Settlement priced PIT-safely at the 1h OPEN of the settlement's
+    FLOOR hour (a price forming AT that hour's open instant). Vision
+    funding stamps sometimes carry odd milliseconds (e.g. 00:00:00.002):
+    the floor-hour bar's OPEN is the price at the stamp instant; it must
+    never use that bar's close (finalizes 1h later — A7 finding E-1).
+    If the floor-hour bar is missing: the CLOSE of the last 1h bar ENDING
+    at or before the floor hour (= the price AT the floor instant).
+    Fallbacks counted."""
 
     def __init__(self, bars_1h: list[dict]):
         self.open_by_ts = {b["ts"]: b["open"] for b in bars_1h}
@@ -286,13 +292,18 @@ class PriceAtSettlement:
         self.fallbacks = 0
 
     def price(self, ts: int) -> float | None:
-        if ts in self.open_by_ts:
-            return self.open_by_ts[ts]
-        i = bisect.bisect_right(self.ts_sorted, ts) - 1
-        if i < 0:
+        floor_ts = (ts // 3600_000) * 3600_000
+        if floor_ts in self.open_by_ts:
+            if ts != floor_ts:
+                self.fallbacks += 1
+            return self.open_by_ts[floor_ts]
+        # floor-hour bar missing: last bar ENDING <= floor_ts closes at
+        # floor_ts exactly (bar opened floor_ts-1h)
+        i = bisect.bisect_right(self.ts_sorted, floor_ts - 3600_000)
+        if i == 0:
             return None
         self.fallbacks += 1
-        return self.close_by_ts[self.ts_sorted[i]]
+        return self.close_by_ts[self.ts_sorted[i - 1]]
 
 
 def run_book(target: list[int], eth_h4: list[dict], funding: list[dict],

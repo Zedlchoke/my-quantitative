@@ -1,0 +1,61 @@
+{
+ "schema": "eos1.a7_prelaunch@1",
+ "audited_at_utc": "2026-09-24T15:19:34Z",
+ "auditor": "A7-fresh-context",
+ "checks": {
+  "A_freeze_chain": "PASS",
+  "B_fixtures": "PASS",
+  "C_census": "PASS",
+  "D_dryrun_hygiene": "PASS",
+  "E_engine": "PASS_WITH_FINDINGS",
+  "F_plan_conformance": "FAIL",
+  "G_ancestry": "PASS",
+  "H_registry": "PASS"
+ },
+ "findings": [
+  {
+   "severity": "HIGH",
+   "blocking": true,
+   "where": "scripts/run_scored.py gates() G7 / plan section 6 G7",
+   "what": "G7 cost clause evaluated at tier 1.5x: cost_roundtrip_bps = 2*5bps*1.5 = 15 bps fee floor alone > 10 bps for any price, so G7 is structurally unpassable for every cell; all_pass can never fire and the scored verdict is predetermined to NO_INCREMENTAL_VALUE regardless of economics. Plan text pins @1.5x only to the fills clause; even the 1.0x fee+tick round trip is 10.07 bps > 10 strict (only a fee-only baseline reading passes at exactly 10). Plan section 12 forbids gate amendments, so an owner ruling (pre-outcome clarification of intended tier/components, or accept G7 as structural kill and do not spend the GO) is required before STOP-1.",
+   "evidence": "run_scored.py lines 103-109 and 136-139: cost_roundtrip_bps(c15['res'], 1.5) = 2*FEE_BPS*1.5 + (2*TICK*1.5/px)*1e4 >= 15.0 > 10.0 for any px>0; recomputed by A7."
+  },
+  {
+   "severity": "MEDIUM",
+   "blocking": true,
+   "where": "scripts/eos1_engine.py PriceAtSettlement.price fallback path",
+   "what": "Frozen fallback law is 'close of the last 1h bar ending <= ts'; implementation returns the close of the last bar with OPEN <= ts. 3,267/7,305 funding stamps (44.7%) carry odd milliseconds; for each, the floor-hour bar exists, so its CLOSE is used - a price finalized up to 1 hour AFTER the settlement instant. Deterministic (verified) and economically small (same-hour close-vs-open delta on a ~$10-scale cashflow, direction roughly cost-conservative for long books), but it can use a future price, violating the stated law. Trivial pre-GO fix: price odd-ms stamps at the floor-hour bar's OPEN (knowable at the stamp) or the last bar ending <= ts. Implementer event log mischaracterizes the implemented law as 'bar-close ending at ts'.",
+   "evidence": "A7 probe on staged bytes: example stamp 2020-01-02T00:00:00.002Z -> engine returns close of the 00:00 bar (finalizes 01:00Z > stamp), not that bar's open 130.63; fallback rate 3,267/7,305 per book."
+  },
+  {
+   "severity": "LOW",
+   "blocking": false,
+   "where": "scripts/run_scored.py gates() G6",
+   "what": "Control-out-earn implemented as strict > (an exact tie kills the cell); plan 'must NOT out-earn' admits ties. Unreachable for valid cells (feasibility requires shuffled series != arm and non-zero flips).",
+   "evidence": "run_scored.py line 134: (c10 net > shuf) and (c10 net > inv)."
+  },
+  {
+   "severity": "LOW",
+   "blocking": false,
+   "where": "scripts/run_scored.py scored()",
+   "what": "Auto-verdict emits only 2 of the 5 plan-section-11 enum values; NO_ELIGIBLE_PROPOSAL / BLOCKED_DATA_OR_SELECTION / TECHABORT branches live at process level. If blocked data appeared at scored time the runner would still print NO_INCREMENTAL_VALUE.",
+   "evidence": "run_scored.py lines 188-190."
+  },
+  {
+   "severity": "LOW",
+   "blocking": false,
+   "where": "freezes/dry_run.json settlement_price_fallbacks",
+   "what": "Counter is a running cumulative total across all 84 book runs (shared PriceAtSettlement instance), so per-record values are not per-book (non-monotone in sorted display order, e.g. E1-A1 G6-SHUF tier1.0 6605 < G6-INV tier2.0 14967). Observability only; consumed by no gate.",
+   "evidence": "run_scored.py run_all passes data['px_settle'] to every run_book; dry_run.json values verified non-monotone in display order."
+  },
+  {
+   "severity": "LOW",
+   "blocking": false,
+   "where": "plan section 1",
+   "what": "Dangling internal reference 'symbol-swap law, section 14.3' - the plan has 12 sections. The law itself is stated in section 0 forbidden list; semantic content unaffected.",
+   "evidence": "plans/PLAN_ethusdt_open_search_v1.md line 27."
+  }
+ ],
+ "verdict": "REMEDIATION_REQUIRED",
+ "verdict_rationale": "Freeze chain byte-exact (8/8 sha256), fixtures pass exit 0, census reproduces from raw zip bytes (58,440 bars, first 2020-01-01T00Z, last 2026-08-31T23Z; 6/6 spot zip hashes match; funding floor exactly 2020-01-01T00:00Z), dry-run hygienic and non-vacuous (84/84 distinct IDs, leak scan clean, all non-cash books fill>0), engine PIT/cost/fold/mutation laws hold under independent adversarial tests, GO guard refuses scored mode with exit 2 before any computation, no orders/credentials/network in scored mode, registry consistent (ACTIVE_LIGHT, 0/8, plan path + GO phrase registered), and both lanes E1 (BTC state -> ETH) and E2 (ETHBTC ratio -> ETH) are genuinely new (info-source, vehicle) tuples verified against all 40 crypto rows of FAMILY_FAILURES.jsonl - no veto. Two pre-outcome defects block STOP-1: F-1 HIGH (G7 gate structurally disables the verdict ceiling - every cell predetermined to fail regardless of economics) and E-1 MEDIUM (settlement fallback prices 44.7% of funding events with a close finalized up to 1h after settlement, contrary to the stated fallback law). Both are fixable pre-PnL; no scored PnL exists and the 8-cell budget/denominators remain unconsumed."
+}
