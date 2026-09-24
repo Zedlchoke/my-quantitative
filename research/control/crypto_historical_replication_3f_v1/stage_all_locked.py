@@ -191,6 +191,12 @@ def stage_basis_window_sym(sym, win, out: Path) -> dict:
     advance by the page span like the frozen script does."""
     out.mkdir(parents=True, exist_ok=True)
     start, end = win; BUCKET = 900_000; rows = {}; cursor = start
+    # INC-5 page-level resume: partial progress survives kills between chunks
+    part = out / f"{sym}.partial.json"
+    if part.exists():
+        pd_ = json.loads(part.read_text())
+        rows = {int(k): v for k, v in pd_["rows"].items()}
+        cursor = pd_["cursor"]
     empty_streak = 0
     while cursor < end:
         page_end = min(cursor + 499 * BUCKET, end)
@@ -209,10 +215,14 @@ def stage_basis_window_sym(sym, win, out: Path) -> dict:
             rows[int(r["timestamp"])] = r
         last = max(int(r["timestamp"]) for r in batch)
         cursor = max(last + BUCKET, page_end + BUCKET) if len(batch) < 500 else last + BUCKET
+        if len(rows) % 1500 < 500:  # persist partial ~every 3 pages
+            part.write_text(json.dumps({"cursor": cursor, "rows": {str(k): v for k, v in rows.items()}}))
         time.sleep(10.0)  # 6 req/min: shared-IP budget (gateway + shadow coexist here)
     f = out / f"{sym}_basis_15m.json"
     f.write_text(json.dumps({"pair": sym, "window": list(win), "n": len(rows),
                              "rows": [rows[k] for k in sorted(rows)]}))
+    if part.exists():
+        part.unlink()
     manifest_write("basis_win", sym, [{"file": f.name, "sha256": sha256_file(f),
                                        "rows": len(rows)}])
     return {"symbol": sym, "rows": len(rows)}
