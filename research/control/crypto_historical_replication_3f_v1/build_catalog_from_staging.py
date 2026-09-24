@@ -54,8 +54,8 @@ def build_instrument(sym, fi):
     return CryptoPerpetual(
         instrument_id=InstrumentId(Symbol(f"{sym}-PERP"), Venue("BINANCE")),
         raw_symbol=Symbol(sym),
-        base_currency=getattr(_currencies, fi['base'], None) or Currency.register(Symbol(fi['base']), 8, 2, fi['base'], Symbol(fi['base']), crypto=True),
-        quote_currency=getattr(_currencies, fi['quote'], None) or Currency.register(Symbol(fi['quote']), 8, 2, fi['quote'], Symbol(fi['quote']), crypto=True),
+        base_currency=_currency(fi['base']),
+        quote_currency=_currency(fi['quote']),
         settlement_currency=Currency.from_str(fi["quote"]),
         is_inverse=False,
         price_precision=pp, size_precision=qp,
@@ -71,6 +71,17 @@ def build_instrument(sym, fi):
         maker_fee=Decimal("0.0002"), taker_fee=Decimal("0.0005"),
         ts_event=0, ts_init=0,
     )
+
+def _currency(code: str):
+    cur = getattr(_currencies, code, None)
+    if cur is not None:
+        return cur
+    existing = Currency.from_str(code)
+    if str(existing.code) == code and existing.precision > 0:
+        return existing
+    new = Currency(code, 8, code, code, code)
+    Currency.register(new)
+    return new
 
 def bar_type(sym):
     return BarType.from_str(f"{sym}-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL")

@@ -13,11 +13,6 @@ from research.governance import heavy_lock  # noqa: E402
 
 CD = R / ".worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1"
 V11 = CD / "recovered/v11_root"
-sys.path.insert(0, str(V11))
-sys.path.insert(0, str(CD))
-from research.hyp_a8_m01 import read_bars_15m  # noqa: E402
-from research.adapter_v10.runner import run_strategy  # noqa: E402
-from chr3f_illiq_plugin import Chr3fIlliqPlugin  # noqa: E402
 
 CATALOG = str(CD / "catalog_live_crypto_b20")
 SCAN = str(CD / "funding_data_scan/scan_2026")  # B window (INC-3 layout law)
@@ -45,47 +40,40 @@ def main() -> int:
                                 command=[str(PY := R / ".venv/bin/python"), str(Path(__file__))],
                                 expected_artifacts=[str(status_path)])
     try:
-        bars = None
+        import os
         for fold, w0, w1 in FOLDS:
-            if bars is None:
-                st = datetime.fromisoformat(w0.replace("Z", "+00:00"))
-                pre_iso = datetime.fromtimestamp(st.timestamp() - 125*86400, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-                print("loading bars...", flush=True)
-                bars = {s: read_bars_15m(CATALOG, s, pre_iso, FOLDS[-1][2]) for s in SYMS}
-                print("bars loaded", flush=True)
-            settles = {}
-            for s in SYMS:
-                doc = json.loads((Path(SCAN) / s / "funding.json").read_text())
-                from research.adapter_v10.protocol import SettlementPoint
-                pts = [SettlementPoint(publish_ts_ns=int(r["fundingTime"])*1_000_000,
-                                       value=float(r["fundingRate"]), kind="info")
-                       for r in doc["rows"]]
-                pts.sort(key=lambda p_: p_.publish_ts_ns)
-                settles[s] = tuple(pts)
             for arm_label, arm_id in ARMS:
                 cell_id = f"CHR3F-ILLIQ-{fold}-{arm_label}"
                 if cell_id in done:
                     continue
                 t0 = time.time()
-                plugin = Chr3fIlliqPlugin(bars_by_symbol=bars, arm_id=arm_id,
-                                          tick_sizes={s: 1e-07 for s in SYMS},
-                                          settle_points_by_symbol=settles,
-                                          window_start_iso=w0, window_end_iso=w1)
-                plugin.bind_window((w0, w1))
-                out_dir = CD / "illiq_scored_out" / cell_id
-                payload = run_strategy(plugin, out_dir=str(out_dir), write_artifact_file=True)
-                m = payload.get("portfolio_metrics") or {}
+                env = dict(os.environ, PYTHONPATH=str(V11))
+                r = subprocess.run([str(PY), str(CD / "illiq_cell_runner.py"),
+                                    "--fold", fold, "--window-start", w0,
+                                    "--window-end", w1, "--arm-id", arm_id,
+                                    "--out", str(CD / "illiq_scored_out" / cell_id)],
+                                   cwd=str(V11), capture_output=True, text=True, env=env)
+                (CD / "illiq_scored_out").mkdir(parents=True, exist_ok=True)
+                (CD / "illiq_scored_out" / f"{cell_id}.log").write_text(r.stdout + "\n" + r.stderr)
+                metrics = {}
+                if r.returncode == 0:
+                    try:
+                        metrics = json.loads(r.stdout.strip().splitlines()[-1])
+                    except Exception:
+                        metrics = {}
                 row = {"cell_id": cell_id, "fold": fold, "arm": arm_label,
                        "rc": 0, "runtime_s": round(time.time()-t0, 1),
                        "utc": datetime.now(timezone.utc).isoformat(),
                        "namespace": "REPLICATION_NOT_PROSPECTIVE",
                        "label": "EQUIVALENCE_DATA_RESTAGE_UNPROVEN",
                        "authority": "A2+A3 (owner) + A7 prelaunch",
-                       "net_return_sum": m.get("net_return_sum"),
-                       "position_pf": m.get("position_pf"),
-                       "max_drawdown": m.get("max_drawdown"),
-                       "n_positions": m.get("n_positions")}
+                       "rc": r.returncode,
+                       "net_return_sum": metrics.get("net_return_sum"),
+                       "position_pf": metrics.get("position_pf"),
+                       "max_drawdown": metrics.get("max_drawdown"),
+                       "n_positions": metrics.get("n_positions")}
                 status["cells"].append(row)
+                print("CELL", cell_id, "rc", r.returncode, "net", row["net_return_sum"], flush=True)
                 status_path.write_text(json.dumps(status, indent=1))
                 print("CELL", cell_id, "net", row["net_return_sum"], "pf", row["position_pf"], flush=True)
     finally:
