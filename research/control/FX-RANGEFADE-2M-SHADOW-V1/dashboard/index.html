@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Phorec — FX Shadow Dashboard</title>
+<meta http-equiv="refresh" content="15">
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --line:#21262d; --fg:#e6edf3; --dim:#8b949e;
+          --green:#3fb950; --red:#f85149; --amber:#d29922; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:14px/1.45 -apple-system,'Segoe UI',Roboto,sans-serif; }
+  .wrap { max-width:1280px; margin:0 auto; padding:16px; }
+  header { display:flex; align-items:center; gap:14px; padding:14px 16px;
+           background:var(--card); border:1px solid var(--line); border-radius:10px; }
+  header img { width:64px; height:64px; border-radius:50%; object-fit:cover; border:2px solid #30363d; }
+  h1 { margin:0; font-size:20px; }
+  .sub { color:var(--dim); font-size:13px; }
+  .live { margin-left:auto; background:#12351f; color:var(--green); border:1px solid #1f4d2c;
+          padding:4px 12px; border-radius:999px; font-weight:600; }
+  .live.stale { background:#3b2e0c; color:var(--amber); border-color:#5a4514; }
+  .grid { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin:14px 0; }
+  .card, .sleeve { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .kpi .lbl { color:var(--dim); font-size:12px; }
+  .kpi .val { font-size:24px; font-weight:700; margin-top:4px; }
+  .pos { font-size:13px; }
+  .g { color:var(--green); } .r { color:var(--red); } .a { color:var(--amber); }
+  .sleeves { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .sleeve h3 { margin:0 0 8px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td { padding:3px 0; } td:first-child { color:var(--dim); } td:last-child { text-align:right; font-weight:600; }
+  .note { margin-top:12px; padding:10px 14px; border-radius:8px; background:#242a12;
+          color:#d8cf7a; font-size:13px; }
+  .journal { margin-top:12px; background:var(--card); border:1px solid var(--line);
+             border-radius:10px; padding:12px 16px; max-height:260px; overflow:auto;
+             font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="/logo.jpg" alt="Phorec logo">
+    <div>
+      <h1>Phorec — FX Shadow Dashboard</h1>
+      <div class="sub">RANGEFADE-2M · paper/shadow (không phải live trading) · EURUSD + GBPUSD ·
+        vốn mô phỏng $100,000 · size 1.5 lot/cặp</div>
+    </div>
+    <div class="live" id="liveBadge">…</div>
+  </header>
+
+  <div class="grid">
+    <div class="kpi card"><div class="lbl">TỔNG EQUITY</div><div class="val" id="equity">…</div><div class="lbl" id="equityMark"></div></div>
+    <div class="kpi card"><div class="lbl">TỔNG PNL</div><div class="val" id="pnlTotal">…</div><div class="lbl" id="pnlTotalPct"></div></div>
+    <div class="kpi card"><div class="lbl">PNL HÔM NAY</div><div class="val" id="pnlToday">…</div><div class="lbl">realized, reset 00:00 UTC</div></div>
+    <div class="kpi card"><div class="lbl">GROSS EXPOSURE</div><div class="val" id="gross">…</div><div class="lbl" id="grossPct"></div></div>
+    <div class="kpi card"><div class="lbl">CẬP NHẬT</div><div class="val" id="updated" style="font-size:15px">…</div><div class="lbl" id="parity"></div></div>
+  </div>
+
+  <div class="sleeves">
+    <div class="sleeve" id="sl-EURUSD"><h3>EURUSD</h3><div class="pos">…</div></div>
+    <div class="sleeve" id="sl-GBPUSD"><h3>GBPUSD</h3><div class="pos">…</div></div>
+  </div>
+
+  <div class="note" id="disclosure">
+    Shadow/paper: fill giả định tại giá TrueFX opposite-side mỗi giờ H1, size cố định 1.5 lot/cặp,
+    chốt phẳng 20:00 UTC (không qua đêm, không swap). KHÔNG kết nối broker, KHÔNG lệnh thật.
+    Kết quả chỉ là bằng chứng prospect của chương trình nghiên cứu.
+  </div>
+  <div class="journal" id="journal">journal…</div>
+</div>
+<script>
+const fmtUSD = x => (x<0?'-$':'$') + Math.abs(x).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+async function tick(){
+  try {
+    const s = await (await fetch('/state.json?'+Date.now())).json();
+    document.getElementById('liveBadge').textContent = s.data_stale ? 'STALE' : 'LIVE';
+    document.getElementById('liveBadge').className = 'live' + (s.data_stale ? ' stale' : '');
+    document.getElementById('equity').textContent = fmtUSD(s.equity||0);
+    document.getElementById('equityMark').textContent = 'seed $100,000 · ' + (s.updated_utc||'');
+    const pt = s.pnl_total||0;
+    document.getElementById('pnlTotal').textContent = fmtUSD(pt);
+    document.getElementById('pnlTotal').className = 'val ' + (pt>=0?'g':'r');
+    document.getElementById('pnlTotalPct').textContent = (s.pnl_total_pct>=0?'+':'') + (s.pnl_total_pct||0) + '%';
+    const pd = s.pnl_today||0;
+    document.getElementById('pnlToday').textContent = fmtUSD(pd);
+    document.getElementById('pnlToday').className = 'val ' + (pd>=0?'g':'r');
+    document.getElementById('gross').textContent = fmtUSD(s.gross_exposure_usd||0);
+    document.getElementById('grossPct').textContent = '+' + (s.gross_pct_of_equity||0) + '% của equity';
+    document.getElementById('updated').textContent = s.updated_utc||'…';
+    document.getElementById('parity').textContent = 'parity selftest: ' + (s.parity_selftest?.result||'…');
+    for (const pair of ['EURUSD','GBPUSD']) {
+      const sl = (s.sleeves||{})[pair] || {};
+      const el = document.getElementById('sl-'+pair);
+      const u = sl.unrealized_usd||0, rz = sl.realized_usd||0;
+      el.innerHTML = `<h3>${pair} <span class="${sl.position==='LONG'?'g':sl.position==='SHORT'?'r':''}" style="font-size:14px">${sl.position||'…'} ${sl.lots?sl.lots+' lot':''}</span></h3>
+        <table>
+        <tr><td>Unrealized</td><td class="${u>=0?'g':'r'}">${fmtUSD(u)}</td></tr>
+        <tr><td>Realized</td><td class="${rz>=0?'g':'r'}">${fmtUSD(rz)}</td></tr>
+        <tr><td>Entry</td><td>${sl.entry_px??'—'}</td></tr>
+        <tr><td>Mark (bid/ask)</td><td>${sl.mark? sl.mark.bid+' / '+sl.mark.ask : '—'} (${sl.mark? sl.mark.age_s+'s':''})</td></tr>
+        <tr><td>Số fill</td><td>${sl.fills??0}</td></tr>
+        <tr><td style="color:var(--dim)">Quyết định tiếp</td><td style="font-weight:400">${sl.next_decision||''}</td></tr>
+        </table>`;
+    }
+    try {
+      const j = (await (await fetch('/journal.jsonl?'+Date.now())).text()).trim().split('\n').slice(-12).reverse();
+      document.getElementById('journal').innerHTML = j.map(l=>{
+        try { const e = JSON.parse(l);
+          return `<div>${e.ts} [${e.event}] ${e.pair||''} ${e.dir? (e.dir>0?'LONG':'SHORT'):''} ${e.pnl_usd!==undefined? fmtUSD(e.pnl_usd):''} ${e.result||''}</div>`;
+        } catch { return ''; }
+      }).join('');
+    } catch {}
+  } catch (e) { document.getElementById('liveBadge').textContent='OFFLINE'; }
+}
+tick();
+</script>
+</body>
+</html>
