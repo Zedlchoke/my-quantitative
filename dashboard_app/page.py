@@ -505,9 +505,11 @@ function chartSeries() {
   return {pts: (f && f.series) || [], baseline: 100000, hist: null};
 }
 function baselineAt(data, tMs) {
-  // vốn gốc tại thời điểm t: baseline + các capital flow đã nạp tới t
-  var base = data.baseline || 0;
+  // vốn gốc tại thời điểm t: vốn sleeve sáng lập + các capital flow
+  // đã nạp tới t (data.baseline đã gồm sẵn flow — KHÔNG dùng làm gốc)
   var hist = data.hist;
+  var base = (hist && typeof hist.baseline_equity === "number")
+    ? hist.baseline_equity : (data.baseline || 0);
   if (!hist) return base;
   var cum = base;
   (hist.capital_flows || []).forEach(function(f) {
@@ -539,9 +541,6 @@ function drawChart() {
   valid.forEach(function(p) { ymin = Math.min(ymin, p.equity); ymax = Math.max(ymax, p.equity); });
   if (hasBase) {
     ymin = Math.min(ymin, data.baseline); ymax = Math.max(ymax, data.baseline);
-    (data.hist && data.hist.capital_flows || []).forEach(function(f) {
-      if (typeof f.amount_usdt === "number") { ymin = Math.min(ymin, f.amount_usdt); ymax = Math.max(ymax, f.amount_usdt); }
-    });
   }
   var pad = (ymax - ymin) * 0.06 || 1; ymin -= pad; ymax += pad;
   function X(t) { return L + (t - t0) / (t1 - t0) * (W - L - R); }
@@ -585,8 +584,8 @@ function drawChart() {
       if (isNaN(ft) || ft <= t0 || ft >= t1 || typeof f.amount_usdt !== "number") return;
       var fx = X(ft);
       out.push('<line x1="' + fx + '" y1="' + T + '" x2="' + fx + '" y2="' + (H - B) + '" stroke="#d29922" stroke-dasharray="3 4" stroke-width="1"/>');
-      out.push('<text x="' + (fx + 5) + '" y="' + (T + 10) + '" font-size="10" fill="#9a6700">＋' +
-        Math.round(f.amount_usdt).toLocaleString("en-US") + " vốn " + esc(famShort(f.family_id)) + " (capital flow, không phải lợi nhuận)</text>");
+      out.push('<text x="' + (fx - 6) + '" y="' + (T + 10) + '" text-anchor="end" font-size="10" fill="#9a6700">＋' +
+        Math.round(f.amount_usdt).toLocaleString("en-US") + " vốn " + esc(famShort(f.family_id)) + " (capital flow)</text>");
     });
   } else if (hasBase) {
     drawDashed(L, W - R, data.baseline, "vốn ban đầu " + data.baseline.toLocaleString("en-US"));
