@@ -25,3 +25,12 @@ can never be presented as preregistered evidence.
 ## Process
 DIAG verification of the two walls (Y2023, Y2024P completing) -> A7 r4
 re-audit -> on AUTHORIZED: 8 cells under heavy lock.
+
+## A4b (owner simplification, same message stream: "chạy từ 2024 cho ILLIQ cũng được")
+ILLIQ fold set = **Y2024P only** (2024-01-01..2024-08-19, the preregistered
+fold) → 2 cells (anchor 28D-W + INV). Y2021/Y2022/Y2023 folds are dropped
+BEFORE any of their scored cells ran (only the DIAG Y2021 run existed, already
+disclosed). For Y2024P specifically, A7 r3's own A/B measured books IDENTICAL
+at all 33 stamps, so the listed-at-start universe divergence is empty in this
+fold; labels remain EQUIVALENCE_DATA_RESTAGE_UNPROVEN +
+UNIVERSE_LISTED_AT_WINDOW_START (conservative). Budget impact: 2 of 24.
