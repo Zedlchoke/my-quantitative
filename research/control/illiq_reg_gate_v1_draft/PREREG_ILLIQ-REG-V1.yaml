@@ -1,0 +1,199 @@
+# PREREGISTRATION DRAFT — ILLIQ-REG-V1 (regime-gated ILLIQ-AMIHUD)
+# Status: DRAFT_ONLY_NOT_REGISTERED. This file lives in the draft namespace
+# (research/control/illiq_reg_gate_v1_draft/) and is NOT a cycle registry
+# entry. Registration requires owner authorization + the cycle's own gate
+# (per AGENTS.md authority order). Nothing scored has been run under this spec.
+
+schema: illiq_reg_gate_v1.prereg@1
+cycle_id_proposed: ILLIQ-REG-V1
+date_authored: 2026-09-24
+author_role: quant-researcher (read-only lane)
+parent_context:
+  family: A8-V11-ILLIQ-AMIHUD
+  strategy_id: A8-V11-ILLIQ-AMIHUD.v1
+  engine_frozen_at: c97283e0
+  engine_path: .worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/recovered/v11_root/research/v11/families/illiq_amihud/
+  parent_cycle: CRYPTO-HISTORICAL-REPLICATION-3F-V1 (amendments A2..A5; A7 rounds r1..r5)
+  budget_context: cycle cap 24 cells; used 12 (8 XSECT + 4 ILLIQ); remaining 12
+
+# ---------------------------------------------------------------------------
+ancestry_disclosure:
+  statement: >-
+    EVERY result of the ILLIQ-AMIHUD family (any arm) as of 2026-09-24 is
+    OUTCOME-EXPOSED ANCESTRY: the owner/researcher has observed DIAG -58.9%
+    (S0R-ANCHOR-A5, no-funding B2), +13.8% (Y2024P-ANCHOR-A4), +103.6%
+    (Y2021-ANCHOR-v2) and baseline W2-1 +58.2% (frozen window 2025-08-22..
+    2026-08-21). Reproductions on historical windows carry ZERO confirmation
+    weight; they are exploratory/falsification only. The ONLY confirmatory
+    surface for this cycle is the forward window run prospectively after the
+    freeze (shadow first).
+  observed_outcomes:
+    - {artifact: illiq_diag/S0R-ANCHOR-A5,  window: "2024-08-26..2025-08-18", net: -0.589312, mdd: 0.624507, funding: 0.0,  caveat: "no-funding DIAG (A7-r5 B2)"}
+    - {artifact: illiq_diag/Y2024P-ANCHOR-A4, window: "2024-01-08..2024-08-19", net: +0.137736, mdd: 0.205031, funding: +0.020440}
+    - {artifact: illiq_diag/Y2021-ANCHOR-v2, window: "2021-01-04..2021-12-27", net: +1.036025, mdd: 0.132299, funding: +0.028863}
+    - {artifact: recovered/v11_root/baseline_wave2.json W2-1, window: "2025-08-22..2026-08-21", net: +0.581969, mdd: 0.091822, funding: +0.110859}
+  single_shot_replay_disclosed:
+    description: >-
+      One descriptive replay of the frozen a-priori gate (O1+V2, thresholds
+      fixed by quantile rule on pre-window stamps) onto the EXISTING diag
+      boundary series. Applied exactly once; no iteration; zero confirmation
+      weight.
+    s0r:  {ungated_net: -0.589312, gated_net: -0.403022, gated_mdd: 0.443499, off_boundaries: 6}
+    y2024p: {ungated_net: +0.137736, gated_net: +0.118843, off_boundaries: 2}
+    y2021:  {ungated_net: +1.036025, gated_net: +1.065982, off_boundaries: 9}
+    reading: >-
+      The a-priori combo misses loss phases A (Nov-2024 majors melt-up) and
+      B (Jan-2025 long-leg decay) entirely; it only cuts the vol-compressed
+      tail (phase C). O1 as operationalized is expected to FAIL the
+      falsification rule; it is registered as stated, not replaced.
+
+# ---------------------------------------------------------------------------
+mechanism_hypothesis:
+  economic_claim: >-
+    The Amihud illiquidity premium in this cross-section is compensation for
+    bearing liquidity risk. It operates when flow is dispersed across the
+    long tail (liquidity risk is priced) and dies when flow concentrates in
+    liquid majors (illiquid names become abandoned ballast; the
+    long-illiquid/short-liquid spread decays structurally). Compensation
+    additionally concentrates in volatility-expansion regimes, when
+    capital-binding pressure on intermediaries is high.
+  selection_rule: >-
+    Variables are declared economics-first and calibrated ONLY on data
+    before 2024-08-22 (catalog b20 2020-01..2024-08; funding scan_2026).
+    No threshold was chosen by inspecting P&L on 2024-08-22+; the single
+    S0R contact is the disclosed descriptive replay above.
+
+gate_spec_frozen:
+  apply_law:
+    - Gate state computed at each Monday 00:00:00Z stamp T from COMPLETED
+      daily UTC blocks strictly before T (PIT; same bar law as the engine).
+    - State changes only at stamps (weekly cadence, no intra-week trading).
+    - GATED = (V1_state == ON) AND (V2_state == ON). Book formed at T is
+      taken only when GATED; otherwise the book is flat for that week.
+  v1_rotation_direction:
+    name: liquidity-rotation direction (BTC DV-share momentum)
+    operationalization_o1_frozen:
+      conc28: mean over trailing 28 daily UTC blocks of
+              DV(BTCUSDT) / sum(DV(symbols PIT-eligible that day)),
+              DV = sum(quote_volume) of completed 15m bars in the block.
+      eligible: symbol listed (>=28d of prior daily blocks) at that day.
+      s90: conc28(T) - conc28-windowed-mean over trailing 90d ending at T.
+      thresholds_prewindow:   # Mondays 2020-01-06..2024-08-19, n=242
+        on_if_le: 0.021317    # p70
+        off_if_ge: 0.057702   # p90
+        hysteresis: between the two, carry previous state (initial state ON)
+    operationalization_o2_posthoc:
+      label: POST_HOC_PROPOSED_OUTCOME_EXPOSED
+      definition: 90d return of EW liquid-majors index (BTC,ETH,SOL,XRP,ADA,
+                  DOGE,LINK,AVAX,BCH,BNB) minus EW PIT alt-cohort index.
+      provenance: proposed AFTER observing DIAG S0R forensics; NOT replayed
+                  in this dossier; penalized evidentially (see endpoints);
+                  may only be substituted for O1 by an explicit owner
+                  amendment BEFORE any cell runs.
+    calibration_source: catalog_live_crypto_b20 (2020-01-01..2024-08-21)
+  v2_vol_floor:
+    name: BTC 30d realized-vol floor
+    definition: stdev of 30 daily log closes of BTCUSDT (completed daily
+                blocks) annualized x sqrt(365).
+    thresholds_prewindow:
+      on_if_ge: 0.328930    # p10 of pre-window Mondays (n=238)
+      off_if_lt: 0.296037   # = on_if_ge * 0.90 (hysteresis)
+      carry_between: true
+    calibration_source: catalog_live_crypto_b20 (2020-01-01..2024-08-21)
+
+universe:
+  declaration: PIT_LISTED_AT_WINDOW_START (amendment A4 law)
+  members: 20 perpetuals per frozen SYMS list (illiq_cell_runner.py)
+  fold_notes:
+    - "Y2021/Y2024P: PIT-listed subset per listing law (fail-closed engine)."
+    - "S0R: all 20 listed by 2024-04-02 -> listed-at-start = full universe, no divergence (A5)."
+  engine_eligibility_unchanged: >-
+    MIN_ELIGIBLE=10, quintile law, CAP 0.30, beta hedge, SKIP_NO_SELECTION
+    fail-closed — all frozen, untouched.
+
+windows:
+  exploratory_outcome_exposed:   # zero confirmation weight; disclose per line
+    - {fold: Y2021,  span: "2021-01-01T00:00:00Z..2021-12-31T00:00:00Z"}
+    - {fold: Y2024P, span: "2024-01-01T00:00:00Z..2024-08-19T00:00:00Z"}
+    - {fold: S0R,    span: "2024-08-22T00:00:00Z..2025-08-21T00:00:00Z"}
+  confirmatory:
+    fold: FWD
+    span: "2025-08-22T00:00:00Z..2026-08-21T00:00:00Z"
+    mode: shadow first (paper, scored=False); scored only after GO review
+    adjacency: starts exactly where the frozen window/baseline W2-1 ends and
+               S0R ends; no overlap with any exploratory window.
+
+arms:
+  anchor_gated: ILLIQ-AMIHUD-28D-W book, held only when GATED
+  inv_gated: ILLIQ-AMIHUD-28D-W-INV (frozen sign-inverted causal negative
+             control) on the SAME gate series
+  random_gate_controls: 200 seeded permutations of the gate series,
+    preserving toggle count and minimum run length 4 stamps; RNG seed
+    derived from the cycle id string (declared, reproducible)
+
+endpoints:
+  falsification_rule_exploratory:
+    surface: S0R DIAG (funding-wired re-run, see prerequisites)
+    rule: combo O1+V2 is FALSIFIED unless BOTH hold —
+      - gated baseline net_sum >= -0.2947  (>=50% improvement vs -0.589312)
+      - gated baseline max_drawdown <= 0.4372 (>=30% reduction vs 0.624507)
+    consequence_on_fail: FALSIFIED; no gate variants permitted in this cycle
+      (no tuning loop); family returns to NOT_PROSPECTIVE diagnostics only.
+  confirmatory_primary:
+    surface: FWD window, gated ANCHOR baseline (after shadow period)
+    pass_requires_ALL:
+      - gated net_sum > 0
+      - gated net_sum > ungated net_sum (same window/engine)
+      - gated result ranks >= 95th percentile of the 200 random gates
+      - INV-gated net_sum < 0 on FWD
+      - gate ON for >= 8 of 52 stamps (else verdict INCONCLUSIVE, no GO)
+    o2_penalty_if_adopted: if O2 replaces O1 by owner amendment, the random
+      gate bar rises to >= 97.5th percentile to account for the post-hoc
+      provenance.
+  exploratory_secondary_descriptive_only:
+    - Y2021/Y2024P gated vs ungated net and MDD (report only)
+    - stress rows reported for every gated cell
+
+stress:
+  s1: {fee_multiplier: 1.5}
+  s2: {fee_multiplier: 2.0}
+  baseline_kept: tick slip floor +1 (engine default); native engine stress
+    (x1.5 fee, +2 ticks, +1 event delay) additionally reported where runner
+    exposes it. Stress applies to ALL gated cells.
+
+prerequisites_before_any_cell:
+  - Re-run S0R DIAG with per-fold funding wiring (scan_2026_a) per A7-r5 B2
+    remediation; re-disclose the funding-wired numbers; the -58.9% figure
+    must always travel labeled "no-funding DIAG (B2)".
+  - A7 prelaunch delta (r6) on this prereg (labels, windows, gate law).
+  - Falsification surface numbers re-based on the funding-wired DIAG if the
+    re-run changes net_sum by >5 points (declared re-basing rule).
+
+budget_proposal:
+  remaining_cycle_budget: "12 of 24"
+  proposed_cells: 12
+  matrix: "{ANCHOR_gated, INV_gated} x {Y2021, Y2024P, S0R} x {baseline, x1.5, x2.0}"
+  namespace: "REPLICATION_NOT_PROSPECTIVE (scored=False diagnostics)"
+  fwd_window_shadow: "no scored budget (shadow/paper until GO review)"
+
+data_dependencies:
+  bars:
+    - {catalog: catalog_live_crypto_b20, span: "2020-01..2024-08", role: pre-window calibration + Y2021/Y2024P}
+    - {catalog: catalog_live_crypto_s0r, span: "2024-04..2025-09", role: S0R + gate observables}
+    - {catalog: forward (existing integration catalog), span: "2025-08..2026-08", role: FWD window}
+  funding:
+    - {scan: funding_data_scan/scan_2026,   span: "2020-07-01..2024-08-20"}
+    - {scan: funding_data_scan/scan_2026_a, span: "2024-08-20..2026-08-21"}
+
+forbidden:
+  - tuning any gate threshold on data >= 2024-08-22
+  - running scored cells under this draft without owner + gate
+  - modifying the frozen engine or the v10 adapter
+  - touching shadow/gateway/S1 surfaces
+  - treating any historical-window result as confirmatory
+
+provenance_hashes:
+  s0r_diag_result_sha256: 2ae1c48e9aaf0fae88822b5898c9e354f97cfd8d7e9ce4932f98a7409bf0719c
+  y2024p_diag_result_sha256: bf3e4a8ca3dc256fdad7ca3c2041a7f11bb288952973a0f75cc4d04167972ca1
+  forensic_numbers: research/control/illiq_reg_gate_v1_draft/forensic_numbers.json
+  single_shot: research/control/illiq_reg_gate_v1_draft/pit_conc_gate_single_shot.json
