@@ -855,3 +855,63 @@ def test_target_above_hard_gross_cap_blocks_prefill_with_pre_post_recorded(tmp_p
     assert exec_.sleeve.fill_count == 0
     assert exec_.sleeve.positions == {}
     assert exec_.sleeve.decision_count == 1  # recorded, blocked pre-fill
+
+
+# ----------------------------------------------------------------------
+# BTC4H-BANDRIDGE root cause (DASHBOARD-AND-SHADOW-RELIABILITY-V1,
+# owner order 2026-09-24 "điều tra đến exception gốc; sửa fail-closed
+# đúng cách"): a single-symbol LONG-ONLY target at weight 1.0 on a fresh
+# $100k sleeve is INFEASIBLE BY CONSTRUCTION under any positive cost
+# book: sizing uses the ref price (w*equity/ref) while the opening-buy
+# cash guard requires qty*fill_price + fee <= cash and a buy fills at
+# ref + slippage tick with fee on top. The executor's response is the
+# DESIGNED honest one: the whole rebalance fails closed BEFORE any
+# mutation, the event is recorded UNAVAILABLE_FAIL_CLOSED with the full
+# target weights and ZERO fills (no partial book, no silent resizing).
+# These two tests pin that behavior from BOTH directions so no future
+# change can silently fake a fill or silently resize the target.
+# ----------------------------------------------------------------------
+def test_weight_1_0_single_leg_long_fails_closed_with_zero_fills(tmp_path):
+    exec_ = make_executor({D1: {BTC: 1.0}}, tmp_path)[0]
+    result = exec_.run_due(shift(D1, minutes=16))
+    assert result["accounting_fail_closed"] == 1
+    assert result["emitted"] == 0
+    record = ledger.scan_events(ledger_file(tmp_path))[0]
+    events.validate_event_record(record)
+    assert record["accounting_status"] == events.ACCOUNTING_STATUS_UNAVAILABLE
+    assert record["target_weights"] == {BTC: 1.0}  # intent recorded honestly
+    assert record["virtual_fill_events"] == []     # no partial book
+    assert record["fee"] == 0.0 and record["slippage"] == 0.0
+    assert record["cash"] == pytest.approx(100_000.0)
+    assert record["gross"] == 0
+    assert exec_.sleeve.fill_count == 0
+    assert exec_.sleeve.positions == {}
+    # the sleeve is untouched and the next decision can still run
+    assert exec_.sleeve.decision_count == 1
+
+
+def test_weight_1_0_refusal_is_cost_headroom_not_sizing_qty(tmp_path):
+    # Same target, ZERO fee/slippage books: the identical qty (w*equity/ref)
+    # now passes the cash guard exactly (needed == cash) and fills weight
+    # 1.0 — proving the live refusal is the fee+slippage headroom, not a
+    # wrong sizing quantity. Decision for how to realize a gross-1.0 book
+    # under real costs (cost-aware sizing / tolerance / keep fail-closed)
+    # belongs to the OWNER, not to this executor.
+    import copy
+
+    zero_books = copy.deepcopy(COST_BOOKS)
+    for params in zero_books.values():
+        params["fee_rate"] = 0.0
+        params["slippage_ticks"] = 0.0
+    exec_ = make_executor(
+        {D1: {BTC: 1.0}}, tmp_path, cost_books=zero_books
+    )[0]
+    result = exec_.run_due(shift(D1, minutes=16))
+    assert result["emitted"] == 1
+    record = ledger.scan_events(ledger_file(tmp_path))[0]
+    assert record["accounting_status"] == events.ACCOUNTING_STATUS_OK
+    assert len(record["virtual_fill_events"]) == 1
+    fill = record["virtual_fill_events"][0]
+    assert fill["qty"] == pytest.approx(2.0)  # 1.0 * 100k / 50k, exact
+    assert record["fee"] == 0.0 and record["slippage"] == 0.0
+    assert record["gross"] == pytest.approx(1.0)
