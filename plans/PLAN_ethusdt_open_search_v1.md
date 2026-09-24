@@ -24,7 +24,7 @@ question     Do ETHUSDT books driven by CROSS-ASSET information — BTC's own
              + measured funding) across 2020-01..2026-08? A NO is a valid
              terminal. ETH's own single-asset entry-timing families are NOT
              tested here — they are ancestry-vetoed by the PSV1/ES1 BTC
-             record (symbol-swap law, §14.3).
+             record (symbol-swap law, handbook §14.3).
 budget       2 lanes × 4 configs = 8 scored cells MAX (references, controls
              and stresses computed inside cells; they consume no identity)
 s1           SEALED_UNTOUCHED
