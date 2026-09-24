@@ -21,8 +21,8 @@ ap.add_argument("--funding-scan", required=True)
 SYMS = ["1000PEPEUSDT","AAVEUSDT","ACEUSDT","ADAUSDT","AVAXUSDT","BCHUSDT","BNBUSDT",
         "BOMEUSDT","BTCUSDT","DOGEUSDT","ENAUSDT","ETHUSDT","LINKUSDT","NEARUSDT",
         "ONGUSDT","SOLUSDT","SUIUSDT","WLDUSDT","XRPUSDT","ZECUSDT"]
-SCAN = a.funding_scan
 a = ap.parse_args()
+SCAN = a.funding_scan
 CATALOG = a.catalog
 st = datetime.fromisoformat(a.window_start.replace("Z", "+00:00"))
 pre = datetime.fromtimestamp(st.timestamp() - 125*86400, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
