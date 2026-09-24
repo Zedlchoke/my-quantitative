@@ -26,3 +26,12 @@ Impact assessment:
 Remediation: fetch_funding_a.py re-fetches the A window into a SEPARATE root
 funding_data_scan/scan_2026_a (B stays in scan_2026); ILLIQ equivalence
 driver repointed to scan_2026_a. Layout law added: one window = one root.
+
+## INC-4 (2026-09-24 04:3xZ): SIGTERM kill of basis runner left stale heavy-lock row
+To let the ILLIQ-REG-V1 gate-series build use the machine-wide lock, the
+running CHR3F B_basis sweep was stopped with pkill (SIGTERM) instead of a
+clean-stop path — the stage runner has no SIGTERM handler, so the registry row
+stayed RUNNING with a dead pid -> locks inspect = CONTROL_STATE_DRIFT. The
+heavy_lock.acquire proven-stale reclaim path is expected to clear it. The
+interrupted B_basis item restages cleanly (idempotent .done design; partial
+fetch leaves no artifact). Disclosed; watcher resumed after the gate build.
