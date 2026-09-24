@@ -191,6 +191,17 @@ def stage_basis_window_sym(sym, win, out: Path) -> dict:
     advance by the page span like the frozen script does."""
     out.mkdir(parents=True, exist_ok=True)
     start, end = win; BUCKET = 900_000; rows = {}; cursor = start
+    # INC-6: a symbol listed mid-window has NO basis before its kline start;
+    # begin at the measured first-archive month (klines census) so the
+    # leading-empty walk cannot trip the streak guard.
+    FA = {"1000PEPEUSDT": (2023,5,1),"SUIUSDT": (2023,5,1),"WLDUSDT": (2023,7,1),
+          "ONGUSDT": (2023,11,1),"ACEUSDT": (2023,12,1),"BOMEUSDT": (2024,3,1),
+          "ENAUSDT": (2024,4,1)}
+    if sym in FA:
+        y, m, dd = FA[sym]
+        alt = int(datetime(y, m, dd, tzinfo=timezone.utc).timestamp()*1000)
+        if alt > start:
+            start = alt; cursor = alt
     # INC-5 page-level resume: partial progress survives kills between chunks
     part = out / f"{sym}.partial.json"
     if part.exists():
