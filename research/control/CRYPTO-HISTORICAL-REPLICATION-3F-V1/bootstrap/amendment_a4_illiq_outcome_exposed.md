@@ -34,3 +34,16 @@ disclosed). For Y2024P specifically, A7 r3's own A/B measured books IDENTICAL
 at all 33 stamps, so the listed-at-start universe divergence is empty in this
 fold; labels remain EQUIVALENCE_DATA_RESTAGE_UNPROVEN +
 UNIVERSE_LISTED_AT_WINDOW_START (conservative). Budget impact: 2 of 24.
+
+## A5 (owner: "2024-08-20 → 2025-08-21... Tôi cho phép chạy", 2026-09-24)
+ILLIQ fold **S0R = 2024-08-22T00:00Z..2025-08-21T00:00Z** added — this IS the
+frozen V12 replication brief (plans history: V12 A3 window; BLOCKED_DATA then
+because local staging was incomplete and fetching was forbidden). The V13
+reopening law fires: owner-authorized window + data NOW available (catalog
+months 2024-04..2025-08 restaged; funding scan_2026_a covers 2024-08-20..
+2026-08-22). Warmup 125d satisfied from b20/a20 month zips. Fold thirds mirror
+the frozen F0/F1/F2 four-month pattern. +2 cells (anchor/INV) → ILLIQ total
+4 cells, cycle budget 12/24. V12's BLOCKED_DATA record remains history; this
+is its lawful re-execution, results labeled EQUIVALENCE_DATA_RESTAGE_UNPROVEN
+(+ UNIVERSE_LISTED_AT_WINDOW_START: all 20 symbols listed by 2024-04-02, so
+the listed-at-start universe = full universe for this fold — no divergence).
