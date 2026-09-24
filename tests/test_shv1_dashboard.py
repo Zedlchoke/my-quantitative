@@ -150,18 +150,20 @@ class ShV1DashboardTestBase(unittest.TestCase):
 
 
 # ----------------------------------------------------------------------
-# 1. initial combined chart point is exactly 300,000
+# 1. initial combined chart point is exactly 400,000 (4 sleeves x 100k;
+#    sleeve 4 BTC4H-BANDRIDGE mounted by owner directive 2026-09-24)
 # ----------------------------------------------------------------------
 class TestInitialCombinedPoint(ShV1DashboardTestBase):
-    def test_three_100k_sleeves_start_at_exactly_300k(self):
+    def test_four_100k_sleeves_start_at_exactly_400k(self):
         build_basic_ledgers(self.tmp)
         snap = build_dashboard_snapshot(self.paths(), NOW)
         points = snap["combined"]["chart_points"]
         self.assertTrue(points)
         first = points[0]
-        self.assertEqual(first["equity"], 300000.0)
+        self.assertEqual(first["equity"], 400000.0)
         self.assertEqual(first["status"], "OK")
         self.assertTrue(first.get("kind", "").startswith("anchor"))
+        self.assertTrue(first.get("anchor_confirmed", False))
         for fid in FAMILY_IDS:
             self.assertEqual(
                 snap["families"][fid]["starting_equity_usdt"], 100000.0
@@ -193,9 +195,9 @@ class TestTodayPnlWindows(ShV1DashboardTestBase):
         self.assertEqual(combined_today["window_start_utc"], "2026-09-13T17:00:00Z")
         self.assertEqual(combined_today["window_end_utc"], NOW)
         self.assertEqual(combined_today["boundary_mark_ts"], "2026-09-13T17:00:00Z")
-        # 3 sleeves x (100200 - 100100)
-        self.assertAlmostEqual(combined_today["pnl_usdt"], 300.0, places=6)
-        expected_pct = 300.0 / (3.0 * 100100.0) * 100.0
+        # 4 sleeves x (100200 - 100100)
+        self.assertAlmostEqual(combined_today["pnl_usdt"], 400.0, places=6)
+        expected_pct = 400.0 / (4.0 * 100100.0) * 100.0
         self.assertAlmostEqual(
             combined_today["pnl_pct"], expected_pct, places=9
         )
@@ -227,7 +229,7 @@ class TestTodayPnlWindows(ShV1DashboardTestBase):
         self.assertEqual(utc_today["status"], "OK")
         self.assertEqual(utc_today["window_start_utc"], "2026-09-14T00:00:00Z")
         self.assertEqual(utc_today["window_end_utc"], "2026-09-14T03:00:00Z")
-        self.assertAlmostEqual(utc_today["pnl_usdt"], 3 * 10.0, places=6)
+        self.assertAlmostEqual(utc_today["pnl_usdt"], 4 * 10.0, places=6)
         local_today = snap["combined"]["today"]["Asia/Ho_Chi_Minh"]
         self.assertEqual(local_today["status"], "UNAVAILABLE_FAIL_CLOSED")
         self.assertIsNone(local_today["pnl_usdt"])
@@ -261,11 +263,11 @@ class TestTodayPnlWindows(ShV1DashboardTestBase):
 class TestCombinedStrictSum(ShV1DashboardTestBase):
     def test_sum_and_sleeve_gap(self):
         common = [
-            ("2026-09-07T00:00:00Z", (100000.0, 100000.0, 100000.0)),
-            ("2026-09-08T00:00:00Z", (100010.0, 100020.0, 100030.0)),
-            # t2: sleeves 1 and 3 have marks, sleeve 2 does NOT
-            ("2026-09-09T00:00:00Z", (100015.0, None, 100035.0)),
-            ("2026-09-10T00:00:00Z", (100020.0, 100025.0, 100040.0)),
+            ("2026-09-07T00:00:00Z", (100000.0, 100000.0, 100000.0, 100000.0)),
+            ("2026-09-08T00:00:00Z", (100010.0, 100020.0, 100030.0, 100015.0)),
+            # t2: sleeves 1, 3 and 4 have marks, sleeve 2 does NOT
+            ("2026-09-09T00:00:00Z", (100015.0, None, 100035.0, 100020.0)),
+            ("2026-09-10T00:00:00Z", (100020.0, 100025.0, 100040.0, 100030.0)),
         ]
         for fid_idx, fid in enumerate(FAMILY_IDS):
             for ts, eqs in common:
@@ -274,9 +276,9 @@ class TestCombinedStrictSum(ShV1DashboardTestBase):
                 append_record(self.tmp, fid, ts, equity=eqs[fid_idx])
         snap = build_dashboard_snapshot(self.paths(), "2026-09-11T00:00:00Z")
         by_ts = {p["ts"]: p for p in snap["combined"]["chart_points"]}
-        # strict sum at every common valid mark (3 x ~100k sleeves)
-        self.assertAlmostEqual(by_ts["2026-09-08T00:00:00Z"]["equity"], 300060.0, places=9)
-        self.assertAlmostEqual(by_ts["2026-09-10T00:00:00Z"]["equity"], 300085.0, places=9)
+        # strict sum at every common valid mark (4 x ~100k sleeves)
+        self.assertAlmostEqual(by_ts["2026-09-08T00:00:00Z"]["equity"], 400075.0, places=9)
+        self.assertAlmostEqual(by_ts["2026-09-10T00:00:00Z"]["equity"], 400115.0, places=9)
         # gap at t2: fail closed, equity None, never interpolated
         gap = by_ts["2026-09-09T00:00:00Z"]
         self.assertEqual(gap["status"], "UNAVAILABLE_FAIL_CLOSED")

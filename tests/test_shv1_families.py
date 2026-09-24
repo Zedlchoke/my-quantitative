@@ -139,9 +139,10 @@ def make_funding(symbol: str, rate: float, first_day: dt.date, days: int):
 # ======================================================================
 # registry
 # ======================================================================
-def test_registry_maps_all_three_families():
+def test_registry_maps_all_mounted_families():
     assert sorted(FAMILY_REGISTRY) == [
         "BASISLV-PREMFADE-28D",
+        "BTC4H-BANDRIDGE",  # sleeve 4, mounted by owner directive 2026-09-24
         "ILLIQ-AMIHUD-28D-W",
         "XSECT-FUND-CARRY-7D",
     ]

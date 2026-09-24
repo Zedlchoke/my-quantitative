@@ -355,7 +355,7 @@ class TestFlatAndCombined:
 
     def test_combined_is_strict_sum_at_common_mark(self, tmp_path):
         fids = sorted(FAMILY_REGISTRY)
-        assert len(fids) == 3
+        assert len(fids) == 4  # 3 founding + BTC4H-BANDRIDGE (mounted 2026-09-24)
         # sleeve A: long 2 @100 -> 99799.4 cash
         led_a = tmp_path / "ledgers" / f"{fids[0]}.jsonl"
         write_ledger(
@@ -376,11 +376,15 @@ class TestFlatAndCombined:
         led_c = tmp_path / "ledgers" / f"{fids[2]}.jsonl"
         led_c.parent.mkdir(parents=True, exist_ok=True)
         led_c.write_bytes(b"")
+        # sleeve D (BANDRIDGE shape today: flat at seed)
+        led_d = tmp_path / "ledgers" / f"{fids[3]}.jsonl"
+        led_d.write_bytes(b"")
 
         marks = {}
         marks[fids[0]] = build_mark(fids[0], led_a, {"BTCUSDT": 110.0})
         marks[fids[1]] = build_mark(fids[1], led_b, {"ETHUSDT": 45.0})
         marks[fids[2]] = build_mark(fids[2], led_c, {})
+        marks[fids[3]] = build_mark(fids[3], led_d, {})
         runtime = tmp_path / "runtime"
         for fid, mark in marks.items():
             assert valuation.append_valuation_mark(str(runtime), mark) == "appended"
@@ -401,10 +405,13 @@ class TestFlatAndCombined:
             (99799.4 + 220.0)  # sleeve A
             + (100049.75 - 45.0)  # sleeve B
             + 100000.0  # sleeve C flat
+            + 100000.0  # sleeve D flat
         )
         assert combined["status"] == "OK"
         assert combined["equity"] == pytest.approx(expected)
-        assert combined["equity"] == pytest.approx(100019.4 + 100004.75 + 100000.0)
+        assert combined["equity"] == pytest.approx(
+            100019.4 + 100004.75 + 100000.0 + 100000.0
+        )
 
 
 # ----------------------------------------------------------------------

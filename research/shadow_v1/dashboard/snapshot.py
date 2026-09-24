@@ -977,8 +977,8 @@ def _build_combined(
 
     chart_points: List[Dict[str, Any]] = []
     anchor_note = (
-        "pre-event starting capital: three isolated sleeves at 100,000 USDT "
-        "each (frozen config), combined 300,000 USDT"
+        "pre-event starting capital: four isolated sleeves at 100,000 USDT "
+        f"each (frozen config), combined {STARTING_COMBINED_EQUITY_USDT:,.0f} USDT"
     )
     if anchor_ts is not None:
         measured_at_anchor = raw_by_ts.get(str(anchor_ts))
