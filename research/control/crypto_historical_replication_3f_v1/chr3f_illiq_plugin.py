@@ -69,6 +69,19 @@ class Chr3fIlliqPlugin(IlliqAmihudPlugin):
                   if self.FIRST_ARCHIVE_MONTH.get(s, (9999, 1)) <= (y, m)]
         return tuple(sorted(set(listed) | {self._benchmark}))
 
+    def universe(self, stress: StressSpec) -> tuple[str, ...]:
+        # DIAG-2b: PIT-listed universe. Symbols not yet listed at the window
+        # start have no bars in-window, contribute no features, and can never
+        # enter a book — dropping them is provably book-identical (A7 r3
+        # verifies per-fold) and fixes the frozen context union, which would
+        # otherwise demand marks for unlisted names.
+        frozen = super().universe(stress)
+        w0 = self._window_start_iso[:7]
+        y, m = int(w0[:4]), int(w0[5:7])
+        listed = {s for s in frozen
+                  if self.FIRST_ARCHIVE_MONTH.get(s, (9999, 1)) <= (y, m)}
+        return tuple(s for s in frozen if s in listed or s == self._benchmark)
+
     def fold_instants(self) -> dict[str, tuple[int, ...]]:
         out: dict[str, list[int]] = {}
         for stamp in self._stamps:
