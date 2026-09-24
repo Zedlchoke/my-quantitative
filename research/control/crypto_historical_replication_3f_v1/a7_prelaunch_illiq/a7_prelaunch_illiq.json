@@ -1,0 +1,160 @@
+{
+ "schema": "chr3f_a7_prelaunch@1",
+ "audit_utc": "2026-09-24T01:29:40Z",
+ "head_sha": "ab76aba25501bc9777cadd3213dc33c5d1aa6719",
+ "root_head_sha": "eb6e162b6b1687577cc4651b1c704fbf0bb9ed24",
+ "auditor": "A7 independent fresh-context prelaunch, family ILLIQ-AMIHUD-28D-W (8 scored cells: {Y2021,Y2022,Y2023,Y2024P} x {anchor ILLIQ-AMIHUD-28D-W, INV ILLIQ-AMIHUD-28D-W-INV})",
+ "checks": [
+  {
+   "id": "c01_a3_amendment_exists_committed",
+   "method": "Read ROOT bootstrap dir; git log for the A3 path; confirmed clean status of the bootstrap dir at audit HEAD.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/research/control/CRYPTO-HISTORICAL-REPLICATION-3F-V1/bootstrap/amendment_a3_illiq_data_restage.md",
+   "result": "PASS",
+   "detail": "A3 exists at ROOT, committed in fb1ac98c (plan: CHR3F amendment A3). Root bootstrap dir clean (no uncommitted changes). A2 committed at 5443414f; both amendments' content read and parsed. The worktree bootstrap copy holds only owner_decisions_and_go_incident.json; ROOT is the authority copy as the dispatch notes."
+  },
+  {
+   "id": "c02_a3_equivalence_fail_characterization",
+   "method": "Recomputed all quoted numbers directly from equivalence_payload.json (the constant-1e-07 tick run) and compared to the baseline anchor in recovered/v11_root/baseline_wave2.json items[W2-1].evidence.anchor_confirmed; recomputed the relative diffs; cross-checked fold PFs and hit-rate.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/illiq_equivalence_out/equivalence_payload.json",
+   "result": "PASS",
+   "detail": "Every number in A3 matches the bytes: net_return_sum 0.713248156397 vs 0.581969254868 (rel 0.2255, A3 says 0.226); position_pf 1.462307048803 vs 1.3548410108404612 (rel 0.0794); max_drawdown 0.086796257225 vs 0.091821657373 (rel 0.0545); n_positions 328 vs 336; funding_sum +0.11085867408; daily_hit_rate 0.461538461538 = 24/52 EXACT as A3 states. F1 fold PF 1.064523220821 vs baseline 1.083106967971 = 1.72% ('F1 fold PF matches to 2%' accurate). Identity equation closes in the payload (price 0.611897 + funding 0.110859 - costs 0.009507 = 0.713248). Characterization is FAILED-as-admitted with full surfaces, no minimising: the amendment calls it a measured mismatch weaker than XSECT's mere-unverifiability tier."
+  },
+  {
+   "id": "c03_a3_tick_hypothesis_test",
+   "method": "Read /tmp/illiq_eq_tick.log; read illiq_equivalence_run.py tick_sizes() (constant 1e-07 for all 20 symbols) and the comparison harness; confirmed the tick run's payload still mismatches the baseline.",
+   "evidence_path": "/tmp/illiq_eq_tick.log",
+   "result": "PASS",
+   "detail": "The tick-hypothesis run IS the committed equivalence run (constant 1e-07, from the +2_ticks diagnostic reasoning disclosed in code comments). Its payload reproduces the mismatch (net 0.7132 vs 0.5820), so the 'ticks are the driver' hypothesis is genuinely rejected by the artifact. Substantively accurate. Caveat recorded as non-blocking N1: the run's verdict JSON shows got:null for the three checks because the harness looked for top-level surface keys (net_return_sum_daily/position_pf/max_drawdown_fraction) that live under portfolio_metrics with different names (net_return_sum/position_pf/max_drawdown); the real values were read from the payload and are correct. The log's bar counts (20 symbols x 48673 bars) match the run scale."
+  },
+  {
+   "id": "c04_engine_frozen_byte_diff",
+   "method": "git show of each of the 4 files under research/v11/families/illiq_amihud/ at c97283e0d1681c24ee9a637a4fb1628d0334b7e1 and byte-compare (cmp) against recovered/v11_root copies.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/recovered/v11_root/research/v11/families/illiq_amihud/",
+   "result": "PASS",
+   "detail": "__init__.py, audits.py, plugin.py, strategy.py all IDENTICAL to the frozen commit c97283e0. No edits to frozen files. Frozen commit exists in the root repo (type: commit)."
+  },
+  {
+   "id": "c05_m0_tests_rerun",
+   "method": "Fresh rerun from recovered/v11_root with the root .venv python: pytest tests/test_v11i_illiq_amihud_identity.py tests/test_v11i_illiq_amihud_pit.py tests/test_v11i_illiq_amihud_causal.py -q.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/recovered/v11_root/tests/",
+   "result": "PASS",
+   "detail": "16 passed in 23.91s (A7 rerun; matches the claimed 16/16)."
+  },
+  {
+   "id": "c06_subclass_derivation_targets_at",
+   "method": "Line-level diff of chr3f_illiq_plugin.py targets_at against the frozen plugin.py targets_at (recovered copy lines 200-237); inspected folds()/fold_instants()/_fold_label overrides; traced compute_stamp_features/build_quintile_book/STATUS_OK imports to the frozen strategy module.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/chr3f_illiq_plugin.py",
+   "result": "PASS",
+   "detail": "targets_at differs from the frozen body ONLY in the fold lookup (self._fold_label instead of fold_label_for_stamp; message text 'window fold' vs 'frozen fold'). The force-flat policy is preserved exactly (fold-last-stamp empty book with FOLD_BOUNDARY_FORCE_FLAT, final-schedule-instant carve-out identical), and the mechanics calls (compute_stamp_features, build_quintile_book, diagnostics merge, return shape) are verbatim-identical in semantics. folds()/fold_instants() override only the partitioning surface (window thirds F1/F2/F3, chronological, last-fold end-day inclusive) and fail closed with ContractViolation on out-of-window stamps or empty folds. No other method overridden; constructor/schedule/costs/fills/marks/funding are inherited unchanged from the frozen plugin."
+  },
+  {
+   "id": "c07_census_y2024p_independent_rerun",
+   "method": "Executed the committed illiq_census_dryrun.py unchanged from the recovered tree (b20 catalog, real staged bars, engine-authored targets_at statuses).",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/illiq_census_y2024p.json",
+   "result": "PASS",
+   "detail": "A7 rerun reproduces the verdict EXACTLY: stamps 33, ok 30, skipped 3 (2024-01-08, 2024-01-15, 2024-01-22), weights_per_ok_stamp_head [8,8,8,8,8]."
+  },
+  {
+   "id": "c08_census_y2021_independent_rerun",
+   "method": "A7-authored /tmp variant of the census loop for window 2021-01-01..2022-01-01 (same engine-authored method, same b20 catalog, 125d pre-window warmup; no repo writes).",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/illiq_census_verdict.json",
+   "result": "PASS",
+   "detail": "A7 rerun reproduces the verdict EXACTLY: stamps 52, ok 38, skipped 14, identical skipped_dates_head (2021-03-15, 03-22, 03-29, 04-05, 05-03, 06-28, 07-05, 07-12), weights head [6,6,6,6,6] (2021 listing subset gives 3+3 quintile legs)."
+  },
+  {
+   "id": "c09_census_y2022_y2023_y2020p_structure",
+   "method": "Structural verification of the remaining engine-authored census rows (Y2022 38/52, Y2023 28/53, Y2020P 5/9 with 4 skips): internal consistency of weights patterns with the frozen quintile law and the force-flat fold policy.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/illiq_census_verdict.json",
+   "result": "PASS",
+   "detail": "Y2020P weights head [0,4,4,0,6] is exactly the force-flat signature (zero-weight OK stamps at fold-last stamps, quintile books 4-wide mid-window, 6-wide on the terminal stamp for the late-2020 listing subset) - consistent with the preserved force-flat policy and 2020-era PIT universe. Y2022 mirrors Y2021 (38/52, weights 6). Y2023 28/53 with early-2023 skip cluster consistent with low-liquidity regime and 2023 listings under frozen PIT eligibility. Not independently rerun for these three windows; flagged in N2."
+  },
+  {
+   "id": "c10_fold_law_resolution_faithfulness",
+   "method": "Read plan §3 (windows table, Y2020P conditional) and §6 refinement (fold-4 = Y2020P-if-census-passes-else-Y2024P deterministic fallback); assessed the implementer's 'engine-authored skips are normal machinery (targets_at statuses)' interpretation against the plan text.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/plans/PLAN_crypto_historical_replication_3f_v1.md",
+   "result": "PASS",
+   "detail": "Faithful, and the fold-4 resolution is interpretation-invariant: Y2020P census is 5/9 with 4 engine skips, which fails the 'EVERY scheduled stamp satisfies the frozen eligibility law' condition under EITHER reading (skips as engine eligibility machinery vs skips as failing stamps) - the deterministic registered fallback fold-4 = Y2024P follows regardless. Treating targets_at skips as the frozen engine's own PIT eligibility machinery is consistent with plan §3's 'Y2023+ universe changes handled by the frozen PIT listing eligibility, no manual pruning either direction'; the alternative reading would absurdly fail every window (Y2021 has 14 skips). Not a stretch. Interpretation is documented in commit ab76aba2 and the census verdict note ('engine-authored eligibility (targets_at status)')."
+  },
+  {
+   "id": "c11_data_klines_sha_vs_live_head",
+   "method": "sha256 of 2 staged kline zips (BTCUSDT-15m-2021-06, ADAUSDT-15m-2022-03) vs their local .CHECKSUM files vs LIVE binance.vision CHECKSUM fetched during this audit.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/staging/klines/",
+   "result": "PASS",
+   "detail": "BTCUSDT-15m-2021-06.zip 9853eae293ad9c5b4a1395fe6d5e6257bfd2ff27433c4ef00b0169b54853b7a2 and ADAUSDT-15m-2022-03.zip 9a82086108264506fa85619da17fdcd9b2912bb93b10742529baa2ac0d898dd1: local bytes == local .CHECKSUM == live https://data.binance.vision CHECKSUM (fetched 2026-09-24 during this audit). End-to-end byte authority holds."
+  },
+  {
+   "id": "c12_data_funding_b_bundles",
+   "method": "Row-by-row equality of funding_data_scan/scan_2026/<SYM>/funding.json rows vs staging/funding/<SYM>_funding.json rows for 3 symbols; coverage check of requested_start_ms/requested_end_ms.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/funding_data_scan/scan_2026/",
+   "result": "PASS",
+   "detail": "BTCUSDT 4534 rows, SOLUSDT 4385 rows, ZECUSDT 4534 rows: length equal AND content byte-equal to staging funding rows for all three. Bundles carry the A7-r2-remediation metadata keys (requested_start_ms 1593561600000 = 2020-07-01T00:00Z, requested_end_ms 1724112000000 = 2024-08-20T00:00Z) - the frozen loader contract accepted by XSECT r2. Coverage spans all four ILLIQ windows (last row 2024-08-20T00:00Z sits at the bundle boundary; Y2024P's terminal stamp 2024-08-12 with 7d holding ends by 2024-08-19, so no forbidden-window [2024-08-20, 2026-08-21] overlap is exercised; noted as N5)."
+  },
+  {
+   "id": "c13_data_catalog_rows_vs_zip_lines",
+   "method": "Independent recount of ADAUSDT zip CSV data lines for the catalog window 2020-01..2024-08 (with correct header-row semantics, verified per month) vs the b20 build report rows_written; plus an engine-reader count over the Y2024P window.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/catalog_live_crypto_b20_build_report.json",
+   "result": "PASS",
+   "detail": "A7 recount = 160,768 data lines (24 of 56 months are headerless - naive n-1 undercounts by exactly 24, explaining the delta) == build report rows_written 160,768 EXACT. Engine reader (read_bars_15m) returns 159,521 bars over 2020-01-01..2024-08-19 close-stamp window - the difference is the loader's documented drop-outside-window rule (bars after 2024-08-19 dropped, never shifted), not missing data. First close 2020-01-31T08:00Z, last 2024-08-19T00:00Z."
+  },
+  {
+   "id": "c14_scored_invocation_self_gate",
+   "method": "Read illiq_scored.py main(): pre-launch gate reads a7_prelaunch_illiq/a7_prelaunch_illiq.json and exits rc=5 REFUSED unless verdict == AUTHORIZED.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/illiq_scored.py",
+   "result": "PASS",
+   "detail": "The launcher self-gates on THIS artifact (exact path matches the dispatch/output contract) - it cannot run before this verdict lands. Resume logic keys on rc==0 rows without outcome_class."
+  },
+  {
+   "id": "c15_scored_windows_arms_labels_outputs",
+   "method": "Compared illiq_scored.py FOLDS/ARMS against plan §3 windows and the frozen strategy ARMS registry; checked label/namespace fields on every status row; checked output paths.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/illiq_scored.py",
+   "result": "PASS",
+   "detail": "Windows verbatim per plan §3: Y2021 2021-01-01..2022-01-01, Y2022 2022-01-01..2023-01-01, Y2023 2023-01-01..2024-01-01, Y2024P 2024-01-01..2024-08-19 (no overlap with the forbidden [2024-08-20, 2026-08-21] band; warmup pre-window only, 125d). Arms = anchor ILLIQ-AMIHUD-28D-W + INV ILLIQ-AMIHUD-28D-W-INV, both present in the frozen ARMS registry (strategy.py lines 85-120). Every status row carries namespace REPLICATION_NOT_PROSPECTIVE and label EQUIVALENCE_DATA_RESTAGE_UNPROVEN plus authority string. Outputs strictly cycle-local (illiq_scored_out/<cell_id>/, illiq_scored_status.json under the cycle control dir). Per-fold plugin constructed with matching window params and bind_window - no cross-fold fold-map bleed."
+  },
+  {
+   "id": "c16_heavy_lock_budget",
+   "method": "Inspected the launcher's heavy_lock.acquire/release structure; locks inspect before/during audit; counted consumed cells from xsect_scored_status.json and the planned ILLIQ 8; checked the 24-cap arithmetic against the registry.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/xsect_scored_status.json",
+   "result": "PASS",
+   "detail": "Heavy lock acquired once for the whole sweep, released in finally, command/artifacts registered (disclosed in the module docstring); machine lock measured FREE_PROVEN at audit time. Budget: XSECT consumed 8 successful cells (its 8 rc=1 rows are TECHABORT_NO_EXECUTION, import error pre-engine, nothing computed, disclosed) + ILLIQ 8 planned = 16 <= 24 cap. The registry 'used' field is still 0/24 (stale; phase text says 'denominators counting begins') - non-blocking N4: book 16/24 at the post-sweep registry update."
+  },
+  {
+   "id": "c17_boundaries_root_registry_commits",
+   "method": "git log of plans/CYCLE_REGISTRY.json and the root bootstrap dir; attributed every recent root commit; checked worktree branch commit file scope for the ILLIQ lane commits.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/plans/CYCLE_REGISTRY.json",
+   "result": "PASS",
+   "detail": "CHR3F root registry commits are only the disclosed ones (e1f3dce5 gates, 67521676 XSECT scored start; plan commits 5443414f A2, fb1ac98c A3). Other root commits during the window belong to other cycles (FX-MAJORS, PROSPECTIVE-SHADOW A1/sleeve-4). All ILLIQ lane worktree commits (007d9005..ab76aba2) touch only integration/research/control/crypto_historical_replication_3f_v1/ paths. No merges to main, no pushes, no ledger/registry writes from the lane."
+  },
+  {
+   "id": "c18_boundaries_forbidden_surfaces",
+   "method": "File-mtime sweep of research/control/SANDBOX-OVERFIT-3ASSETS/, .worktrees/prospective-shadow-v1/, .worktrees/live-data-gateway-v1/ vs this cycle's activity window; attribution of fresh files.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/research/control/SANDBOX-OVERFIT-3ASSETS/",
+   "result": "PASS",
+   "detail": "Sandbox root: newest files Sep 20, zero files modified on/after 2026-09-23 - untouched. Shadow worktree: fresh mtimes are the shadow cycle's own dashboard lane (root commit eb6e162b 'dashboard rebuilt... and restarted'), no CHR3F writes. Gateway worktree: fresh files are the gateway's own worker runtime (logs/raw/snapshot/heartbeat), not CHR3F. S1 remains SEALED_UNTOUCHED per registry with no contrary evidence."
+  },
+  {
+   "id": "c19_no_credentials",
+   "method": "Grep of all new ILLIQ lane files (chr3f_illiq_plugin.py, illiq_scored.py, illiq_equivalence_run.py, illiq_census_dryrun.py, fetch_funding_a.py, build_catalog_from_staging.py, stage_all_locked.py) for api key/secret/password/token/AKIA/Bearer patterns.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/illiq_scored.py",
+   "result": "PASS",
+   "detail": "No credential material in any new file. Network fetches (binance.vision checksum, fapi exchangeInfo in the builder) are unauthenticated public endpoints with a plain UA string."
+  },
+  {
+   "id": "c20_denominator_zero_illiq_cells_run",
+   "method": "Existence check for illiq_scored_status.json and illiq_scored_out/ in the cycle control dir.",
+   "evidence_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-historical-replication-3f-v1/integration/research/control/crypto_historical_replication_3f_v1/",
+   "result": "PASS",
+   "detail": "Both ABSENT: 0 ILLIQ scored cells have run. The A2 order of gates (equivalence-admission per A3, census, traversal evidence, A7 prelaunch BEFORE first scored cell) has been honored; this artifact lands before the first ILLIQ cell."
+  }
+ ],
+ "verdict": "AUTHORIZED",
+ "blocking_findings": [],
+ "non_blocking_findings": [
+  "N1 (c03): the equivalence verdict JSON's checks block shows got:null for all three surfaces - the comparison harness looked for top-level keys (net_return_sum_daily/position_pf/max_drawdown_fraction) while the payload stores them under portfolio_metrics with different names. The A3 numbers were drawn from the payload directly and are correct (A7 recomputed all of them), but the verdict JSON alone understates the comparison; future harness runs should compare the correct surface keys.",
+  "N2 (c09): the committed illiq_census_dryrun.py covers only Y2024P; the 4-window verdict's exact generating invocation is not preserved as a distinct version in git. Mitigated: A7 independently reran Y2021 and Y2024P with exact reproduction; Y2022/Y2023/Y2020P remain engine-authored on structure (consistent force-flat/quintile signatures).",
+  "N3 (c15/c02): the scored runs' tick table is the constant 1e-07 (measured-hypothesis from the baseline +2_ticks diagnostic disclosed in A3), NOT the lost original instrument tick table; this is part of the EQUIVALENCE_DATA_RESTAGE_UNPROVEN evidence tier and must travel with every ILLIQ report line.",
+  "N4 (c16): registry budget field stale at used=0/24 while 8 XSECT cells have already run; the post-sweep registry update must book 8 XSECT + 8 ILLIQ = 16/24.",
+  "N5 (c12/c15): the B funding bundle's requested window ends exactly at 2024-08-20T00:00Z (one settlement row at the boundary instant); the Y2024P fold window ends 2024-08-19T00:00Z and its last holding expires by then, so the forbidden band is not exercised - but the boundary row exists in the bytes and should be mentioned in the scored report's data-provenance note.",
+  "N6 (c15): run payloads carry the frozen identity whose window strings are the historical 2025-08-22..2026-08-21 (byte-frozen identity by design); actual evaluation windows are the fold labels in cell ids/paths/status rows. ILLIQ reports must continue stating the fold window explicitly per line to avoid window misreading.",
+  "N7 (c02): A2 gate (2) 'sanitized exact-arm dry-run' is satisfied for ILLIQ via the engine-authored shape-only census traversal on real staged bars plus the full frozen-engine traversal proven by the equivalence run, per A3's owner enumeration ('census, sanitized traversal evidence'); there is no XSECT-DR2-style synthetic-panel run for ILLIQ. Recorded as the owner's amended gate definition, disclosed in A3."
+ ]
+}

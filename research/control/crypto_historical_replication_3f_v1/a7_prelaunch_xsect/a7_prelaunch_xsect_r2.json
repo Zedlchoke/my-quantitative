@@ -1,0 +1,64 @@
+{
+ "schema": "chr3f_a7_prelaunch@1",
+ "round": 2,
+ "audit_utc": "2026-09-23T21:14:56Z",
+ "head_sha": "232b47330c56dcbfc7186fe3cf8e9bab1390ce72",
+ "scope": "Delta audit (r2). Responds to r1 REFUSED blocking finding B1 (funding data plane incompatible with frozen loader). Recomputed from bytes and git; the stored shape verdict was independently reproduced, not trusted. Spot-rechecked r1 identity shas and denominators at the moved head; no full r1 archaeology redone.",
+ "worktree_head_sha": "98fad8b4bd4b5dcc795c23cdd9fa157b3b11e6b7 (integration branch orca/crypto-historical-replication-3f-v1-integration; the A7-r1 remediation commit)",
+ "checks": [
+  {
+   "id": "r2_1_remediation_bundles",
+   "method": "For all 8 XSECT symbols (ETHUSDT SOLUSDT BNBUSDT XRPUSDT DOGEUSDT LINKUSDT ADAUSDT BTCUSDT): parsed funding_data_scan/scan_2026/<SYM>/funding.json, checked presence of requested_start_ms/requested_end_ms, equality with staging/funding/<SYM>_funding.json 'window' fields, and byte-exact row equality (JSON-structure equality AND sha256 of canonical serialization of the rows array) plus membership of every row fundingTime in [requested_start_ms, requested_end_ms].",
+   "evidence_path": "research/control/crypto_historical_replication_3f_v1/funding_data_scan/scan_2026/{8 SYMS}/funding.json vs staging/funding/{SYM}_funding.json",
+   "result": "PASS",
+   "detail": "All 8 bundles: keys {captured_at, requested_end_ms, requested_start_ms, rows, symbol}; requested_start_ms=1593561600000, requested_end_ms=1724112000000 == staging window [1593561600000, 1724112000000] exactly; rows byte-equal to staging (structure-equal AND identical canonical-serialization sha256) with counts ETHUSDT 4534, SOLUSDT 4385, BNBUSDT 4534, XRPUSDT 4534, DOGEUSDT 4506, LINKUSDT 4534, ADAUSDT 4534, BTCUSDT 4534; every row fundingTime within window. Bundle mtimes Sep 24 04:06 +0700 (remediation wave); staging mtimes Sep 23 18:37-18:43 +0700 (untouched source). Extended beyond the 8: ALL 20 scan_2026 bundles verified with the same properties - the remediation record's 'all 20' claim matches bytes."
+  },
+  {
+   "id": "r2_2_frozen_loader_acceptance",
+   "method": "Re-read the frozen loader contract from bytes (recovered/v6_root/research/funding_pit.py: load_funding_bundle requires exactly {requested_start_ms, requested_end_ms, rows}, raises ValueError otherwise), then ran it myself: sys.path.insert(recovered/v6_root); from research.funding_pit import load_funding_bundle; loaded all 8 bundles; asserted rows>0 and first/last fundingTime within [requested_start_ms, requested_end_ms].",
+   "evidence_path": "recovered/v6_root/research/funding_pit.py (sha256 36d53eb67409cbd4919b880ed9c16b157989659f1eb3925eeaeeb70a93e072f8)",
+   "result": "PASS",
+   "detail": "All 8 loads succeeded with zero exceptions; row counts 4534/4385/4534/4534/4506/4534/4534/4534 (order above); first fundingTime per symbol 1593561600002 (ETH/BNB/XRP/LINK/ADA/BTC), 1600012800004 (SOL), 1594368000001 (DOGE); last 1724112000000 for all; every first/last within [1593561600000, 1724112000000]. The r1 blocking failure mode (ValueError 'missing audit metadata: [requested_end_ms, requested_start_ms]') is gone on the real data path. Loader file is byte-identical to root git HEAD research/funding_pit.py (sha256 36d53eb6... both sides)."
+  },
+  {
+   "id": "r2_3_realpath_shape_driver",
+   "method": "Read chr3f_xsect_realpath_shape.py and verified its kernel call against the true frozen signature (research/funding_carry.py: keyword-only signal_cutoff_ns, lookback_days=7 default, reverse, funding_bundles_dir, traded_symbols, target_gross=0.80). Read stored xsect_realpath_shape_verdict.json. Then re-executed the driver's exact computation myself inline (identical SCAN path, 7-symbol traded set, lookback 7, reverse False, target_gross 0.80, daily stamps cur<b_ms, same digest recipe) writing only to stdout, and compared every fold statistic against the stored verdict. Code inspection confirmed shape-only (no PnL/orders/equity anywhere in the driver).",
+   "evidence_path": "research/control/crypto_historical_replication_3f_v1/{chr3f_xsect_realpath_shape.py, xsect_realpath_shape_verdict.json}; recovered/v6_root/research/funding_carry.py (sha256 848e0031dad8347e831a26f51cdafdac2565dc7b17afa393698777e418427ba2)",
+   "result": "PASS",
+   "detail": "Signature keywords match the frozen kernel exactly. Stored verdict: Y2021 stamps 362 skips 0 digests 124; Y2022 363/0/96; Y2023 364/0/128; Y2020P 88/0/38; verdict PASS. My independent re-run reproduced every number exactly (same stamps, 0 skips everywhere, identical distinct-digest counts 124/96/128/38, verdict PASS). 0 skips at every daily stamp means the frozen kernel returned status OK - not SKIP_INCOMPLETE/funding_panel_incomplete - from the regenerated bundles on the real data path; >1 distinct weight digests per fold proves non-constant weights. traded_symbols = 7 names matches plan section 2 XSECT universe (ETH,SOL,BNB,XRP,DOGE,LINK,ADA; 'BTC benchmark only' - the kernel takes no benchmark parameter, so BTCUSDT's presence in the bundle set is data-plane hygiene, not a kernel input)."
+  },
+  {
+   "id": "r2_4_remediation_record",
+   "method": "Read xsect_a7r1_remediation.json and tested each claim against recomputed bytes.",
+   "evidence_path": "research/control/crypto_historical_replication_3f_v1/xsect_a7r1_remediation.json",
+   "result": "PASS",
+   "detail": "Claim 1 ('regenerated all 20 scan_2026 bundles with requested_start_ms/end_ms from staged window stamps + rows verbatim'): verified 20/20 bundles carry both keys, windows equal staging, rows equal staging (r2_1 extended sweep). Claim 2 (real-path shape driver, true signature, 0 skips all 4 folds, non-constant weights, digest counts Y2022 96 / Y2023 128 / Y2020P 38, shape-only): all match my re-run and code inspection. Claim 3 (DR2 synthetic panel bypassed the funding path, so the shape driver closes exactly that gap): consistent with r1's own finding (r1 check 5). Measured_utc ~21:06Z, just before the remediation commit 98fad8b4 (21:07:26 +0700 offset-consistent)."
+  },
+  {
+   "id": "r2_5_no_regression",
+   "method": "Root git log -6 with per-commit file stats; delta since r1 head d7c9d2d3 examined individually; identity sha spot-checks re-run at current HEAD (frozen surfaces diff closure fbd2e9d3..HEAD, recovered-copy shas vs root git, candidate.yaml/status.yaml commit pinning, identity_recovery.json pin, portfolio_runner sha vs r1 pin); registry budget row; filesystem sweep for scored artifacts under chr3f_xsect_run, staging, root results; events-ledger scan; researchctl locks inspect.",
+   "evidence_path": "root repo @ 232b4733; plans/CYCLE_REGISTRY.json; chr3f_xsect_run/results/; researchctl locks inspect",
+   "result": "PASS",
+   "detail": "(a) Only commit since r1's recorded head d7c9d2d3 is 232b4733 (2026-09-24 04:03 +0700) touching ONLY plans/{ACTIVE_CYCLES.json, CYCLE_REGISTRY.json, CYCLE_REGISTRY.events.jsonl} - another cycle's (EURUSD-RANGEEXP-SCORED-V1) registry row; disclosed control-plane. All 6 root commits in window are registry/plan/control-plane. Worktree remediation commit 98fad8b4 touches exactly 3 files: chr3f_xsect_realpath_shape.py, xsect_a7r1_remediation.json, xsect_realpath_shape_verdict.json. (b) Identity spot-checks at current HEAD all reproduce r1: git diff fbd2e9d3..HEAD -- research/{funding_carry,matrix_runner,funding_pit}.py EMPTY; recovered copies byte-identical to root git (funding_pit 36d53eb6..., funding_carry 848e0031..., matrix_runner 829dd517...); candidate.yaml zero commits since closure; status.yaml last change exactly 5b1415e7; identity_recovery.json @41f4f227 sha 845c3e87... match; recovered/v6_root/research/portfolio_runner.py sha 4711257f3cd6d00311de4f50804731a7033fd700bc2613e07c934f3f069dc323 == r1 N1 pin. (c) Registry CHR3F row: budget used=0 max=24; s1 SEALED_UNTOUCHED; go REGISTERED_NOT_CONSUMED. (d) No scored records: chr3f_xsect_run/results/registry contains only chr3f_dryrun.jsonl (1 row, REJECTED, DR2 dry-run); results/matrix only chr3f_dryrun + data_contract_v2; no chr3f_scored path anywhere in the worktree (only find hit was the launcher script itself); staging/ has zero registry/scored files; root results/ untouched since 2026-09-07 legacy; events ledger: 58 cycle entries, all REGISTRY_SAVED/CYCLE_REGISTERED/CYCLE_UPDATED, none scored. (e) locks inspect: history = 3 rows, all CRYPTO-HISTORICAL-REPLICATION-3F-V1 role data-staging stage_all_locked.py, all FINISHED; flock free. Verdict CONTROL_STATE_DRIFT is a stale RUNNING row (pid 77456 dead, same stage_all_locked command) - registry hygiene, no live foreign heavy job."
+  },
+  {
+   "id": "r2_6_scored_invocation_conformance",
+   "method": "Read chr3f_xsect_scored.py in full; compared against plan sections 3 and 6 (windows table, A1 fold law, 2-arm law, budget cap), r1's recorded packet description, and the regenerated bundle state; verified the launcher's own A7-r2 gate and launch-time symlink staging logic.",
+   "evidence_path": "research/control/crypto_historical_replication_3f_v1/chr3f_xsect_scored.py; plans/PLAN_crypto_historical_replication_3f_v1.md sections 3/6; a7_prelaunch_xsect/a7_prelaunch_xsect_r2.json (this artifact)",
+   "result": "PASS",
+   "detail": "Windows exactly per plan section 3: Y2021 2021-01-01T00:00Z..2022-01-01T00:00Z, Y2022, Y2023, Y2020P 2020-10-05T00:00Z..2021-01-01T00:00Z (fold census PASS pre-launch, so Y2020P is the lawful fold-4). 2 arms ANCHOR + INV (--reverse); --folds 3; --lookback-days 7; 8 cells = 4 folds x 2 arms within the A2 XSECT share of the 24 budget (used 0). Registry/output cycle-local: results/registry/chr3f_scored.jsonl, results/chr3f_scored under chr3f_xsect_run; heavy_lock acquired per cell; status rows namespace REPLICATION_NOT_PROSPECTIVE. The launcher refuses to run unless THIS artifact's verdict is AUTHORIZED, then stages the two symlinks itself (funding_data -> ../funding_data_scan - whose scan_2026 bundles now pass the frozen loader per r2_1/r2_2 - and catalog_live_crypto -> ../catalog_live_crypto_b) and hard-exits if the funding link is broken. Runner invoked directly from recovered/v6_root/research/portfolio_runner.py (sha 4711257f... == the DR2-validated bytes r1 pinned). Invocation is unchanged from the r1 packet on every quoted element; the only delta is that the funding bundles the cells will consume are now the regenerated, loader-compatible ones."
+  }
+ ],
+ "verdict": "AUTHORIZED",
+ "blocking_findings": [],
+ "non_blocking_findings": [
+  "N1 (carried from r1, structurally weakened): the launch cwd chr3f_xsect_run still does not pre-contain the symlinks; unlike r1 this is now self-healing - the launcher's ensure_links() creates both symlinks at launch and hard-exits if funding_data/scan_2026 is missing. Runner is invoked directly from recovered/v6_root (no copy to keep byte-identical).",
+  "N2: the CHR3F registry row lags the remediation commit (row head 21e4f1be / updated 20:45:45Z vs remediation commit 98fad8b4 at 21:07:26 +0700). Hygiene only - the authority fields (budget 0/24, s1 SEALED_UNTOUCHED, go REGISTERED_NOT_CONSUMED) are intact, and the launcher's launch gate is this r2 artifact, not the registry head field.",
+  "N3: heavy-lock registry holds one stale RUNNING row (pid 77456, dead; stage_all_locked.py) yielding locks-inspect verdict CONTROL_STATE_DRIFT; flock_state free. Per round-2 discipline it must be reclaimed only through the sanctioned path, never by inspection; no live conflict exists at audit time.",
+  "N4: the shape driver iterates daily stamps starting at the first Monday in each fold (e.g. Y2021 from 2021-01-04) while the scored windows start 2021-01-01; the first 1-3 daily stamps per fold are therefore not shape-proven by the driver. Covered by warmup-from-pre-window data plus the pre-launch fold census (0/88 stamps missing any symbol's 7d funding); cosmetic coverage nuance, not a data-plane gap.",
+  "N5: r1's remediation_path sketched a real-data-path dry-run arm with PnL surfaces; the controller delivered the shape-only driver per the r2 dispatch packet (shape-only, no PnL). Kernel status OK at every stamp necessarily implies >=1 settled funding rate inside every 7d lookback window, so the non-vacuity intent of the r1 ask is met within the narrower scope.",
+  "N6: dead variable BENCH=\"BTCUSDT\" in the shape driver (never used; the frozen kernel takes no benchmark parameter). Cosmetic."
+ ],
+ "not_run": [],
+ "remediation_verified": "r1 B1 closed on the real data path: all 20 scan_2026 bundles regenerated with the frozen loader's required audit metadata, rows byte-equal to staging; frozen load_funding_bundle accepts all 8 XSECT bundles; the frozen kernel computes non-constant target weights with 0 skips at all 1177 daily stamps across the 4 primary folds; denominators (0/24) and boundaries unchanged since r1."
+}

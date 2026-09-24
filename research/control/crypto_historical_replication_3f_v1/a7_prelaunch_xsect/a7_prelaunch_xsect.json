@@ -1,0 +1,77 @@
+{
+ "schema": "chr3f_a7_prelaunch@1",
+ "audit_utc": "2026-09-23T21:05:00Z",
+ "head_sha": "d7c9d2d345b3b4e8b54bd1ccb6d79ae3f3d78b19",
+ "scope": "Gate 3/3 independent prelaunch audit for XSECT-FUND-CARRY-7D scored cells under amendment A2. Audit-only; every verdict recomputed from bytes and git, no implementer verdict file trusted.",
+ "checks": [
+  {
+   "id": "1_identity_provenance_gate",
+   "method": "Independently re-ran every condition of xsect_provenance_check.py logic via git + shasum + pytest (did not execute the checker or read its verdict as evidence).",
+   "evidence_path": "research/control/crypto_historical_replication_3f_v1/xsect_provenance_check.py (logic only); git root repo @ d7c9d2d3",
+   "result": "PASS",
+   "detail": "(1) git diff fbd2e9d36b5349489ef29deec4cdeb8bca2b89ad..HEAD -- research/funding_carry.py research/matrix_runner.py EMPTY at HEAD d7c9d2d3 (also verified at intermediate heads e1f3dce5, f9e6a7b0). (2a) candidate.yaml: zero commits in closure..HEAD; last change 574214a1 (2026-08-25, ancestor of closure). (2b) status.yaml: last change exactly 5b1415e73fca74b8499c25cc8fc199fc8dd4f2ab, itself a descendant of closure, zero commits since. (3) git show 41f4f227:research/control/prospective_shadow_v1/identity/identity_recovery.json | sha256 = 845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8 (match; 41f4f227 lives on branch orca/prospective-shadow-v1-integration, pin is branch-local by design). (4) frozen tests: tests/test_funding_carry.py 5/5 pass in integration worktree; additionally tests/test_matrix_runner.py 19/19 pass. (5) executor disclosure present in plan section 5 (portfolio_runner +815/-78 disclosed permanent)."
+  },
+  {
+   "id": "2_disclosed_copy_integrity",
+   "method": "Byte diff disclosed candidate.yaml vs chr3f_xsect_run dry-run copy; sha256 vs DR2 launch_manifest pin.",
+   "evidence_path": "research/hypotheses/H-XSECT-FUNDING-CARRY-v1/candidate.yaml vs .../chr3f_xsect_run/research/hypotheses/H-XSECT-FUNDING-CARRY-v1/candidate.yaml",
+   "result": "PASS",
+   "detail": "diff shows exactly one hunk: line 39 locked_at_utc null -> \"2026-09-23T10:40:00Z\" (the permitted CHR3F A2 stamp). sha256 of copy = a3ef0405bd3170b4beaa03e5d1e8c30c5e7f4e97b833b003ed53a3e6303cd45d, equal to launch_manifest.candidate_spec_sha256 and to the DR2 frozen/candidate.yaml copy. DISCLOSED_COPY_NOTE.txt in the copy accurately describes the single-field change. No other diff = no REFUSED evidence."
+  },
+  {
+   "id": "3_dry_run_evidence",
+   "method": "Re-ran closure V6P golden suite; inspected DR2 artifacts, manifest, run.log, registry row; grepped for dry-run metric citations; verified registry locality.",
+   "evidence_path": ".../chr3f_xsect_run/results/chr3f_dryrun/CHR3F-XSECT-DRYRUN-DR2/",
+   "result": "PASS",
+   "detail": "(a) V6P golden suite on recovered v6_root: tests/test_v6p_synthetic_golden.py + test_v6p_accounting.py + test_v6p_gates_stress.py = 19 passed (expected 19). (b) DR2 launch_manifest.yaml argv carries --synthetic-panel .../chr3f_dr2_panel.json; panel bars are constant synthetic prices; run.log states 'SYNTHETIC PANEL engine active (golden validation only)'; registry row namespace 'CHR3F-XSECT-DRYRUN-DR2 (synthetic panel; not scored)'; verdict REJECTED/DIAGNOSTIC_ONLY. Canonical metrics (-143.26 PnL, 99856.74 ending equity, 0.6002 gross) appear NOWHERE outside DR2 artifacts (grep over cycle dir + plans + root registry: zero hits) - not presented as real evidence. (c) Registry is cycle-local: only chr3f_xsect_run/results/registry/chr3f_dryrun.jsonl exists; root results/ contains only 2026-09-07 legacy files, no registry/ dir, no CHR3F rows. Note: dirty_worktree_at_launch=true (untracked control files in integration worktree) and DR2 ran from commit 007d9005 on the integration branch - both disclosed/diagnostic-only."
+  },
+  {
+   "id": "4_data_authority_spot_check",
+   "method": "sha256 of 3 staged zips vs .CHECKSUM vs live data.binance.vision CHECKSUM; exact JSON row equality scan vs staging for 3 symbols; catalog report rows vs unzip line counts vs on-disk parquet counts for 2 symbols.",
+   "evidence_path": "staging/klines/{ETHUSDT,BNBUSDT,DOGEUSDT}/; funding_data_scan/scan_2026/{ETHUSDT,BNBUSDT,DOGEUSDT}/funding.json; catalog_live_crypto_b_build_report.json",
+   "result": "PASS",
+   "detail": "Klines: ETHUSDT-15m-2021-06 (913546ade2f9...), BNBUSDT-15m-2022-03 (de259ef83431...), DOGEUSDT-15m-2020-11 (7c21ab925079...) - local sha256 == sibling .CHECKSUM == fetched https://data.binance.vision/data/futures/um/monthly/klines/<SYM>/15m/<file>.CHECKSUM, all three exact. Funding: scan_2026 rows == staging rows EXACTLY for ETHUSDT (4534), BNBUSDT (4534), DOGEUSDT (4506). Catalog: initial naive count showed -24/-23 row gaps; root-caused to MY OWN lines-minus-header heuristic - the 2020/2021 zips have NO header line (24 ETH months, 23 BNB months, exactly the gap); raw data rows == report rows_written == on-disk parquet rows for ETHUSDT 163,680 and BNBUSDT 159,808. Builder verified correct; no sampling widened."
+  },
+  {
+   "id": "5_scored_invocation_conformance",
+   "method": "Compared packeted command against plan sections 3/6, amendment A2, and ran the exact frozen code paths (funding_pit.load_funding_bundle, funding_carry.compute_target_weights_funding_carry, portfolio_engine._load_funding_settlements) against the packeted funding directory.",
+   "evidence_path": "plans/PLAN_crypto_historical_replication_3f_v1.md sections 3/5/6; research/control/CRYPTO-HISTORICAL-REPLICATION-3F-V1/bootstrap/amendment_a2_launch_authority.json; recovered/v6_root/research/{funding_pit,funding_carry,portfolio_engine}.py; funding_data_scan/scan_2026/",
+   "result": "FAIL",
+   "detail": "Paper conformance is good: windows match section 3 exactly (Y2021 2021-01-01..2022-01-01, Y2022, Y2023, Y2020P 2020-10-05 XSECT start; fold census PASS recorded pre-launch, fold-4=Y2020P); 2 arms anchor + --reverse; --folds 3; lookback 7 per frozen family; XSECT-only <=8 cells = 4 folds x 2 arms per A2; registry/output cycle-local (results/registry/chr3f_scored.jsonl, results/chr3f_scored); stresses + x2.0 diagnostic inside cell; frozen kernel research/funding_carry.py and matrix_runner.py byte-identical to root git; protocol gates .py files byte-identical root-vs-recovered (only __pycache__ differs); --signal-family funding_carry routes to the frozen kernel. BLOCKING DEFECT: the packeted funding data plane is incompatible with the frozen code. funding_data/scan_2026 -> ../funding_data_scan/scan_2026 serves <SYM>/funding.json with keys {captured_at, symbol, rows}; the frozen loader research.funding_pit.load_funding_bundle requires {requested_start_ms, requested_end_ms, rows} and raises ValueError otherwise. EMPIRICALLY REPRODUCED with the exact recovered bytes: (a) load_funding_bundle(scan_dir,'ETHUSDT') raises 'missing audit metadata: [requested_end_ms, requested_start_ms]'; (b) the frozen kernel therefore returns SKIP_INCOMPLETE/funding_panel_incomplete for the WHOLE cross-section at every rebalance -> every scored cell would be vacuous; (c) research.portfolio_engine._load_funding_settlements raises the same ValueError UNCAUGHT at engine init -> cell abort. Either outcome invalidates the scored cells. staging/funding/<SYM>_funding.json {symbol,window,n,rows} is equally incompatible. DR2 could not catch this because the synthetic-panel engine bypasses the funding-bundle path entirely - the real funding data path has never been exercised end-to-end. No disclosed converter or regeneration step exists anywhere in the cycle dir or plan. As packeted, the scored invocation cannot produce valid scored evidence; launching it would crash cells or (worse) improvise an undisclosed data-plane mutation at launch time. Also noted: chr3f_xsect_run does not yet contain research/portfolio_runner.py or the two symlinks (launch staging step, non-blocking by itself)."
+  },
+  {
+   "id": "6_boundaries",
+   "method": "git log/diff of all CHR3F-attributed root commits; root results/ inspection; S1 creation scan; shadow/gateway worktree mtime + git-status sweep; script write-path audit; credential grep.",
+   "evidence_path": "root repo git log; research/control/CRYPTO-HISTORICAL-REPLICATION-3F-V1/; .worktrees/{prospective-shadow-v1,live-data-gateway-v1}",
+   "result": "PASS",
+   "detail": "Root CHR3F commits (bd384989, 07785b1e-era registry rows, 42878fdf, 6198bd4b, a10befb8, 5443414f, 8613087f, 486ed162, 0bf8a976, 007d9005, 712ce094, 21e4f1be, e1f3dce5) touch ONLY plans/{ACTIVE_CYCLES.json,CYCLE_REGISTRY.json,CYCLE_REGISTRY.events.jsonl}, plans/PLAN_crypto_historical_replication_3f_v1.md, and research/control/CRYPTO-HISTORICAL-REPLICATION-3F-V1/bootstrap/{incidents,amendments} - all disclosed control-plane. Root plans tree clean at audit time (in-flight diff emptied after concurrent commit f9e6a7b0). Root results/: only 2026-09-07 legacy files, no CHR3F writes. S1: no S1 dirs/files created anywhere (find -newermt 2026-09-20 empty); registry s1=SEALED_UNTOUCHED. Shadow worktree: modified files are shadow's own dashboard-lane source+PyInstaller build artifacts, mtimes 2026-09-23 01:17-01:23Z (+0700 08:17) PRECEDING the CHR3F staging wave (INC-1 09:05Z+) - not CHR3F-attributable; gateway worktree: only its own daemon runtime outputs (heartbeat, raw captures, events) - expected runtime behavior, no CHR3F writes; INC-1 fallout check additionally measured gateway HEALTHY / shadow last_error null. CHR3F scripts (stage_all_locked.py, chr3f_xsect_dryrun.py, build_catalog_from_staging.py) write only under the cycle control dir. Credential grep (api key/secret/password patterns) over cycle + root control dirs: clean."
+  },
+  {
+   "id": "7_incidents_inc1_inc2",
+   "method": "Read both incident records; assessed disclosure completeness and XSECT data-path residue.",
+   "evidence_path": "research/control/CRYPTO-HISTORICAL-REPLICATION-3F-V1/bootstrap/incident_inc1_418.md; incident_inc2_basis_truncation.md",
+   "result": "PASS",
+   "detail": "INC-1 (418 bans): complete root-cause chain (shared-egress-IP escalation + unhandled 200-non-list class + diagnostics-lost capture bug), measured fallout check (gateway HEALTHY, shadow last_error null), fixes commit-pinned (0c9495bd), zero scored exposure. INC-2 (B_basis short-page truncation): root cause in CHR3F's own phase-B runner (len<500 break), endpoint full-depth proven by direct probes, frozen script proven unaffected (A_basis 70,272/symbol zero-gap PASS), 33 artifacts quarantined to staging/inc2_quarantine/, 19 BASISLV symbols restaging. Critically for this audit: INC-2 quarantine covers BASIS data only; XSECT consumes klines+funding, both complete and checksum-verified 40/40 pre-INC-2, and the XSECT fold census independently re-verified 0/88 stamps missing any symbol's 7d funding across all folds incl. Y2020P. No residue invalidates the XSECT path."
+  },
+  {
+   "id": "8_denominators",
+   "method": "Registry budget read; scored-artifact filesystem sweep; events-ledger scan.",
+   "evidence_path": "plans/CYCLE_REGISTRY.json cycle CRYPTO-HISTORICAL-REPLICATION-3F-V1; plans/CYCLE_REGISTRY.events.jsonl; chr3f_xsect_run/results/registry/",
+   "result": "PASS",
+   "detail": "Registry budget used=0, max=24 (0/24). No chr3f_scored.jsonl or results/chr3f_scored anywhere (filesystem sweep over worktree + root results). Only dry-run registry row exists (namespace declares 'not scored'). No scored records in any CHR3F cycle namespace in the events ledger. Dry-run and equivalence runs are zero-denominator per plan section 6 - confirmed: denominator untouched."
+  }
+ ],
+ "verdict": "REFUSED",
+ "blocking_findings": [
+  "B1 (check 5, scored-invocation conformance): the packeted funding data plane cannot feed the frozen code. funding_data/scan_2026 bundles lack the frozen-mandated audit metadata keys requested_start_ms/requested_end_ms; with the exact recovered bytes, load_funding_bundle raises, the frozen kernel returns SKIP_INCOMPLETE for every cross-section (vacuous cells), and portfolio_engine._load_funding_settlements raises uncaught at engine init (cell abort). DR2's synthetic panel bypassed the funding path, so gate 2 could not see this. The scored launch as packeted is refused: regenerate/re-stage funding bundles in the frozen download_funding.write_funding_history format (verified against load_funding_bundle's required keys and a real-data-path dry-run) and disclose the data-plane change; the changed surface requires fresh A7 review before launch. Budget 0/24 remains intact; no scored cell has run."
+ ],
+ "non_blocking_findings": [
+  "N1: chr3f_xsect_run does not yet contain research/portfolio_runner.py, catalog_live_crypto symlink, or funding_data/scan_2026 symlink - the launch cwd must be staged exactly as packeted, and the runner copy must be byte-identical to recovered/v6_root/research/portfolio_runner.py (sha256 4711257f3cd6..., the copy DR2 validated).",
+  "N2: root main HEAD moved during the audit (e1f3dce5 -> f9e6a7b0 -> d7c9d2d3) from concurrent control-plane commits of other cycles (BTC-H4-BAND-RISK-V1 close, EURUSD-RANGEEXP registration). Identity range checks re-verified PASS at each observed HEAD; recorded head_sha is the final measurement.",
+  "N3: the dry-run hypothesis copy contains candidate.yaml + DISCLOSED_COPY_NOTE.txt but no status.yaml; the runner falls back to candidate.yaml locked_at_utc (run.log: 'lock evidence source=candidate.yaml'). Behavior disclosed and deterministic, but the launch packet should state it.",
+  "N4: DR2 dirty_worktree_at_launch=true (untracked cycle control files in the integration worktree); diagnostic-only run, disclosed in the manifest.",
+  "N5: shadow worktree shows fresh dashboard-lane source/build mtimes (2026-09-23 01:17-01:23Z) - attributed to the shadow's own dashboard lane (predates CHR3F staging activity); no CHR3F writes found on shadow/gateway surfaces."
+ ],
+ "not_run": [],
+ "remediation_path": "Regenerate scan_2026 (or a successor dir) via the frozen research/download_funding.py write path so each <SYM>/funding.json carries requested_start_ms/requested_end_ms/rows; re-verify row equality vs staging/funding; run ONE real-data-path dry-run arm (no --synthetic-panel) proving non-vacuous signal (status OK, non-zero settlements) and zero denominator delta; re-dispatch A7 on the changed surface."
+}
