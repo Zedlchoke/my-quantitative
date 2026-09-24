@@ -47,3 +47,9 @@ the frozen F0/F1/F2 four-month pattern. +2 cells (anchor/INV) → ILLIQ total
 is its lawful re-execution, results labeled EQUIVALENCE_DATA_RESTAGE_UNPROVEN
 (+ UNIVERSE_LISTED_AT_WINDOW_START: all 20 symbols listed by 2024-04-02, so
 the listed-at-start universe = full universe for this fold — no divergence).
+
+## A5-funded DIAG (post A7-r5 B2 remediation, disclosed to owner 2026-09-24)
+S0R-ANCHOR re-run with funding wired (scan_2026_a): net_return_sum −0.5631,
+position_pf 0.7821, max_drawdown 0.6012, n_positions 336. Funding contributed
+≈ +0.026 (vs the funding-free −0.5893 run). Loss story unchanged; both DIAG
+versions preserved (illiq_diag/S0R-ANCHOR-A5{,-funded}).
