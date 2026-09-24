@@ -105,7 +105,11 @@ def caps_from_config(family_id: str, config: Mapping[str, Any]) -> FamilyRiskCap
                 else (
                     get_num("adapter_weight_cap_max")
                     if "adapter_weight_cap_max" in config
-                    else None
+                    else (
+                        get_num("max_abs_weight")
+                        if "max_abs_weight" in config
+                        else None
+                    )
                 )
             )
         ),

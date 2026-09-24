@@ -46,6 +46,22 @@ from research.shadow_v1.families import (
     XsectFundCarryAdapter,
 )
 
+#: The VIRTUAL smoke drives the three FOUNDING families end to end.
+#: BTC4H-BANDRIDGE (sleeve 4, mounted 2026-09-24) is deliberately NOT in
+#: this rehearsal: its single-symbol gross-1.0 long-only book cannot fill
+#: under any positive cost book (sizing at ref price vs the opening-buy
+#: cash guard at fill price+fee), so its honest executor outcome is
+#: UNAVAILABLE_FAIL_CLOSED with an empty book — which would trip this
+#: smoke's "no empty book" invariant. That behavior is pinned exactly,
+#: from both directions, in test_shv1_executor.py instead. The subset
+#: assert below keeps any future mount from silently joining the smoke.
+SMOKE_FAMILIES = (
+    IlliqAmihudAdapter.FAMILY_ID,
+    BasislvPremfadeAdapter.FAMILY_ID,
+    XsectFundCarryAdapter.FAMILY_ID,
+)
+assert set(SMOKE_FAMILIES) <= set(FAMILY_REGISTRY)
+
 WORKTREE_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = WORKTREE_ROOT / "research" / "shadow_v1"
 
@@ -244,7 +260,7 @@ class SmokeExecutor:
         self.sleeves = {}
         self.caps = {}
         self.last_decision = {}
-        for family_id, cls in FAMILY_REGISTRY.items():
+        for family_id, cls in ((fid, FAMILY_REGISTRY[fid]) for fid in SMOKE_FAMILIES):
             engine = ILLIQ_ENGINE if cls is IlliqAmihudAdapter else {}
             entry = next(
                 e
@@ -542,7 +558,7 @@ class SmokeExecutor:
 def smoke(tmp_path):
     executor = SmokeExecutor(str(tmp_path))
     results = {}
-    for family_id in FAMILY_REGISTRY:
+    for family_id in SMOKE_FAMILIES:
         results[family_id] = scheduler.run_once(
             family_id,
             END,
@@ -593,13 +609,13 @@ def test_smoke_second_run_zero_new_events_byte_identical_ledgers(smoke):
     executor, results, tmp_path = smoke
     digests_before = {
         family_id: ledger.ledger_digest(ledger.ledger_path(str(tmp_path), family_id))
-        for family_id in FAMILY_REGISTRY
+        for family_id in SMOKE_FAMILIES
     }
     raw_before = {
         family_id: ledger.read_raw_bytes(ledger.ledger_path(str(tmp_path), family_id))
-        for family_id in FAMILY_REGISTRY
+        for family_id in SMOKE_FAMILIES
     }
-    for family_id in FAMILY_REGISTRY:
+    for family_id in SMOKE_FAMILIES:
         rerun = scheduler.run_once(
             family_id, END, executor, str(tmp_path), from_utc=START, to_utc=END
         )

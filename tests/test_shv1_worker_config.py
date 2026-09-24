@@ -2,14 +2,14 @@
 
 Contract under test (tests must stay offline: the synthetic feed is
 never called because a future SHADOW_START_UTC leaves nothing due):
-- build_executors constructs all THREE production ForwardExecutors
+- build_executors constructs all FOUR production ForwardExecutors
   against the REAL identity manifest (identity pinning active through
   every adapter's validate_config);
 - the per-symbol tick mapping resolves from the ARCHIVED exchangeInfo
   (sha256 verified first, fail closed on mismatch); an unknown symbol
   falls back to tick_size_default = 0.10 (BTCUSDT tick, conservative);
-- the frozen scheduler constants: two weekly-Monday-00Z families and
-  one daily-00Z family;
+- the frozen scheduler constants: two weekly-Monday-00Z families, one
+  daily-00Z family and one H4-00Z family (BTC4H-BANDRIDGE);
 - --once with a synthetic feed + a FUTURE shadow-start performs exactly
   one loop, writes a heartbeat with every required key, and writes ZERO
   prospective ledger events (nothing can be due yet);
@@ -30,6 +30,7 @@ from research.shadow_v1 import (
     start_guard,
 )
 from research.shadow_v1.families import (
+    FAMILY_BANDRIDGE,
     FAMILY_CARRY,
     FAMILY_ILLIQ,
     FAMILY_PREMFADE,
@@ -105,11 +106,13 @@ def _archive_ticks_verbatim() -> dict:
 # ----------------------------------------------------------------------
 # executor construction against the REAL identity manifest
 # ----------------------------------------------------------------------
-def test_build_executors_constructs_all_three_families(tmp_path):
+def test_build_executors_constructs_all_mounted_families(tmp_path):
     executors = shadow_worker.build_executors(
         str(tmp_path), _future_shadow_start(), feed=_ForbiddenFeed()
     )
-    assert tuple(executors.keys()) == (FAMILY_ILLIQ, FAMILY_PREMFADE, FAMILY_CARRY)
+    assert tuple(executors.keys()) == (
+        FAMILY_ILLIQ, FAMILY_PREMFADE, FAMILY_CARRY, FAMILY_BANDRIDGE,
+    )
     for family_id, executor in executors.items():
         assert executor.family_id == family_id
         assert executor.arm_id == family_id
@@ -158,6 +161,21 @@ def test_build_executors_constructs_all_three_families(tmp_path):
     assert executors[FAMILY_CARRY].fill_symbols == list(
         shadow_worker.CARRY_TRADED_UNIVERSE
     )
+    # sleeve 4 (BTC4H-BANDRIDGE, mounted 2026-09-24): long-only 1.0,
+    # no neutrality, 60d of 15m BTCUSDT bars behind the H4 clock
+    band_caps = executors[FAMILY_BANDRIDGE].caps.as_dict()
+    assert band_caps["target_gross"] == 1.0
+    assert band_caps["hard_gross_cap"] == 1.0
+    assert band_caps["hard_abs_net_cap"] == 1.0
+    assert band_caps["max_abs_weight"] == 1.0
+    assert band_caps.get("dollar_neutral") is not True
+    assert set(executors[FAMILY_BANDRIDGE].snapshot_spec) == {"bars"}
+    band_spec = executors[FAMILY_BANDRIDGE].snapshot_spec["bars"]
+    assert band_spec == {
+        "symbols": ["BTCUSDT"],
+        "interval": "15m",
+        "lookback_seconds": float(60 * 86400),
+    }
 
 
 def test_build_executors_refuses_prospective_without_shadow_start(tmp_path):
@@ -301,13 +319,14 @@ def test_default_feed_uses_paced_transport(tmp_path, monkeypatch):
 # ----------------------------------------------------------------------
 # frozen schedules
 # ----------------------------------------------------------------------
-def test_schedule_constants_two_weekly_one_daily(tmp_path):
+def test_schedule_constants_two_weekly_one_daily_one_h4(tmp_path):
     executors = shadow_worker.build_executors(
         str(tmp_path), _future_shadow_start(), feed=_ForbiddenFeed()
     )
     assert executors[FAMILY_ILLIQ].schedule == scheduler.SCHEDULE_WEEKLY_MONDAY_0000Z
     assert executors[FAMILY_PREMFADE].schedule == scheduler.SCHEDULE_WEEKLY_MONDAY_0000Z
     assert executors[FAMILY_CARRY].schedule == scheduler.SCHEDULE_DAILY_0000Z
+    assert executors[FAMILY_BANDRIDGE].schedule == scheduler.SCHEDULE_H4_0000Z
     # and they match the frozen scheduler map for every family
     for family_id, executor in executors.items():
         assert executor.schedule == scheduler.FAMILY_SCHEDULES[family_id]
