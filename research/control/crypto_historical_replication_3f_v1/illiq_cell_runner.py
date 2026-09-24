@@ -17,10 +17,11 @@ ap.add_argument("--window-end", required=True)
 ap.add_argument("--arm-id", required=True)
 ap.add_argument("--out", required=True)
 ap.add_argument("--catalog", required=True)
+ap.add_argument("--funding-scan", required=True)
 SYMS = ["1000PEPEUSDT","AAVEUSDT","ACEUSDT","ADAUSDT","AVAXUSDT","BCHUSDT","BNBUSDT",
         "BOMEUSDT","BTCUSDT","DOGEUSDT","ENAUSDT","ETHUSDT","LINKUSDT","NEARUSDT",
         "ONGUSDT","SOLUSDT","SUIUSDT","WLDUSDT","XRPUSDT","ZECUSDT"]
-SCAN = str(CD / "funding_data_scan/scan_2026")
+SCAN = a.funding_scan
 a = ap.parse_args()
 CATALOG = a.catalog
 st = datetime.fromisoformat(a.window_start.replace("Z", "+00:00"))
