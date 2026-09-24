@@ -70,11 +70,12 @@ class Chr3fIlliqPlugin(IlliqAmihudPlugin):
         return tuple(sorted(set(listed) | {self._benchmark}))
 
     def universe(self, stress: StressSpec) -> tuple[str, ...]:
-        # DIAG-2b: PIT-listed universe. Symbols not yet listed at the window
-        # start have no bars in-window, contribute no features, and can never
-        # enter a book — dropping them is provably book-identical (A7 r3
-        # verifies per-fold) and fixes the frozen context union, which would
-        # otherwise demand marks for unlisted names.
+        # A4 (outcome-exposed, owner-authorized): universe = listed at window
+        # start. NOT book-identical (A7 r3 F1: mid-window listings such as
+        # SUIUSDT/1000PEPEUSDT in Y2023 would take legs under the frozen
+        # universe and are excluded here — 6/53 stamps differ). Accepted as a
+        # declared identity consequence under amendment A4; every ILLIQ cell
+        # carries the EQUIVALENCE_DATA_RESTAGE_UNPROVEN label.
         frozen = super().universe(stress)
         w0 = self._window_start_iso[:7]
         y, m = int(w0[:4]), int(w0[5:7])

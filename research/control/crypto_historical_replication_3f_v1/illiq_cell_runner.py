@@ -24,7 +24,12 @@ CATALOG = str(CD / "catalog_live_crypto_b20")
 SCAN = str(CD / "funding_data_scan/scan_2026")
 st = datetime.fromisoformat(a.window_start.replace("Z", "+00:00"))
 pre = datetime.fromtimestamp(st.timestamp() - 125*86400, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-bars = {s: read_bars_15m(CATALOG, s, pre, a.window_end) for s in SYMS}
+# A4/F2: load 3 days PAST the window end so the terminal Monday stamp has a
+# covering bar (fold windows end exactly on a Monday stamp at the load
+# boundary; catalog month-zips contain the covering bars).
+from datetime import timedelta
+end_ext = (datetime.fromisoformat(a.window_end.replace("Z","+00:00")) + timedelta(days=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+bars = {s: read_bars_15m(CATALOG, s, pre, end_ext) for s in SYMS}
 settles = {}
 for s in SYMS:
     doc = json.loads((Path(SCAN) / s / "funding.json").read_text())
