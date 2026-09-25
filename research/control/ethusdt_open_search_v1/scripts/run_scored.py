@@ -173,8 +173,9 @@ def scored() -> int:
     data, engine = run_all()
     tier_table: dict = {}
     for rid, info in engine.items():
-        _, book, t = rid.split("|")
-        tier_table.setdefault(book, {})[float(t.strip("tier"))] = info
+        parts = rid.split("|")
+        book = "|".join(parts[1:-1])   # control books contain '|' in their names
+        tier_table.setdefault(book, {})[float(parts[-1].strip("tier"))] = info
     refs = {r: tier_table[r] for r in ("BASE_CASH", "BASE_ALWAYS_ON_LONG",
                                        "BASE_TREND_LF", "REF_SHORT_ALWAYS")}
     cells = {}
