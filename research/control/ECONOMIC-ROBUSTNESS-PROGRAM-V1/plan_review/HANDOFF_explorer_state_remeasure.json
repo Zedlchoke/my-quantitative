@@ -1,0 +1,47 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "erp1-explorer-remeasure",
+  "cycle_id": "ECONOMIC-ROBUSTNESS-PROGRAM-V1",
+  "role": "quant-explorer",
+  "lane": "state-remeasure",
+  "dispatch_sha": "7343dde57fe86b38d205b0bec5e8af92a4c4404d",
+  "actual_start_sha": "7343dde57fe86b38d205b0bec5e8af92a4c4404d",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/EXPLORER_state_remeasure_REPORT.md",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/HANDOFF_explorer_state_remeasure.json"
+  ],
+  "tests": [],
+  "authority_claims": [],
+  "known_limitations": [
+    "Win-rate / per-round-trip realized PnL not recomputable: shv1_event_v1 ledger schema has no per-fill realized_pnl (aggregate fee/slippage/funding + MTM equity only).",
+    "CARRY 'realized +3,936.27' OWNER_REPORT component is a different accounting basis and cannot be re-derived from decision-event bytes (no per-fill attribution).",
+    "Per-decision sigma for ILLIQ/BASISLV/FX still NOT_RUN (0-1 fill events each); power-analysis table (52-week window vs Sharpe thresholds) quoted from lane_portfolio_program REPORT.md, not re-estimated.",
+    "FX ~350 RT/yr prospective frequency is a holdout-derived estimate; not re-measurable from 2 fills.",
+    "CYCLE_REGISTRY.json heads not re-read in this lane; worktree/registry drift notes inherited from 2026-09-24 artifacts, not re-verified.",
+    "ILLIQ funding_cashflow=0.0 booked since 09-21 open: whether an 8h settlement has simply not been booked is not determinable from ledger bytes alone.",
+    "XAUUSD 9-intent replay rarity evidence remains commit-message + registry + tests only (no independent data artifact); inherited NOT_RUN from lane_fx_gold.",
+    "Read-only lane: no worker restart, no S1, no network, no scored-cell computation; ledger writes by live workers (pids 35779/35871/35609) continued during measurement, so byte counts are point-in-time."
+  ],
+  "incidents": [],
+  "tree_status": "root-clean-except-listed-untracked",
+  "workers": 0,
+  "outputs": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/EXPLORER_state_remeasure_REPORT.md"
+  ],
+  "summary": {
+    "remeasured_utc": "2026-09-25T01:45-02:05Z",
+    "sleeves": {
+      "XSECT-FUND-CARRY-7D": "11 rows (09-15..09-25 daily), 52 fills, booked: price_pnl -354.4501 / fee +286.4265 / slippage +68.0236 / funding +4.6039 / total_pnl -349.8462; live mark equity 99,094.92 RUNNING (01:55Z)",
+      "ILLIQ-AMIHUD-28D-W": "1 row (09-21, byte-unchanged), 8 fills, total_pnl -63.2139, fee 50.00, slippage 13.2139, funding 0; live mark equity 100,348.47 RUNNING; next decision 09-28",
+      "BASISLV-PREMFADE-28D": "1 row (09-21, DATA_BLOCKED / UNAVAILABLE_FAIL_CLOSED, 0 fills, flat 100,000); next decision 09-28",
+      "BTC4H-BANDRIDGE": "61 rows (56 UNAVAILABLE_FAIL_CLOSED + 5 OK since 09-24T08Z), 0 fills ever, flat 100,000; band gate ON (band_r ~0.066) but donch_state 0; cost_regime_digest 130d2e7e = shared 5bps+1tick book, no 6bps override in any record",
+      "FX-RANGEFADE-2M": "journal 86 rows (seq 86), 2 fill_open + 2 force_flat at 09-24T20:00:09Z: EURUSD +120, GBPUSD -33; account equity 100,087 realized +87, both pairs FLAT; daemon heartbeat 01:56:47Z; no fee/slippage/funding fields exist in FX journal",
+      "XAUUSD-SHADOW-V1": "TERMINAL owner-removal 2026-09-24 closeout artifact present; 0 entries/0 fills/0 orders ever"
+    },
+    "workers_alive": "pids 35779 (shadow_worker), 35871 (valuation_worker), 35609 (FX daemon), 8093 (FX dashboard), 46011 (dashboard app), 22766 (view server); all heartbeats fresh (01:52-01:56Z 09-25)",
+    "accounting_definition_facts": "crypto ledgers: total_pnl = price_pnl + funding_cashflow (exact); price_pnl ~= -(fee+slippage) with |resid|<=0.005 (net-of-costs at decision bar, not gross); net field constant 0.0; gross field = sum|target_weights| (exposure fraction, not dollars); decision-row equity/cash are MTM snapshots including unrealized, non-compounding; FX books gross price-move only with no cost fields; three distinct equity bases coexist (decision rows, valuation_marks, FX shared account)",
+    "vs_2026_09_24_snapshot": "CARRY +1 decision +4 fills (+40.00 fee, +11.62 slippage, net -51.62); BANDRIDGE 57->61 rows, still 0 fills; ILLIQ/BASISLV ledger bytes unchanged; FX closed both longs force-flat at 20:00Z 09-24 for +87 realized (was -48 MTM long at review); XAUUSD removed (terminal); BANDRIDGE sizing A/B/C, fill-law A/B, and 6bps-vs-5bps+tick cost-law questions all still open (packet owner-decision field blank)",
+    "reliability_verdict": "DASHBOARD-AND-SHADOW-RELIABILITY-V1 (2026-09-24): 'A7 VERDICT: CONFIRM'; GATES total PARTIAL; files: A7-RELIABILITY-AUDIT-2026-09-24.md, GATES.md, OWNER_DECISION_PACKET_bandridge_sizing_and_fill_law.md, OWNER_REPORT_2026-09-24.md"
+  }
+}
