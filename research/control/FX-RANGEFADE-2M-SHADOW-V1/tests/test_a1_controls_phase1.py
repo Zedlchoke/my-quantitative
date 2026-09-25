@@ -528,7 +528,14 @@ def test_e_every_bucket_present_with_stress_median_x2():
 def test_e_fills_land_in_the_right_bucket_with_x2_charge(hour, bucket):
     epoch = FRI + hour * 3600 + 60
     px = 1.1000
-    for pair, base_med in (("EURUSD", 0.30), ("GBPUSD", 0.80)):
+    # PINNED census medians (owner option 1, 2026-09-25): per-session p50
+    # from the sha-pinned census artifacts; Rollover = conservative max of
+    # rollover_21_22/late_22_24 (structurally unreachable: flat 20:00 UTC).
+    pinned = {
+        "EURUSD": {"Asia": 0.30, "London": 0.30, "Overlap": 0.30, "NY": 0.30, "Rollover": 0.90},
+        "GBPUSD": {"Asia": 0.90, "London": 0.80, "Overlap": 0.80, "NY": 0.80, "Rollover": 2.30},
+    }
+    for pair, base_med in ((p_, pinned[p_][bucket]) for p_ in ("EURUSD", "GBPUSD")):
         f = COST_BOOK.fill_cost_fields(pair, C.session_bucket_of_epoch(epoch),
                                        2.0, px)
         assert f["session_bucket"] == bucket
@@ -537,9 +544,14 @@ def test_e_fills_land_in_the_right_bucket_with_x2_charge(hour, bucket):
         assert f["fee_bps"] == 0.2 and f["slip_pips"] == 0.1
 
 
-def test_e_seed_status_disclosed_and_digest_pinned():
+def test_e_pin_status_disclosed_and_digest_pinned():
     cfg = COST_BOOK.cfg
-    assert "SEED" in cfg["status"]
-    assert "census" in cfg["seed_disclosure"].lower()
+    # PINNED (owner option 1, 2026-09-25): census medians with provenance.
+    assert cfg["status"] == "PINNED_CENSUS_OWNER_OPTION_1_2026-09-25"
+    assert "sha256" in cfg["pin_provenance"]["EURUSD"]
+    assert "sha256" in cfg["pin_provenance"]["GBPUSD"]
+    assert cfg["session_median_pips"]["GBPUSD"]["Asia"] == 0.9
+    assert cfg["session_median_pips"]["EURUSD"]["Rollover"] == 0.9
+    assert cfg["declared_fee_schedule"]["class"].startswith("DECLARED_OWNER_PINNED")
     raw = D.COST_CURVE.read_bytes()
     assert COST_BOOK.digest == "sha256:" + hashlib.sha256(raw).hexdigest()[:16]

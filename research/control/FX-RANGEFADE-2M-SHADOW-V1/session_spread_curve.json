@@ -1,19 +1,30 @@
 {
  "schema": "phorec.session_spread_curve@1",
- "status": "SEED_VALUES_PENDING_SHA_PINNED_CENSUS",
+ "status": "PINNED_CENSUS_OWNER_OPTION_1_2026-09-25",
  "created_utc": "2026-09-25",
  "created_by": "A1-controls Phase I (amendment FX-RANGEFADE-2M-SHADOW-V1, dispatch fxrf-a1-phase1)",
  "single_source_law": "This file is the SINGLE SOURCE of the session spread curve for the A1 stress book and the declared fee schedule. It is pinned by digest (sha256 of these exact bytes, recorded in every journal cost row as cost_book_digest). Refresh ONLY by preregistered quarterly re-census as a NEW dated file + new digest boundary — never an in-place rewrite of history.",
- "seed_disclosure": "SEED VALUES, NOT CENSUS MEASUREMENTS. Per-bucket medians are seeded at the Dukascopy spread-census order-of-magnitude disclosed in the sleeve plan (EURUSD ~0.3 pips median base; GBPUSD ~0.8 pips median base). All five session buckets currently carry the SAME base value because the plan disclosed only the global median; bucket differentiation arrives with the sha-pinned Dukascopy census (EURUSD-OPEN-SEARCH-V1/V2 + FX-MAJORS census artifacts) at the A1 implementation gate review. Until that replacement these numbers support plumbing tests only, NOT cost conclusions.",
  "bucket_convention_utc": "Bucket of a fill = UTC hour of the fill (PIT quote timestamp). Asia [00:00,07:00), London [07:00,12:00), Overlap [12:00,16:00), NY [16:00,21:00), Rollover [21:00,24:00). Convention is SEED too and is replaced only with the census.",
  "stress_multiplier": 2.0,
  "stress_law": "Stress book charge per fill = session_median_pips[pair][bucket] * stress_multiplier (lane-F frozen tier x2.0). Reporting view ONLY — never merged into primary PnL.",
  "session_median_pips": {
-  "EURUSD": {"Asia": 0.30, "London": 0.30, "Overlap": 0.30, "NY": 0.30, "Rollover": 0.30},
-  "GBPUSD": {"Asia": 0.80, "London": 0.80, "Overlap": 0.80, "NY": 0.80, "Rollover": 0.80}
+  "EURUSD": {
+   "Asia": 0.3,
+   "London": 0.3,
+   "Overlap": 0.3,
+   "NY": 0.3,
+   "Rollover": 0.9
+  },
+  "GBPUSD": {
+   "Asia": 0.9,
+   "London": 0.8,
+   "Overlap": 0.8,
+   "NY": 0.8,
+   "Rollover": 2.3
+  }
  },
  "declared_fee_schedule": {
-  "class": "DECLARED_SEED_PENDING_OWNER_PIN_AT_A1_GATE_REVIEW",
+  "class": "DECLARED_OWNER_PINNED_AT_A1_GATE_OPTION_1",
   "fee_bps_per_side": 0.2,
   "slip_pips_per_side": 0.1,
   "provenance": "Declared-class seed per umbrella law: measured components (spread-at-fill, session census curve) stand on their own; declared components (commission bps, base slippage) are clearly labeled, never override the measured book, and are to be pinned by the owner at the A1 implementation gate review BEFORE any new journal row is written (amendment section 2).",
@@ -30,5 +41,28 @@
   "round_trip_id": "stable id linking the open row to its closing row",
   "realized_net": "USD round-trip PRIMARY NET = gross pnl - declared fee - declared slip, both sides (basis label: primary_net_declared)",
   "realized_net_stress": "USD round-trip STRESS VIEW = gross pnl - declared fee - stress spread, both sides (basis label: stress_parallel, never primary)"
+ },
+ "pinned_utc": "2026-09-25T05:05:00Z",
+ "pinned_by": "Owner option 1 (conversation 2026-09-25): pin the sha-pinned census per-session p50 medians; declared fee schedule affirmed as the disclosed declared-class book.",
+ "pin_provenance": {
+  "EURUSD": {
+   "source": ".worktrees/eurusd-open-search-v2/integration/research/control/EURUSD-OPEN-SEARCH-V2/data_local/derived/census.json",
+   "sha256": "5f82fc1022e7bb6a08e9c17a0e70fb48a624f073ad4f695813163a2e535e8f8a",
+   "window": [
+    "2021-01-03T22:00:00+00:00",
+    "2026-06-30T23:59:00+00:00"
+   ],
+   "field": "spread_pips.by_session_open.*.50"
+  },
+  "GBPUSD": {
+   "source": ".worktrees/fx-majors-search-v1/integration/research/control/FX-MAJORS-SEARCH-V1/data_local/GBPUSD/derived/census.json",
+   "sha256": "da2c2e6b8412c72fd6fd05ccc4178fbb26237d25e8a352361b94e1a635da7cb5",
+   "window": [
+    "2021-01-03T22:00:00+00:00",
+    "2026-09-23T23:59:00+00:00"
+   ],
+   "field": "spread_pips.by_session_open.*.50"
+  },
+  "bucket_mapping_law": "census 6-bucket -> sleeve 5-bucket: asia_00_07->Asia, london_07_12->London, ny_overlap_12_16->Overlap, ny_late_16_21->NY, rollover_21_22+late_22_24->Rollover aggregated as the CONSERVATIVE MAX (A7 prelaunch Q1 reconciliation). Rollover is structurally unreachable for fills (force-flat 20:00 UTC); the value exists for completeness only."
  }
 }
