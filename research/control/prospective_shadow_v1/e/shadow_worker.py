@@ -226,6 +226,36 @@ FORMATION_LOOKBACK_SECONDS = float(29 * 86400 + 3600)
 #: CARRY identity-pinned trailing settled-funding window.
 CARRY_LOOKBACK_SECONDS = float(7 * 86400)
 
+#: AMENDMENT A3 (owner GO consumed 2026-09-25T04:21:15Z, decision D4;
+#: draft plans/DRAFT_amendment_PSCTV1_A3_xsect_retire.md): identity
+#: retirement of XSECT-FUND-CARRY-7D. T_ret is the moment the stop-open
+#: law is LIVE ON THE WORKER: the Phase A restart happens BEFORE this
+#: timestamp, and the first decision at/after it runs flat-only. If the
+#: activation restart slips past this value, the activation commit moves
+#: the timestamp forward BEFORE any decision at/after it executes (the
+#: running pre-A3 worker ignores the constant; no decision is affected
+#: by the move). From T_ret: no new positions open; existing holdings
+#: close at that decision (natural frozen-law expiry; closing sells are
+#: lawful); exactly one terminal row when measured FLAT. Ledger stays
+#: append-only forever; the historical CANDIDATE_FAIL label is pinned.
+XSECT_RETIRE_AFTER_UTC = "2026-09-25T05:45:00Z"
+XSECT_RETIRE_TERMINAL = {
+    "label": "IDENTITY_RETIRED_COST_DOMINATED",
+    "historical_verdict_label": (
+        "CANDIDATE_FAIL (V6 funding carry; top-positive-fold 51.66% — "
+        "pinned, not rewritable)"
+    ),
+    "equity_basis_note": (
+        "equity here is the decision-row ledger basis; the valuation-mark "
+        "basis differs (PSV1 accounting-reconciliation class)"
+    ),
+    "note": (
+        "owner D4 2026-09-25; stop-open from T_ret; evidence append-only; "
+        "successor law: new strategy ID + rebalance only when expected "
+        "carry >= full round-trip stress cost (umbrella C-XS-2)"
+    ),
+}
+
 #: ILLIQ candidate universe: 20 deep USDT-M perpetuals (historical
 #: "20 staged binance_bar symbols" convention). The first 13 mirror the
 #: Q-lane smoke composition; existence as TRADING USDT PERPETUAL is
@@ -694,6 +724,11 @@ def build_executors(
             # the decision; the funding-only snapshot_spec carries no
             # bars, so the fill universe is declared explicitly.
             config["fill_symbols"] = list(CARRY_TRADED_UNIVERSE)
+            # AMENDMENT A3: stop-open + terminal-row law (see the
+            # XSECT_RETIRE_* constants above). Other families' configs
+            # (and therefore their config digests) are untouched.
+            config["retire_after_utc"] = XSECT_RETIRE_AFTER_UTC
+            config["retire_terminal"] = dict(XSECT_RETIRE_TERMINAL)
         if family_id == FAMILY_BANDRIDGE:
             # A2 P-4 (fail-closed hash-match-in-values): refuse to build
             # the BANDRIDGE executor unless its cost books equal the

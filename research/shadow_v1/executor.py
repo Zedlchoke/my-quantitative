@@ -347,6 +347,17 @@ class ForwardExecutor:
         #: for the BANDRIDGE family; every other family leaves this False
         #: and keeps its exact prior sizing (regression fixtures c/e).
         self.cost_aware_sizing = bool(config.get("cost_aware_sizing", False))
+        #: AMENDMENT A3 (owner GO consumed 2026-09-25T04:21:15Z, decision
+        #: D4): identity-retirement law. When ``retire_after_utc`` is set
+        #: (ISO-Z) and a decision stamp is at/after it, the target book is
+        #: forced FLAT: no new positions open, existing holdings close at
+        #: that decision (their natural frozen-law expiry; closing sells
+        #: are lawful and required). When the sleeve is measured FLAT at a
+        #: decision boundary at/after retirement, exactly ONE terminal
+        #: record is appended (idempotent by deterministic event id).
+        #: Default None => zero behavior change for every other family.
+        self.retire_after_utc = config.get("retire_after_utc")
+        self.retire_terminal = dict(config.get("retire_terminal") or {})
         if "fill_symbols" in config:
             fill_symbols = [str(s) for s in config["fill_symbols"]]
         elif "bars" in self.snapshot_spec:
@@ -431,6 +442,16 @@ class ForwardExecutor:
                     **(
                         {"cost_aware_sizing": True}
                         if self.cost_aware_sizing
+                        else {}
+                    ),
+                    # A3: retirement law enters the identity digest only
+                    # for the family that sets it (XSECT at activation).
+                    **(
+                        {
+                            "retire_after_utc": self.retire_after_utc,
+                            "retire_terminal": self.retire_terminal,
+                        }
+                        if self.retire_after_utc is not None
                         else {}
                     ),
                 },
@@ -785,6 +806,16 @@ class ForwardExecutor:
         approved, block = risk.check_and_apply(
             proposal.target_weights, self.caps, self.btc_betas
         )
+        retired_now = (
+            self.retire_after_utc is not None
+            and self._retire_is_due(decision_utc)
+        )
+        if retired_now and not block.blocked:
+            # A3 stop-open law: target FLAT. Closing sells toward flat
+            # remain lawful (reduce_longs phase); opening anything is
+            # impossible (empty targets). The adapter's own proposal is
+            # preserved verbatim in signal_values for the record.
+            approved = {}
         risk_status = (
             events.RISK_STATUS_BLOCKED if block.blocked else events.RISK_STATUS_OK
         )
@@ -895,7 +926,78 @@ class ForwardExecutor:
             risk_status=risk_status,
             no_order_proof=no_order.no_order_proof(PACKAGE_ROOT),
         )
+        if retired_now:
+            record["retired"] = True
+            record["retire_after_utc"] = self.retire_after_utc
+        # A3 terminal row: emitted ONLY when the retirement law is active
+        # AND the sleeve is measured FLAT at this decision boundary (a
+        # state condition, never a timestamp assumption). Exactly one row
+        # per family (deterministic terminal event id; run_due's
+        # known_ids idempotence covers re-runs).
+        if retired_now and self.retire_terminal and exposure["gross"] == 0.0:
+            record["retire_terminal_row"] = self._retire_terminal_payload(
+                decision_utc, observed_at_utc, event_id, equity_after
+            )
         return record, outcome
+
+    def _retire_is_due(self, decision_utc: str) -> bool:
+        """A3: the stop-open law applies to decisions at/after T_ret."""
+        if self.retire_after_utc is None:
+            return False
+        return start_guard.to_iso_z(
+            start_guard.parse_moment(decision_utc)
+        ) >= start_guard.to_iso_z(start_guard.parse_moment(self.retire_after_utc))
+
+    def _retire_override(
+        self,
+        approved_weights: Mapping[str, float],
+        decision_utc: str,
+    ) -> Dict[str, float]:
+        """A3: empty targets at/after T_ret (closing still flows through)."""
+        if self._retire_is_due(decision_utc):
+            return {}
+        return dict(approved_weights)
+
+    def _retire_terminal_payload(
+        self,
+        decision_utc: str,
+        observed_at_utc: str,
+        decision_event_id: str,
+        equity: "Optional[float]",
+    ) -> Dict[str, Any]:
+        sleeve = self.sleeve
+        books = {
+            name: book.as_dict() for name, book in sleeve.books.items()
+        }
+        return {
+            "schema": "psv1_identity_retirement_terminal@1",
+            "family_id": self.family_id,
+            "arm_id": self.arm_id,
+            "terminal_label": self.retire_terminal.get(
+                "label", "IDENTITY_RETIRED"
+            ),
+            "retire_after_utc": self.retire_after_utc,
+            "measured_flat_at_utc": decision_utc,
+            "observed_at_utc": observed_at_utc,
+            "decision_event_id": decision_event_id,
+            "decomposition": {
+                "starting_cash": sleeve.starting_cash,
+                "equity": equity,
+                "cash": sleeve.cash,
+                "closed_position_count": len(sleeve.closed_positions),
+                "decision_count": getattr(sleeve, "decision_count", None),
+                "order_intent_count": getattr(sleeve, "order_intent_count", None),
+                "fill_count": getattr(sleeve, "fill_count", None),
+                "books": books,
+                "equity_basis_note": self.retire_terminal.get(
+                    "equity_basis_note", ""
+                ),
+            },
+            "historical_verdict_label": self.retire_terminal.get(
+                "historical_verdict_label", ""
+            ),
+            "note": self.retire_terminal.get("note", ""),
+        }
 
     def _build_blocked_record(
         self,

@@ -194,5 +194,11 @@ def test_d_boundary_artifact_consistent():
     d = json.loads(boundary_path.read_text())
     assert d["digests"]["bandridge_cost_regime_after"] == PINNED_DIGEST_NEW
     assert d["digests"]["bandridge_cost_regime_before"] == PINNED_DIGEST_OLD
-    assert d["activation"]["t_act_utc"] is None  # filled at Phase A only
+    # t_act is None strictly before Phase A; after activation it is the
+    # recorded ISO-Z activation moment (2026-09-25T03:57:05Z). Either
+    # state is lawful; anything else is drift.
+    t_act = d["activation"]["t_act_utc"]
+    assert t_act is None or (
+        isinstance(t_act, str) and t_act.endswith("Z") and len(t_act) == 20
+    ), f"unlawful t_act {t_act!r}"
     assert "UNPINNED_COST_LAW — NOT PROMOTABLE" in d["laws"]["unpinned"]
