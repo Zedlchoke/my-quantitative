@@ -402,6 +402,29 @@ class BasislvWindowFoldPlugin(BasislvPremfadePlugin):
     # ------------------------------------------------------------------ #
     # Context marks (PIT-listed narrowing; context-only, no scored surface)
     # ------------------------------------------------------------------ #
+    # A4-class declared identity (label UNIVERSE_LISTED_AT_WINDOW_START):
+    # universe = symbols listed at window start. Mid-window listings (PEPE/
+    # SUI/WLD/ONG/ACE in Y2023) are excluded for the WHOLE fold — same
+    # outcome-exposed consequence the owner accepted for ILLIQ (A4).
+    FIRST_ARCHIVE_MONTH = {
+        "1000PEPEUSDT": (2023, 5), "AAVEUSDT": (2020, 10), "ACEUSDT": (2023, 12),
+        "ADAUSDT": (2020, 1), "AVAXUSDT": (2020, 9), "BCHUSDT": (2020, 1),
+        "BNBUSDT": (2020, 2), "BOMEUSDT": (2024, 3), "BTCUSDT": (2020, 1),
+        "DOGEUSDT": (2020, 7), "ENAUSDT": (2024, 4), "ETHUSDT": (2020, 1),
+        "LINKUSDT": (2020, 1), "NEARUSDT": (2020, 10), "ONGUSDT": (2023, 11),
+        "SOLUSDT": (2020, 9), "SUIUSDT": (2023, 5), "WLDUSDT": (2023, 7),
+        "XRPUSDT": (2020, 1), "ZECUSDT": (2020, 2),
+    }
+
+    def universe(self, stress):
+        frozen = super().universe(stress)
+        w0 = self._window_start_iso[:7] if hasattr(self, "_window_start_iso") else None
+        if not w0:
+            w0 = getattr(self, "_chr3f_window_start", "")[:7]
+        y, m = int(w0[:4]), int(w0[5:7])
+        listed = {s for s in frozen if self.FIRST_ARCHIVE_MONTH.get(s, (9999, 1)) <= (y, m)}
+        return tuple(s for s in frozen if s in listed or s == self._benchmark)
+
     def benchmark_context_symbols(self) -> tuple[str, ...]:
         from replication_data import listed_at
 
