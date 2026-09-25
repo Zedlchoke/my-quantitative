@@ -1,7 +1,32 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
-## Sprint state (synced at the PHASE-STRATEGY-V1 terminal, 2026-09-23)
+## Sprint state (synced at the ETHUSDT-OPEN-SEARCH-V1 terminal, 2026-09-25)
 
+- **ETHUSDT-OPEN-SEARCH-V1 CLOSED → `ETHUSDT_OPEN_SEARCH_V1_NO_INCREMENTAL_VALUE`**
+  (2026-09-25; tranche 1 of the owner-directed ETHUSDT campaign, standing
+  directive 2026-09-24 "mở cycle tìm kiếm strategy cho ETHUSDT cho tới khi
+  tìm được strategy kiếm tiền có bằng chứng kinh tế rõ ràng"); branch
+  `orca/ethusdt-open-search-v1-integration` terminal 8196e3ea (base main
+  f3daf990), plan `plans/PLAN_ethusdt_open_search_v1.md`. POSTHOC S0
+  DISCOVERY, single-asset ETHUSDT USDT-M perp H4 2020-01..2026-08, keyless
+  Vision corpus (ES1 cross-check 80/80 byte-identical; funding measured,
+  7,305 settlements floor-exact), 2 new-tuple lanes × 4 configs = 8 cells.
+  **G3 wall killed all 8: ALWAYS_ON +1,653,470 @1.0x (98% in F1) vs max
+  cell 625,621 — no long/flat gate book beats raw F1 beta posthoc.**
+  Near-miss of record: E1-A1 (BTC-SMA200→ETH) 496,114 conc 0.488 and E1-A4
+  (BTC∧ETH-SMA200) 485,187 conc 0.424 — 4/4 folds positive, beat
+  TREND_LF, controls clean, fail ONLY the always-on raw-net wall (the wall
+  reference is itself ~0.93 fold-concentrated: structural G3-vs-G5
+  tension, disclosed, gates untouched). Lane E2 (ETHBTC ratio) G6-killed:
+  shuffled ratio out-earns real ratio — no timing information. A7 prelaunch
+  remediation arc (2 blocking pre-PnL defects fixed: G7 semantics,
+  settlement PIT) + 2 zero-exposure TECHABORTs remediated; repro twin
+  ALL_MATCH; A7 terminal CONFIRM_WITH_FINDINGS. Families EOS1-E1/E2 now
+  dead (BTC-price-state gates and ratio-gates for ETH single-asset, incl.
+  symbol swaps). CAMPAIGN CONTINUES per standing directive: tranche V2
+  (BTC-vol-state + alt-breadth lanes — the last defensible new-tuple
+  space on keyless data) registration follows; exhaustion ⇒ owner
+  redirection decision.
 - **BTC-BEAR-OPPORTUNITY recon CLOSED PRE-CYCLE → `NO_ELIGIBLE_PROPOSAL`**
   (2026-09-23, owner directive: forced-flow/liquidity-dislocation short or
   market-neutral mechanisms in BTC downtrends; NO cycle opened — P3
