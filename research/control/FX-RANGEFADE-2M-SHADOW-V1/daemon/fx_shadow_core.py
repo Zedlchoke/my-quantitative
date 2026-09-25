@@ -229,6 +229,74 @@ SESSION_BUCKETS_UTC = (  # SEED convention; replaced only with the census
 )
 SHORT_BETA_LABEL = "SHORT_BETA_UNSEPARATED — NOT PROMOTABLE"
 NOT_RUN_COST_FIELDS = "NOT_RUN_COST_FIELDS"
+
+#: AMENDMENT A1 metadata patch (owner-approved preparation 2026-09-25;
+#: restart NOT yet authorized): the activation milestone in state is
+#: DERIVED, never a static placeholder. Authority order (owner law):
+#: T_ctrl comes from A1_ACTIVATION.json (phase_a.t_ctrl_utc); the journal
+#: cost_book row timestamp is CROSS-CHECK EVIDENCE ONLY and is never
+#: silently substituted for T_ctrl. Missing / malformed / contradictory
+#: artifact => FAIL-CLOSED (no ACTIVATED claim; label stays UNSEPARATED).
+ACTIVATION_SKEW_TOLERANCE_S = 300.0
+
+def derive_a1_activation(activation_artifact, journal_cost_book_ts):
+    """Pure derivation of the a1_controls activation metadata block.
+
+    activation_artifact: parsed A1_ACTIVATION.json dict (or None/missing).
+    journal_cost_book_ts: ISO ts string of the boot cost_book journal row.
+    Returns a dict with phase / T_ctrl / cross_check; deterministic and
+    idempotent for identical inputs (restart-safe).
+    """
+    def fail(reason, detail=""):
+        return {
+            "phase": "ACTIVATION_UNVERIFIED_FAIL_CLOSED",
+            "T_ctrl": None,
+            "activation_source": "A1_ACTIVATION.json",
+            "cross_check": {"reason": reason, "detail": detail,
+                            "verdict": "FAIL_CLOSED"},
+            "note": ("fail-closed: no ACTIVATED claim; sleeve label stays "
+                     "SHORT_BETA_UNSEPARATED — NOT PROMOTABLE"),
+        }
+
+    if not isinstance(activation_artifact, dict):
+        return fail("ARTIFACT_MISSING_OR_UNREADABLE")
+    t_ctrl = (activation_artifact.get("phase_a") or {}).get("t_ctrl_utc")
+    if not isinstance(t_ctrl, str) or not t_ctrl.endswith("Z"):
+        return fail("ARTIFACT_MALFORMED_NO_T_CTRL", repr(t_ctrl)[:60])
+    if not journal_cost_book_ts:
+        return fail("JOURNAL_COST_BOOK_ROW_MISSING")
+    import datetime as _dt
+    def _p(x):
+        return _dt.datetime.fromisoformat(str(x).replace("+00:00", "Z").replace("Z", "+00:00"))
+    try:
+        skew = (_p(journal_cost_book_ts) - _p(t_ctrl)).total_seconds()
+    except Exception as exc:
+        return fail("TIMESTAMP_PARSE_ERROR", str(exc)[:80])
+    if skew < 0:
+        return fail("JOURNAL_ROW_PRECEDES_ARTIFACT_T_CTRL",
+                    f"cost_book {journal_cost_book_ts} < T_ctrl {t_ctrl}")
+    if skew > ACTIVATION_SKEW_TOLERANCE_S:
+        return fail("SKEW_EXCEEDS_TOLERANCE", f"skew {skew}s > {ACTIVATION_SKEW_TOLERANCE_S}s")
+    return {
+        "phase": "ACTIVATED",
+        "T_ctrl": t_ctrl,
+        "activation_source": "A1_ACTIVATION.json (authority; journal row is "
+                             "cross-check evidence only, never substituted)",
+        "cross_check": {"journal_cost_book_ts": journal_cost_book_ts,
+                        "skew_s": skew, "verdict": "CONSISTENT"},
+    }
+
+def short_beta_label_for(ctrl_emitted, activation_block, first_ctrl_ts):
+    """Label law: UNSEPARATED until control records exist AND activation
+    is verified; then ACCRUING (never a victory claim — interpretation is
+    gated on the preregistered decision-count law)."""
+    if not ctrl_emitted:
+        return SHORT_BETA_LABEL
+    if not activation_block or activation_block.get("phase") != "ACTIVATED":
+        return SHORT_BETA_LABEL  # fail-closed direction
+    return ("SHORT_BETA_SEPARATION_ACCRUING (control records since "
+            f"{first_ctrl_ts or "T_ctrl"}; interpretation gated on "
+            "preregistered decision-count law — no FX-vs-control conclusion)")
 COST_ROW_FIELDS = ("fee_bps", "slip_pips", "spread_at_fill", "session_bucket",
                    "cost_book_digest", "stress_fee", "stress_slip",
                    "round_trip_id", "realized_net")

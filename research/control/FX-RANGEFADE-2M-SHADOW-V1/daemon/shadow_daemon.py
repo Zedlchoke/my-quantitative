@@ -480,14 +480,29 @@ def main():
     # the arms' records only count from T_ctrl (Phase A); replayed rows
     # prove they HAVE emitted (label flips to separated)
     ctrl_emitted = any(bk.fills for arm in (ctrl_sa, ctrl_sm) for bk in arm.values())
+    # A1 metadata patch (owner-approved preparation 2026-09-25): derive the
+    # activation milestone from the artifact + journal cross-check. T_ctrl
+    # authority = A1_ACTIVATION.json; the journal row ts below is evidence.
+    try:
+        _artifact = json.loads((HERE.parent / "A1_ACTIVATION.json").read_text())
+    except Exception:
+        _artifact = None
+    _cb_ts = now_utc().isoformat(timespec="seconds")
     journal.log("cost_book", digest=cost_book.digest, path=str(COST_CURVE),
                 status=cost_book.cfg.get("status"),
                 declared_fee_bps=cost_book.fee_bps,
                 declared_slip_pips=cost_book.slip_pips,
                 stress_multiplier=cost_book.stress_multiplier,
-                control_phase="PHASE_I_code_only_NOT_ACTIVATED",
-                note="primary book remains GROSS until Phase A T_ctrl; "
-                     "pre-T_ctrl rows are NOT_RUN_COST_FIELDS, never backfilled")
+                t_ctrl_artifact=(_artifact or {}).get("phase_a", {}).get("t_ctrl_utc"),
+                cost_book_row_ts=_cb_ts,
+                note="primary book GROSS pre-T_ctrl; pre-T_ctrl rows are "
+                     "NOT_RUN_COST_FIELDS, never backfilled")
+    a1_activation = C.derive_a1_activation(_artifact, _cb_ts)
+    _ctrl_ts = sorted(
+        ln.get("ts") for ln in map(json.loads, a1_lines)
+        if str(ln.get("event", "")).startswith("ctrl")
+    ) if a1_lines else []
+    first_ctrl_ts = _ctrl_ts[0] if _ctrl_ts else None
 
     today_key = now_utc().strftime("%Y-%m-%d")
     realized_today = rep["realized_by_day_utc"].get(today_key, 0.0)
@@ -582,9 +597,8 @@ def main():
         # A1 reporting law (amendment §1.1 / umbrella §4.1): until the
         # control arms emit records, every sleeve PnL line carries
         # SHORT_BETA_UNSEPARATED — NOT PROMOTABLE.
-        short_beta_label = (C.SHORT_BETA_LABEL if not ctrl_emitted else
-                            "SHORT_BETA_SEPARATED (control arms emitting; "
-                            "sleeve PnL published with sleeve_minus_control)")
+        short_beta_label = C.short_beta_label_for(
+            ctrl_emitted, a1_activation, first_ctrl_ts)
         for p, b in books.items():
             mk = marks.get(p)
             unrl = b.unrealized(mk)
@@ -635,8 +649,11 @@ def main():
             # until the controller's Phase A restart records T_ctrl) ----
             "a1_controls": {
                 "amendment": "FX-RANGEFADE-2M-SHADOW-V1 A1-controls",
-                "phase": "PHASE_I_code_only_NOT_ACTIVATED",
-                "T_ctrl": None,
+                "phase": a1_activation["phase"],
+                "T_ctrl": a1_activation["T_ctrl"],
+                "activation_source": a1_activation["activation_source"],
+                "activation_cross_check": a1_activation["cross_check"],
+                "first_ctrl_record_ts": first_ctrl_ts,
                 "short_beta_label": short_beta_label,
                 "journal_row_cost_status": (C.NOT_RUN_COST_FIELDS if not ctrl_emitted
                                             else "ACTIVE_SINCE_T_CTRL (new rows only; "
