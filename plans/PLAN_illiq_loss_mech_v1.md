@@ -159,3 +159,22 @@ outcome-exposed diagnostic-only; INV +32.97% diagnostic label; S1 SEALED; budget
 preconditions (heavy lock, A7 prelaunch AUTHORIZED 0 blocking on the amended plan, typed owner GO
 at this cycle's own gate). The PREREG yaml stays untouched as the original draft; this amendment
 is the single source of truth where they differ.
+
+## 10. AMENDMENT A2 (2026-09-25, pre-artifact, engine-forced) — binding; supersedes A1-2/A1-3/A1-7 where stated
+
+Trigger: execution of the GO'd phase-1 census aborted twice BEFORE any artifact existed
+(INC-1, `research/control/illiq_loss_mech_v1/incidents/INC-1-universe-law-infeasible.json`,
+both launches rc=1 pre-write, zero numbers materialized or observed). Root cause: the frozen
+runner computes context symbols as declared ∪ FULL universe and requires first-instant marks
+for every context symbol — a universe member not priced at window start aborts the cell.
+Consequences (change history):
+
+| # | Item | Before (A1) | After (A2, binding) | Reason |
+|---|---|---|---|---|
+| A2-1 | Fresh-fold universe law | A1-2 base-universe (mid-fold entrants admitted) | **A4 engine-native: universe = symbols listed at window start** (identical to CHR3F cell identity). A1-2 is structurally infeasible on the frozen runner. | engine context-marks law; INC-1 |
+| A2-2 | H-A surface | Y2023 full-year (Y2022 void) | **no executable surface in phase-1**: under A4, Y2022 AND Y2023 universes contain zero sub-365d names. C5_V2AGE_Y2023 = filter no-op → recorded `NOT_RUN_VOID_CONSTRUCTION`, not executed. **H-A phase-1 verdict = `INCONCLUSIVE_VOID_CONSTRUCTION`** — no claim either way. | A4 excludes the 2023-24 listing cohort by construction |
+| A2-3 | Executed census | 8 cells | **7 cells executed** (C1,C2,C3,C4,C6,C7,C8 exactly as frozen in A1-7, now under the A4 universe law) + C5 NOT_RUN void. Budget records 7 computed cells of cap 8. | A1-7 re-scoped |
+| A2-4 | H-A owner option | — | recorded, NOT executed: a Y2023-H2 window pair (baseline + v2-age; universe then includes SUIUSDT/1000PEPEUSDT listed 2023-05) is the only executable young-cohort surface. It exceeds the GO'd census → requires an owner amendment + a fresh typed GO. | GO scope discipline |
+| A2-5 | Bars unchanged | — | Frozen bars A1-4 (directional Δ) and A1-6 (H-B tail/sign/engagement + INV coherence) carry over verbatim to the executed cells. A2 is a feasibility amendment forced by engine law BEFORE any outcome existed; it was not informed by any PnL. | falsification-first discipline |
+
+Everything else in §5–§9 stands.
