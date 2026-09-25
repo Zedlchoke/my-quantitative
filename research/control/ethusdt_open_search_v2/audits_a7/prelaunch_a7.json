@@ -1,0 +1,108 @@
+{
+ "schema": "eosv2.a7_prelaunch@1",
+ "audited_at_utc": "2026-09-25T03:50:23Z",
+ "audited_head": "05790ce7bfba8aa6d98e477d4b5a563c80be52ec",
+ "branch": "orca/ethusdt-open-search-v2-integration",
+ "checks": {
+  "A_engine_inheritance": {
+   "status": "PASS",
+   "method": "block-level byte diff of scripts/eosv2_engine.py vs git show 8196e3ea:research/control/ethusdt_open_search_v1/scripts/eos1_engine.py",
+   "result": "22 shared top-level blocks: 19 byte-identical (TIERS, BLOCK_SHUFFLE_BARS, FOLDS, series consts, _norm_ts, _is_int, load_1h, load_funding, to_h4, sma_states, sign_states, pct_rank_states, InfoSeries, shuffle_blocks, spearman, fold_of, PriceAtSettlement, run_book body incl. cost kernel, funding law, force-flat, one-bar lag). 3 differing blocks confined to allowed deltas: ARMS_DESC table swap, alt loaders in build_all_series, rvol/breadth construction + eosv2| seed prefix in build_targets. V2-only: rvol_states, breadth_states. No silent cost/fold/PIT change."
+  },
+  "B_new_constructors": {
+   "status": "PASS",
+   "method": "code reading + measured warmup from staged bytes + fixture goldens + independent naive PIT recomputation + determinism rebuild",
+   "result": "rvol warmup exactly vol_win+qual_win (first defined 2021-01-30T00:00Z = 2370 bars for 180/2190; 2021-03-31 = 2730 bars for 540/2190); strictly-below law (flat-price degenerate -> all 0); trailing quantile window exactly qual_win excluding current bar; deterministic (full rebuild byte-identical). breadth_states counts only symbols with defined states at the boundary, min_eligible=3 enforced, InfoSeries last-observed reads + one-bar shift = V1 PIT law; naive recomputation at B1 first decision 2020-04-06T12:00Z reproduces count 3/3 (SOL undefined contributes nothing) - no lookahead path.",
+   "note": "rvol docstring says 'log returns' but implements simple returns (LOW finding, deterministic, plan does not qualify log/simple)"
+  },
+  "C_lane_a_kill": {
+   "status": "PASS",
+   "method": "recomputed decision populations from staged bytes with independent code; read exclusion code; ran dryrun in sandbox",
+   "result": "F1 decision populations recomputed EXACTLY match feasibility.json: EOSV2-A1=28, A2=0, A3=0, A4=0, all < frozen floor 100 (plan sec3) -> NOT_RUN_THIN lawful and pre-PnL. Root cause measured: BTC floor 2020-01-01 + 2370-bar warmup -> state defined only from 2021-01-30, quiet-BTC regime near-absent Feb-Apr 2021. Lane B F1 populations 1513/1846/422/1327 all >= 100 (per-fold min 422). Exclusion is zero-denominator: run_all skips lane-A arms and their controls before run_book; dry-run contains zero lane-A IDs; scored mode would mark NOT_RUN_THIN without computing.",
+   "note": "freeze lane_a_disposition wording 'warmup ~395d exceeds F1 end 2021-04-30' is arithmetically wrong (395d ends ~2021-01-31); true cause = warmup-truncated window + high-vol regime. Populations (operative evidence) correct. LOW finding."
+  },
+  "D_dry_run_hygiene": {
+   "status": "PASS",
+   "method": "sandbox re-run + comparison + independent leak/float scan",
+   "result": "reproduced 48/48 (4 cells x3 + 4 refs x3 + 8 controls x3), denominator_delta 0, IDs pairwise distinct, sandbox output semantically identical to frozen dry_run.json (only built_utc differs); zero lane-A records; independent wordlist leak scan: only contract metadata (real_pnl:false key, 'pre-PnL' prose); zero floats in books payload; all lane-B cells non-vacuous with decisions equal to recomputed feasibility populations; 16 book families x 3 tiers = 48."
+  },
+  "E_freeze_chain": {
+   "status": "PASS",
+   "method": "shasum -a 256 of all 8 freeze-listed files + re-derivation of every builder-produced key from committed make_freeze.py",
+   "result": "all 8 sha256 MATCH (engine cf1f36d5..., run_scored 974111c5..., stage_all 5d96cad6..., test_fixtures c4307701..., staged_manifest f02c87e7..., census 08899a9c..., feasibility 14f328eb..., dry_run 08446a63...). Freeze reproduces byte-equal for every key the committed builder emits; lane_a_disposition + engine_inheritance records present as required. MEDIUM custody finding: those two records are NOT emitted by committed make_freeze.py (additive post-processing; content corroborated by feasibility.json and this audit; hashes all verify). Freeze tree records pre-commit state (bdd1e1a3 + dirty paths) self-consistently; committed files hash-match the freeze."
+  },
+  "F_fixtures": {
+   "status": "PASS",
+   "method": "ran tests_py/test_fixtures.py in sandbox",
+   "result": "exit 0, ALL FIXTURES PASS, 53 checks (claim said 52 - prose only). Groups 1-11 = V1 suite inherited; test 12 NEW covers rvol strict-below degenerate, vol-halving positive, zigzag, warmup None until index 2369, breadth counts >=2 and ==3, min_eligible floor."
+  },
+  "G_plan_conformance": {
+   "status": "PASS",
+   "method": "full diff of run_scored.py vs V1 runner at 8196e3ea + live refusal attempt",
+   "result": "gates() byte-identical to V1: G1-G5, G10 identical; G6 controls must NOT out-earn @1.0x with ties passing; G7 = fills@1.5x<=10000 AND 2-adverse-tick execution cost/round-trip in bps of avg raw fill (ES1 semantics, A7 F-1 precedent); G11 disclosure-only. GO phrase exact in plan/freeze/runner. Scored mode without audits_a7/go_authorization.json: REFUSED, exit 2, computes nothing (attempted). Verdict enum = plan sec7 five strings; runner emits the two V2-named outcome verdicts. Scored cells 4 <= budget 8."
+  },
+  "H_ancestry_novelty": {
+   "status": "NO_VETO",
+   "method": "FAMILY_FAILURES.jsonl (100+ dead families) + V1 terminal record + plan sec1 fences",
+   "result": "Lane B tuple (absolute-threshold breadth COUNT over {SOL,BNB,XRP,ADA} own-SMA200/600 H4 states driving single-asset ETHUSDT long/flat) is absent from the dead map: EOS1-E1 fences BTC price-state transforms; EOS1-E2 fences ratio/relative-strength gating; ES1-VOLMAN is inverse-vol SIZING; XSECT-TSTREND is rank portfolios; V17 breadth entries unrelated. Genuinely new (observable, vehicle) tuple. Disclosure caveat: G11 spearman vs BASE_TREND_LF 0.63/0.66/0.45/0.46 - substantially trend-correlated; incremental value is what G3/G10 must prove. Lane A design distinct from dead ES1-VOLMAN (binary cross-asset gate vs continuous own-vol sizing) and from EOS1-E1 (second-moment vs price state); dead by floor pre-PnL, correctly NOT_RUN_THIN; re-entry would be an owner-level new-tuple decision, not a parameter rescue."
+  },
+  "I_registry": {
+   "status": "PASS",
+   "method": "researchctl.py cycle list (--verbose) + raw CYCLE_REGISTRY.json inspection",
+   "result": "V2 PLANNED_NOT_STARTED 0/8, head 0000000, S1 SEALED_UNTOUCHED, go_phrase REGISTERED_NOT_CONSUMED - correct pre-STOP-1 state. V1 TERMINAL, go DEAD (consumed), phase text records NO_INCREMENTAL_VALUE budget 8/8. LOW finding: V1 structured budget.used=0 inconsistent with its own phase narrative (8/8) - V1-side bookkeeping, does not gate V2."
+  }
+ },
+ "findings": [
+  {
+   "severity": "MEDIUM",
+   "blocking": false,
+   "where": "freezes/eosv2_freeze.json + scripts/make_freeze.py",
+   "what": "Freeze artifact contains two additive records (engine_inheritance, lane_a_disposition) that the committed make_freeze.py cannot emit; the freeze is therefore not fully byte-reproducible from committed code.",
+   "evidence": "Re-derivation of all builder-produced keys from committed make_freeze.py is byte-equal; only the two extra keys differ. Content of both is corroborated by feasibility.json (independently recomputed) and by audit checks A/C; all 8 recorded sha256 verify. Recommend: freeze builder emits these records at P4, or the freeze records the amendment explicitly."
+  },
+  {
+   "severity": "MEDIUM",
+   "blocking": false,
+   "where": "research/control/ethusdt_open_search_v2/data_local/vision/** at HEAD 05790ce7; plan sec9",
+   "what": "552 raw Vision zip files are git-committed, contradicting plan sec9 'Raw bytes gitignored' and the dispatch claim 'data_local/vision gitignored' (false at HEAD). V1 precedent: its worktree also tracks 329 raw files.",
+   "evidence": "git ls-files count 552; diff bdd1e1a..HEAD adds the zips. No integrity impact: bytes are sha256-pinned in staged_manifest.json and cross-checked vs V1 (independently re-verified 80/80/80 match, 0 mismatch, 0 staged-not-in-v1). Recommend registry note / future plans to align the boundary clause with practice."
+  },
+  {
+   "severity": "LOW",
+   "blocking": false,
+   "where": "freezes/eosv2_freeze.json lane_a_disposition; commit 05790ce7 message",
+   "what": "Root-cause wording 'rvol warmup 2370 H4 bars ~395d exceeds F1 end 2021-04-30' is arithmetically wrong (395d from 2020-01-01 ends ~2021-01-31, before F1 end). True cause: warmup truncates the F1 defined-state window to ~90d and the quiet-BTC regime is near-absent Feb-Apr 2021 -> populations 28/0/0/0.",
+   "evidence": "Measured first defined states: 2021-01-30 (vol_win=180) and 2021-03-31 (vol_win=540), exactly 2370/2730 bars from BTC floor. Populations (the operative kill evidence) recompute exactly."
+  },
+  {
+   "severity": "LOW",
+   "blocking": false,
+   "where": "scripts/eosv2_engine.py rvol_states docstring",
+   "what": "Docstring says 'std of log returns'; implementation is std of simple returns (population, two-pass). Plan sec1 does not qualify log vs simple; the implemented series is the frozen reading.",
+   "evidence": "Code lines 208-219; fixture goldens pin the implemented law; deterministic and PIT-safe."
+  },
+  {
+   "severity": "LOW",
+   "blocking": false,
+   "where": "plans/CYCLE_REGISTRY.json ETHUSDT-OPEN-SEARCH-V1 record",
+   "what": "V1 structured budget.used=0 contradicts its own phase narrative 'budget 8/8, 24 observed+published computations'. V1-side bookkeeping; does not gate V2 (V2's 0/8 is correct).",
+   "evidence": "Raw registry record {used:0, max:8} vs phase string; researchctl cycle list prints 0/8."
+  },
+  {
+   "severity": "INFO",
+   "blocking": false,
+   "where": "scripts/census.py",
+   "what": "Latent dead check: guards status 'UNAVAILABLE_ES1_MANIFEST' but code emits 'UNAVAILABLE_V1_MANIFEST' (missing V1 manifest would not fail BUILD_PASS closed). Also ethbtc_scored_gap_detail() defined but never called (harmless: ETHBTC not a V2 series).",
+   "evidence": "census.py lines 63 vs 160; no impact in this run (manifest present; cross-check independently re-verified 80/80/80)."
+  },
+  {
+   "severity": "INFO",
+   "blocking": false,
+   "where": "scripts/feasibility.py docstring; scripts/stage_all.py + scripts/make_freeze.py comments/schema names; commit message prose",
+   "what": "Docstring 'FAIL-closed' overstates arm-floor behavior (breach => arm excluded, cycle feasible - matching plan sec3 intent). stage_all/make_freeze carry V1 copy artifacts (comment path, schema 'eos1.staged_manifest@1'). Commit message prose: 'populations 422-2733' (actual per-fold max 2600) and '52 checks' (actual 53). Artifacts are the authority; prose only.",
+   "evidence": "feasibility.json per-fold values; fixtures output count."
+  }
+ ],
+ "verdict": "AUTHORIZED_FOR_STOP1",
+ "verdict_rationale": "0 blocking findings. Engine inheritance is honest (cost kernel, FOLDS, run_book body, PriceAtSettlement, InfoSeries, loaders byte-identical to V1 8196e3ea; only declared additions). New rvol/breadth constructors verified correct, deterministic, PIT-safe (independent naive recomputation reproduces the gate at the first lane-B decision). Lane-A kill is lawful and pre-PnL: F1 decision populations recompute exactly at 28/0/0/0 < frozen floor 100 with warmup measured at exactly 2370/2730 bars from the BTC data floor; lane A is excluded with zero denominator from dry-run and scored paths. Frozen dry-run reproduces 48/48 clean (expected 4x3+4x3+8x3=48, distinct IDs, zero floats, no lane A). All 8 freeze sha256 verify; freeze reproduces byte-equal from the committed builder except two additive, corroborated disclosure records (MEDIUM custody finding, non-blocking). Fixtures exit 0 (53 checks, incl. required rvol/breadth goldens). Gates/GO phrase/verdict enum match plan; scored mode REFUSED exit 2 without go_authorization.json, computing nothing. Lane B adjudicated genuinely novel against the dead map (no veto), with its TREND_LF correlation (spearman 0.45-0.67) disclosed for G3/G10 to adjudicate at scoring. Registry: V2 PLANNED_NOT_STARTED 0/8, GO REGISTERED_NOT_CONSUMED; V1 TERMINAL. Scored execution may proceed to the STOP-1 owner GO gate; the two MEDIUM findings should be carried into the registry/scored-run record, not remediated pre-GO."
+}
