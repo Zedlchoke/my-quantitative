@@ -238,7 +238,7 @@ def gate_metrics(p: T.SignalPlane, trades: list, k: float,
         fid = fold_of_ts(t["entry_ts"], fold_table)
         if fid is None:
             continue
-        per_fold[fid] += t["pips"]
+        per_fold[fid] = round(float(per_fold[fid] + t["pips"]), 2)
         per_fold_trades[fid] += 1
         fe = fold_of_ts(t["exit_ts"], fold_table)
         if fe != fid:
@@ -372,10 +372,10 @@ def seam_law(p: T.SignalPlane, trades_orig: list, trades_anchor: list,
     S = net_o - net_a
     fold_S = {}
     for fid, _, _ in FOLD_TABLE:
-        so = sum(t["pips"] for t in trades_orig
-                 if fold_of_ts(t["entry_ts"]) == fid)
-        sa = sum(t["pips"] for t in trades_anchor
-                 if fold_of_ts(t["entry_ts"]) == fid)
+        so = float(sum(t["pips"] for t in trades_orig
+                       if fold_of_ts(t["entry_ts"]) == fid))
+        sa = float(sum(t["pips"] for t in trades_anchor
+                       if fold_of_ts(t["entry_ts"]) == fid))
         fold_S[fid] = round(so - sa, 2)
     s_pos_folds = sum(1 for v in fold_S.values() if v > 0)
 
@@ -431,10 +431,10 @@ def seam_law(p: T.SignalPlane, trades_orig: list, trades_anchor: list,
     fired = limb1_fire or limb2_fire or bool(limb3["fires"])
     measured_c_rt = {
         "R-ORIG": round(float(np.median(
-            [T.trip_cost_pips(p, t, 1.0) for t in trades_orig])), 4)
+            [cost_pips_of(p, t, 1.0) for t in trades_orig])), 4)
         if trades_orig else None,
         "R-ANCHOR": round(float(np.median(
-            [T.trip_cost_pips(p, t, 1.0) for t in trades_anchor])), 4)
+            [cost_pips_of(p, t, 1.0) for t in trades_anchor])), 4)
         if trades_anchor else None,
     }
     return {

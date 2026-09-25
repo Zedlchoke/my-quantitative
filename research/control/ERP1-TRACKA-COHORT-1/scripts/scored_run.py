@@ -386,7 +386,6 @@ def scored_cells_for_pair(pair: str) -> dict:
 
     # ---- 12 scored cells: run the ancestry fill/PnL path -------------
     cells = {}
-    trade_cache = {}
     for arm in DEV_ARMS:
         book_map = (["FLAT", "SHORT_ALWAYS", "LONG_ALWAYS"]
                     if arm == "BASELINE-SET" else [arm])
@@ -437,7 +436,8 @@ all books' decomposition inside gates_with_margins_to_fail"
         cell["exclusion_zones"] = S.exclusion_zones(
             {"books": {"1.0": {"decompose": b1["decompose"],
                                "gates": b1["gates"],
-                               "trades": trade_cache[(arm, view)]}},
+                               "trades": cell["books"][view]["1.0"]
+                               ["trades"]}},
              "fold_or_holdout_tag": "DEV_FOLDS_F1_F6"}, arm, pair)
     anchor_gates = cells["R-ANCHOR"]["gates"]
     gates_all_pass = all(v["verdict"] == "PASS"
@@ -446,8 +446,9 @@ all books' decomposition inside gates_with_margins_to_fail"
         "decompose"]["n_trades"]
 
     # ---- seam law ------------------------------------------------------
-    seam = S.seam_law(p_dev, trade_cache[("R-ORIG", "R-ORIG")],
-                      trade_cache[("R-ANCHOR", "R-ANCHOR")],
+    seam = S.seam_law(p_dev,
+                      cells["R-ORIG"]["books"]["R-ORIG"]["1.0"]["trades"],
+                      cells["R-ANCHOR"]["books"]["R-ANCHOR"]["1.0"]["trades"],
                       fr["c_rt_pips"], fr["N_diff_frozen"])
 
     # ---- kill laws (k=1.0 book) ----------------------------------------
@@ -458,17 +459,22 @@ all books' decomposition inside gates_with_margins_to_fail"
     fp = {f: v for f, v in cells["CAUSAL-PLACEBO"]["books"]
           ["CAUSAL-PLACEBO"]["1.0"]["gates"]
           ["per_fold_net_pips"].items()}
-    kinv = S.kill_inversion(trade_cache[("R-ANCHOR", "R-ANCHOR")],
-                            trade_cache[("INVERTED", "INVERTED")], fa, fi)
-    kctl = S.kill_control(trade_cache[("R-ANCHOR", "R-ANCHOR")],
-                          trade_cache[("CAUSAL-PLACEBO", "CAUSAL-PLACEBO")],
-                          fa, fp)
+    kinv = S.kill_inversion(
+        cells["R-ANCHOR"]["books"]["R-ANCHOR"]["1.0"]["trades"],
+        cells["INVERTED"]["books"]["INVERTED"]["1.0"]["trades"], fa, fi)
+    kctl = S.kill_control(
+        cells["R-ANCHOR"]["books"]["R-ANCHOR"]["1.0"]["trades"],
+        cells["CAUSAL-PLACEBO"]["books"]["CAUSAL-PLACEBO"]["1.0"]["trades"],
+        fa, fp)
     book_trades = {
-        "SHORT_ALWAYS": trade_cache[("BASELINE-SET", "SHORT_ALWAYS")],
-        "LONG_ALWAYS": trade_cache[("BASELINE-SET", "LONG_ALWAYS")],
+        "SHORT_ALWAYS": cells["BASELINE-SET"]["books"]["SHORT_ALWAYS"]
+        ["1.0"]["trades"],
+        "LONG_ALWAYS": cells["BASELINE-SET"]["books"]["LONG_ALWAYS"]
+        ["1.0"]["trades"],
     }
-    kbeta = S.kill_beta(trade_cache[("R-ANCHOR", "R-ANCHOR")],
-                        book_trades, pair)
+    kbeta = S.kill_beta(
+        cells["R-ANCHOR"]["books"]["R-ANCHOR"]["1.0"]["trades"],
+        book_trades, pair)
     fired = {
         "KILL_PIT_SEAM": bool(seam["fires"]),
         "KILL_CONTROL_REPRODUCED": bool(kctl["fires"]),
@@ -479,8 +485,8 @@ all books' decomposition inside gates_with_margins_to_fail"
 
     # placebo per-occupied-hour rider (scored-phase diagnostic obligation)
     rider = per_occupied_hour_rider(
-        trade_cache[("R-ANCHOR", "R-ANCHOR")],
-        trade_cache[("CAUSAL-PLACEBO", "CAUSAL-PLACEBO")])
+        cells["R-ANCHOR"]["books"]["R-ANCHOR"]["1.0"]["trades"],
+        cells["CAUSAL-PLACEBO"]["books"]["CAUSAL-PLACEBO"]["1.0"]["trades"])
 
     return {
         "pair": pair,
@@ -570,11 +576,11 @@ def persist_series(res: dict) -> list:
 def dev_status_of(res: dict) -> dict:
     """Pre-holdout dev verdict (recorded BEFORE any holdout read)."""
     if res["any_kill"]:
-        label = next(k for k in KILL_PRECEDENCE if res["fired"][k])
+        label = next(k for k in KILL_PRECEDENCE if res["fired"].get(k))
         return {"status": "KILLED_AT_DEV", "eligible_for_holdout": False,
                 "terminal_label": label,
                 "fired_kills": [k for k in KILL_PRECEDENCE
-                                if res["fired"][k]]}
+                                if res["fired"].get(k)]}
     if not res["anchor_gates_all_pass"]:
         failed = [g for g, v in res["cells"]["R-ANCHOR"]["gates"].items()
                   if v["verdict"] == "FAIL"]
