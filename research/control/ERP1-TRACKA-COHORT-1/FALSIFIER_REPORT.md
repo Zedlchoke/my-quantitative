@@ -396,3 +396,64 @@ Known limitations (all disclosed on the artifacts):
   before any causal-control cell runs.
 - M-2's in-session denominator (07–18 UTC tradable bars, post-warmup) is
   the pinned reading of "in-session dev bars".
+
+---
+
+## 12. CLOCK-PLACEBO REBUILD (skeptic ADJUDICATION #2 — one shot, consumed)
+
+Authority: `research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort1/
+SKEPTIC_cohort1_REPORT.md` §ADJUDICATION #2 (A2.1 AMEND approve-with-
+amendment; A2.2 SANCTIONED — one occurrence, no look consumed). The
+amended predicate text is recorded VERBATIM in the freeze artifact
+(`clock_placebo_rebuild.amended_predicate_text_verbatim`); the seed stays
+20260925; durations unchanged; entry hours are UNIFORM-RANDOM in-session
+from the pinned seed (deliberately NOT the anchor's hour distribution);
+direction parity is seed-pinned (+1 on EVEN traded-day index, recorded);
+placebo fills are costed honestly at their own event times in the scored
+phase (no cost-parity demand). NO iteration: this was the single
+sanctioned rebuild.
+
+One-shot calibration `r = (occ_anchor + 10 pp) / occ_natural`, computed
+per pair from the battery's UNROUNDED measured occupancies:
+
+| Pair | occ_natural (before) | occ_anchor | r | occ_ctrl (after) | predicate (a) |margin|
+|---|---|---|---|---|---|---|
+| AUDUSD | 0.658269 (65.83%) | 0.497769 (49.78%) | **0.908093** | 0.453353 (45.34%) | PASS \|Δ\|=4.44 pp | **+5.56 pp** |
+| USDCAD | 0.656557 (65.66%) | 0.482445 (48.24%) | **0.887120** | 0.439344 (43.93%) | PASS \|Δ\|=4.31 pp | **+5.69 pp** |
+
+(The calibrated control lands slightly BELOW the anchor, not at
+anchor+10 pp, because uniform-random entry hours shorten the mean
+occupied run via day-close truncation relative to the natural fixed-hour
+construction — overlap/duration nonlinearity, inside the band.)
+
+**Amended predicate results — verdict `CONSTRUCTIBLE` both pairs:**
+
+| Predicate | AUDUSD | USDCAD |
+|---|---|---|
+| (a) \|occ_ctrl − occ_anchor\| ≤ 10 pp | PASS (Δ 4.44 pp, margin +5.56 pp) | PASS (Δ 4.31 pp, margin +5.69 pp) |
+| (b) ≥90% distinct round trips vs anchor | PASS (96.46%) | PASS (96.59%) |
+| (c) both directions present | PASS | PASS |
+| (d) non-constant signal series | PASS | PASS |
+| **overall** | **CONSTRUCTIBLE** | **CONSTRUCTIBLE** |
+
+Rebuild mechanics recorded: dev trips 1,185 (AUDUSD) / 1,143 (USDCAD);
+hold 7 bars both pairs (unchanged); entries/day scaled one-shot by r
+(Bernoulli(r) day selection from `default_rng(20260925)`, traded-day
+ascending draw order, uniform hour `Int[7,18)` per selected day — full
+draw-order spec in the freeze artifact). `UNBUILDABLE_SHAPE /
+BLOCKED_F3_CONTROL` did not fire.
+
+Freeze artifact updates (per A2.2 obligations): CAUSAL-PLACEBO
+`arm_config_digest` replaced per pair (AUDUSD `6f754a82303e8160`, USDCAD
+`c53a04331318728a`; old digests retained in the rebuild section), the
+§9.1 holdout-membership sha256 recomputed (`45ff897d3075d806…`), seed +
+per-pair r + before/after occupancy + amended predicate text verbatim +
+signed zero-PnL-at-rebuild statement (sha256 `f91c317cc1adcc6b…`)
+recorded; the natural recipe is kept below the rebuild section, marked
+superseded. Ledger: 2 appended rows (`F-3-control-rebuild`,
+verdict `CONSTRUCTIBLE`, all mandatory labels, net/gross null).
+Rider (scored-phase diagnostic obligation): control net per occupied hour
+next to anchor net per occupied hour — not computable in this lane.
+
+Laws held through the rebuild: no net-return computed anywhere; holdout
+never read; exactly one rebuild occurrence; one work commit (pathspec).

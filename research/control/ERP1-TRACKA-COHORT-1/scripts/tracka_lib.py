@@ -911,6 +911,93 @@ def spearman_rho(x, y):
 
 # --------------------------------------- F-3 clock-placebo constructibility -
 
+def placebo_rebuild(p, occ_anchor, occ_natural, anchor_trips, in_session_mask,
+                    seed, warmup_end_idx=0, band_pp=0.10, hold=None):
+    """F-3 clock-placebo REBUILD — skeptic ADJUDICATION #2 (one shot, no
+    iteration).
+
+    One-shot calibration: r = (occ_anchor + band_pp) / occ_natural,
+    computed ONCE from the already-measured occupancies. Construction
+    (fully seed-driven, draw order pinned): rng = default_rng(seed); for
+    each traded day in ascending order draw u ~ U(0,1); the day carries
+    an entry iff u < r (entries/day scaled one-shot by r); selected days
+    draw a UNIFORM-RANDOM in-session entry hour h ~ Int[7,17] —
+    deliberately NOT the anchor's hour distribution (predicate (f)); the
+    direction alternates by traded-day index with the seed-pinned parity
+    +1 on EVEN index (recorded; no free parameter); exit after
+    round(anchor avg hold) bars — UNCHANGED — or the day-close bar,
+    whichever first. Fills are costed at the placebo's OWN event times in
+    the scored phase (no cost-parity demand).
+
+    Predicates (ADJUDICATION #2): (a) |occ_ctrl - occ_anchor| <= 10 pp on
+    the identical in-session denominator, else UNBUILDABLE_SHAPE /
+    BLOCKED_F3_CONTROL fail-closed; (b) >= 90% of control round trips
+    distinct from the anchor's (entry_ts, dir); (c) both directions; (d)
+    signal series non-constant."""
+    r = (occ_anchor + band_pp) / occ_natural
+    days = p.traded_days()
+    day_index = {int(d): j for j, d in enumerate(days)}
+    if hold is None:
+        hold = max(1, int(round(float(np.mean([t["hold_bars"]
+                                               for t in anchor_trips])))))
+    bars_by_day = defaultdict(list)
+    for i in np.nonzero(~p.skip)[0]:
+        bars_by_day[p.day[i]].append(int(i))
+    rng = np.random.default_rng(seed)
+    tgt = np.zeros(len(p.ts), dtype=np.int8)
+    n_selected = 0
+    n_placed = 0
+    for d in days:  # draw order: traded-day ascending (pinned)
+        u = float(rng.random())              # draw 1: day selection
+        if u >= r:
+            continue
+        n_selected += 1
+        h0 = int(rng.integers(7, 18))        # draw 2: uniform hour 7..17
+        direction = 1 if day_index[int(d)] % 2 == 0 else -1
+        bars = bars_by_day.get(d, [])
+        cand = [i for i in bars if p.hour[i] == h0]
+        if not cand:                          # micro-gap day: entry unplaceable
+            continue
+        i0 = cand[0]
+        i1 = min(i0 + hold, bars[-1])
+        tgt[i0:i1 + 1] = direction
+        n_placed += 1
+    trips = schedule_only(p, tgt, warmup_end_idx=warmup_end_idx)
+    occ = float((tgt[in_session_mask] != 0).mean())
+    ka = {(t["entry_ts"], t["dir"]) for t in anchor_trips}
+    kb = {(t["entry_ts"], t["dir"]) for t in trips}
+    distinct = (len(kb - ka) / len(kb)) if kb else 0.0
+    dirs = {t["dir"] for t in trips}
+    nonconstant = bool(len(np.unique(tgt[in_session_mask])) > 1)
+    margin_a = band_pp - abs(occ - occ_anchor)
+    preds = {
+        "a_shape_fidelity_10pp": bool(margin_a >= 0.0),
+        "b_90pct_distinct_trips": bool(distinct >= 0.90),
+        "c_both_directions": len(dirs) == 2,
+        "d_non_constant": nonconstant,
+    }
+    return {
+        "r": r,
+        "hold_bars": hold,
+        "entries_expected": r * len(days),
+        "days_selected": n_selected,
+        "entries_placed": n_placed,
+        "trips_dev": len(trips),
+        "occ_ctrl": occ,
+        "occ_anchor": occ_anchor,
+        "occ_natural_before": occ_natural,
+        "margin_a_pp": margin_a * 100.0,
+        "distinct_trip_share": distinct,
+        "directions": sorted(dirs),
+        "predicates": preds,
+        "all_predicates_hold": bool(all(preds.values())),
+        "parity_rule": "+1 on even traded-day index, -1 on odd (seed-pinned, recorded)",
+        "draw_order": "default_rng(seed); per traded day ascending: u=runif() "
+                      "day-selection (entry iff u < r); selected days draw "
+                      "h=rng.integers(7,18) (uniform, NOT anchor hours)",
+    }
+
+
 def placebo_probe(p, trips_anchor, in_session_mask, lo_q=0.3, hi_q=0.7,
                   warmup_end_idx=0):
     """F-3 CLOCK-PLACEBO constructibility probe (no scored arm). Recipe

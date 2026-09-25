@@ -258,6 +258,35 @@ def test_mode_sham_preserves_marginal_and_moves_labels():
         stats["labels_changed"] == 0
 
 
+def test_placebo_rebuild_adjudication2():
+    """Rebuild fixture: one-shot r calibration, seed-driven day selection,
+    uniform-random in-session hours (never a fixed hour), pinned parity,
+    durations unchanged, deterministic reproduction."""
+    p = T.SignalPlane(synth_panel(50, seed=21))
+    idx = np.arange(len(p.ts))
+    ins = (~p.skip) & (p.hour >= 7) & (p.hour <= 18) & (idx > 0)
+    tgt_anchor = np.where(ins, 1, 0).astype(np.int8)
+    trips_anchor = T.schedule_only(p, tgt_anchor, warmup_end_idx=0)
+    occ_anchor = float((tgt_anchor[ins] != 0).mean())
+    occ_natural = (occ_anchor + 0.10) / 0.8  # engineered so r = 0.8 exactly
+    res = T.placebo_rebuild(p, occ_anchor, occ_natural, trips_anchor, ins,
+                            seed=20260925, warmup_end_idx=0, hold=2)
+    assert res["r"] == pytest.approx(0.8)
+    assert res["hold_bars"] == 2                      # duration unchanged
+    assert res["entries_placed"] == res["days_selected"]  # parity of draws
+    # determinism: identical re-invocation reproduces the target array
+    res2 = T.placebo_rebuild(p, occ_anchor, occ_natural, trips_anchor, ins,
+                             seed=20260925, warmup_end_idx=0, hold=2)
+    assert res2["trips_dev"] == res["trips_dev"]
+    assert res2["occ_ctrl"] == res["occ_ctrl"]
+    # predicate bookkeeping present
+    assert set(res["predicates"]) == {
+        "a_shape_fidelity_10pp", "b_90pct_distinct_trips",
+        "c_both_directions", "d_non_constant"}
+    # r < 1 strictly reduces occupancy vs the natural construction here
+    assert res["occ_ctrl"] < occ_natural + 1e-12
+
+
 def test_families_run_on_plane():
     p = T.SignalPlane(synth_panel(70, seed=13))
     outs = [
