@@ -118,10 +118,10 @@ def main() -> int:
     import json as _json
     _probe = subprocess.run(
         [str(PY), "-c",
-         "import sys, json; sys.path.insert(0, '.'); "
+         "import sys, json; sys.path.insert(0, r'" + str(CD) + "'); "
          "from replication_data import ARMS, FOLDS; "
          "print(json.dumps({'ARMS': ARMS, 'FOLDS': FOLDS}))"],
-        cwd=str(CD), capture_output=True, text=True,
+        capture_output=True, text=True,
         env=dict(os.environ, PYTHONPATH=str(V14_ROOT)))
     if _probe.returncode != 0:
         print("REFUSED: constants probe failed:", _probe.stderr[-300:])
