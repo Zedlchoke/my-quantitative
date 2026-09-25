@@ -1,0 +1,75 @@
+{
+ "schema": "eos1.a7_terminal@1",
+ "audited_at_utc": "2026-09-25T02:02:03Z",
+ "auditor": "A7",
+ "cycle_id": "ETHUSDT-OPEN-SEARCH-V1",
+ "integration_head": "12ff16de72ca53a90e3ef53c94603485a107b915",
+ "repro_twin_head": "0b92ee65e8f2aaf0f9cff1b2ba45de9cb826637c",
+ "checks": {
+  "c1_scored_under_consumed_go": {
+   "status": "PASS",
+   "evidence": "go_authorization.json added by 37629434 (+8 lines, 2026-09-25T01:28:23Z), phrase matches registered GO and the runner's hard refusal gate; two pre-publication TECHABORTs (events.jsonl lines 10,12) remediated via r2 54f2b4f5 (ID-parse) and r3 0b92ee65 (tr->refs fix + fixture 11), both diffs inspected plumbing-only; scored output built 01:48:45Z postdates last code edit 01:40:17Z; verdict ETHUSDT_OPEN_SEARCH_V1_NO_INCREMENTAL_VALUE, all_pass_cells=[], computations 24=8x3"
+  },
+  "c2_reproduction_g8": {
+   "status": "PASS",
+   "evidence": "twin detached at exactly 0b92ee65; scored_summary.json byte-identical modulo built_utc (01:48:45Z vs 01:49:07Z), diff recomputed by auditor; engine/script/test hashes identical across worktrees and equal to v4 freeze code_freeze records"
+  },
+  "c3_gate_arithmetic": {
+   "status": "PASS",
+   "scope": "ALL 8 cells (min required 3), incl. EOS1-E1-A1 and EOS1-E2-B1",
+   "evidence": "committed engine re-executed in-memory read-only; G1,G2,G3+margins,G4,G5,G6,G7,G10+deltas+flips,G11 recomputed with ZERO mismatches vs summary; G3 failed all 8 (ALWAYS_ON 1653470.33 > max cell 625621.14); E1-A1/E1-A4 failed ONLY G3; E2-B1 G6 fail (shuf 68166.68 > 67991.14), E2-B2 G6 fail (shuf 71563.85 > 48351.23), E2-B3 G6 fail (114166.55 > 79472.94)"
+  },
+  "c4_denominators": {
+   "status": "PASS_WITH_FINDING",
+   "evidence": "24 arm-tier observed; full census 84 = 24 + 12 ref-tier + 48 control-tier matches dry-run expected_computations; controls/references zero-denominator per plan s8; budget 8/8 cells computed; scored_summary.json NOT yet committed (untracked) - finding F-A; registry/state budget bookkeeping pending P6 - finding F-B"
+  },
+  "c5_verdict_lawfulness": {
+   "status": "PASS",
+   "evidence": "zero all-pass cells -> NO_INCREMENTAL_VALUE is the lawful s11 member; no gate relaxed after PnL: plan last touched pre-outcome (8a5a06b4 micro-amendment), eos1_engine.py last touched pre-GO (4d053745), run_scored.py post-GO edits are the two disclosed pre-publication TECHABORT fixes only, zero code edits after 01:48:45Z, tree clean vs HEAD except untracked scored/"
+  },
+  "c6_incident_record_freeze_chain": {
+   "status": "PASS",
+   "evidence": "both TECHABORTs recorded with zero exposure (scored/ empty); freeze v1/v2/v3 SUPERSEDED_BLOCKED present, tracked, byte-clean vs HEAD; v4 freeze 8 recorded hashes (4 code + 4 evidence) ALL match working files in both worktrees"
+  },
+  "c7_references_hand_recompute": {
+   "status": "PASS",
+   "evidence": "from-scratch ALWAYS_ON F1 with independent loader/math from raw zips: entry 2020-01-01T00:00Z open 129.12, qty 774.473358, exit 2021-04-30T20:00 H4 close 2773.15, gross 2047715.30, fees 1123.87, funding -419187.52 (1458 settlements, 0 fallbacks) -> NET 1627403.92 vs recorded 1627403.92 (diff 0.0044, rel 2.7e-9); ALWAYS+SHORT F1 sum -2278.71 matches closed form -(4qtick+2q(o+c)fee); all 80 ETHUSDT zips sha256-match committed staged_manifest; twin zips byte-identical; 58440 ETH 1h bars; funding 7305 rows floor exactly 2020-01-01T00:00Z; ETH H4 dropped=0"
+  },
+  "c8_seal_orders_credentials_foreign_surfaces": {
+   "status": "PASS",
+   "evidence": "branch f3daf990..HEAD touches zero files outside research/control/ethusdt_open_search_v1/; no credential-like strings committed (keyless Vision URLs); s1 SEALED_UNTOUCHED, orders NONE; auditor writes confined to audits_a7/"
+  },
+  "c9_fixtures_corroboration": {
+   "status": "PASS",
+   "evidence": "test_fixtures.py executed in the twin: ALL FIXTURES PASS, exit 0 (11 groups incl. PIT settlement law and synthetic gates() exercise)"
+  }
+ },
+ "findings": [
+  {
+   "id": "F-A",
+   "severity": "LOW",
+   "class": "documentation-lag",
+   "finding": "scored/scored_summary.json is untracked and has never been committed at audit time; the dispatch wording 'published via the committed summary' is not yet literally true. Byte-verified present and mutually consistent in two independent worktrees; commit expected at P6 close."
+  },
+  {
+   "id": "F-B",
+   "severity": "LOW",
+   "class": "documentation-lag",
+   "finding": "No events.jsonl entry for the successful scored run (2026-09-25T01:48:45Z) or twin rerun (01:49:07Z); state.json still P4-rerun with budget.used=0; registry 0/8 head 51378f5. All P6-close bookkeeping, designed to land after this audit."
+  },
+  {
+   "id": "F-C",
+   "severity": "INFO",
+   "class": "cosmetic",
+   "finding": "v4 freeze tree.dirty_paths[0] reads 'esearch/...' (dropped leading 'r'); one events.jsonl line has non-uniform JSON spacing."
+  },
+  {
+   "id": "F-D",
+   "severity": "INFO",
+   "class": "interpretation-disclosed",
+   "finding": "G7 implemented as execution-cost-only (2 ticks/rt bps) per pre-PnL delta-r1 adjudication; G5 as max-positive-fold share of positive folds (stricter reading). Both locked in the freeze chain before any PnL and immaterial: stricter readings only add failures - no cell can reach all-pass because the G3 wall binds everywhere."
+  }
+ ],
+ "verdict": "CONFIRM_WITH_FINDINGS",
+ "verdict_rationale": "The terminal verdict ETHUSDT_OPEN_SEARCH_V1_NO_INCREMENTAL_VALUE stands as recorded with evidence intact: 24 observed arm-tier computations with zero all-pass cells; G3 wall (BASE_ALWAYS_ON_LONG 1,653,470.33 @1.0x) exceeds every cell net (max 625,621.14); E1-A1/E1-A4 fail only G3; block-shuffled controls out-earn E2-B1/B2/B3 (G6 fail as recorded); every gate boolean and numeric field of scored_summary.json reproduces from the committed engine on the staged bytes with zero mismatches; the detached twin at 0b92ee65 reproduces the output byte-identically modulo built_utc; the headline reference BASE_ALWAYS_ON_LONG F1 = 1,627,403.92 reproduces from raw staged zip bytes by independent hand arithmetic to 2.7e-9 relative; freeze chain v1..v4 verified by hash; no post-PnL code or gate edits exist. Findings F-A/F-B are LOW documentation-lag items to be discharged at P6 close and do not touch the outcome."
+}
