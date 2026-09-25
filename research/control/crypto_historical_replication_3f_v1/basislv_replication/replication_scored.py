@@ -112,7 +112,23 @@ def main() -> int:
         command=[str(PY), str(Path(__file__))],
         expected_artifacts=[str(STATUS_PATH)],
     )
-    from replication_data import ARMS, FOLDS
+    # v14-context constants via subprocess (replication_data imports the
+    # v14_root research package; the launcher runs in root governance context
+    # and must not collide on the cached `research` package)
+    import json as _json
+    _probe = subprocess.run(
+        [str(PY), "-c",
+         "import sys, json; sys.path.insert(0, '.'); "
+         "from replication_data import ARMS, FOLDS; "
+         "print(json.dumps({'ARMS': ARMS, 'FOLDS': FOLDS}))"],
+        cwd=str(CD), capture_output=True, text=True,
+        env=dict(os.environ, PYTHONPATH=str(V14_ROOT)))
+    if _probe.returncode != 0:
+        print("REFUSED: constants probe failed:", _probe.stderr[-300:])
+        return 7
+    _c = _json.loads(_probe.stdout.strip().splitlines()[-1])
+    ARMS = [(a, b) for a, b in _c["ARMS"]]
+    FOLDS = [(f, w0, w1) for f, w0, w1 in _c["FOLDS"]]
 
     try:
         for fold, w0, w1 in FOLDS:
