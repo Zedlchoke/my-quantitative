@@ -1,0 +1,84 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "tracka1-falsifier",
+  "cycle_id": "ERP1-TRACKA-COHORT-1",
+  "role": "quant-implementer",
+  "lane": "tracka1-falsifier",
+  "dispatch_sha": "2682422a62e64edd25cca42b6a51fdffdfba4d14",
+  "actual_start_sha": "2682422a62e64edd25cca42b6a51fdffdfba4d14",
+  "commit_sha": "3931aed88dfd8d0c3f15e31df0c92eb5dc3cae0a",
+  "commit_note": "commit_sha is the single work commit carrying ALL falsifier deliverables (11 files, pathspec-staged: signal machinery, plane builder, battery runner + results, freeze pins + freeze artifact, ledger seed, plane diff reports, report, tests); this handoff file lands in the immediately following bookkeeping commit on the same branch because a file cannot contain its own commit's sha. GO-1 consumed; GO-2 NOT given - zero scored rows exist anywhere.",
+  "changed_paths": [
+    "research/control/ERP1-TRACKA-COHORT-1/FALSIFIER_REPORT.md",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/plane_diff_AUDUSD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/plane_diff_USDCAD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/falsifier_results.json",
+    "research/control/ERP1-TRACKA-COHORT-1/freeze/freeze_pins.json",
+    "research/control/ERP1-TRACKA-COHORT-1/freeze/GO1_freeze_artifact.json",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/build_signal_plane.py",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/falsifier_run.py",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/tracka_lib.py",
+    "research/control/ERP1-TRACKA-COHORT-1/tests/test_tracka_lib.py",
+    "research/control/ERP1-TRACKA-COHORT-1/trial_ledger.jsonl"
+  ],
+  "tests": [
+    {
+      "command": "cd <worktree>/research/control/ERP1-TRACKA-COHORT-1 && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/ -q",
+      "result": "32 passed (12 new falsifier fixtures: M-1 shift-equivalence on 3 synthetic seeds; M-5 truncation-PIT; R-DAEMON emulation on a hand-built panel with hand-computed partial-range percentiles incl. a genuine daemon/R-ORIG divergence case; M-4 self-test blindness; schedule-only force-flat + no-PnL-field law + reversal trips; trip-cost linearity in k; N_diff/limb3 machinery; Spearman sanity; mode-sham marginal preservation; 12-family smoke; plane close-column-high convention; SignalPlane v2_lib semantics)"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python scripts/build_signal_plane.py {AUDUSD,USDCAD}",
+      "result": "heavy-lock role falsifier-plane, 2 acquisitions both released FINISHED; ancestry-convention 15m/H1 planes rebuilt from raw M1 bytes and diffed vs the port's planes (plane_diff_{SYM}.json): b_h anc<port on 93-94% of bars, NEVER above, b_l IDENTICAL (0 diff), s_open/s_close bit-identical (0.0)"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python scripts/falsifier_run.py",
+      "result": "battery to completion; wrote falsifier_results.json + freeze/GO1_freeze_artifact.json + trial_ledger.jsonl (25 seed rows exactly-once); pins written to freeze/freeze_pins.json before any consuming computation"
+    }
+  ],
+  "authority_claims": [
+    "PLANE SEMANTICS PIN (Task 0, LINEAGE-NOTE-1 resolved): ANCESTRY convention = SIGNAL plane of all arms; port true-H/L = COST plane. Exact ancestor convention re-derived from code: 15m high = max(CLOSE column), 15m low = min(LOW column) under the verified (sec,o,c,l,h,v) decode - only the HIGH is close-column, the LOW was already the true low. Verified by rebuilding both pairs' planes from raw M1 bytes under the heavy lock: ancestor b_h strictly below the port's true high on 118,910/130,160 (AUDUSD) and 120,409/130,102 (USDCAD) 15m bars, equal otherwise, NEVER above; b_l identical everywhere; spreads bit-identical (max abs diff 0.0) so the cost plane is unchanged.",
+    "F-5 (Task 1): M3 (USDCAD) KILLED pre-PnL - measured stress round trip = 2 crossings x 2.0 x s_cond 1.2 pips (n-weighted mean of census bucket OPEN p50s over london_07_12/ny_overlap_12_16/ny_late_16_21, all p50 = 1.2) = 4.8 pips >= 2.0 kill line (margin +2.8; base-book RT 2.4 already exceeds the declared 1.5-pip hypothesis). Ledger row NOT_SCORED_FALSIFIED, falsifier_id F-5, mechanism M3. V-1, T-1, T-2, T-3 MOOT and recorded as not-run. M1: REPORT_ONLY on both pairs (RT floors k=1.0/1.5/2.0 = 2.0/3.0/4.0 AUDUSD, 2.4/3.6/4.8 USDCAD) - no declared premium band exists in the freeze, no kill invented.",
+    "F-PIT-1 (Task 2) PASS_PIT both pairs: M-1 shift-equivalence PASS (pure usage-index shift == independent from-scratch implementation, integer-identical arrays); M-2 non-vacuity PASS (22.99% AUDUSD / 20.38% USDCAD in-session dev bars differ, gate 2%, margins +20.99pp/+18.38pp; day-mode label changes on 40.5%/35.7% of post-warmup days with identical marginal label counts); M-3 DISCLOSED_SEAM logged (bar disagreement vs R-ORIG 16.7%/19.6%, day mode-flip rate 43.0%/63.4%, orig-active-daemon-flat 278/564 days, reverse 0, midday daemon mode changes 520/772 days); M-4 committed as a code fixture (same-panel self-test PASSes while the laws diverge); M-5 R-ORIG LEAK_PROVEN (truncated-at-day-start replay differs on 72.1%/75.0% of days), R-ANCHOR PIT_CLEAN_AS_EXECUTED (0 differing days).",
+    "SEAM CONSTANTS FROZEN: c_rt = 2.0 pips (AUDUSD) / 2.4 (USDCAD), base book, formula stated (median over the arm's dev-window round trips of s_open entry + s_open signal-exit / s_close day-close-exit, x pip_mult; bar spreads reconcile to the census p50s at 0.0 diff); N_diff = 728 / 665; S = NOT_COMPUTABLE_PRE_PNL (limbs (i)/(ii) evaluate in the scored phase); limb (iii) machinery frozen (nearest-in-time same-UTC-day pairing, equidistant -> earlier entry_ts; matched pairs 337/306 >= floor 20 evaluable).",
+    "F-1 (Task 3) ancestry rho on the EXACT scored target-array representation with a 24-variant frozen set (12 census family functions x 2 lane-pinned variants, frozen before computation): pooled |rho| 0.1352 (AUDUSD) / 0.1214 (USDCAD), both under the 0.20 gate; max 0.3276 / 0.2827 (PDHLOC, disclosed); RANGEEXP family 0.1905/0.2522. For M1 (Task-1 replication) F-1 is DISCLOSURE of declared ancestry, not a gate (the VETO_NOVELTY_RENAME class binds Task-2 proposals); M3's armed V-1 fixture MOOT (F-5 kill).",
+    "F-3 (Task 4): mode-sham PASS_NON_VACUOUS both pairs at pinned seed 20260925 (41.8%/39.1% of day labels changed, >= 2% gate; bar disagreement vs anchor 22.8%/20.9%; diagnostic-only per pin (iii)). Clock-placebo constructibility FAILS the occupancy predicate (placebo 65.8%/65.7% vs the 10-40% band; the anchor's own in-session occupancy is 49.8%/48.2%) => per plan 8 F-3's own remedy the causal control MUST BE REBUILT before scoring - recorded as a scored-phase prerequisite, NOT an arm kill and NOT an arm-set re-derivation. Other three predicates PASS (both directions; 97.7%/98.6% distinct trips; non-constant).",
+    "F-6 (Task 5) COUNTS ONLY: every non-FLAT arm meets smoke 30 / adjudication 100 / promote 236 on the dev-union folds AND smoke 30 on the last-6 window (2025-07-01..2025-12-31): R-ANCHOR 923 dev (per-fold 113/172/156/167/157/158) / 100 last6 on AUDUSD, 962 (110/184/171/167/166/164) / 97 on USDCAD; R-ORIG 927/101 and 967/100; R-NEIGH, INVERTED, SHORT/LONG_ALWAYS all clear; FLAT = 0 by design. The promote-floor RT leg (236) is satisfiable pending the scored phase.",
+    "F-7 (Task 6) DECLARED_PRE_PNL: concentration statistics (top-fold share G6, top-5-trades share G7, top single session-hour share G8, all <= 0.50 at k=1.0 and k=2.0, dev folds only) + exclusion-zone log fields (level/id/share/threshold/k/arm_id/pair/tag) frozen in the freeze artifact.",
+    "FREEZE ARTIFACT complete with all five mandatory pins (plan 10): (i) bootstrap seed 20260925 + mode-sham seed 20260925 + storage path, pins written BEFORE any consuming computation; (ii) 9.1 holdout-pass membership per pair (anchor R-ANCHOR + companions CAUSAL-PLACEBO/INVERTED/BASELINE-SET incl. the inverted companion; never-selectable R-ORIG/R-NEIGH/R-DAEMON/mode-sham/M2/M3) sha256 3135b11dfe83de49...; (iii) mode-sham outcome vocabulary verbatim; (iv) two-pair identical UTC close semantics statement; (v) seam limb (iii) minimum-N floor 20 => NOT_RUN fail-closed. PLUS plane pin, c_rt/N_diff, F-1 variant set, 16-entry arm registry with arm_config_digest hashes, windows, fold table, cost-book pointer + census sha256s, F-5 verdicts, F-7 declaration, placebo recipe, code sha chain.",
+    "LEDGER SEED: trial_ledger.jsonl = 25 rows exactly-once (2 data-gate BUILD_PASS, 1 F-5 M3 kill, 2 F-5 M1 report-only, 2 F-PIT-1 PASS_PIT, 2 F-1 disclosure, 2 mode-sham, 14 F-6 population rows); every row carries SINGLE_SOURCE_PANEL + FILL_QUALITY_UNMEASURABLE_ON_M1_BIDASK + PAPER_TIER; net_pnl/gross_pnl null everywhere; NO scored rows; append-only law governs post-commit rows (seed writer made exactly-once idempotent).",
+    "HARD LAW HELD end-to-end: no PnL/expectancy/PF/win-rate of any arm exists in the lane or its artifacts; the schedule-only executor never enters the price/pips code path; the only magnitude arithmetic is F-5 cost-band arithmetic and the c_rt/N_diff seam constants; the holdout window 2026-01-01..2026-06-30 was never read (sliced out at load); ancestry outcome files untouched (only v2_lib.py/engine.py/build_bars.py read, read-only); no plans/ edits, no other-namespace writes, no pushes/merges, heavy-lock discipline held (FREE_PROVEN at start, 2 acquisitions both FINISHED).",
+    "STOP CONDITIONS: none fired. M-1 and M-5 passed on both pairs (no NOT_RUN_ARMS_REDERIVED); plane ambiguity resolved from code (task 0); no net-return arithmetic required.",
+    "INCIDENT (self-caught, fixed pre-freeze): the first battery run had R-ANCHOR/R-DAEMON consume the fade band from ranges[d-1] (two trading days back); plan 4.2 pins the ONE delta to the mode percentile index ONLY, so the band must stay ranges[d][1]/[2] (previous day's hi/lo). Fixed in all four consumers (shift impl, independent impl, day-labels/truncation probe, daemon) and the battery re-run - all reported numbers are post-fix. The M-1 double implementation could not catch this class (both legs shared the misreading); the plan-text re-read did."
+  ],
+  "known_limitations": [
+    "SINGLE_SOURCE_PANEL (Dukascopy-only corpus), PAPER_TIER verdict ceiling, and FILL_QUALITY_UNMEASURABLE_ON_M1_BIDASK apply to everything downstream (owner D-C: no independent-source unblock this cycle).",
+    "The F-1 frozen variant set is LANE-PINNED (2 variants per family): the V2 census config tables live in v2_campaign.py which is outside this lane's allowed read set; variants were frozen in the freeze artifact before the rho computation.",
+    "R-DAEMON is an EMULATION with semantics pinned by this lane per the dispatch definition (per-decision-bar partial-range percentile); the shadow daemon source was never read (outside the allowed set) and no shadow artifact is cited.",
+    "M-5's truncated-replay definition is pinned: T0 = strict day-start prefix (day-stat layer from days strictly before d; R-ORIG mode absent -> flat), T1 = first-bar-closed prefix (disclosed secondary depth); the bar-walk consumes day-d bar closes (PIT-legal within the day).",
+    "Causal control REBUILD is a scored-phase prerequisite: the rebuilt recipe must satisfy ALL four non-vacuity predicates (occupancy 10-40% is the failing one) before any causal-control cell runs; the anchor's own in-session occupancy (49.8%/48.2%) exceeds the band, so the rebuild cannot be a pure clock clone.",
+    "M-2's denominator is the pinned reading of 'in-session dev bars': 07-18 UTC tradable bars after the 61-traded-day warmup.",
+    "HOURREV family port keeps the ancestor's negative-index CS wrap at d_i == win_days byte-faithfully (affects 1 day per window value); disclosed in the frozen variant set.",
+    "Derived planes (bars15_ANC_*/bars1h_ANC_*, *.parquet) are machine-local by design; committed authority = the diff reports + censuses + manifests; rebuild via scripts/build_signal_plane.py (deterministic, sha-verified).",
+    "c_rt is schedule-conditioned (evaluated at the arm's actual fill bars, which reconcile to the census p50s exactly); the pure census-derived floors live in the F-5 tables."
+  ],
+  "incidents": [
+    "Band-index defect (self-caught pre-freeze): first run consumed the fade band from ranges[d-1] in R-ANCHOR/R-DAEMON/labels/truncation probe; plan 4.2's 'exactly ONE delta' pins the band to the previous day's hi/lo (ranges[d][1]/[2]); fixed in all four consumers, battery re-run, all artifacts post-fix. Root cause: a plausible misreading that the M-1 double implementation could not catch because both legs shared it - the plan-text re-read caught it.",
+    "Ledger seed duplication during a development re-run (append-mode writer): fixed to exactly-once idempotent BEFORE commit; the committed seed is 25 unique rows and no committed ledger pre-existed, so the append-only law was never violated.",
+    "Heavy lock: two acquisitions (role falsifier-plane, one per pair), both released FINISHED; no contention, no foreign worker touched."
+  ],
+  "tree_status": "clean (work commit 3931aed8 landed via pathspec staging; remaining machine-local gitignored bytes: data_local/duka/M1/**.bi5, data_local/derived/*.parquet, __pycache__/.pytest_cache)",
+  "workers": 0,
+  "outputs": [
+    "research/control/ERP1-TRACKA-COHORT-1/FALSIFIER_REPORT.md",
+    "research/control/ERP1-TRACKA-COHORT-1/freeze/GO1_freeze_artifact.json",
+    "research/control/ERP1-TRACKA-COHORT-1/freeze/freeze_pins.json",
+    "research/control/ERP1-TRACKA-COHORT-1/trial_ledger.jsonl",
+    "research/control/ERP1-TRACKA-COHORT-1/falsifier_results.json",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/plane_diff_AUDUSD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/plane_diff_USDCAD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/tracka_lib.py",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/build_signal_plane.py",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/falsifier_run.py",
+    "research/control/ERP1-TRACKA-COHORT-1/tests/test_tracka_lib.py"
+  ]
+}
