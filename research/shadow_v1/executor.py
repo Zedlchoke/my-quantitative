@@ -342,6 +342,11 @@ class ForwardExecutor:
             self.fill_bar_interval in data_feed.INTERVAL_MS,
             f"fill_bar_interval {self.fill_bar_interval!r} unsupported",
         )
+        #: AMENDMENT A2 P-1 (owner GO 2026-09-25T03:41Z, decision D3):
+        #: cost-aware sizing (packet B) — enabled ONLY by explicit config
+        #: for the BANDRIDGE family; every other family leaves this False
+        #: and keeps its exact prior sizing (regression fixtures c/e).
+        self.cost_aware_sizing = bool(config.get("cost_aware_sizing", False))
         if "fill_symbols" in config:
             fill_symbols = [str(s) for s in config["fill_symbols"]]
         elif "bars" in self.snapshot_spec:
@@ -421,6 +426,13 @@ class ForwardExecutor:
                         }
                     ),
                     "btc_betas": self.btc_betas,
+                    # A2 P-1: included ONLY when enabled so the digest of
+                    # every non-BANDRIDGE family stays byte-identical.
+                    **(
+                        {"cost_aware_sizing": True}
+                        if self.cost_aware_sizing
+                        else {}
+                    ),
                 },
             }
         )
@@ -979,6 +991,16 @@ class ForwardExecutor:
             raise accounting.MarkGapError(
                 "equity unavailable (mark gap); rebalance refused"
             )
+        #: A2 P-1 sizing law (packet B, verbatim formula): when enabled,
+        #: a buy target's quantity is capped so notional + fee never
+        #: exceeds sleeve cash: qty = min(w*equity/ref, cash/(ref*(1+fee)))
+        #: with fee = the primary book's fee_rate. Disabled for every
+        #: family whose config does not set cost_aware_sizing.
+        afford_fee_rate: Optional[float] = None
+        if self.cost_aware_sizing:
+            afford_fee_rate = float(
+                self.sleeve.books[self.primary_book].params.fee_rate
+            )
         desired: Dict[str, float] = {}
         for symbol, weight in approved_weights.items():
             w = float(weight)
@@ -986,7 +1008,14 @@ class ForwardExecutor:
                 continue
             if symbol not in fill_refs:
                 raise ExecutorError(f"no fill reference for target symbol {symbol!r}")
-            desired[symbol] = w * equity / fill_refs[symbol]
+            qty = w * equity / fill_refs[symbol]
+            if afford_fee_rate is not None and w > 0.0:
+                qty = min(
+                    qty,
+                    self.sleeve.cash
+                    / (fill_refs[symbol] * (1.0 + afford_fee_rate)),
+                )
+            desired[symbol] = qty
         current = {
             symbol: pos.qty
             for symbol, pos in self.sleeve.positions.items()

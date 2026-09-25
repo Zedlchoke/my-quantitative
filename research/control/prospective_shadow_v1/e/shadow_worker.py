@@ -184,6 +184,29 @@ SLIPPAGE_TICKS_CURRENT = 1.0
 FEE_RATE_ILLIQ_LINEAGE = FEE_RATE_CURRENT * 1.5
 SLIPPAGE_TICKS_ILLIQ_LINEAGE = 2.0
 
+#: AMENDMENT A2 (owner GO consumed 2026-09-25T03:41Z, decision D3; draft
+#: plans/DRAFT_amendment_PSCTV1_A2_bandridge_pins.md): the BANDRIDGE
+#: identity manifest pins fee_bps_per_side = 6.0 as the FULL per-side
+#: stack ("6 bps/side full stack", SPEC.md). The executor is re-pinned to
+#: exactly that for the BANDRIDGE family ONLY — a per-family override.
+#: FEE_RATE_CURRENT (5 bps + 1 tick) above stays byte-identical for
+#: ILLIQ/PREMFADE/CARRY (regression fixtures (c)/(e)); the shared cost
+#: digest 130d2e7e… stops applying to NEW BANDRIDGE records at the
+#: activation moment T_act recorded in
+#: research/control/prospective_shadow_v1/cost_regime_boundaries/BANDRIDGE_A2_PINS.json.
+FEE_RATE_BANDRIDGE_IDENTITY = 0.0006
+SLIPPAGE_TICKS_BANDRIDGE_IDENTITY = 0.0
+BANDRIDGE_COST_BOOKS_PINNED = {
+    "CURRENT_CONSERVATIVE_COST": {
+        "fee_rate": FEE_RATE_BANDRIDGE_IDENTITY,
+        "slippage_ticks": SLIPPAGE_TICKS_BANDRIDGE_IDENTITY,
+    },
+    "LINEAGE_COST": {
+        "fee_rate": FEE_RATE_BANDRIDGE_IDENTITY,
+        "slippage_ticks": SLIPPAGE_TICKS_BANDRIDGE_IDENTITY,
+    },
+}
+
 #: Conservative BTC tick (cost regime manifest) for fill symbols absent
 #: from the per-symbol mapping (plan section 6 per-symbol tick model).
 TICK_SIZE_DEFAULT = 0.10
@@ -503,6 +526,14 @@ def tick_mapping_for(
 
 
 def cost_books_for(family_id: str) -> Dict[str, Dict[str, float]]:
+    # A2 P-3: per-family override — BANDRIDGE books are the identity pin
+    # (6 bps/side full stack), returned as fresh copies; every other
+    # family continues through the shared frozen construction below.
+    if family_id == FAMILY_BANDRIDGE:
+        return {
+            name: dict(params)
+            for name, params in BANDRIDGE_COST_BOOKS_PINNED.items()
+        }
     books = {
         "CURRENT_CONSERVATIVE_COST": {
             "fee_rate": FEE_RATE_CURRENT,
@@ -663,6 +694,24 @@ def build_executors(
             # the decision; the funding-only snapshot_spec carries no
             # bars, so the fill universe is declared explicitly.
             config["fill_symbols"] = list(CARRY_TRADED_UNIVERSE)
+        if family_id == FAMILY_BANDRIDGE:
+            # A2 P-4 (fail-closed hash-match-in-values): refuse to build
+            # the BANDRIDGE executor unless its cost books equal the
+            # identity pin exactly. A mismatch means two cost laws would
+            # coexist — every record would be UNPINNED_COST_LAW — so the
+            # worker refuses to start the family instead.
+            built_books = cost_books_for(family_id)
+            if built_books != BANDRIDGE_COST_BOOKS_PINNED:
+                raise WorkerConfigError(
+                    "BTC4H-BANDRIDGE cost law does not match the identity "
+                    "pin (fee_bps_per_side 6.0 full stack); refusing to "
+                    "build the executor (UNPINNED_COST_LAW fail-closed; "
+                    "amendment A2 P-4)"
+                )
+            # A2 P-1: sizing law B (cost-aware) enabled for this family
+            # only; the executor's config_digest includes the flag ONLY
+            # when enabled, so other families' digests stay identical.
+            config["cost_aware_sizing"] = True
         executors[family_id] = ForwardExecutor(
             family_id, config, runtime_root, feed, shadow_start_utc
         )

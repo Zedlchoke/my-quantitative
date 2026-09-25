@@ -1,0 +1,33 @@
+{
+  "schema": "psv1_cost_regime_boundary@1",
+  "amendment": "PSCTV1-A2-BANDRIDGE-PINS (plans/DRAFT_amendment_PSCTV1_A2_bandridge_pins.md)",
+  "owner_go": {
+    "phrase": "GO PSCTV1 AMENDMENT A2 BANDRIDGE PINS",
+    "consumed_at_utc": "2026-09-25T03:41:00Z",
+    "record": "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/A2_gate/GO_RECORDED.json"
+  },
+  "pins": {
+    "P-1_sizing": "B (cost-aware; qty = min(w*equity/ref, cash/(ref*(1+fee))); executor config cost_aware_sizing=true, BANDRIDGE only)",
+    "P-2_fill_law": "A — first completed 15m bar STRICTLY AFTER the H4 decision close (already the executor law: data_feed.select_fill_bar; pinned here by fixtures a/d, no behavior change)",
+    "P-3_cost_law": "identity 6 bps/side FULL stack (fee_rate=0.0006, slippage_ticks=0.0, both books); per-family override in e/shadow_worker.cost_books_for; FEE_RATE_CURRENT untouched",
+    "P-4_hash_match": "build_executors refuses to build BANDRIDGE unless cost_books_for(FAMILY_BANDRIDGE) == BANDRIDGE_COST_BOOKS_PINNED (fail-closed; mismatch = no records, never two cost laws)"
+  },
+  "digests": {
+    "bandridge_cost_regime_before": "130d2e7ee97478c0ddc7d8209e62bf4e74ae82460833307a726884f3cbfd29ff",
+    "bandridge_cost_regime_after": "b84ae93ec764fd7e1615c8be7aa2b40c3cef2242b6438028057fd46e6e2cffa6",
+    "other_families_unchanged": {
+      "ILLIQ-AMIHUD-28D-W": "71ea4bd61bdf6f654a00b3ed6395c1c45a6c6df004aaeeb69b6b2f43ef2c7e68",
+      "BASISLV-PREMFADE-28D": "130d2e7ee97478c0ddc7d8209e62bf4e74ae82460833307a726884f3cbfd29ff",
+      "XSECT-FUND-CARRY-7D": "130d2e7ee97478c0ddc7d8209e62bf4e74ae82460833307a726884f3cbfd29ff"
+    }
+  },
+  "activation": {
+    "t_act_utc": null,
+    "note": "FILLED AT PHASE A. T_act is the moment the restarted worker first runs with this change-set; the first record carrying bandridge_cost_regime_after marks the boundary. NOT the GO typing time."
+  },
+  "laws": {
+    "transition": "every BANDRIDGE record between GO (03:41:00Z) and T_act is TRANSITION_OLD_LAW (digest 130d2e7e…)",
+    "unpinned": "any BANDRIDGE FILL whose record carries digest 130d2e7e… (pre-T_act) is permanently UNPINNED_COST_LAW — NOT PROMOTABLE; disclosed evidence only",
+    "no_backfill": "pre-T_act records are never rewritten, re-costed or re-labelled in place; the boundary is carried by record digests themselves"
+  }
+}
