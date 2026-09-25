@@ -102,8 +102,18 @@ def main() -> int:
             problems.append(f"{arm}: G6 shuffle null INVALID (identical series)")
     out["g6_null_validity"] = null_validity
 
+    # per-arm per-fold decision-population floor (plan §3: >=100 scored
+    # bars per fold per arm) — breach => NOT_RUN_THIN for that arm
+    # (pre-PnL feasibility kill; the arm is excluded from scoring)
+    arm_floor_failures = {}
+    for arm, info in out["arms"].items():
+        low = {fn: n for fn, n in info["decision_bars_per_fold"].items() if n < FOLD_BAR_FLOOR}
+        if low:
+            arm_floor_failures[arm] = low
+    out["arm_floor_failures"] = arm_floor_failures
+    out["scoring_eligible_arms"] = [a for a in out["arms"] if a not in arm_floor_failures]
     out["problems"] = problems
-    out["feasible"] = not problems
+    out["feasible"] = not problems and bool(out["scoring_eligible_arms"])
     dest = pathlib.Path(__file__).resolve().parents[1] / "freezes" / "feasibility.json"
     dest.write_text(json.dumps(out, indent=1, sort_keys=True) + "\n")
     print(json.dumps({k: out[k] for k in ("fold_bars", "feasible", "problems",

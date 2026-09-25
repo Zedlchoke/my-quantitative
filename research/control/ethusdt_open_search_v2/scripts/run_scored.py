@@ -35,9 +35,16 @@ def now() -> str:
     return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def eligible_arms() -> list[str]:
+    feas = json.loads((pathlib.Path(__file__).resolve().parents[1]
+                       / "freezes" / "feasibility.json").read_text())
+    return feas["scoring_eligible_arms"]
+
+
 def run_all() -> tuple[dict, dict]:
     data = E.build_all_series()
     targets = E.build_targets(data)
+    arms = eligible_arms()
     eth = data["eth_h4"]
     scored_idx = [i for i, b in enumerate(eth) if E.fold_of(b["ts"])]
     engine = {}
@@ -46,6 +53,10 @@ def run_all() -> tuple[dict, dict]:
         return f"EOSV2|{book}|tier{tier}"
 
     for book, target in targets.items():
+        if book.startswith("EOSV2-") and "|G6-" not in book and book not in arms:
+            continue  # NOT_RUN_THIN arms are never computed (zero denominator)
+        if book.startswith("EOSV2-") and "|G6-" in book and book.split("|G6")[0] not in arms:
+            continue  # their controls are not computed either
         for tier in E.TIERS:
             fb_before = data["px_settle"].fallbacks
             res = E.run_book(target, eth, data["funding"], tier, data["px_settle"])
@@ -77,9 +88,12 @@ def dryrun() -> int:
         out["books"][rid] = rec
         ids.append(rid)
     out["record_ids_pairwise_distinct"] = len(ids) == len(set(ids))
-    out["expected_computations"] = (len(E.ARMS) * 3      # cells x tiers
+    n_arms = len(eligible_arms())
+    out["expected_computations"] = (n_arms * 3           # eligible cells x tiers
                                     + 4 * 3              # references x tiers
-                                    + len(E.ARMS) * 2 * 3)  # controls x tiers
+                                    + n_arms * 2 * 3)    # their controls x tiers
+    out["not_run_thin_arms"] = {"status": "NOT_RUN_THIN (per-arm per-fold decision-population floor <100, plan §3; pre-PnL feasibility kill, zero denominator)",
+                                "arms": [a for a in E.ARMS if a not in eligible_arms()]}
     out["actual_computations"] = len(ids)
     out["denominator_delta"] = 0  # dry-run is zero-denominator by law
     # leak scan runs on the payload WITHOUT the required hygiene flags
@@ -179,12 +193,17 @@ def scored() -> int:
                                        "BASE_TREND_LF", "REF_SHORT_ALWAYS")}
     cells = {}
     for arm in E.ARMS:
+        if arm not in eligible_arms():
+            cells[arm] = {"status": "NOT_RUN_THIN",
+                          "reason": "per-arm per-fold decision-population floor breach (see feasibility.json arm_floor_failures)"}
+            continue
         cells[arm] = gates(arm, tier_table, refs, feas)
     all_pass = [a for a, g in cells.items() if g["all_pass"]]
+    n_elig = len(eligible_arms())
     out = {"schema": "eosv2.scored_run@1", "go": a, "built_utc": now(),
-           "denominator": {"scored_cells": len(E.ARMS),
-                           "computations": len(E.ARMS) * len(E.TIERS),
-                           "controls": len(E.ARMS) * 2 * len(E.TIERS),
+           "denominator": {"scored_cells": n_elig,
+                "computations": n_elig * len(E.TIERS),
+                           "controls": n_elig * 2 * len(E.TIERS),
                            "references": 4 * len(E.TIERS)},
            "cells": cells,
            "references": {r: {"net_at_tiers": {str(t): round(refs[r][t]["res"]["net_total"], 2)
