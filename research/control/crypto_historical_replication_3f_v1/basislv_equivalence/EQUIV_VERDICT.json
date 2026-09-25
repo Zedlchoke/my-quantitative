@@ -1,0 +1,631 @@
+{
+ "arms": [
+  "BASISLV-PREMFADE-28D",
+  "BASISLV-PREMFADE-28D-INV",
+  "BASISLV-PREMFADE-56D"
+ ],
+ "cycle": "CRYPTO-HISTORICAL-REPLICATION-3F-V1",
+ "diagnostic_untrimmed_funding_anchor": {
+  "arm": "BASISLV-PREMFADE-28D",
+  "delta_funding_vs_trimmed": 0.0,
+  "delta_net_vs_trimmed": 0.0,
+  "funding_sum": 0.099595141618,
+  "net_return_sum": 0.700216130953
+ },
+ "failed_surfaces": [],
+ "frozen_exec_pin": "6d2084321cc054006216c505f74260d0e14c411e",
+ "frozen_terminal_commit": "183554add4db82444d3e71beb24fb247c6b420b2",
+ "gate": "BASISLV output-level equivalence (V14 anchor vs terminal report)",
+ "input_level": {
+  "bars_digest_matches_frozen_preflight": false,
+  "bars_digest_matches_frozen_preflight_note": "bars_digest differs on never-consumed slots only; consumed surface proven bit-identical by run-hash equality (see root_cause_findings.bars_digest_note)",
+  "bars_slots_all_match": true,
+  "basis_digest_matches_frozen_preflight": true,
+  "basis_identity_check_max_dev": 5.0000000000086e-05,
+  "basis_rows_all_match_frozen": true,
+  "restaged_sha_vs_a9f_manifest": {
+   "all_mismatch_as_expected": true,
+   "n_mismatch": 19,
+   "policy": "sha check REPLACED per lane brief (writer-version drift); value equivalence carried by series digest + metric reproduction"
+  },
+  "run_hashes_all_match_per_arm": {
+   "BASISLV-PREMFADE-28D": true,
+   "BASISLV-PREMFADE-28D-INV": true,
+   "BASISLV-PREMFADE-56D": true
+  },
+  "settlements_digest_matches_frozen_preflight": false,
+  "settlements_trimmed_to_frozen_counts": true
+ },
+ "known_limitations": [
+  "per-file sha-vs-A9F-manifest equality is impossible on the restage by construction (writer metadata); recorded per symbol; value equivalence PROVEN by the basis series digest equaling the frozen preflight digest",
+  "bars_digest differs from the frozen preflight digest on never-consumed slots only (kline fetch-vintage drift); every consumed surface is bit-identical, proven by positions / portfolio_payload / result / fold_metrics / benchmarks run-hash equality on all three arms",
+  "scan_2026_a funding cannot reconstruct the frozen ONGUSDT bundle (9 rows short; one missing 4h slot 2026-06-24T04:00Z + hourly-tail cadence past 2026-08-21T00:00Z); primary run trims the other 18 names to the frozen recorded counts; funding_sum is bit-exact on every arm and the untrimmed diagnostic shows delta 0.0",
+  "engine library versions may differ from the V14 exec host; any such effect would surface in the surfaces, which are bit-exact"
+ ],
+ "measured_utc": "2026-09-25T01:27:52.396326+00:00",
+ "methodology": "frozen V14 engine (recovered/v14_root) run through the frozen Phase-E path (BasislvPremfadePlugin -> derive_family_stress_matrix -> run_strategy per matrix cell); basis data = restaged parquets (staging/basis_orig, frozen restage_basis.py schema) loaded with the frozen value path (70272-row exact, 15m zero-gap grid, |p_b - basisRate| <= 1e-4 identity fail-closed); bars = catalog_live_crypto_a20 through the frozen snap/decode/filter path; settlements = funding_data_scan/scan_2026_a with the frozen hour-snap row mapping; tick sizes = the exact table recorded in the frozen anchor preflight artifact; canonical metric surfaces diffed vs the frozen baseline_metrics artifacts and terminal_report_v14.json at rel <= 1e-9",
+ "namespace": "basislv_equivalence",
+ "root_cause_findings": {
+  "bars_digest_note": "bars_digest still differs from the frozen preflight digest AFTER the fix: the digests cover every loaded slot of all 20 series, and the consumed surface is proven bit-identical by run-hash equality (positions_sha256, portfolio_payload_sha256, result_sha256, fold_metrics_sha256 AND benchmarks_sha256 all match per arm) -- so the digest delta lies on never-consumed slots (kline vintage differences between the CHR3F staging fetch and the V14 P1 assembly; e.g. the warmup week and non-held symbols' closes), none of which enter any fill, mark, benchmark or daily PnL row.",
+  "catalog_bar_stamping": "FIRST RUN (pre-fix) was DIVERGENT with a precise structure: basis_digest, funding and every book/schedule surface matched bit-exactly, while 591/600 positions carried BOTH a different entry and exit price and the per-position price-PnL deltas summed to exactly the whole net divergence (+0.001505748227 frozen-mine price pnl; net delta 0.001505955656 = price delta + cost delta 2.07e-7) -- a +1-bar execution lag lookalike.  Root cause: catalog_live_crypto_a20 stamps each BinanceBar with ts_event = the kline OPEN time (verified against the raw staged monthly klines: open_time 1756080000000 carries close 0.0108651, the exact frozen fill price at the 00:15 boundary), while the frozen V14 staged bars index each bar by its CLOSE boundary.  The loader now remaps catalog rows to the boundary they terminate (snap(ts) + 15m, availability = close boundary).",
+  "ong_settlement_shortfall": "scan_2026_a cannot reconstruct the frozen ONGUSDT settlement bundle (frozen 4418 rows vs 4409 restage: one 4h slot missing at 2026-06-24T04:00Z plus hourly-tail cadence rows past 2026-08-21T00:00Z that cannot be mapped back to the frozen fetch); the other 18 names trim cleanly to the frozen counts. funding_sum is nonetheless bit-exact on every arm, and the untrimmed-funding diagnostic shows delta 0.0 vs the trimmed primary run (the six trailing settlements on 8h names and the 2026-08-21T00:00Z boundary row never change any accrual).",
+  "restage_value_equivalence": "basis_digest EQUALS the frozen preflight digest exactly (538d6fb5...): the restaged parquets are value-identical to the A9-F staged basis world (origin, premium bytes and availability bytes), so the recorded sha-vs-manifest mismatches are parquet writer metadata only -- the signal consumed by the scored run is bit-identical to the frozen one."
+ },
+ "run_hashes_all_match_per_arm": {
+  "BASISLV-PREMFADE-28D": true,
+  "BASISLV-PREMFADE-28D-INV": true,
+  "BASISLV-PREMFADE-56D": true
+ },
+ "schema": "chr3f_a7_prelaunch@1-style",
+ "surface_table": {
+  "BASISLV-PREMFADE-28D": {
+   "cost_charged_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.009222666249,
+    "got": 0.009222666249,
+    "rel_diff": 0.0
+   },
+   "cost_fills": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.009222666249,
+    "got": 0.009222666249,
+    "rel_diff": 0.0
+   },
+   "cost_holding_terms": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.0,
+    "got": 0.0,
+    "rel_diff": null
+   },
+   "cost_total": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.009222666249,
+    "got": 0.009222666249,
+    "rel_diff": 0.0
+   },
+   "expectancy_per_day": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.013465694826,
+    "got": 0.013465694826,
+    "rel_diff": 0.0
+   },
+   "fold_net_sums[0]": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.243152690145,
+    "got": 0.243152690145,
+    "rel_diff": 0.0
+   },
+   "fold_net_sums[1]": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.099236337268,
+    "got": 0.099236337268,
+    "rel_diff": 0.0
+   },
+   "fold_net_sums[2]": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.35782710354,
+    "got": 0.35782710354,
+    "rel_diff": 0.0
+   },
+   "fold_positive": {
+    "abs_diff": null,
+    "equal": true,
+    "expected": [
+     true,
+     true,
+     true
+    ],
+    "got": [
+     true,
+     true,
+     true
+    ],
+    "rel_diff": null
+   },
+   "funding_credit_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.099595141618,
+    "got": 0.099595141618,
+    "rel_diff": 0.0
+   },
+   "funding_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.099595141618,
+    "got": 0.099595141618,
+    "rel_diff": 0.0
+   },
+   "max_drawdown": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.11585342564,
+    "got": 0.11585342564,
+    "rel_diff": 0.0
+   },
+   "n_days_with_records": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 52,
+    "got": 52,
+    "rel_diff": 0.0
+   },
+   "n_decisions": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 600,
+    "got": 600,
+    "rel_diff": 0.0
+   },
+   "n_fills": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 600,
+    "got": 600,
+    "rel_diff": 0.0
+   },
+   "n_positions": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 600,
+    "got": 600,
+    "rel_diff": 0.0
+   },
+   "net_return_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.700216130953,
+    "got": 0.700216130953,
+    "rel_diff": 0.0
+   },
+   "position_pf": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 1.360046671971,
+    "got": 1.360046671971,
+    "rel_diff": 0.0
+   },
+   "price_only_expectancy": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.011550403641,
+    "got": 0.011550403641,
+    "rel_diff": 0.0
+   },
+   "price_pnl_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.609843655584,
+    "got": 0.609843655584,
+    "rel_diff": 0.0
+   },
+   "total_expectancy": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.013465694826,
+    "got": 0.013465694826,
+    "rel_diff": 0.0
+   }
+  },
+  "BASISLV-PREMFADE-28D-INV": {
+   "cost_charged_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.009222666249,
+    "got": 0.009222666249,
+    "rel_diff": 0.0
+   },
+   "cost_fills": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.009222666249,
+    "got": 0.009222666249,
+    "rel_diff": 0.0
+   },
+   "cost_holding_terms": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.0,
+    "got": 0.0,
+    "rel_diff": null
+   },
+   "cost_total": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.009222666249,
+    "got": 0.009222666249,
+    "rel_diff": 0.0
+   },
+   "expectancy_per_day": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": -0.013820412759,
+    "got": -0.013820412759,
+    "rel_diff": 0.0
+   },
+   "fold_net_sums[0]": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": -0.249760037877,
+    "got": -0.249760037877,
+    "rel_diff": 0.0
+   },
+   "fold_net_sums[1]": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": -0.104692742038,
+    "got": -0.104692742038,
+    "rel_diff": 0.0
+   },
+   "fold_net_sums[2]": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": -0.364208683536,
+    "got": -0.364208683536,
+    "rel_diff": 0.0
+   },
+   "fold_positive": {
+    "abs_diff": null,
+    "equal": true,
+    "expected": [
+     false,
+     false,
+     false
+    ],
+    "got": [
+     false,
+     false,
+     false
+    ],
+    "rel_diff": null
+   },
+   "funding_credit_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": -0.099595141618,
+    "got": -0.099595141618,
+    "rel_diff": 0.0
+   },
+   "funding_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": -0.099595141618,
+    "got": -0.099595141618,
+    "rel_diff": 0.0
+   },
+   "max_drawdown": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.819635097177,
+    "got": 0.819635097177,
+    "rel_diff": 0.0
+   },
+   "n_days_with_records": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 52,
+    "got": 52,
+    "rel_diff": 0.0
+   },
+   "n_decisions": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 600,
+    "got": 600,
+    "rel_diff": 0.0
+   },
+   "n_fills": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 600,
+    "got": 600,
+    "rel_diff": 0.0
+   },
+   "n_positions": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 600,
+    "got": 600,
+    "rel_diff": 0.0
+   },
+   "net_return_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": -0.718661463451,
+    "got": -0.718661463451,
+    "rel_diff": 0.0
+   },
+   "position_pf": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.730138431004,
+    "got": 0.730138431004,
+    "rel_diff": 0.0
+   },
+   "price_only_expectancy": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": -0.011905121574,
+    "got": -0.011905121574,
+    "rel_diff": 0.0
+   },
+   "price_pnl_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": -0.609843655584,
+    "got": -0.609843655584,
+    "rel_diff": 0.0
+   },
+   "total_expectancy": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": -0.013820412759,
+    "got": -0.013820412759,
+    "rel_diff": 0.0
+   }
+  },
+  "BASISLV-PREMFADE-56D": {
+   "cost_charged_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.006502143332,
+    "got": 0.006502143332,
+    "rel_diff": 0.0
+   },
+   "cost_fills": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.006502143332,
+    "got": 0.006502143332,
+    "rel_diff": 0.0
+   },
+   "cost_holding_terms": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.0,
+    "got": 0.0,
+    "rel_diff": null
+   },
+   "cost_total": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.006502143332,
+    "got": 0.006502143332,
+    "rel_diff": 0.0
+   },
+   "expectancy_per_day": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.011978873924,
+    "got": 0.011978873924,
+    "rel_diff": 0.0
+   },
+   "fold_net_sums[0]": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.239809720463,
+    "got": 0.239809720463,
+    "rel_diff": 0.0
+   },
+   "fold_net_sums[1]": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.041525883154,
+    "got": 0.041525883154,
+    "rel_diff": 0.0
+   },
+   "fold_net_sums[2]": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.341565840442,
+    "got": 0.341565840442,
+    "rel_diff": 0.0
+   },
+   "fold_positive": {
+    "abs_diff": null,
+    "equal": true,
+    "expected": [
+     true,
+     true,
+     true
+    ],
+    "got": [
+     true,
+     true,
+     true
+    ],
+    "rel_diff": null
+   },
+   "funding_credit_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.094536464863,
+    "got": 0.094536464863,
+    "rel_diff": 0.0
+   },
+   "funding_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.094536464863,
+    "got": 0.094536464863,
+    "rel_diff": 0.0
+   },
+   "max_drawdown": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.1397138479,
+    "got": 0.1397138479,
+    "rel_diff": 0.0
+   },
+   "n_days_with_records": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 52,
+    "got": 52,
+    "rel_diff": 0.0
+   },
+   "n_decisions": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 600,
+    "got": 600,
+    "rel_diff": 0.0
+   },
+   "n_fills": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 600,
+    "got": 600,
+    "rel_diff": 0.0
+   },
+   "n_positions": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 600,
+    "got": 600,
+    "rel_diff": 0.0
+   },
+   "net_return_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.622901444059,
+    "got": 0.622901444059,
+    "rel_diff": 0.0
+   },
+   "position_pf": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 1.314135715089,
+    "got": 1.314135715089,
+    "rel_diff": 0.0
+   },
+   "price_only_expectancy": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.010160864985,
+    "got": 0.010160864985,
+    "rel_diff": 0.0
+   },
+   "price_pnl_sum": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.534867122528,
+    "got": 0.534867122528,
+    "rel_diff": 0.0
+   },
+   "total_expectancy": {
+    "abs_diff": 0.0,
+    "equal": true,
+    "expected": 0.011978873924,
+    "got": 0.011978873924,
+    "rel_diff": 0.0
+   }
+  }
+ },
+ "terminal_surfaces": {
+  "anchor_expectancy_per_day": {
+   "abs_diff": 0.0,
+   "equal": true,
+   "expected": 0.013465694826,
+   "got": 0.013465694826,
+   "rel_diff": 0.0
+  },
+  "anchor_largest_fold_positive_share": {
+   "abs_diff": 0.0,
+   "expected": 0.5110237935435653,
+   "got": 0.5110237935435653,
+   "note": "largest positive fold net / sum of positive fold nets; frozen terminal value 0.51102379354356536 (F2 0.35782710354 / net 0.700216130953); recomputed from the restaged fold nets"
+  },
+  "anchor_mdd": {
+   "abs_diff": 0.0,
+   "equal": true,
+   "expected": 0.11585342564,
+   "got": 0.11585342564,
+   "rel_diff": 0.0
+  },
+  "anchor_net": {
+   "abs_diff": 0.0,
+   "equal": true,
+   "expected": 0.700216130953,
+   "got": 0.700216130953,
+   "rel_diff": 0.0
+  },
+  "anchor_position_pf": {
+   "abs_diff": 0.0,
+   "equal": true,
+   "expected": 1.360046671971,
+   "got": 1.360046671971,
+   "rel_diff": 0.0
+  },
+  "anchor_price_only_expectancy": {
+   "abs_diff": 0.0,
+   "equal": true,
+   "expected": 0.011550403641,
+   "got": 0.011550403641,
+   "rel_diff": 0.0
+  },
+  "anchor_stress[fee_slippage_x1_5]": {
+   "abs_diff": 0.0,
+   "equal": true,
+   "expected": 0.696424464286,
+   "got": 0.696424464286,
+   "rel_diff": 0.0
+  },
+  "anchor_stress[plus_1_event_delay]": {
+   "abs_diff": 0.0,
+   "equal": true,
+   "expected": 0.695338361894,
+   "got": 0.695338361894,
+   "rel_diff": 0.0
+  },
+  "anchor_stress[plus_2_ticks]": {
+   "abs_diff": 0.0,
+   "equal": true,
+   "expected": 0.696937465123,
+   "got": 0.696937465123,
+   "rel_diff": 0.0
+  },
+  "inv_mdd": {
+   "abs_diff": 0.0,
+   "equal": true,
+   "expected": 0.819635097177,
+   "got": 0.819635097177,
+   "rel_diff": 0.0
+  },
+  "inv_net": {
+   "abs_diff": 0.0,
+   "equal": true,
+   "expected": -0.718661463451,
+   "got": -0.718661463451,
+   "rel_diff": 0.0
+  },
+  "inv_position_pf": {
+   "abs_diff": 0.0,
+   "equal": true,
+   "expected": 0.730138431004,
+   "got": 0.730138431004,
+   "rel_diff": 0.0
+  },
+  "neighbour_net": {
+   "abs_diff": 0.0,
+   "equal": true,
+   "expected": 0.622901444059,
+   "got": 0.622901444059,
+   "rel_diff": 0.0
+  }
+ },
+ "tolerance": {
+  "abs_zero": 1e-12,
+  "rel": 1e-09
+ },
+ "verdict": "EQUIVALENT",
+ "window": "2025-08-22..2026-08-21 (frozen F0/F1/F2, 1-day trailing purge)"
+}
