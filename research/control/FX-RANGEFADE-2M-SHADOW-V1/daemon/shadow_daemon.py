@@ -14,6 +14,18 @@ drops a position. PnL hôm nay includes the open positions' MTM: the
 book is flat at every UTC midnight by the force-flat law, so
 pnl_today = realized_since_utc_midnight + unrealized_now, with the
 anchor disclosed in the state file.
+
+A1-controls (amendment FX-RANGEFADE-2M-SHADOW-V1, Phase I 2026-09-25):
+PARALLEL virtual control books (CTRL-SHORT-ALWAYS day-session construct,
+CTRL-SHADOW-MATCHED sign-inverted mirror), per-epoch aggregate USD
+exposure, a stress-spread reporting view (session-bucket median x2.0
+from session_spread_curve.json) and cost-ledger journal fields on NEW
+rows only. OBSERVERS ONLY: the frozen sleeve decision block below is
+byte-identical (sha pinned in tests/golden_a1_phase1.json) — until the
+controller's Phase A restart (T_ctrl) none of the new arms emit; before
+that every sleeve PnL line carries SHORT_BETA_UNSEPARATED — NOT
+PROMOTABLE and old journal rows stay gross-only (NOT_RUN_COST_FIELDS,
+never backfilled).
 """
 import datetime as dt
 import json
@@ -49,6 +61,7 @@ STATE = ROOT / "shadow_state.json"
 JOURNAL = ROOT / "shadow_journal.jsonl"
 HEARTBEAT = ROOT / "daemon_heartbeat.json"
 EQUITY_CURVE = ROOT / "equity_curve.json"
+COST_CURVE = ROOT / "session_spread_curve.json"  # A1 single source, digest-pinned
 TRUEFX = "https://webrates.truefx.com/rates/connect.html?f=csv&c=EUR/USD,GBP/USD"
 
 STATE_SCHEMA = "phorec.shadow_state@2"
@@ -76,6 +89,89 @@ class Journal:
         with self.path.open("a") as f:
             f.write(json.dumps(rec) + "\n")
         return rec
+
+
+class CostJournal(Journal):
+    """A1 cost-ledger journal: enriches SLEEVE fill rows with the
+    amendment §1.4 fields on NEW rows only (append-only law — existing
+    lines are never rewritten or backfilled; rows written before T_ctrl
+    keep their gross-only shape and read as NOT_RUN_COST_FIELDS).
+
+    Primary basis (amendment §2): declared fee schedule + measured
+    spread-at-fill; the stress book (session-bucket median x2.0) is a
+    PARALLEL view reported via stress_fee/stress_slip/realized_net_stress
+    and is never merged into primary PnL. Control rows arrive already
+    enriched from the fx_shadow_core control books (same cost book).
+    Enrichment failure must never break the sleeve journal: the row is
+    written unenriched plus an a1_cost_enrich_error marker event."""
+
+    def __init__(self, path: Path, cost_book: C.CostBook, pips=None):
+        super().__init__(path)
+        self.cost_book = cost_book
+        self.pips = dict(pips or {})
+        self.marks_ref: dict = {}      # latest poll's marks, set per loop
+        self._open_ctx: dict = {}      # pair -> open-fill round-trip context
+
+    # -- enrichment -----------------------------------------------------
+    def _bucket_and_spread(self, pair: str, qts, spread_price):
+        mk = self.marks_ref.get(pair) or {}
+        if qts is None:
+            qts = mk.get("ts")
+        if spread_price is None and mk:
+            spread_price = mk["ask"] - mk["bid"]
+        if qts is None or spread_price is None:
+            raise ValueError("no quote timestamp/spread available for cost row")
+        pip = self.pips.get(pair, 1e-4)
+        return C.session_bucket_of_epoch(int(qts)), spread_price / pip
+
+    def _enrich_open(self, kw: dict) -> None:
+        pair = kw.get("pair")
+        cb = self.cost_book
+        bucket, spread_pips = self._bucket_and_spread(pair, kw.get("quote_ts"),
+                                                      kw.get("spread"))
+        px = float(kw.get("entry_px"))
+        kw.update(cb.fill_cost_fields(pair, bucket, spread_pips, px))
+        ctx = {"rt_id": "rt" + C.event_id(self.seq + 1, str(int(kw["quote_ts"])),
+                                          "rt", pair)[2:],
+               "declared": cb.declared_side_cost_usd(px),
+               "stress": cb.fee_usd(px) + cb.slip_usd(cb.stress_pips(pair, bucket))}
+        self._open_ctx[pair] = ctx
+        kw["round_trip_id"] = ctx["rt_id"]
+
+    def _enrich_close(self, kw: dict) -> None:
+        pair = kw.get("pair")
+        cb = self.cost_book
+        bucket, spread_pips = self._bucket_and_spread(pair, None, None)
+        px = float(kw.get("exit_px"))
+        kw.update(cb.fill_cost_fields(pair, bucket, spread_pips, px))
+        ctx = self._open_ctx.pop(pair, None)
+        if ctx is not None:
+            entry_declared, entry_stress = ctx["declared"], ctx["stress"]
+        else:
+            # exit of a position opened before this boot (restored by the
+            # journal replay): entry-side declared costs are unknown, only
+            # the exit side is charged; disclosed, never silently zero.
+            entry_declared, entry_stress = 0.0, 0.0
+            kw["rt_note"] = "entry_cost_ctx_missing_restored_position"
+        kw["round_trip_id"] = (ctx or {}).get("rt_id")
+        exit_declared = cb.declared_side_cost_usd(px)
+        exit_stress = cb.fee_usd(px) + cb.slip_usd(cb.stress_pips(pair, bucket))
+        kw["realized_net"] = round(float(kw.get("pnl_usd") or 0.0)
+                                   - entry_declared - exit_declared, 2)
+        kw["realized_net_stress"] = round(float(kw.get("pnl_usd") or 0.0)
+                                          - entry_stress - exit_stress, 2)
+
+    def log(self, event: str, **kw) -> dict:
+        if event in ("fill_open", "fill_close", "force_flat"):
+            try:
+                if event == "fill_open":
+                    self._enrich_open(kw)
+                else:
+                    self._enrich_close(kw)
+            except Exception as exc:
+                Journal.log(self, "a1_cost_enrich_error", pair=str(kw.get("pair")),
+                            fill_event=event, error=f"{type(exc).__name__}: {exc}")
+        return super().log(event, **kw)
 
 
 def atomic_write(path: Path, text: str) -> None:
@@ -235,12 +331,139 @@ def now_utc():
     return dt.datetime.now(dt.timezone.utc)
 
 
+def a1_observe_iteration(books, marks, pre_loop, ctrl_sa, ctrl_sm,
+                         cost_book, journal, epochs_reported) -> bool:
+    """A1 Phase I parallel books + reporting for ONE poll iteration.
+
+    OBSERVERS ONLY (amendment §1/§3): reads sleeve state and marks, never
+    writes a sleeve attribute, never gates a sleeve decision. Control arms
+    reuse the sleeve's own fill law (fx_shadow_core.fill_allowed_open /
+    force-flat boundary) and the SAME cost book + opposite-quote rule as
+    the sleeve. Returns True when any control-arm row was journaled.
+
+    pre_loop: {pair: (pos_before_sleeve_block, live_bar_ts_before)} — the
+    sleeve position changes ONLY inside the frozen block, so (pre, now)
+    pairs identify the transition to mirror for CTRL-SHADOW-MATCHED, and
+    the live-bar change identifies the H1 open that drives CTRL-SHORT-
+    ALWAYS and the per-epoch C-FX-2 record."""
+    journal.marks_ref = marks
+    emitted = False
+
+    def _log_ctrl(kind: str, ev: dict) -> None:
+        nonlocal emitted
+        emitted = True
+        journal.log(kind, **ev)
+
+    for p, b in books.items():
+        mk = marks.get(p)
+        if mk is None:
+            continue
+        pos0, bar_ts0 = pre_loop.get(p, (b.pos, None))
+        qts = mk["ts"]
+        h0 = C.floor_hour(qts)
+        spread_pips = (mk["ask"] - mk["bid"]) / PAIRS[p]["pip"]
+        bar_opened = (bar_ts0 is not None and bar_ts0 != h0
+                      and b.live_bar is not None and b.live_bar.ts == h0)
+
+        # CTRL-SHADOW-MATCHED: mirror the sleeve transition that just
+        # happened — sign INVERTED at entry, exits IDENTICAL at the
+        # sleeve's own close-px rule, evaluated on the SAME mark object.
+        if pos0 != b.pos:
+            sm = ctrl_sm[p]
+            if pos0 != 0:
+                px = mk["bid"] if pos0 > 0 else mk["ask"]
+                ev = sm.on_sleeve_close(px, qts, cost_book, spread_pips)
+                if ev:
+                    _log_ctrl("ctrl_close", ev)
+            if b.pos != 0:
+                ev = sm.on_sleeve_open(b.pos, b.entry_px, qts,
+                                       cost_book, spread_pips)
+                if ev:
+                    _log_ctrl("ctrl_open", ev)
+
+        # CTRL-SHORT-ALWAYS (day-session construct) at the sleeve's own H1
+        # boundaries: short from the first fillable open after 00:00 UTC
+        # each weekday, flat at the 20:00 boundary, weekends never open
+        # (daily flat keeps the weekend flat by construction).
+        if bar_opened:
+            sa = ctrl_sa[p]
+            closed_hour = (bar_ts0 // C.HOUR) % 24
+            if closed_hour == 19:
+                ev = sa.force_flat(h0, mk["bid"], mk["ask"], cost_book,
+                                   spread_pips)
+                if ev:
+                    _log_ctrl("ctrl_close", ev)
+            else:
+                if (sa.pos != 0 and sa.open_day is not None
+                        and sa.open_day != h0 // 86400):
+                    # daemon was down across the 20:00 boundary: the
+                    # day-session law never holds overnight — catch up
+                    ev = sa.force_flat(h0, mk["bid"], mk["ask"], cost_book,
+                                       spread_pips)
+                    if ev:
+                        _log_ctrl("ctrl_close", ev)
+                ev = sa.on_h1_open(h0, mk["bid"], mk["ask"], cost_book,
+                                   spread_pips)
+                if ev:
+                    _log_ctrl("ctrl_open", ev)
+            # C-FX-2 epoch record: ONE journal row per H1 decision epoch
+            # with the aggregate USD exposure + control-arm PnL (per owner
+            # D10 display-only: no capping, no behavior change).
+            if h0 not in epochs_reported:
+                epochs_reported.add(h0)
+                if len(epochs_reported) > 500:
+                    epochs_reported.discard(min(epochs_reported))
+                exposure = C.usd_exposure_block(
+                    {p2: b2.pos for p2, b2 in books.items()},
+                    {p2: ((marks[p2]["ask"] + marks[p2]["bid"]) / 2.0)
+                     if p2 in marks else None for p2 in books})
+                totals = {
+                    "ctrl_short_always_pnl_gross_usd": round(
+                        sum(x.realized_gross_usd for x in ctrl_sa.values()), 2),
+                    "ctrl_short_always_pnl": round(
+                        sum(x.realized_net_usd for x in ctrl_sa.values()), 2),
+                    "ctrl_short_always_pnl_stress_usd": round(
+                        sum(x.realized_stress_usd for x in ctrl_sa.values()), 2),
+                    "ctrl_shadow_matched_pnl_gross_usd": round(
+                        sum(x.realized_gross_usd for x in ctrl_sm.values()), 2),
+                    "ctrl_shadow_matched_pnl": round(
+                        sum(x.realized_net_usd for x in ctrl_sm.values()), 2),
+                    "ctrl_shadow_matched_pnl_stress_usd": round(
+                        sum(x.realized_stress_usd for x in ctrl_sm.values()), 2),
+                }
+                journal.log(C.EPOCH_REPORT_EVENT, epoch_ts=h0, basis=(
+                    "*_pnl = primary net (declared fee + declared slip); "
+                    "*_gross_usd = gross; *_stress_usd = parallel x2.0 "
+                    "session-spread view, NEVER primary PnL"),
+                    **exposure, **totals)
+    return emitted
+
+
 def main():
-    journal = Journal(JOURNAL)
+    # A1 Phase I: the pinned cost book (single source, digest recorded on
+    # every enriched row) + the enriched journal. The sleeve decision law
+    # is untouched — the cost book only labels rows and powers the
+    # parallel control books/stress view.
+    cost_book = C.CostBook.from_file(COST_CURVE)
+    journal = CostJournal(JOURNAL, cost_book,
+                          pips={p: m["pip"] for p, m in PAIRS.items()})
     books = {p: PairBook(p, m["pip"], journal) for p, m in PAIRS.items()}
+    ctrl_sa = {p: C.CtrlShortAlwaysBook(p, m["pip"]) for p, m in PAIRS.items()}
+    ctrl_sm = {p: C.CtrlShadowMatchedBook(p, m["pip"]) for p, m in PAIRS.items()}
 
     # --- restart identity: replay the immutable journal ---------------
-    replay_lines = JOURNAL.read_text().splitlines() if JOURNAL.exists() else []
+    # A1 rows (ctrl_*/epoch_report/cost_book) carry no sleeve-accounting
+    # semantics: they are routed to the control replay and FILTERED OUT
+    # before the byte-frozen sleeve replay so they neither pollute sleeve
+    # state nor count as events_bad. Old gross-only rows replay unchanged.
+    raw_lines = JOURNAL.read_text().splitlines() if JOURNAL.exists() else []
+    replay_lines, a1_lines = [], []
+    for ln in raw_lines:
+        try:
+            ev = json.loads(ln).get("event") if ln.strip() else None
+        except ValueError:
+            ev = None
+        (a1_lines if ev in C.A1_IGNORED_BY_SLEEVE_REPLAY else replay_lines).append(ln)
     rep = C.replay_journal(replay_lines, seed_last_ts={p: 0 for p in PAIRS})
     for p, b in books.items():
         restored = b.restore(rep["pairs"].get(p, {}))
@@ -249,10 +472,27 @@ def main():
                     fills_restored=b.fills, bars_restored=restored,
                     events_read=rep["events_read"], events_dup=rep["events_dup"],
                     events_bad=rep["events_bad"])
+    ctrl_replay = C.replay_control_events(a1_lines)
+    for arm_books, arm in ((ctrl_sa, C.CTRL_SHORT_ALWAYS),
+                           (ctrl_sm, C.CTRL_SHADOW_MATCHED)):
+        for p, book in arm_books.items():
+            C.restore_ctrl_book(book, ctrl_replay.get(arm, {}).get(p, {}))
+    # the arms' records only count from T_ctrl (Phase A); replayed rows
+    # prove they HAVE emitted (label flips to separated)
+    ctrl_emitted = any(bk.fills for arm in (ctrl_sa, ctrl_sm) for bk in arm.values())
+    journal.log("cost_book", digest=cost_book.digest, path=str(COST_CURVE),
+                status=cost_book.cfg.get("status"),
+                declared_fee_bps=cost_book.fee_bps,
+                declared_slip_pips=cost_book.slip_pips,
+                stress_multiplier=cost_book.stress_multiplier,
+                control_phase="PHASE_I_code_only_NOT_ACTIVATED",
+                note="primary book remains GROSS until Phase A T_ctrl; "
+                     "pre-T_ctrl rows are NOT_RUN_COST_FIELDS, never backfilled")
 
     today_key = now_utc().strftime("%Y-%m-%d")
     realized_today = rep["realized_by_day_utc"].get(today_key, 0.0)
     session_realized = 0.0  # fills executed after this boot
+    epochs_reported: set = set()  # A1: H1 decision epochs already journaled
 
     # launch parity self-test: daemon signal path vs frozen library on identical bars
     parity_rec = None
@@ -289,6 +529,14 @@ def main():
             journal.log("day_roll", day=today_key,
                         realized_total=round(sum(b.realized_usd for b in books.values()), 2))
 
+        # A1 observer pre-state (pos + live-bar id BEFORE the sleeve block;
+        # the A1 block below derives what happened from these facts plus
+        # the SAME mark objects the sleeve used — the sleeve block itself
+        # is byte-frozen, sha pinned in tests/golden_a1_phase1.json).
+        journal.marks_ref = marks
+        pre_loop = {p: (b.pos, b.live_bar.ts if b.live_bar is not None else None)
+                    for p, b in books.items()}
+        # ---- FROZEN-SLEEVE-BLOCK-BEGIN (A1 law: byte-identical) --------
         for p, b in books.items():
             mk = marks.get(p)
             if mk is None:
@@ -317,12 +565,26 @@ def main():
                 b.live_bar = C.LiveBar(h0, mk["bid"], mk["ask"])
             else:
                 b.live_bar.update(mk["bid"], mk["ask"])
+        # ---- FROZEN-SLEEVE-BLOCK-END ------------------------------------
+
+        # ---- A1 Phase I: parallel control books + reporting -------------
+        # OBSERVERS ONLY (amendment §1/§3): reads sleeve state + marks,
+        # never writes a sleeve attribute, never gates a sleeve decision.
+        ctrl_emitted = a1_observe_iteration(
+            books, marks, pre_loop, ctrl_sa, ctrl_sm, cost_book,
+            journal, epochs_reported) or ctrl_emitted
 
         # ----- account state: ONE $100k account, sleeves = contributions
         marks_fresh = not data_stale
         unreal_total = 0.0
         gross = 0.0
         sleeves = {}
+        # A1 reporting law (amendment §1.1 / umbrella §4.1): until the
+        # control arms emit records, every sleeve PnL line carries
+        # SHORT_BETA_UNSEPARATED — NOT PROMOTABLE.
+        short_beta_label = (C.SHORT_BETA_LABEL if not ctrl_emitted else
+                            "SHORT_BETA_SEPARATED (control arms emitting; "
+                            "sleeve PnL published with sleeve_minus_control)")
         for p, b in books.items():
             mk = marks.get(p)
             unrl = b.unrealized(mk)
@@ -337,6 +599,7 @@ def main():
                 "unrealized_usd": round(unrl, 2),
                 "realized_usd": round(b.realized_usd, 2),
                 "contribution_pnl_usd": round(b.realized_usd + unrl, 2),
+                "pnl_label": short_beta_label,
                 "fills": b.fills,
                 "gross_exposure_usd": round(b.gross_notional(mk), 2),
                 "mark": ({"bid": round(mk["bid"], 5), "ask": round(mk["ask"], 5),
@@ -350,6 +613,11 @@ def main():
             gross_exposure_usd=gross,
             marks_fresh=marks_fresh,
         )
+        account["pnl_label"] = short_beta_label
+        usd_exposure_now = C.usd_exposure_block(
+            {p: b.pos for p, b in books.items()},
+            {p: ((marks[p]["ask"] + marks[p]["bid"]) / 2.0)
+             if p in marks else None for p in books})
         state = {
             "schema": STATE_SCHEMA,
             "strategy": "RANGEFADE-2M (wide-range-day fade, EURUSD+GBPUSD, H1, flat 20:00 UTC)",
@@ -363,6 +631,27 @@ def main():
             "account": account,
             "parity_selftest": {"pair": parity_rec["pair"], "result": parity_rec["result"]},
             "sleeves": sleeves,
+            # ---- A1-controls (Phase I: code live, arms NOT emitting
+            # until the controller's Phase A restart records T_ctrl) ----
+            "a1_controls": {
+                "amendment": "FX-RANGEFADE-2M-SHADOW-V1 A1-controls",
+                "phase": "PHASE_I_code_only_NOT_ACTIVATED",
+                "T_ctrl": None,
+                "short_beta_label": short_beta_label,
+                "journal_row_cost_status": (C.NOT_RUN_COST_FIELDS if not ctrl_emitted
+                                            else "ACTIVE_SINCE_T_CTRL (new rows only; "
+                                                 "old rows never backfilled)"),
+                "cost_book": cost_book.summary(),
+                "usd_exposure": usd_exposure_now,
+                "arms": {
+                    C.CTRL_SHORT_ALWAYS: {p: C.ctrl_book_state(b) for p, b in ctrl_sa.items()},
+                    C.CTRL_SHADOW_MATCHED: {p: C.ctrl_book_state(b) for p, b in ctrl_sm.items()},
+                },
+                "comparability_note": ("CTRL-SHORT-ALWAYS is a DAY-SESSION construct; the "
+                                       "ancestor +314.0-pips SHORT_ALWAYS reference "
+                                       "(EURUSD-OPEN-SEARCH-V2 bf4f07f1, holdout) was "
+                                       "window-long — NOT numerically comparable"),
+            },
         }
         atomic_write(STATE, json.dumps(state, indent=1))
         atomic_write(HEARTBEAT, json.dumps({"pid_heartbeat_utc": now.isoformat(timespec="seconds")}))

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 HOUR = 3600
@@ -209,4 +210,445 @@ def account_block(
         "realized_today": round(realized_today, 2),
         "gross_exposure_usd": round(gross_exposure_usd, 2),
         "capital_in_use_pct": round(gross_exposure_usd / SEED_EQUITY * 100, 2),
+    }
+
+
+# ======================================================================
+# A1-controls (amendment FX-RANGEFADE-2M-SHADOW-V1, owner GO consumed
+# 2026-09-25T04:21:15Z) — PARALLEL books + reporting only.
+#
+# LAW (amendment §1/§3): the sleeve decision path (signal, fills, size,
+# force-flat) is FROZEN; nothing below feeds back into it. Every function
+# here is either an independent virtual book driven by OBSERVED sleeve
+# state, or a reporting/cost view.
+# ======================================================================
+
+SESSION_BUCKETS_UTC = (  # SEED convention; replaced only with the census
+    ("Asia", 0, 7), ("London", 7, 12), ("Overlap", 12, 16),
+    ("NY", 16, 21), ("Rollover", 21, 24),
+)
+SHORT_BETA_LABEL = "SHORT_BETA_UNSEPARATED — NOT PROMOTABLE"
+NOT_RUN_COST_FIELDS = "NOT_RUN_COST_FIELDS"
+COST_ROW_FIELDS = ("fee_bps", "slip_pips", "spread_at_fill", "session_bucket",
+                   "cost_book_digest", "stress_fee", "stress_slip",
+                   "round_trip_id", "realized_net")
+COST_ROW_FIELDS_OPEN = COST_ROW_FIELDS[:-1]  # realized_net lands at close
+COST_ROW_FIELDS_CLOSE = COST_ROW_FIELDS
+CONTRACT_SIZE = 100_000.0  # notional USD per 1.0 lot (same book as sleeve)
+CTRL_SHORT_ALWAYS = "ctrl_short_always"
+CTRL_SHADOW_MATCHED = "ctrl_shadow_matched"
+CTRL_EVENTS = ("ctrl_open", "ctrl_close")
+EPOCH_REPORT_EVENT = "epoch_report"
+# Journal event kinds that carry NO sleeve-accounting semantics: the boot
+# replay FILTERS these out before replay_journal (which stays byte-frozen)
+# so they neither pollute sleeve state nor count as events_bad.
+A1_IGNORED_BY_SLEEVE_REPLAY = (EPOCH_REPORT_EVENT, "cost_book",
+                               "short_beta_label") + CTRL_EVENTS
+
+
+def session_bucket_of_hour(hour_utc: int) -> str:
+    """Session bucket of a UTC hour (0..23). SEED convention, dated in
+    session_spread_curve.json; replaced only with the sha-pinned census."""
+    for name, h0, h1 in SESSION_BUCKETS_UTC:
+        if h0 <= hour_utc < h1:
+            return name
+    raise ValueError(f"hour_utc out of range: {hour_utc!r}")
+
+
+def session_bucket_of_epoch(epoch_s: int) -> str:
+    return session_bucket_of_hour((int(epoch_s) // HOUR) % 24)
+
+
+def is_weekday_utc(epoch_s: int) -> bool:
+    """Mon..Fri UTC (epoch day 0 = 1970-01-01 = Thursday)."""
+    return ((int(epoch_s) // 86400) + 3) % 7 < 5
+
+
+def fill_allowed_open(new_bar_hour_utc: int) -> bool:
+    """THE sleeve fill law, restated for the control arms (amendment:
+    controls use the identical fill law). A fill may execute at the open of
+    the bar that just opened only when the just-CLOSED bar's hour <= 18
+    (shadow_daemon main loop + desired_now: no fills at closed hour >= 19,
+    i.e. the 00:00 UTC open is NOT fillable, the last fillable open is the
+    19:00 bar). Derived identity: closed hour = (new_bar_hour - 1) % 24."""
+    return ((int(new_bar_hour_utc) - 1) % 24) <= 18
+
+
+def cost_field_status(row: Mapping) -> str:
+    """Append-only schema law (amendment §1.4): rows written before T_ctrl
+    never gain the cost fields; their absence is NOT_RUN_COST_FIELDS,
+    never zero, and old rows are never backfilled. Open rows require the
+    per-fill fields; close/flat rows additionally carry the round-trip
+    aggregate realized_net."""
+    need = (COST_ROW_FIELDS_CLOSE if "exit_px" in row
+            else COST_ROW_FIELDS_OPEN)
+    return "OK" if all(k in row for k in need) else NOT_RUN_COST_FIELDS
+
+
+class CostBook:
+    """The single pinned cost book loaded from session_spread_curve.json
+    (single source, digest-pinned; amendment §2). Measured components:
+    spread-at-fill + session census curve (SEED until the sha-pinned
+    census). Declared components: fee_bps/slip_pips, clearly labeled,
+    never override the measured book (umbrella cost law)."""
+
+    def __init__(self, cfg: Mapping, digest: str, path: str):
+        self.cfg = dict(cfg)
+        self.digest = digest
+        self.path = str(path)
+        sched = cfg["declared_fee_schedule"]
+        self.fee_bps = float(sched["fee_bps_per_side"])
+        self.slip_pips = float(sched["slip_pips_per_side"])
+        self.stress_multiplier = float(cfg["stress_multiplier"])
+
+    @classmethod
+    def from_file(cls, path) -> "CostBook":
+        raw = Path(path).read_bytes()
+        digest = "sha256:" + hashlib.sha256(raw).hexdigest()[:16]
+        return cls(json.loads(raw.decode()), digest, str(path))
+
+    def median_pips(self, pair: str, bucket: str) -> float:
+        return float(self.cfg["session_median_pips"][pair][bucket])
+
+    def stress_pips(self, pair: str, bucket: str) -> float:
+        """Stress-book spread for the fill's bucket (median x tier, lane-F
+        frozen x2.0). Parallel reporting view ONLY — never primary PnL."""
+        return self.median_pips(pair, bucket) * self.stress_multiplier
+
+    def fee_usd(self, px: float, lots: float = LOTS) -> float:
+        return px * lots * CONTRACT_SIZE * self.fee_bps / 1e4
+
+    def slip_usd(self, pips: float, lots: float = LOTS) -> float:
+        return pips * DOLLARS_PER_PIP_PER_LOT * lots
+
+    def declared_side_cost_usd(self, px: float) -> float:
+        return self.fee_usd(px) + self.slip_usd(self.slip_pips)
+
+    def fill_cost_fields(self, pair: str, bucket: str, spread_pips: float,
+                         px: float) -> Dict[str, Any]:
+        """Per-fill cost row fields (amendment §1.4), same book for the
+        sleeve and both control arms. stress_fee = the declared fee in USD
+        (fees do not change under stress); stress_slip = the x2.0 session
+        spread in USD for ONE side."""
+        fee_usd = self.fee_usd(px)
+        return {
+            "fee_bps": self.fee_bps,
+            "slip_pips": self.slip_pips,
+            "spread_at_fill": round(float(spread_pips), 2),
+            "session_bucket": bucket,
+            "cost_book_digest": self.digest,
+            "stress_fee": round(fee_usd, 2),
+            "stress_slip": round(self.slip_usd(self.stress_pips(pair, bucket)), 2),
+        }
+
+    def summary(self) -> Dict[str, Any]:
+        sched = self.cfg["declared_fee_schedule"]
+        return {
+            "path": self.path,
+            "digest": self.digest,
+            "status": self.cfg.get("status"),
+            "stress_multiplier": self.stress_multiplier,
+            "declared_fee_schedule": {
+                "class": sched.get("class"),
+                "fee_bps_per_side": self.fee_bps,
+                "slip_pips_per_side": self.slip_pips,
+            },
+            "session_median_pips": self.cfg["session_median_pips"],
+            "buckets_utc": {n: [h0, h1] for n, h0, h1 in SESSION_BUCKETS_UTC},
+        }
+
+
+def _rt_id(arm: str, pair: str, epoch: int, px: float) -> str:
+    raw = f"{arm}|{pair}|{int(epoch)}|{px!r}"
+    return "rt" + hashlib.sha256(raw.encode()).hexdigest()[:12]
+
+
+class CtrlShortAlwaysBook:
+    """C-FX-1 arm 1 — CTRL-SHORT-ALWAYS, the DAY-SESSION construct.
+
+    Per pair, a parallel VIRTUAL book (paper class, NO orders): short LOTS
+    from the first FILLABLE H1 open after 00:00 UTC each weekday (fillable
+    = the sleeve's own fill law: opens at new-bar hours 01..19 UTC), force-
+    flat at the sleeve's own 20:00 UTC boundary, weekends never open (the
+    daily force-flat keeps the book flat across the weekend by
+    construction). Costed with the SAME cost book and the SAME opposite-
+    quote rule as the sleeve (short opens sell at bid, covers buy at ask).
+
+    COMPARABILITY LAW (amendment §1.1, binding): this is a day-session
+    book; the ancestor's +314.0-pips SHORT_ALWAYS reference (EURUSD-OPEN-
+    SEARCH-V2 bf4f07f1, holdout) was a WINDOW-LONG construct — the two are
+    NOT numerically comparable. The ancestor number is cited only as the
+    REASON this control is mandatory.
+    """
+
+    arm = CTRL_SHORT_ALWAYS
+
+    def __init__(self, pair: str, pip: float):
+        self.pair, self.pip = pair, pip
+        self.pos = 0                      # 0 or -1 (LOTS units sign)
+        self.entry_px = None
+        self.entry_epoch = None
+        self.entry_bucket = None
+        self.rt_id = None
+        self.open_day = None              # UTC day number already opened
+        self.realized_gross_usd = 0.0
+        self.realized_net_usd = 0.0       # primary basis (declared costs)
+        self.realized_stress_usd = 0.0    # parallel stress view
+        self.fills = 0
+
+    def on_h1_open(self, bar_open_epoch: int, bid: float, ask: float,
+                   cost_book: CostBook, spread_pips: float) -> Optional[dict]:
+        """Offer the open of the bar that just opened (observed, PIT)."""
+        hour = (int(bar_open_epoch) // HOUR) % 24
+        day = int(bar_open_epoch) // 86400
+        if self.pos != 0 or self.open_day == day:
+            return None
+        if not is_weekday_utc(bar_open_epoch) or not fill_allowed_open(hour):
+            return None
+        px = float(bid)                   # short opens SELL at bid
+        self.pos, self.entry_px, self.entry_epoch = -1, px, int(bar_open_epoch)
+        self.entry_bucket = session_bucket_of_epoch(bar_open_epoch)
+        self.open_day = day
+        self.rt_id = _rt_id(self.arm, self.pair, bar_open_epoch, px)
+        self.fills += 1
+        ev = {"arm": self.arm, "pair": self.pair, "dir": self.pos,
+              "entry_px": px, "entry_ts": int(bar_open_epoch), "lots": LOTS,
+              "round_trip_id": self.rt_id}
+        ev.update(cost_book.fill_cost_fields(
+            self.pair, self.entry_bucket, spread_pips, px))
+        return ev
+
+    def force_flat(self, flat_epoch: int, bid: float, ask: float,
+                   cost_book: CostBook, spread_pips: float) -> Optional[dict]:
+        """Close at the sleeve's 20:00 UTC boundary (or a caught-up missed
+        boundary): short covers BUY at ask — same opposite-quote rule."""
+        if self.pos == 0:
+            return None
+        return self._close(float(ask), int(flat_epoch), cost_book,
+                           spread_pips, reason="force_flat")
+
+    def _close(self, px: float, epoch: int, cost_book: CostBook,
+               spread_pips: float, reason: str) -> dict:
+        gross = pnl_of(self.pos, self.entry_px, px, self.pip)
+        entry_bucket = self.entry_bucket
+        exit_bucket = session_bucket_of_epoch(epoch)
+        fee_e = cost_book.fee_usd(self.entry_px)
+        fee_x = cost_book.fee_usd(px)
+        slip_e = cost_book.slip_usd(cost_book.slip_pips)
+        slip_x = cost_book.slip_usd(cost_book.slip_pips)
+        sst_e = cost_book.slip_usd(cost_book.stress_pips(self.pair, entry_bucket))
+        sst_x = cost_book.slip_usd(cost_book.stress_pips(self.pair, exit_bucket))
+        net = gross - fee_e - slip_e - fee_x - slip_x
+        stress = gross - fee_e - sst_e - fee_x - sst_x
+        self.realized_gross_usd += gross
+        self.realized_net_usd += net
+        self.realized_stress_usd += stress
+        ev = {"arm": self.arm, "pair": self.pair, "dir": self.pos,
+              "entry_px": self.entry_px, "exit_px": px, "exit_ts": epoch,
+              "lots": LOTS, "reason": reason,
+              "pnl_usd": round(gross, 2),
+              "realized_net": round(net, 2),
+              "realized_net_stress": round(stress, 2),
+              "round_trip_id": self.rt_id,
+              "realized_total_net": round(self.realized_net_usd, 2)}
+        ev.update(cost_book.fill_cost_fields(self.pair, exit_bucket,
+                                             spread_pips, px))
+        self.pos, self.entry_px, self.entry_epoch = 0, None, None
+        self.entry_bucket, self.rt_id = None, None
+        return ev
+
+
+class CtrlShadowMatchedBook:
+    """C-FX-1 arm 2 — CTRL-SHADOW-MATCHED: the umbrella §5.7 inverted
+    control. Decisions IDENTICAL to the sleeve's (same fill px, same
+    timestamps, same exits) with the sign INVERTED at entry only; exits
+    are applied as-is (not re-inverted). Pure mirror: the daemon OBSERVES
+    sleeve transitions and replays them here inverted — the sleeve path
+    itself is never touched."""
+
+    arm = CTRL_SHADOW_MATCHED
+
+    def __init__(self, pair: str, pip: float):
+        self.pair, self.pip = pair, pip
+        self.pos = 0
+        self.entry_px = None
+        self.entry_epoch = None
+        self.entry_bucket = None
+        self.rt_id = None
+        self.realized_gross_usd = 0.0
+        self.realized_net_usd = 0.0
+        self.realized_stress_usd = 0.0
+        self.fills = 0
+
+    def on_sleeve_open(self, sleeve_dir: int, fill_px: float,
+                       fill_epoch: int, cost_book: CostBook,
+                       spread_pips: float) -> Optional[dict]:
+        """Mirror the sleeve's open with the sign inverted at the SAME px."""
+        if sleeve_dir == 0 or self.pos != 0:
+            return None
+        px = float(fill_px)
+        self.pos = -int(sleeve_dir)
+        self.entry_px, self.entry_epoch = px, int(fill_epoch)
+        self.entry_bucket = session_bucket_of_epoch(fill_epoch)
+        self.rt_id = _rt_id(self.arm, self.pair, fill_epoch, px)
+        self.fills += 1
+        ev = {"arm": self.arm, "pair": self.pair, "dir": self.pos,
+              "mirrors_sleeve_dir": int(sleeve_dir),
+              "entry_px": px, "entry_ts": int(fill_epoch), "lots": LOTS,
+              "round_trip_id": self.rt_id}
+        ev.update(cost_book.fill_cost_fields(
+            self.pair, self.entry_bucket, spread_pips, px))
+        return ev
+
+    def on_sleeve_close(self, exit_px: float, exit_epoch: int,
+                        cost_book: CostBook, spread_pips: float) -> Optional[dict]:
+        """Mirror the sleeve's exit IDENTICALLY (same px, not re-inverted)."""
+        if self.pos == 0:
+            return None
+        gross = pnl_of(self.pos, self.entry_px, float(exit_px), self.pip)
+        entry_bucket, exit_bucket = self.entry_bucket, session_bucket_of_epoch(exit_epoch)
+        fee_e, fee_x = cost_book.fee_usd(self.entry_px), cost_book.fee_usd(float(exit_px))
+        slip_e = cost_book.slip_usd(cost_book.slip_pips)
+        sst_e = cost_book.slip_usd(cost_book.stress_pips(self.pair, entry_bucket))
+        sst_x = cost_book.slip_usd(cost_book.stress_pips(self.pair, exit_bucket))
+        net = gross - fee_e - slip_e - fee_x - slip_e
+        stress = gross - fee_e - sst_e - fee_x - sst_x
+        self.realized_gross_usd += gross
+        self.realized_net_usd += net
+        self.realized_stress_usd += stress
+        ev = {"arm": self.arm, "pair": self.pair, "dir": self.pos,
+              "entry_px": self.entry_px, "exit_px": float(exit_px),
+              "exit_ts": int(exit_epoch), "lots": LOTS, "reason": "signal",
+              "pnl_usd": round(gross, 2),
+              "realized_net": round(net, 2),
+              "realized_net_stress": round(stress, 2),
+              "round_trip_id": self.rt_id,
+              "realized_total_net": round(self.realized_net_usd, 2)}
+        ev.update(cost_book.fill_cost_fields(self.pair, exit_bucket,
+                                             spread_pips, float(exit_px)))
+        self.pos, self.entry_px, self.entry_epoch = 0, None, None
+        self.entry_bucket, self.rt_id = None, None
+        return ev
+
+
+def ctrl_book_state(book) -> Dict[str, Any]:
+    """Serializable state of a control book (state file + replay)."""
+    return {"arm": book.arm, "pair": book.pair, "pos": book.pos,
+            "entry_px": book.entry_px, "entry_epoch": book.entry_epoch,
+            "open_day": getattr(book, "open_day", None),
+            "realized_gross_usd": round(book.realized_gross_usd, 2),
+            "realized_net_usd": round(book.realized_net_usd, 2),
+            "realized_stress_usd": round(book.realized_stress_usd, 2),
+            "fills": book.fills}
+
+
+def restore_ctrl_book(book, st: Mapping) -> None:
+    book.pos = int(st.get("pos") or 0)
+    book.entry_px = st.get("entry_px")
+    book.entry_epoch = st.get("entry_epoch")
+    book.entry_bucket = st.get("entry_bucket")
+    book.rt_id = st.get("rt_id")
+    if hasattr(book, "open_day"):
+        book.open_day = st.get("open_day")
+    book.realized_gross_usd = float(st.get("realized_gross_usd") or 0.0)
+    book.realized_net_usd = float(st.get("realized_net_usd") or 0.0)
+    book.realized_stress_usd = float(st.get("realized_stress_usd") or 0.0)
+    book.fills = int(st.get("fills") or 0)
+
+
+def replay_control_events(lines: Iterable[str]) -> Dict[str, Dict[str, Dict[str, Any]]]:
+    """Restart identity for the CONTROL books, WITHOUT touching the frozen
+    sleeve replay: scans only ctrl_open/ctrl_close rows (idempotent under
+    duplication by the same collapse rule as replay_journal). Returns
+    {arm: {pair: {pos, entry_px, entry_epoch, entry_bucket, rt_id,
+                  open_day, realized_gross_usd, realized_net_usd,
+                  realized_stress_usd, fills}}}."""
+    books: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    seen: set = set()
+
+    def st(arm: str, pair: str) -> Dict[str, Any]:
+        return books.setdefault(arm, {}).setdefault(pair, {
+            "pos": 0, "entry_px": None, "entry_epoch": None,
+            "entry_bucket": None, "rt_id": None, "open_day": None,
+            "realized_gross_usd": 0.0, "realized_net_usd": 0.0,
+            "realized_stress_usd": 0.0, "fills": 0})
+
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            continue
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(rec, Mapping):
+            continue
+        event = rec.get("event")
+        if event not in CTRL_EVENTS:
+            continue
+        arm = str(rec.get("arm") or "")
+        pair = str(rec.get("pair") or "")
+        if arm not in (CTRL_SHORT_ALWAYS, CTRL_SHADOW_MATCHED) or not pair:
+            continue
+        s = st(arm, pair)
+        if event == "ctrl_open":
+            key = ("o", arm, pair, rec.get("entry_ts"), rec.get("entry_px"))
+        else:
+            key = ("c", arm, pair, rec.get("exit_ts"), rec.get("exit_px"))
+        if key in seen:
+            continue
+        seen.add(key)
+        if event == "ctrl_open":
+            s["pos"] = int(rec.get("dir") or 0)
+            s["entry_px"] = rec.get("entry_px")
+            s["entry_epoch"] = rec.get("entry_ts")
+            s["entry_bucket"] = rec.get("session_bucket")
+            s["rt_id"] = rec.get("round_trip_id")
+            if arm == CTRL_SHORT_ALWAYS and rec.get("entry_ts") is not None:
+                s["open_day"] = int(rec["entry_ts"]) // 86400
+            s["fills"] += 1
+        else:
+            for k_dst, k_rec in (("realized_gross_usd", "pnl_usd"),
+                                 ("realized_net_usd", "realized_net"),
+                                 ("realized_stress_usd", "realized_net_stress")):
+                if rec.get(k_rec) is not None:
+                    s[k_dst] += float(rec[k_rec])
+            s["pos"], s["entry_px"], s["entry_epoch"] = 0, None, None
+            s["entry_bucket"], s["rt_id"] = None, None
+            s["fills"] += 1
+    for arm in books:
+        for pair, s in books[arm].items():
+            for k in ("realized_gross_usd", "realized_net_usd",
+                      "realized_stress_usd"):
+                s[k] = round(s[k], 2)
+    return books
+
+
+def usd_exposure_block(dirs: Mapping[str, int],
+                       mids: Mapping[str, Optional[float]]) -> Dict[str, Any]:
+    """C-FX-2 — aggregate USD exposure per H1 decision epoch (DISPLAY-ONLY
+    per owner D10: no capping, no behavior change).
+
+    usd_same_side_notional: when EVERY pair carrying a position shares ONE
+    direction, the same-direction gross notional (lots + USD); otherwise 0
+    (nothing is fully same-side). usd_net_notional: signed sum, long + /
+    short -."""
+    per = {}
+    for p, d in dirs.items():
+        d = int(d)
+        mid = mids.get(p)
+        usd = d * LOTS * float(mid) * CONTRACT_SIZE if (d and mid) else 0.0
+        per[p] = {"dir": d,
+                  "lots": LOTS * abs(d) if d else 0.0,
+                  "signed_lots": LOTS * d,
+                  "usd": round(usd, 2)}
+    open_p = [v for v in per.values() if v["dir"] != 0]
+    same_dir = len({v["dir"] for v in open_p}) == 1 if open_p else False
+    return {
+        "per_pair_direction": {p: v["dir"] for p, v in per.items()},
+        "usd_same_side_notional_lots": LOTS * len(open_p) if same_dir else 0.0,
+        "usd_same_side_notional_usd": round(
+            sum(abs(v["usd"]) for v in open_p), 2) if same_dir else 0.0,
+        "usd_net_notional_lots": round(sum(v["signed_lots"] for v in per.values()), 3),
+        "usd_net_notional_usd": round(sum(v["usd"] for v in per.values()), 2),
     }
