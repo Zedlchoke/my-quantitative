@@ -1,0 +1,71 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "chr3f-basislv-replication-stage-1",
+ "cycle_id": "CRYPTO-HISTORICAL-REPLICATION-3F-V1",
+ "role": "BASISLV_REPLICATION_IMPLEMENTER",
+ "lane": "basislv_replication",
+ "dispatch_sha": "a8897a160165c97f3a44a679c08d10411c7ab27f",
+ "actual_start_sha": "a8897a160165c97f3a44a679c08d10411c7ab27f",
+ "commit_sha": null,
+ "commit_note": "committed by pathspec research/control/crypto_historical_replication_3f_v1/basislv_replication on branch orca/crypto-historical-replication-3f-v1-integration (see git log for the exact sha; bulk parquets + scored_out gitignored inside the namespace, regeneration is one deterministic command: basis_convert.py)",
+ "changed_paths": [
+  "research/control/crypto_historical_replication_3f_v1/basislv_replication/.gitignore",
+  "research/control/crypto_historical_replication_3f_v1/basislv_replication/gated_plugin.py",
+  "research/control/crypto_historical_replication_3f_v1/basislv_replication/basis_convert.py",
+  "research/control/crypto_historical_replication_3f_v1/basislv_replication/replication_data.py",
+  "research/control/crypto_historical_replication_3f_v1/basislv_replication/dryrun.py",
+  "research/control/crypto_historical_replication_3f_v1/basislv_replication/basislv_cell_runner.py",
+  "research/control/crypto_historical_replication_3f_v1/basislv_replication/replication_scored.py",
+  "research/control/crypto_historical_replication_3f_v1/basislv_replication/basis_convert_report.json",
+  "research/control/crypto_historical_replication_3f_v1/basislv_replication/dryrun_report.json",
+  "research/control/crypto_historical_replication_3f_v1/basislv_replication/IMPLEMENT_HANDOFF.json"
+ ],
+ "tests": [
+  "basis_convert.py RUN: 19/19 symbols converted to the frozen restage parquet schema; identity max |p_b - basisRate| = 5.0e-05 <= 1e-4 (absolute, frozen band) on every symbol; 0 inadmissible rows; 0 duplicates; 0 off-grid opens",
+  "dryrun.py RUN (sanitized, NO PnL): PASS non-vacuous. Y2021: 51 open stamps, 49 OK books / 0 insufficient / 2 fold-terminal force-flats, n_eligible = 12 at EVERY stamp (MIN_ELIGIBLE=12 exactly, zero margin, never breached; k=4, 8 legs). Y2022: 51 stamps, 49/0/2, n_eligible = 12 throughout. Y2023: 52 stamps, 46 OK / 4 INSUFFICIENT_ELIGIBLE (2023-11-13, 11-20, 11-27, 12-04; n_eligible=0; refused = 15 MISSING_OR_NON_FINITE_SLOT + 4 INSUFFICIENT_HISTORY) / 2 force-flats, n_eligible 0..15. Y2024P: 32 stamps, 30 OK / 0 insufficient / 2 force-flats, n_eligible 16..19",
+  "runner traversal pin (dry-run, all 4 folds): every open stamp answers targets_at with zero AdapterError",
+  "runner-faithful surface validation (Y2021, no PnL): fills_at on the first stamp's 8 book legs 8/8 applied; PIT-listed context (13 symbols incl BTCUSDT) marks non-None at first and last instant; settlements load (AAVEUSDT 4212 points); folds 17/18/17 purge_days=0; identity family A14-V14-A5-BASISLV-PREMFADE frozen; cost model carries all 20 ticks",
+  "replication_scored.py self-gate VERIFIED: rc=5 REFUSED with 'A7 BASISLV-replication prelaunch verdict = MISSING' (A7_PRELAUNCH.json does not exist; no lock taken, no cell run)",
+  "no scored cell was run in this task (constraint honored)"
+ ],
+ "authority_claims": [
+  "FROZEN ENGINE untouched: all mechanics (premium_level_at, build_premfade_book, compute_targets_at, next_allowed_close_fill, bars/basis series constructors, GenericStrategyBase universe/cost/funding) are the recovered v14_root module's code, called verbatim; the frozen file set is read-only",
+  "window-fold derivation disclosed in gated_plugin.py header, mirroring the proven chr3f_illiq_plugin.py pattern: overrides EXACTLY schedule/effective_instants (frozen weekly_mondays re-targeted to the bound window), folds/fold_instants/_fold_label (chronological day-truncated thirds F1/F2/F3 of the bound window, force-flat at boundaries, purge_days=0), targets_at (window fold lookup + two disclosed refusal resolutions) and benchmark_context_symbols (PIT-listed context narrowing, chr3f pattern); universe() is NOT overridden -- scored universe = the FROZEN 19 at every window, the engine's own eligibility decides",
+  "folds = preregistered plan section 3: Y2021 2021-01-01..2022-01-01, Y2022 ..2023-01-01, Y2023 ..2024-01-01, Y2024P 2024-01-01..2024-08-19; weekly Monday 00Z stamps via the frozen weekly_mondays (window-start edge excluded per frozen mechanics, so Y2024P's first stamp is 2024-01-08; window-end edge inclusive, Y2024P's schedule-final stamp is 2024-08-19)",
+  "bars: catalog_live_crypto_b20 via the EXACT equivalence-loader semantics including the LOAD-BEARING kline-OPEN -> close-boundary remap (snap(ts)+15m, availability = close boundary) root-caused in basislv_equivalence (pre-fix DIVERGENT run); bars loaded at each symbol's FULL catalog coverage (D4, disclosed): 7 of the 19 names have no bars at all inside Y2021/Y2022 and an uninjected symbol would silently shrink the frozen 19-name universe",
+  "funding: funding_data_scan/scan_2026 (B window) with the frozen snap_funding_times_to_hour mapping, consumed AS-IS (D5: no frozen-count authority exists on this window, unlike the S0 window's trim policy)",
+  "ticks: fapi exchangeInfo metadata recorded in catalog_live_crypto_b20_build_report.json (current metadata, disclosed convention, no uniform stubs)",
+  "basis parquets: frozen restage_basis.py schema written by basis_convert.py from staging/basis_win (19/19 full-depth 2020-06/07 or listing date .. 2024-08-19); loader = frozen load value path (identity check <= 1e-4 absolute fail-closed, duplicates fail-closed) with ONE disclosed deviation (D2): grid gaps are REPORTED and remain NaN slots instead of the A9F restage loader's zero-gap refusal -- the 4.6-year re-fetch carries exactly one systematic missing bucket (open 1699587900000 = 2023-11-10T04:05Z, 15/19 symbols)"
+ ],
+ "known_limitations": [
+  "D1 (A7-reviewable design decision): stamps with < MIN_ELIGIBLE eligible names answer the flat refusal-counted book (status OK, reason_code INSUFFICIENT_ELIGIBLE_REFUSAL, per-stamp eligibility diagnostics) instead of raising EligibilityShortfall -- a raise inside the frozen runner aborts the whole cell, conflating one stamp's refusal with a data failure; this realises the frozen strategy docstring's schedule-level semantics ('the stamp refuses and the refusal is counted') and mirrors the frozen fold-terminal force-flat precedent. Measured effect: exactly 4 Y2023 stamps (2023-11-13..2023-12-04, n_eligible=0) sit flat. The alternative (fail-closed cell abort) is recorded for the A7 review to adjudicate",
+  "D3: the frozen fold-terminal force-flat executability check is re-scoped to symbols whose bar series covers the stamp (the frozen all-universe check would fail-closed on never-listed names that can never be held at that stamp -- only held legs fill); a COVERED symbol without an executable in-fold fill still fails closed verbatim",
+  "identity digests remain the FROZEN ones (frozen_identity/arm_config_digest untouched): the window-fold binding lives in the plugin surface, not the identity; every scored cell must therefore carry the REPLICATION labels, and the scored numbers are replication constructions, not reproductions of any original-window artifact",
+  "Y2021/Y2022 n_eligible = 12 at every stamp: zero margin over MIN_ELIGIBLE -- ANY additional basis slot loss in those windows converts stamps to flat refusals; the dry-run measured the staged snapshot, not a guarantee",
+  "fills_at inherits the frozen series-coverage assumption (slot_index raises off-coverage); the runner only requests fills for held/holdable legs, and a leg can be held only if its own open fill executed, so holdable legs are covered by construction -- validated 0 problems across all Y2021 stamps; never-listed names are never requested",
+  "the dry-run and surface validation exercised the ANCHOR arm only; INV is the element-wise negation of the same book (frozen control construction) with identical eligibility/geometry by construction; the scored launcher runs both",
+  "scored sweep NOT RUN: self-gated on basislv_replication/A7_PRELAUNCH.json verdict AUTHORIZED (artifact does not exist; written only by the A7 review) and heavy-locked (cycle CRYPTO-HISTORICAL-REPLICATION-3F-V1, role scored-cells); resume-safe via scored_status.json",
+  "read-only discipline: no edits outside the basislv_replication namespace; CHR3F shared infra (catalogs, staging, funding scans, chr3f_illiq_plugin.py, basislv_equivalence) consumed read-only; no registry/ledger/S1 writes; heavy lock not taken (dry-run is local catalog reads only)"
+ ],
+ "incidents": [
+  "RESOLVED: first dry-run attempt crashed on bars_from_rows(need >=1 row) for never-listed symbols inside the Y2021 window (7 of 19 names); resolved by full-coverage bar loading (D4) so all 19 names stay injected and the engine's own INSUFFICIENT_HISTORY eligibility decides -- disclosed, not silently patched",
+  "RESOLVED: loader report initially flagged grid_gap_clean off the grid-length/span delta (vacuously true on the dense-grid series); corrected to nan_slots == 0; the 15 single-slot NaNs are now reported per symbol in dryrun_report.json basis_report"
+ ],
+ "tree_status": "clean namespace commit on orca/crypto-historical-replication-3f-v1-integration; pathspec = research/control/crypto_historical_replication_3f_v1/basislv_replication only; bulk (basis_parquet/, scored_out/) gitignored inside the namespace",
+ "workers": 0,
+ "outputs": {
+  "gated_plugin": "BasislvWindowFoldPlugin (bind_window contract validated against the constructor window; frozen F1/F2/F3 labels intentionally distinct from the frozen family's F0/F1/F2 calendar)",
+  "basis_parquet_root": "research/control/crypto_historical_replication_3f_v1/basislv_replication/basis_parquet/<SYM>/<SYM>_basis_15m.parquet (19 symbols, frozen restage schema open_time_ms/futures_price/index_price/basis/basis_rate)",
+  "basis_convert_report": "basis_convert_report.json (per-symbol rows/span/gaps/identity)",
+  "dryrun_report": "dryrun_report.json (per fold x stamp status, n_eligible, refused_by_reason, side_size, force-flat stamps; basis + bars provenance; non_vacuous=true)",
+  "scored_launcher": "replication_scored.py (8 cells = 4 folds x {BASISLV-PREMFADE-28D, BASISLV-PREMFADE-28D-INV}; heavy lock role scored-cells; self-gate A7_PRELAUNCH.json verdict AUTHORIZED; labels [REPLICATION_NOT_PROSPECTIVE, EQUIVALENCE_BIT_EXACT_ORIGINAL_WINDOW, UNIVERSE_LISTED_AT_WINDOW_START]; cycle-local outputs scored_out/ + scored_status.json; resume-safe)",
+  "cell_runner": "basislv_cell_runner.py (one scored cell; last-line JSON metrics + refusal census for honest cell rows)",
+  "a7_review_items": [
+   "D1 flat-refusal convention vs fail-closed cell abort (4 measured Y2023 stamps)",
+   "D2 gap-tolerant basis load (one systematic 2023-11-10T04:05Z bucket, 15/19 names)",
+   "D3 fold-terminal executability check re-scoped to bars-covering symbols",
+   "D4 full-coverage bar loading (19-name universe preservation)",
+   "D5 scan_2026 funding AS-IS + current-metadata ticks"
+  ]
+ }
+}
