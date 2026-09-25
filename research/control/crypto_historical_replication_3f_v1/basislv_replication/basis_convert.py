@@ -200,7 +200,7 @@ def main() -> int:
         ),
         "grid_gap_policy": (
             "REPORTED not fatal: the 4.6-year re-fetch carries a single "
-            "systematic missing bucket (open 1699587900000 = 2023-11-10T04:05Z, "
+            "systematic missing bucket (open 1699587900000 = 2023-11-10T03:45Z, "
             "15/19 symbols); the engine's per-slot NaN semantics refuse any "
             "formation window straddling a gap (fail closed at signal level)"
         ),

@@ -2,7 +2,7 @@
 cycle's own A7 prelaunch artifact authorizes it).
 
 Cycle CRYPTO-HISTORICAL-REPLICATION-3F-V1, namespace basislv_replication.
-8 cells = {Y2021, Y2022, Y2023, Y2024P} x {anchor BASISLV-PREMFADE-28D,
+8 cells = {Y2021, Y2022, Y2023, Y2020P} x {anchor BASISLV-PREMFADE-28D,
 control BASISLV-PREMFADE-28D-INV}; per cell one subprocess running the FROZEN
 ``run_strategy`` over the window-fold bound ``BasislvWindowFoldPlugin``
 (the proven chr3f ILLIQ launcher/cell-runner structure).
@@ -36,9 +36,9 @@ gated_plugin.py / replication_data.py; measured by dryrun_report.json):
      refuses and the refusal is counted" schedule-level semantics, mirroring
      the frozen fold-terminal force-flat precedent.  Measured: Y2023 carries
      exactly 4 such stamps (2023-11-13..2023-12-04, n_eligible=0), caused by
-     ONE systematic missing basis bucket (open 2023-11-10T04:05Z, 15/19
+     ONE systematic missing basis bucket (open 2023-11-10T03:45Z, 15/19
      names).  Alternative: fail-closed cell abort.
-  D2 gap-tolerant basis load: the single 2023-11-10T04:05Z bucket is NaN and
+  D2 gap-tolerant basis load: the single 2023-11-10T03:45Z bucket is NaN and
      the engine's per-slot eligibility refuses straddling formation windows
      (deviation from the A9F restage loader's zero-gap refusal, which would
      refuse to load the 4.6-year re-fetch at all).

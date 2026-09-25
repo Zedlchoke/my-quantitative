@@ -12,7 +12,7 @@ EQUIVALENT bit-exact) on the B-window replication authorities:
            absolute identity check fails closed; grid gaps are REPORTED and
            remain NaN slots (disclosed deviation from the A9F restage's
            zero-gap refusal -- one systematic missing bucket
-           2023-11-10T04:05Z in 15/19 names; the engine's per-slot
+           2023-11-10T03:45Z in 15/19 names; the engine's per-slot
            eligibility then refuses straddling formation windows).
 * bars   : ``catalog_live_crypto_b20`` (2020-01..2024-08, 20 symbols) via the
            EXACT equivalence loader semantics: catalog ``ts_event`` is the

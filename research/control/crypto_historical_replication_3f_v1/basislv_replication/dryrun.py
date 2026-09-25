@@ -4,7 +4,7 @@ metric, NO cost/funding number, NO scored ledger.
 
 Cycle CRYPTO-HISTORICAL-REPLICATION-3F-V1, namespace basislv_replication.
 
-Per fold (Y2021, Y2022, Y2023, Y2024P) the REAL scored plugin surface is
+Per fold (Y2021, Y2022, Y2023, Y2020P) the REAL scored plugin surface is
 traversed exactly as the frozen runner will traverse it later
 (``BasislvWindowFoldPlugin.targets_at`` on every OPEN instant
 ``schedule[:-1]``), with the ANCHOR arm ``BASISLV-PREMFADE-28D`` (the INV
