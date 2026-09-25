@@ -1,0 +1,93 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "tracka1-datagate",
+  "cycle_id": "ERP1-TRACKA-COHORT-1",
+  "role": "quant-implementer",
+  "lane": "tracka1-datagate",
+  "dispatch_sha": "460d2acdf9c4dc3970a6dddbbdc36b08178f02a3",
+  "actual_start_sha": "460d2acdf9c4dc3970a6dddbbdc36b08178f02a3",
+  "commit_sha": "43a84688bee51a17d3e3f998a73523780513573b",
+  "commit_note": "commit_sha is the single work commit carrying ALL data-gate deliverables (23 files, pathspec-staged, raw bytes gitignored); this handoff file itself lands in the immediately following bookkeeping commit on the same branch because a file cannot contain its own commit's sha. Branch head after handoff: see git log -1 -- research/control/ERP1-TRACKA-COHORT-1/handoffs/HANDOFF_tracka1_datagate.json",
+  "changed_paths": [
+    "research/control/ERP1-TRACKA-COHORT-1/.gitignore",
+    "research/control/ERP1-TRACKA-COHORT-1/DATAGATE_REPORT.md",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/duka_lib.py",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/pair_config.py",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/pair_configs.json",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/engine.py",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/probe_pair.py",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/download_m1.py",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/build_bars.py",
+    "research/control/ERP1-TRACKA-COHORT-1/tests/conftest.py",
+    "research/control/ERP1-TRACKA-COHORT-1/tests/test_duka_lib.py",
+    "research/control/ERP1-TRACKA-COHORT-1/tests/test_engine.py",
+    "research/control/ERP1-TRACKA-COHORT-1/tests/test_pair_configs.py",
+    "research/control/ERP1-TRACKA-COHORT-1/tests/test_build_bars_synthetic.py",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/duka/.gitignore",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/duka/m1_manifest_AUDUSD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/duka/m1_manifest_USDCAD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/probe/.gitignore",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/.gitignore",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/probe_AUDUSD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/probe_USDCAD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/census_AUDUSD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/census_USDCAD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/handoffs/HANDOFF_tracka1_datagate.json"
+  ],
+  "tests": [
+    {
+      "command": "cd <worktree>/research/control/ERP1-TRACKA-COHORT-1 && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/ -q",
+      "result": "20 passed in 0.9s (test_duka_lib: bi5 layouts + 20-vs-24 trap; test_engine: pip parametrization incl. USDJPY-style template + force-flat across synthetic DST Sunday shapes 21/22/23 UTC + zero-target smoke; test_pair_configs: probe-proven configs, guard coverage, digest consistency, no-outcome-fields; test_build_bars_synthetic: H1 grouping law, micro-gap enumeration, weekend boundary + DST table, reconcile machinery)"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/ERP1-TRACKA-COHORT-1/scripts/probe_pair.py {AUDUSD,USDCAD}",
+      "result": "PROBE_PASS both pairs (exit 0); heavy-lock role datagate-probe"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/ERP1-TRACKA-COHORT-1/scripts/download_m1.py {AUDUSD,USDCAD} 2021-01-01 2026-06-30 2400",
+      "result": "AUDUSD COMPLETE 4014 files 0 missing; USDCAD COMPLETE 4014 files 0 missing; resumable 40-min chunks under heavy-lock role datagate-download (8 acquisitions total, all released FINISHED/FAILED-with-note)"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/ERP1-TRACKA-COHORT-1/scripts/build_bars.py {AUDUSD,USDCAD}",
+      "result": "BUILD_PASS both pairs (exit 0); heavy-lock role datagate-census; census-vs-executor reconcile recomputed from persisted parquet: max abs diff 0.0 pip both pairs"
+    }
+  ],
+  "authority_claims": [
+    "BLOCKING PORT DEFECT (plan 5.2) FIXED: duka_lib/build_bars/engine ported into research/control/ERP1-TRACKA-COHORT-1/scripts/ with symbol, PIP, PRICE_SCALE and tradability band fully parametrized per pair via probe-proven PairConfig; ancestor constants (EURUSD-only URLs, PRICE_SCALE=1e5, PIP=1e-4, band 0.80<b<1.35, engine PIP=1e4) no longer exist anywhere in the ported code; consumers fail-closed on missing/unproven configs.",
+    "PROBES PROVE SCALE FROM BYTES, never assumed: window 2024-10-26..2024-11-06 (EU DST end + US DST end + two rollovers); price_scale 1e5 derived as the UNIQUE candidate in {1e3,1e4,1e5,1e6} placing median(raw/s) inside the plan-registered guard band (AUDUSD 0.55-0.85 median 0.65765; USDCAD 1.20-1.50 median 1.39101); pip = 10 x point = 1e-4 byte-derived (USDJPY precedent honored); bands AUDUSD [0.5209,0.85], USDCAD [1.1057,1.6751] = union(probe min/max padded 20%, registered guard); tick-vs-candle content cross-check 0 mismatches on 11,613 minutes/side/pair; 24-byte candle / 20-byte tick layout invariants 0 violations; M1 OHLC invariants 0 violations (34,560 candles/pair); DST seam measured in probe ticks (Sunday open 21:0x UTC before US fall-back, 22:00 after, both pairs).",
+    "PRE-GATE REGISTRY CHECK PASS (plan 5.2 item 1): no prior program cycle built an AUDUSD or USDCAD corpus (no manifest, census, or data dir anywhere in research/control outside this lane); symbol mentions elsewhere are candidate-universe listings only.",
+    "FULL CORPORA: 2021-01-01..2026-06-30 M1 BID+ASK day bi5 files, 4,014 files/pair (2,007 days x 2 sides), 0 missing days per pair - exactly the 4,014/pair 0-missing precedent of plan 5.1; AUDUSD 34,336,187 bytes / USDCAD 34,748,361 bytes compressed; sha256 of every file committed in m1_manifest_{SYMBOL}.json (AUDUSD manifest head f869cfa32210194c, USDCAD 0f9a7df78bcaf481); raw bytes machine-local gitignored.",
+    "CENSUS BUILD_PASS BOTH PAIRS under hardened schema tracka_census@2 (plan 6): gates with margins - midweek tradable share AUDUSD 0.98611 / USDCAD 0.98607 (margin +0.086 over the 0.90 floor), non-positive-spread minutes 0 (gate margin full +0.010), valid 15m bars 130,160 / 130,102 (+30k over the 100k floor), duplicate 15m timestamps 0 fail-closed, census-vs-executor p50 reconcile recomputed from the PERSISTED bars15 parquet = census p50 exactly (max diff 0.0 <= 5e-4 tolerance); all 8 fixed-UTC buckets carry per-bucket COUNT + OPEN and CLOSE spread quantiles in PIPS (AUDUSD overall p50 1.0 p99 4.1; USDCAD p50 1.2 p99 6.2; rollover 2.0/2.3; sunday_open 4.6/6.8), no bucket under the n=100 floor so no LOW_SAMPLE_BUCKET fired; H1 planes s_open=a_o-b_o, s_close=a_c-b_c (30,420/30,386 bars); gap census enumerates interior micro-gaps (6,051/5,930), weekday span slots, 286 Friday->open boundaries per pair (gap p50 48.5h, max 73.25h/73.0h), 22 in-panel DST transition Sundays tabulated with observed first-Sunday-bar UTC hour; build-failing fixture asserts green (rollover n 3,497/3,680 > 0; Sunday-open cell present 312/321); price_range_violations 0 across the full panel (probe-derived bands hold 2021-2026).",
+    "LANE BOUNDARY HELD: no PnL, no signal/target computation, no backtest, no scored cell anywhere in this lane (engine exercised only with all-zero targets producing 0 trades); no plans/ edits, no other-namespace writes, no pushes, no merges.",
+    "LICENSE POSTURE unchanged and disclosed: OWNER_DIRECTIVE_SOURCE_AUTHORIZATION with TCU_RISK_DISCLOSED inherited from plan 5.1; public datafeed endpoints only, no accounts, no terms accepted; no license/paywall prompt appeared (would have stopped the lane per stop conditions)."
+  ],
+  "known_limitations": [
+    "Single-source Dukascopy corpus (SINGLE_SOURCE_PANEL applies to everything downstream); owner unblock paths for an independent source remain open owner actions per plan 5.3 (D-C: no unblock this cycle).",
+    "Probe raw tick/candle bytes were one-shot and NOT persisted (sha256 digests of all 312 files/pair are in the committed probe reports); the full M1 corpus IS persisted machine-local under committed sha manifests.",
+    "LINEAGE-NOTE-1 for later parity lanes: the ancestor build_bars built 15m high/low from the CLOSE column (bb[:,2].max()/bb[:,3].min() under its verified open,close,low,high order); this port uses the true high/low columns - ancestor bars15 are NOT bit-identical to these on high/low.",
+    "Vendor Sunday-open convention is RECORDED, not explained: observed first-Sunday-bar hour oscillates 22<->21 UTC across the DST regime (22 in-panel transition Sundays tabulated per pair); on some transition Sundays the open hour follows the PRE-transition schedule - downstream lanes consuming Sunday-open liquidity must read the observed table, not a fixed hour.",
+    "Interior micro-gaps (~6k slots/pair over 5.5y) are enumerated but NOT cleaned or interpolated (no-interpolation law); their by-hour histogram concentrates at session edges - executor lanes must keep the no-interpolation law.",
+    "One weekday with zero tradable minutes per pair (2021-01-01 holiday) - enumerated in days_zero_tradable.weekday_dates, not gated (weekends are the expected 288).",
+    "Download throughput was server-latency bound (~1.7-2.3 s/file): 8 lock acquisitions total incl. one platform kill of a 62-min chunk (stale lock row auto-reclaimed by the next acquire per round-2 discipline) and one SSL outage (FAILED release with note, resumed clean); all wall-clock figures in DATAGATE_REPORT.md 4.",
+    "Derived bar planes (bars15/bars1h parquet) are machine-local by design; the committed authority is census_{SYMBOL}.json + the manifests - later lanes rebuild parquets via scripts/build_bars.py (deterministic from committed manifests + bytes)."
+  ],
+  "incidents": [
+    "Platform killed AUDUSD download chunk 1 at ~62 min without running its finally: stale RUNNING lock row (dead pid) left; next heavy_lock.acquire archived the PROVEN-stale row automatically (no manual surgery); chunk budgets reduced to 40 min; sha-resume lost at most one checkpoint window.",
+    "USDCAD chunk 3 died on SSLEOFError after exhausting the fetcher's 8-retry exponential backoff; lock released FAILED with note; chunks 4-5 completed the corpus with 0 missing days.",
+    "Synthetic census smoke test caught a real build_bars bug before any data ran (gap_census year extraction set(list) TypeError) and drove the micro-gap redefinition to interior-of-span holes so market-closed hours are not counted as gaps.",
+    "LINEAGE-NOTE-1 (ancestor close-column high/low) recorded as observation; see known_limitations."
+  ],
+  "tree_status": "clean (both commits landed; working tree clean except gitignored machine-local bytes: data_local/duka/M1/**.bi5, data_local/derived/*.parquet, __pycache__/.pytest_cache)",
+  "workers": 0,
+  "outputs": [
+    "research/control/ERP1-TRACKA-COHORT-1/DATAGATE_REPORT.md",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/census_AUDUSD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/census_USDCAD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/probe_AUDUSD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/probe_USDCAD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/duka/m1_manifest_AUDUSD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/duka/m1_manifest_USDCAD.json",
+    "research/control/ERP1-TRACKA-COHORT-1/scripts/ (6 ported scripts + pair_configs.json)",
+    "research/control/ERP1-TRACKA-COHORT-1/tests/ (5 test modules, 20 tests)"
+  ]
+}
