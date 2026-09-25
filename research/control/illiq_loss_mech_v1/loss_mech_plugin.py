@@ -102,6 +102,15 @@ class LossMechPlugin(IlliqAmihudPlugin):
                                 purge_days=0, dropped=dropped))
         return tuple(out)
 
+    # ---------------- A4 universe law (Amendment A2) ----------------
+    def universe(self, stress: StressSpec) -> tuple:
+        # A4 (engine-native; INC-1/A2): universe = listed at window start.
+        # The frozen runner requires first-instant context marks for every
+        # universe member, so mid-window listings can never be admitted.
+        ym = self._window_start_iso[:7]
+        return tuple(s for s in super().universe(stress)
+                     if self._first_bar_ns.get(s, 1 << 62) <= _month_start_ns(ym))
+
     # ---------------- context: listed at window start ----------------
     def benchmark_context_symbols(self) -> tuple:
         ym = self._window_start_iso[:7]

@@ -87,6 +87,9 @@ def first_bar_ns(symbol: str) -> int:
 def run_cells() -> dict:
     status = {"started_utc": utcnow(), "cells": []}
     for cell_id, fold, arm, variant in CELLS:
+        if cell_id == "C5_V2AGE_Y2023":
+            status["cells"].append({"cell": cell_id, "skipped": "NOT_RUN_VOID_CONSTRUCTION (Amendment A2: A4 universe has zero sub-365d names on Y2023; age filter is a no-op)"})
+            continue
         w = WINDOWS[fold]
         out_dir = CTRL / "illiq_cells" / cell_id
         if (out_dir / "results/artifact.json").is_file():
