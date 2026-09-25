@@ -487,7 +487,10 @@ def main():
         _artifact = json.loads((HERE.parent / "A1_ACTIVATION.json").read_text())
     except Exception:
         _artifact = None
-    _cb_ts = now_utc().isoformat(timespec="seconds")
+    # F1 fix (A7 delta): cross-check ts = the ACTIVATION-time cost_book
+    # row from the replayed journal (seq 97 class), not this boot's clock.
+    _cb_ts = C.boot_cross_check_ts(
+        a1_lines, now_utc().isoformat(timespec="seconds"))
     journal.log("cost_book", digest=cost_book.digest, path=str(COST_CURVE),
                 status=cost_book.cfg.get("status"),
                 declared_fee_bps=cost_book.fee_bps,

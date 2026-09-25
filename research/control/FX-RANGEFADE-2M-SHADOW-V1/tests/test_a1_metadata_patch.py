@@ -126,3 +126,38 @@ def test_scope_state_layer_only_frozen_paths_untouched():
              "--", frozen],
             capture_output=True, text=True)
         assert proc.returncode == 0 and proc.stdout.strip() == "", frozen
+
+
+# ------------------------------------------------ F1 seam (A7 delta)
+def test_f1_cross_check_uses_activation_time_row_not_boot_clock():
+    # journal replay contains the activation-time cost_book row; a much
+    # later boot must still cross-check against THAT row (skew 1s), not
+    # the current clock (which would be >300s and fail-closed forever).
+    lines = [
+        json.dumps({"event": "bar_closed", "ts": "2026-09-25T05:35:03+00:00"}),
+        json.dumps({"event": "cost_book", "ts": "2026-09-25T05:35:04+00:00",
+                    "digest": "sha256:de02abf16b142a6e"}),
+        json.dumps({"event": "ctrl_open", "ts": "2026-09-25T06:00:06+00:00"}),
+        json.dumps({"event": "cost_book", "ts": "2026-09-25T07:14:00+00:00"}),
+    ]
+    late_boot = "2026-09-25T09:00:00+00:00"
+    ts = C.boot_cross_check_ts(lines, late_boot)
+    assert ts == "2026-09-25T05:35:04+00:00"   # FIRST row, not later ones
+    d = C.derive_a1_activation(ART, ts)
+    assert d["phase"] == "ACTIVATED" and d["T_ctrl"] == T_CTRL
+    assert d["cross_check"]["skew_s"] == 1.0
+    # counterfactual: wiring via the boot clock would fail-closed
+    d_bad = C.derive_a1_activation(ART, late_boot)
+    assert d_bad["phase"] == "ACTIVATION_UNVERIFIED_FAIL_CLOSED"
+
+
+def test_f1_no_prior_row_falls_back_to_fresh_ts():
+    assert C.boot_cross_check_ts([], "2026-09-25T05:35:04+00:00") == \
+        "2026-09-25T05:35:04+00:00"
+
+
+def test_f1_daemon_wiring_source_uses_helper():
+    src = (CYCLE / "daemon" / "shadow_daemon.py").read_text()
+    assert "C.boot_cross_check_ts(" in src
+    assert "_cb_ts = now_utc().isoformat(timespec=\"seconds\")" not in src.replace(
+        "a1_lines, now_utc().isoformat(timespec=\"seconds\"))", "")

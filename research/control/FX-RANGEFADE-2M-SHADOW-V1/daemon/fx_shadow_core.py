@@ -286,6 +286,21 @@ def derive_a1_activation(activation_artifact, journal_cost_book_ts):
                         "skew_s": skew, "verdict": "CONSISTENT"},
     }
 
+def boot_cross_check_ts(a1_lines, fallback_ts):
+    """F1 fix (A7 delta review): the cross-check evidence is the
+    ACTIVATION-TIME cost_book row — the FIRST such row in the replayed
+    journal — never the fresh boot row (its skew grows without bound) and
+    never a substitute for the artifact T_ctrl. Fallback (no prior row,
+    e.g. synthetic first boot) is the caller's fresh ts."""
+    for ln in a1_lines:
+        try:
+            row = json.loads(ln)
+        except Exception:
+            continue
+        if row.get("event") == "cost_book":
+            return row.get("ts") or fallback_ts
+    return fallback_ts
+
 def short_beta_label_for(ctrl_emitted, activation_block, first_ctrl_ts):
     """Label law: UNSEPARATED until control records exist AND activation
     is verified; then ACCRUING (never a victory claim — interpretation is
