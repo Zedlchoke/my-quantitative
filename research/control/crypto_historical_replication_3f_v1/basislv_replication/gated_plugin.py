@@ -74,8 +74,8 @@ from research.v14.families.basislv_premfade.plugin import (
     REASON_FOLD_TERMINAL_FORCE_FLAT,
     BasislvPremfadePlugin,
 )
-from research.v14.families.basislv_premfade.strategy import
-    BENCHMARK_SYMBOL, (
+from research.v14.families.basislv_premfade.strategy import (
+    BENCHMARK_SYMBOL,
     DAY_NS,
     FAMILY_ID,
     STATUS_OK,
