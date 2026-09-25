@@ -1,0 +1,169 @@
+{
+ "schema": "chr3f_a7_prelaunch@1",
+ "cycle": "CRYPTO-HISTORICAL-REPLICATION-3F-V1/BASISLV",
+ "audit_utc": "2026-09-25T02:20:26Z",
+ "auditor": "A7 independent prelaunch (fresh context; recomputed from bytes; hunt-reasons-to-REFUSE posture)",
+ "head_sha": "9405ab3a509546e19c1356486a722005228cdad2",
+ "branch": "orca/crypto-historical-replication-3f-v1-integration",
+ "scope": {
+  "cells": 8,
+  "arms": ["BASISLV-PREMFADE-28D (anchor)", "BASISLV-PREMFADE-28D-INV (control)"],
+  "folds": ["Y2021", "Y2022", "Y2023", "Y2024P"],
+  "labels_required": [
+   "REPLICATION_NOT_PROSPECTIVE",
+   "EQUIVALENCE_BIT_EXACT_ORIGINAL_WINDOW",
+   "UNIVERSE_LISTED_AT_WINDOW_START"
+  ],
+  "budget": "12 distinct scored cells on disk (XSECT 8 + ILLIQ 4) + 8 = 20 <= cap 24"
+ },
+ "checks": [
+  {
+   "id": "A1",
+   "name": "Subclass derivation: override surface is partition-only",
+   "method": "Read gated_plugin.py against the frozen plugin.py/strategy.py at recovered/v14_root.",
+   "evidence": "BasislvWindowFoldPlugin overrides EXACTLY: schedule (frozen weekly_mondays re-targeted to the bound window; helper read verbatim, start edge excluded / end edge included), effective_instants (no purge), folds/fold_instants/_fold_label (day-truncated thirds F1/F2/F3), purge_days (1->0, disclosed), folds_contract (text), targets_at (frozen compute_targets_at called verbatim at non-terminal stamps + two disclosed refusal paths), _fold_terminal_force_flat (frozen body, fold end swapped to window fold end, executability pre-check re-scoped to bar-covered symbols), benchmark_context_symbols (PIT-listed context narrowing only). NOT overridden: identity (frozen frozen_identity), cost_model, tradeable_universe (frozen 19 -- universe() NOT overridden), minimum_tradeable_names, fills_at, marks_at, settlements, baseline_stress/universe (GenericStrategyBase), compute_targets_at/build_premfade_book/premium_level_at/next_allowed_close_fill (all frozen module code called verbatim). Mechanics (signal, book geometry, fills, marks, funding, costs, stress) come from the frozen module.",
+   "result": "PASS"
+  },
+  {
+   "id": "A2",
+   "name": "Frozen file set untouched",
+   "method": "Read frozen plugin/strategy in recovered/v14_root; check no edits.",
+   "evidence": "Frozen module docstrings/behavior match the V14 terminal authority (window 2025-08-22..2026-08-21, F0/F1/F2, purge 1d, MIN_ELIGIBLE=12, tercile book, +15m fill). Subclass imports and calls; no monkey-patching anywhere in basislv_replication.",
+   "result": "PASS"
+  },
+  {
+   "id": "B1",
+   "name": "basis_convert.py: JSON->parquet schema + value identity",
+   "method": "Read basis_convert.py against frozen restage_basis.py; independently converted and compared one symbol from staged JSON bytes.",
+   "evidence": "Output schema is EXACTLY the frozen restage schema (open_time_ms int64 + futures_price/index_price/basis/basis_rate float64, pandas to_parquet index=False) -- restage_basis.py lines 93-97/125. Independent ETHUSDT check: 147935 staged JSON rows -> parquet with 0/147935 value mismatches under the same coercions (timestamp->open_time_ms, float()); 0 duplicate opens; all opens on the 15m grid; identity |(fut-idx)/idx - basisRate| <= 1e-4 absolute (measured max 4.9999969e-05 across all 19 symbols, within the frozen band); first/last 2020-06-01T00:00Z..2024-08-19T23:45Z inside [2020-06-01, 2024-08-19]; density 147935/(1540+1)d = 95.94/day (~96) with exactly 1 missing slot (the systematic gap).",
+   "result": "PASS"
+  },
+  {
+   "id": "B2",
+   "name": "Load-bearing kline-OPEN -> close-boundary +15m remap vs the proven equivalence path",
+   "method": "Line-diff replication_data.load_execution_bars_catalog vs basislv_equivalence/equiv_runner.py (verdict EQUIVALENT, root-caused remap); independently verified from raw bytes.",
+   "evidence": "Same expression boundary = _snap_close_to_boundary_vectorized(ts) + BUCKET_NS, availability = that close boundary, i128/1e16 decode, duplicate-boundary refusal, frozen bars_from_rows; the only differences are the optional (None = full-coverage) boundary window filter and the catalog root (b20 vs a20), both disclosed. Raw-byte verification: vision zip ETHUSDT-15m-2021-01 kline open 1609459200000 (2021-01-01T00:00Z) carries close 731.64; the b20 catalog row with ts_event == that open carries decoded close 731.64; the loader maps the row to boundary 2021-01-01T00:15:00Z -- the frozen fill convention. The equivalence gate proved this exact remap reproduces the frozen anchor bit-exactly (all canonical surfaces abs_diff 0.0, run hashes equal per arm), so a remap mismatch is excluded.",
+   "result": "PASS"
+  },
+  {
+   "id": "B3",
+   "name": "Basis loader value path vs frozen audits.load_premium_series",
+   "method": "Compare replication_data.load_basis_world to frozen audits.py and equiv_runner.py.",
+   "evidence": "Premium computed from prices (fut-idx)/idx (never basisRate); identity check vs basisRate at BASIS_IDENTITY_TOL_ABS=1e-4 absolute fail-closed; rows indexed by close = open_time_ms + 15m; duplicates/non-finite refused via frozen basis_series_from_rows. ONE disclosed deviation (D2): grid gaps are REPORTED NaN slots instead of the A9F restage loader's zero-gap load refusal -- forced by the 4.6-year re-fetch carrying exactly one systematic missing bucket in 15/19 symbols; the engine's per-slot eligibility then refuses straddling formation windows (fail-closed at signal level), satisfying plan section 4 'gaps become NOT_RUN counts, never interpolations'.",
+   "result": "PASS (disclosed deviation D2 assessed admissible)"
+  },
+  {
+   "id": "C1",
+   "name": "D1: sub-MIN_ELIGIBLE stamps -> flat refusal-counted book vs abort",
+   "method": "Read the frozen strategy text for the stamp-refusal semantics.",
+   "evidence": "Frozen strategy.py docstring lines 41-43: 'Fewer than MIN_ELIGIBLE (12) eligible names raises EligibilityShortfall (the stamp refuses and the refusal is counted; fail closed).' Repeated at compute_targets_at docstring lines 683-685: 'raises EligibilityShortfall (the stamp refuses; fail closed)'. The refusal is STAMP-scoped by the frozen text; the frozen fold-terminal convention (plugin returns the FLAT book with status OK as the boundary action so the frozen runner traversal continues) is the in-file precedent for realising a scheduled refusal as a flat OK book. D1's reading IS the frozen semantics; the alternative (fail-closed abort of the whole cell on one stamp's data gap) is NOT supported by the frozen text and would conflate one stamp's refusal with a data failure.",
+   "result": "PASS (D1 reading supported by frozen text)"
+  },
+  {
+   "id": "D1",
+   "name": "Dry-run honesty: counts recomputed from bytes",
+   "method": "Re-derived 4 stamps through the real plugin surface (sanitized, no PnL, local reads, lock not required) and compared to dryrun_report.json; verified report totals.",
+   "evidence": "Report totals verified: 186 open stamps = Y2021 51 (49 OK + 2 FORCE_FLAT, elig 12..12) + Y2022 51 (49+2, 12..12) + Y2023 52 (46 OK + 4 INSUFFICIENT + 2 FF, elig 0..15) + Y2024P 32 (30 OK + 2 FF, elig 16..19); 0 traversal errors. Independent recomputation matches exactly: 2021-01-04 -> OK n_eligible=12 8 legs; 2021-04-26 -> FOLD_TERMINAL_FORCE_FLAT; 2023-11-13 -> INSUFFICIENT_ELIGIBLE_REFUSAL n_eligible=0 with refused {MISSING_OR_NON_FINITE_SLOT:15, INSUFFICIENT_HISTORY:4}; 2024-08-12 -> OK n_eligible=19 12 legs. The 4 Y2023 refusal stamps are exactly the Mondays whose 28d formation window contains the single gap bucket (11-13 minus 28d = 10-16 < gap < 12-04; next Monday 12-11 minus 28d = 11-13 clears it) -- arithmetic exact.",
+   "result": "PASS"
+  },
+  {
+   "id": "D2",
+   "name": "Dry-run sanitization: no PnL fields at any depth",
+   "method": "Recursive banned-token scan of dryrun_report.json.",
+   "evidence": "0 banned-field hits (net_return/pnl/profit/expectancy/drawdown/sharpe/position_pf/cost/funding_sum/fee/slippage/...); the only match was the literal 'no_pnl' disclosure key itself. Report carries status classes, eligible counts, refusal reasons only.",
+   "result": "PASS"
+  },
+  {
+   "id": "E1",
+   "name": "Scored conformance: 8 cells, windows verbatim plan section 3",
+   "method": "Read replication_scored.py + replication_data.FOLDS against plan section 3.",
+   "evidence": "8 cells = 4 folds x {ANCHOR, INV}, cell_id CHR3F-BASISLV-{fold}-{arm}. FOLDS = Y2021 2021-01-01T00:00Z..2022-01-01T00:00Z; Y2022 ..2023-01-01; Y2023 ..2024-01-01; Y2024P 2024-01-01..2024-08-19T00:00Z -- verbatim plan section 3, no overlap with [2024-08-20, 2026-08-21]. Adjacent-fold boundary stamps: the end-edge Monday (only 2024-01-01) is the schedule-final force-flat edge of Y2023 and is excluded from Y2024P by the frozen weekly_mondays start-edge rule -- no double-count, no gap.",
+   "result": "PASS"
+  },
+  {
+   "id": "E2",
+   "name": "Labels on every row + cycle-local outputs + heavy lock",
+   "method": "Read replication_scored.py row construction and paths.",
+   "evidence": "Every status row carries exactly the three required labels + labels_note (UNIVERSE_LISTED_AT_WINDOW_START disclosed as context-marks-only, enters_denominator False) + authority + design_decisions_for_a7 [D1..D5]. Outputs cycle-local: basislv_replication/scored_out/ + scored_status.json (scored_out/ gitignored; status rows committed as evidence). Whole sweep under the machine-wide heavy lock (cycle CRYPTO-HISTORICAL-REPLICATION-3F-V1, role scored-cells, expected_artifacts=status path); lock inspected FREE at audit time.",
+   "result": "PASS"
+  },
+  {
+   "id": "E3",
+   "name": "Self-gate: launcher refuses without A7 artifact",
+   "method": "Executed replication_scored.py BEFORE writing this artifact (A7_PRELAUNCH.json absent).",
+   "evidence": "Output: 'REFUSED: A7 BASISLV-replication prelaunch verdict = MISSING ... the scored sweep may not run'; exit code 5; the gate check precedes heavy_lock.acquire so no lock was taken and no cell ran.",
+   "result": "PASS (rc=5 observed)"
+  },
+  {
+   "id": "F1",
+   "name": "Boundaries: no S1, no network/credentials, no shadow/gateway writes, no prior BASISLV scored cells",
+   "method": "Grep the namespace; inspect scored status files registry-wide; lock inspect.",
+   "evidence": "0 S1/sealed references, 0 network/credential references in basislv_replication/*.py; all writes are namespace-local (parquet, dryrun_report, scored_out, scored_status). No CHR3F-BASISLV cell id exists anywhere in the control tree outside basislv_replication (grep clean); prior scored cells on disk: XSECT 8 distinct rc=0 + ILLIQ 4 distinct rc=0 = 12 (retry rows rc=1 in the same files are attempt history). S1 SEALED_UNTOUCHED in the cycle registry.",
+   "result": "PASS"
+  },
+  {
+   "id": "F2",
+   "name": "Budget: 12 used + 8 planned = 20 <= cap 24",
+   "method": "Counted distinct rc=0 cells in xsect_scored_status.json + illiq_scored_status.json; read plans/CYCLE_REGISTRY.json.",
+   "evidence": "12 distinct successful cells on disk; 8 new BASISLV cells -> 20 <= 24. NOTE: registry numeric field budget.used=0 is stale relative to the registry phase text ('Budget 12/24') and the on-disk artifacts (see non-blocking N2).",
+   "result": "PASS (with registry-staleness note)"
+  },
+  {
+   "id": "G1",
+   "name": "Data spot-check: staged basis JSON + converted parquet + frozen loader conventions",
+   "method": "Independent ETHUSDT conversion comparison and loader series inspection (see B1).",
+   "evidence": "Staged JSON: 147935 rows, sorted, 0 dups, first 2020-06-01T00:00Z, last 2024-08-19T23:45Z (inside [2020-06-01, 2024-08-19]), density ~96/day. Parquet: byte-equal values (0 mismatches), frozen restage schema. Loader: series origin 2020-06-01T00:15Z (first close boundary), 147936 slots, exactly 1 NaN slot (the gap), last slot close 2024-08-20T00:15Z; basis_register of the 19 symbols: identity max dev 5.0e-05 <= 1e-4; gap bucket present in exactly the 15 symbols whose span covers it (ACE/BOME/ENA/ONG list later).",
+   "result": "PASS"
+  },
+  {
+   "id": "H1",
+   "name": "BASISLV Y2020P census (fold-4 deterministic law) -- A7 independent measurement",
+   "method": "Sanitized targets_at traversal of the plan section 3 BASISLV Y2020P window 2020-11-16T00:00Z..2021-01-01T00:00Z (6 Mondays; 5 open stamps) through BasislvWindowFoldPlugin; no PnL.",
+   "evidence": "5 open stamps: 3 OK books (2020-11-23, 2020-12-07, 2020-12-21) each at n_eligible = 12 = MIN_ELIGIBLE, and 2 fold-terminal FLAT transitions (2020-11-30, 2020-12-14) which are the frozen fold law, not eligibility refusals. ZERO EligibilityShortfall-equivalent refusals. Under plan section 6 the Y2020P stamp census would PASS for BASISLV, so the deterministic fold-4 rule selects Y2020P -- NOT the Y2024P pinned in replication_data.FOLDS. No census evidence or owner override for BASISLV fold-4 exists anywhere in the control tree (grep: Y2020P records exist only for XSECT, whose census passed and which scored Y2020P, and ILLIQ, whose census failed with 4 skipped stamps on file).",
+   "result": "FAIL (blocking, see B1-blocking)"
+  }
+ ],
+ "verdict": "REFUSED",
+ "blocking_findings": [
+  {
+   "id": "B1",
+   "title": "BASISLV fold-4 selection conflicts with the plan's deterministic law; required census evidence is missing",
+   "detail": "Plan section 6: fold-4 per family = 'Y2020P if that family's P0 stamp census passes, else Y2024P (deterministic fallback, chosen now) ... The Y2020P-or-Y2024P choice is made per family BEFORE any of that family's scored cells run and is recorded with the census evidence.' The conditionality is family-generic (2 arms x 4 folds x 3 families = 24); it is NOT ILLIQ-specific. replication_data.FOLDS pins Y2024P for BASISLV, but (i) no BASISLV Y2020P census evidence exists on file anywhere in the control tree, and (ii) A7's independent measurement of the BASISLV Y2020P window (2020-11-16..2021-01-01; check H1) shows the census would PASS (0 eligibility-refused stamps; 3 OK books at n_eligible=12=MIN_ELIGIBLE, 2 fold-terminal flat transitions). Left unadjudicated, the scored sweep would run Y2024P where the plan's own deterministic rule (absent a recorded owner override) selects Y2020P -- a trial-identity defect in the scored denominator's content, in tension with the section 3 boundary law 'No window substitution, no post-hoc year selection'. The dispatch packet's scope list alone does not satisfy section 6's recording requirement.",
+   "remediation": "Before the owner GO gate, record the BASISLV fold-4 decision WITH the census evidence, in the control tree, and re-run A7 (mechanical round 2 -- every other check passed and is re-verifiable from this artifact): EITHER (a) attach the Y2020P census measurement (values in check H1) and amend the plan/dispatch to fold-4 = Y2020P for BASISLV (deterministic rule; budget unchanged at 20 <= 24; note Y2020P partials are reported separately from annual aggregates per section 8), OR (b) attach the same census measurement + an explicit owner override note selecting Y2024P for BASISLV, superseding section 6's default for this family by owner decision (authority order 1). No code change is required in either branch; replication_data.FOLDS already matches (b) and the Y2020P window string exists in plan section 3 for (a)."
+  }
+ ],
+ "non_blocking_findings": [
+  {
+   "id": "N1",
+   "title": "Gap-bucket timestamp mislabeled '04:05Z' in disclosure text (actual open 2023-11-10T03:45:00Z)",
+   "detail": "The machine value 1699587900000 used everywhere in computation is correct; its ISO label is wrong: 1699587900000 ms = 2023-11-10T03:45:00Z (close boundary 04:00:00Z), not '04:05:00Z'. Occurs in basis_convert.py docstring line 34, basis_convert.py grid_gap_policy text line 203 (propagated to basis_convert_report.json), replication_scored.py D-lines 39/41, and the 9405ab3a commit message. No computation consumes the ISO string; all refusal counts and the 4 affected Y2023 stamps were verified correct from the raw ms values. Correct the disclosure text at the next commit (evidence-accuracy law)."
+  },
+  {
+   "id": "N2",
+   "title": "Cycle registry budget.used=0 is stale vs on-disk scored evidence (12) and the registry's own phase text ('Budget 12/24')",
+   "detail": "The authoritative count was taken from the artifacts (12 distinct rc=0 cells). The registry numeric field should be reconciled by the owner/registry writer before the terminal close so the 20/24 post-BASISLV number is registry-visible, not artifact-inferred."
+  },
+  {
+   "id": "N3",
+   "title": "Y2024P window-fold thirds carry 11 decision stamps per fold < the frozen MIN_DECISIONS_PER_FOLD=15 constant",
+   "detail": "The constant is a V14 gate_runner input and is NOT enforced by the scored runner; the same geometry (33 Mondays -> 11/11/11) already ran in this cycle's ILLIQ Y2024P cells. Informational: the BASISLV fold-share gate analogue at terminal reporting will operate on 11-stamp folds for Y2024P; disclose in the cell report."
+  },
+  {
+   "id": "N4",
+   "title": "Y2023's 4 INSUFFICIENT stamps: assessed ADMISSIBLE under the plan fold law",
+   "detail": "Plan section 3 registers Y2023 unconditionally for all families; the 'every stamp eligible' conditionality in section 3's table belongs to the Y2020P fold-4 row only, and section 6's census law governs fold-4 selection, not within-fold stamp eligibility. Plan section 4: 'gaps become NOT_RUN counts, never interpolations' -- the engine-authored refusal-counted flat books are exactly that (no interpolation, no pruning, stamps visible in every cell row via n_insufficient_eligible_refusals). D1's reading is the frozen semantics (check C1). REQUIRED at reporting: the 4 refusal stamps and their cause (one systematic missing basis bucket, 15/19 symbols) must appear in the per-cell rows and the family report."
+  },
+  {
+   "id": "N5",
+   "title": "D2 gap-tolerant basis load and D3 fold-terminal check re-scope: assessed admissible",
+   "detail": "D2 (REPORTED NaN instead of the A9F zero-gap load refusal) is forced by the re-fetch's single systematic gap and preserves the engine's per-slot fail-closed eligibility; D3 (fold-terminal executability pre-check scoped to bar-covered symbols) only relaxes a pre-check for names that can never be held (fills are requested only for held legs); a covered symbol still fails closed verbatim. Both are disclosed in code and in the scored rows' design_decisions_for_a7."
+  }
+ ],
+ "confirmed_design_decisions": ["D1 (flat refusal-counted book; frozen-text supported)", "D2 (gap-tolerant basis load; disclosed)", "D3 (re-scoped fold-terminal pre-check; disclosed)", "D4 (full-coverage bars, superset, on-schedule stamps only; disclosed)", "D5 (funding AS-IS on the B window; ticks from b20 build report; disclosed)"],
+ "remediation_paths_for_owner": [
+  "Resolve B1 by recording the BASISLV fold-4 decision with the census evidence (option (a) Y2020P per the deterministic rule, or (b) explicit owner override to Y2024P), then request A7 round 2.",
+  "Optionally correct the N1 mislabel in the same commit."
+ ],
+ "equivalence_label_truth": "EQUIVALENCE_BIT_EXACT_ORIGINAL_WINDOW verified against basislv_equivalence/EQUIV_VERDICT.json: verdict EQUIVALENT, failed_surfaces [], all terminal surfaces abs_diff 0.0, run hashes equal on all three arms, basis series digest equals the frozen preflight digest (settlements digest differs only via the disclosed ONGUSDT 9-row shortfall, funding_sum bit-exact).",
+ "audit_method_note": "All rederivations ran lock-free sanitized local reads (no scored compute), same class as the implementer dry-run; the machine-wide heavy lock was inspected FREE before and after. The scored launcher was executed once WITHOUT the A7 artifact (rc=5, no lock, no cell) and never otherwise. No file outside basislv_replication/A7_PRELAUNCH.{json,md} was written by this audit."
+}

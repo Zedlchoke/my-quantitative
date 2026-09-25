@@ -82,7 +82,10 @@ FOLDS: tuple[tuple[str, str, str], ...] = (
     ("Y2021", "2021-01-01T00:00:00Z", "2022-01-01T00:00:00Z"),
     ("Y2022", "2022-01-01T00:00:00Z", "2023-01-01T00:00:00Z"),
     ("Y2023", "2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"),
-    ("Y2024P", "2024-01-01T00:00:00Z", "2024-08-19T00:00:00Z"),
+    # fold-4 per plan §6 deterministic law: Y2020P (census PASSED — A7 prelaunch
+    # independent traversal: 3 OK books @ n_eligible=12=MIN_ELIGIBLE, 0 refusals,
+    # 2 fold-terminal flats; window 2020-11-16..2021-01-01)
+    ("Y2020P", "2020-11-16T00:00:00Z", "2021-01-01T00:00:00Z"),
 )
 
 ARMS: tuple[tuple[str, str], ...] = (
