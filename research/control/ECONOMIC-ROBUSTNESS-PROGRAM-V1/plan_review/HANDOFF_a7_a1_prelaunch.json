@@ -1,0 +1,70 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "erp1-a1-prelaunch",
+ "cycle_id": "FX-RANGEFADE-2M-SHADOW-V1",
+ "role": "quant-auditor",
+ "lane": "a1-prelaunch",
+ "amendment": "FX-RANGEFADE-2M-SHADOW-V1 A1-controls (Phase V prelaunch audit)",
+ "authority": {
+  "binding_spec": "/Users/hoangminhlong/my-quantitative/plans/DRAFT_amendment_FX-RANGEFADE-2M-SHADOW-V1_A1_controls.md",
+  "go_record": "/Users/hoangminhlong/my-quantitative/research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/A1_gate/GO_RECORDED.json",
+  "go_consumed_utc": "2026-09-25T04:21:15Z",
+  "implementer_handoff": "/Users/hoangminhlong/my-quantitative/.worktrees/fx-rangefade-2m-shadow-v1/research/control/FX-RANGEFADE-2M-SHADOW-V1/HANDOFF_A1_phase1.json",
+  "authority_claims": []
+ },
+ "verdict": "AUTHORIZED_FOR_ACTIVATION",
+ "verdict_condition": "Phase A must NOT write its first cost-bearing journal row until the owner pins the cost book (M-1): either replace session_spread_curve.json via a NEW dated file + new digest with the per-session p50 medians from the existing census artifacts (EURUSD-OPEN-SEARCH-V2 data_local/derived/census.json + FX-MAJORS-SEARCH-V1 GBPUSD census.json — both verified to contain by_session_open medians), or record an explicit owner affirmation of the current seed/declared values as the pinned book. Amendment section 2: pinned before any new row is written.",
+ "dispatch_sha": "686bb8365db87b8b74b71843efe1ad13608a177d",
+ "actual_start_sha": "686bb8365db87b8b74b71843efe1ad13608a177d",
+ "commit_sha": null,
+ "branch": "orca/fx-rangefade-2m-shadow-v1 (audited; auditor committed nothing on it)",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/fx-rangefade-2m-shadow-v1",
+ "changed_paths": [
+  "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/A7_a1_prelaunch_REPORT.md",
+  "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/HANDOFF_a7_a1_prelaunch.json"
+ ],
+ "tests": [
+  {
+   "command": ".venv/bin/python -m pytest research/control/FX-RANGEFADE-2M-SHADOW-V1/tests/ -q  (cwd = worktree root)",
+   "result": "50 passed, 0 failed (1.67s) — auditor re-run, independent of the implementer's claim",
+   "breakdown": "24 new A1 tests (tests/test_a1_controls_phase1.py) + 26 pre-existing (3 test_bar_append_dtype + 12 test_core_restart_account + 6 test_http_endpoints + 5 test_no_order_api); pre-existing files last touched at parent f8bb2b73, not modified by 686bb836"
+  }
+ ],
+ "checks": {
+  "C1_go_gate": "PASS — go_phrase_typed == go_phrase_expected, form_check EXACT_MATCH, consumed 2026-09-25T04:21:15Z; draft committed (88016399, clean); independent review PASS r2; GO scope Phase I only, V gates A",
+  "C2_zero_diff": "PASS — git show --stat lists exactly the 5 declared files; whole-commit deletions = 2 boot-wiring lines in main(); fx_shadow_core.py purely additive; v2_lib.py/engine.py full sha256 match pinned values; 15 frozen function shas test-enforced; 28-line frozen sleeve block sha 3760ce6b... recomputes from current file AND was independently found byte-identical at parent f8bb2b73 (0-based line 291) proving the golden was captured BEFORE the change; live journal (94 rows) contains ZERO A1 events and ZERO cost fields; running daemon pid 35609 started pre-commit so it executes pre-A1 code",
+  "C3_control_arms": "PASS — CTRL-SHORT-ALWAYS day-session (fill_allowed_open = new-bar hours 01..19, force-flat when closed hour == 19 = the sleeve's own 20:00 boundary, weekend-flat by construction, binding comparability note in docstring + state); CTRL-SHADOW-MATCHED sign-inverted at entry, exits identical at the sleeve's own bid/ask close rule; both costed from the single CostBook instance; the 01:00 interpretation is LAWFUL under section 1.1 (sleeve fill law gated on closed_hour <= 18 makes the 00:00 open non-fillable; 'after 00:00' textually excludes it too; both readings converge) — no separate owner decision needed, but record it in the Phase A activation artifact",
+  "C4_usd_exposure": "PASS — per-H1-epoch usd_same_side_notional (lots+USD, 0 unless all open pairs share one direction) + usd_net_notional (signed) + per-pair direction; epoch_report journal rows + state block; display-only (observer never writes sleeve attrs, never gates decisions)",
+  "C5_stress_book": "PASS with MEDIUM condition M-1 — session bucket from fill's UTC hour, median x2.0 per fill, single dated digest-pinned source, parallel view never merged (separate realized_net_stress field + basis strings); SEED disclosure prominent in file (status + seed_disclosure + declared class), code docstrings, state summary, a dedicated test, commit message and handoff; census artifacts exist with per-session p50 medians so the pin is immediately actionable",
+  "C6_cost_journal": "PASS — CostJournal enriches only NEW fill rows; append-only; no backfill path; absence = NOT_RUN_COST_FIELDS (open/close field sets distinguished); live-journal no-backfill test passes; enrichment failure writes row unenriched + a1_cost_enrich_error marker (cannot break the sleeve); restored-position closes disclose rt_note=entry_cost_ctx_missing_restored_position (exit-side costs only)",
+  "C7_process": "PASS — daemon pid 35609 (since 2026-09-24 15:19) and dashboard pid 8093 serve.py (LISTEN localhost:8766, since 2026-09-24 12:00) both alive and untouched; exactly one shadow_daemon process; heartbeat fresh 2026-09-25T05:06:33Z; no restart/stop performed by auditor; no credentials; no network calls added; no order path (test_no_order_api passing)"
+ },
+ "findings": [
+  {"id": "M-1", "severity": "MEDIUM", "finding": "Cost book is SEED/DECLARED-SEED; amendment section 2 requires the primary book pinned BEFORE any new row is written. Census artifacts exist (per-session p50 medians) — pin immediately actionable. Not a code defect.", "disposition": "BINDING pre-Phase-A condition: owner pin act (census swap with new digest, or explicit seed affirmation) before T_ctrl emission"},
+  {"id": "L-1", "severity": "LOW", "finding": "5 untracked paths in the FX worktree (implementer handoff post-commit by design + 4 pre-existing runtime paths: dashboard/__pycache__, dashboard/assets, dist_phorec_stage, equity_curve.json)", "disposition": "hygiene only"},
+  {"id": "L-2", "severity": "LOW", "finding": "epochs_reported dedupe is per-boot; a restart may re-journal an epoch_report row for the same epoch", "disposition": "harmless: A1 rows filtered from sleeve replay, ignored by control replay, journal append-only"},
+  {"id": "L-3", "severity": "LOW", "finding": "Close of a position restored across a restart omits entry-side costs (disclosed via rt_note, never silently zeroed)", "disposition": "accepted as disclosed; complete round-trips only for post-T_ctrl open+close pairs"}
+ ],
+ "phase_a_requirements": [
+  "owner completes the M-1 cost-book pin act BEFORE the restart",
+  "controller-owned daemon restart per the cycle's normal procedure (typed GO alone restarts nothing)",
+  "record T_ctrl to the second (UTC) in an activation artifact, alongside the cost_book_digest in force at T_ctrl",
+  "arms begin emitting (ctrl_open/ctrl_close per pair, epoch_report rows, cost fields on NEW rows only; the existing 94 gross-only rows stay untouched)",
+  "SHORT_BETA_UNSEPARATED — NOT PROMOTABLE label drops only when control records exist (any ctrl fill after replay flips it to SHORT_BETA_SEPARATED); nothing promotable before that",
+  "restart-idempotence proof at the seam: no duplicate event_ids, journal append-only (replay idempotence already test-pinned incl. duplicated A1 rows)",
+  "record the 01:00 first-fillable-open interpretation in the activation artifact (documentation, not a new decision)"
+ ],
+ "known_limitations": [
+  "audit is a prelaunch gate: it cannot observe arm emission because the daemon still runs pre-A1 code; emission behavior is verified by fixtures driving the real a1_observe_iteration, not against the live feed",
+  "SEED session medians / bucket convention / declared fee schedule are not cost conclusions until the owner pin (M-1)",
+  "curl to 127.0.0.1:8093 returned 000 from the auditor shell (sandboxed); lsof confirms pid 8093 LISTENING on localhost:8766 — 8093 is the dashboard PID, not its port"
+ ],
+ "incidents": [],
+ "tree_status": "FX worktree clean on orca/fx-rangefade-2m-shadow-v1 at 686bb8365db87b8b74b71843efe1ad13608a177d (5 untracked pre-existing/post-commit paths, untouched); root repo on main d37caa818b92ecb44f72350697fe8b13100021b9; auditor wrote only the 2 artifacts in changed_paths",
+ "workers": 0,
+ "outputs": {
+  "report": "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/A7_a1_prelaunch_REPORT.md",
+  "handoff": "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/HANDOFF_a7_a1_prelaunch.json",
+  "phase_gated": "V complete -> Phase A (activation) cleared subject to verdict_condition"
+ }
+}

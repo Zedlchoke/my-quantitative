@@ -1,0 +1,74 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "erp1-a2-prelaunch",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "role": "quant-auditor",
+  "lane": "a2-prelaunch",
+  "dispatch_sha": "d059287bbc41bd942d4eb9a53c93e492ff1cb9c7",
+  "actual_start_sha": "d059287bbc41bd942d4eb9a53c93e492ff1cb9c7",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/A7_a2_prelaunch_REPORT.md",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/HANDOFF_a7_a2_prelaunch.json"
+  ],
+  "tests": [
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_bandridge_a2_pins.py -v (cwd PSV1 integration worktree)",
+      "result": "PASS 8/8 (0.24s)"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_shv1_executor.py tests/test_shv1_accounting.py tests/test_shv1_families.py tests/test_funding_accounting.py (cwd PSV1 integration worktree)",
+      "result": "PASS 78/78 (13.78s)"
+    }
+  ],
+  "verdict": "AUTHORIZED_FOR_ACTIVATION",
+  "findings": {
+    "high": 0,
+    "medium": 1,
+    "low": 2,
+    "medium_detail": "F-1: fixture (b) monkeypatches cost_books_for and re-implements the guard inline inside pytest.raises — it does not execute the production build_executors guard end-to-end; the production guard was independently verified against production bytes in this audit (exists verbatim in build_executors, fires before ForwardExecutor construction, checks the same cost_books_for source the executor receives). Non-blocking fixture-fidelity gap."
+  },
+  "checks": {
+    "C1_go_gate": "PASS — GO_RECORDED.json form EXACT_MATCH, typed phrase == expected == draft §4 phrase char-for-char; review PASS r2 recorded; consumed 2026-09-25T03:41:00Z predates implementation commit 03:48:33Z; prerequisites (0 fills, 61 ledger rows) re-measured true.",
+    "C2_scope": "PASS — d059287b touches exactly the 4 named files (2A+2M, 310+/1-); frozen adapter btc4h_bandridge.py absent from commit and clean in worktree; band-risk d396ae9a is SPEC.md-only, 40 insertions / 0 deletions, pure append, frozen block byte-unchanged.",
+    "C3_isolation": "PASS — FEE_RATE_CURRENT 0.0005 / SLIPPAGE_TICKS_CURRENT 1.0 / lineage 0.00075 untouched; BANDRIDGE early-return of pinned fresh copies; ILLIQ/PREMFADE/CARRY construction unchanged; independently recomputed digests: BANDRIDGE b84ae93ec764…, ILLIQ 71ea4bd61bdf…, BASISLV/XSECT 130d2e7ee974… all match BANDRIDGE_A2_PINS.json exactly.",
+    "C4_sizing": "PASS — cost_aware_sizing default False; digest key injected only when enabled (**{...} if enabled else {}); recompute proved key-absent vs key-present digests differ and empty spread is identity, and the diff adds nothing else to the payload -> non-BANDRIDGE config_digest byte-identical; _rebalance_steps qty = min(w*equity/ref, cash/(ref*(1+fee))) with primary-book fee_rate — packet formula verbatim.",
+    "C5_guard": "PASS (code-level) — build_executors BANDRIDGE branch raises WorkerConfigError(UNPINNED_COST_LAW fail-closed) on books != pin BEFORE executor construction; guard and config[\"cost_books\"] share the same cost_books_for call source; cost_aware_sizing=True set in the BANDRIDGE-only branch.",
+    "C6_fixtures": "PASS with F-1 — 8/8 + 78/78 pass; test_a first proves InsufficientCashError at uncapped qty (A-failure) then succeeds under packet formula with exact 6 bps fee, 0 slippage, both books; non-vacuous.",
+    "C7_boundary_artifact": "PASS — digests match recomputation (full sha256s); t_act_utc null; TRANSITION_OLD_LAW + UNPINNED_COST_LAW — NOT PROMOTABLE + no_backfill all recorded.",
+    "C8_worker_ledger": "PASS — single worker pid 35779 started 2026-09-24T08:21:21Z (predates GO 03:41Z and commit 03:48:33Z, old code); ledger BTC4H-BANDRIDGE.jsonl exactly 61 rows, 0 fills (all fee 0), all rows old digest 130d2e7e…/d7f1ae50…, max observed_at_utc 2026-09-25T00:17:35Z — NOTHING appended since GO; no UNPINNED_COST_LAW exposure.",
+    "C9_restart": "PASS — change-set restarted nothing; no A2 activation artifact exists; activation dir holds only original Sep-15 cycle artifacts; Phase A open."
+  },
+  "authority_claims": [],
+  "known_limitations": [
+    "F-3 (LOW): production guard re-calls cost_books_for instead of reusing config[\"cost_books\"]; equivalent for the deterministic production function.",
+    "F-4 (LOW): test_d proves no uncommitted diff on the frozen adapter only; commit-scope no-diff established by this audit's C2 check.",
+    "R-1: until Phase A restart, the live worker charges the OLD cost law; a fillable BANDRIDGE decision producing a FILL before restart would be permanently UNPINNED_COST_LAW — NOT PROMOTABLE. Restart before the next fillable H4 boundary."
+  ],
+  "incidents": [],
+  "tree_status": {
+    "psv1_integration": {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/integration",
+      "branch": "orca/prospective-shadow-v1-integration",
+      "head": "d059287bbc41bd942d4eb9a53c93e492ff1cb9c7",
+      "status": "clean"
+    },
+    "band_risk_integration": {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/btc-h4-band-risk-v1/integration",
+      "branch": "orca/btc-h4-band-risk-v1-integration",
+      "head": "d396ae9a92b86508a937f70af46099727502a8c1",
+      "status": "clean"
+    },
+    "root_repo_draft_commit_verified": "8801639980deda72bf3bace29a53f9a4356d243b"
+  },
+  "workers": 0,
+  "phase_a_requirements": [
+    "Restart worker per cycle's own procedure (precedent: research/control/prospective_shadow_v1/activation/activation.json), preserving cwd (PSV1 integration worktree) and args --shadow-start 2026-09-14T23:48:01Z --runtime-root results/prospective_shadow_v1; restart-idempotence proof; forward-only, no backfill.",
+    "Record T_act to the second (UTC) in an activation artifact (timestamp + cost-override digest b84ae93e… + executor hash-match proof); fill t_act_utc in BANDRIDGE_A2_PINS.json.",
+    "First new-digest BANDRIDGE record (cost_regime b84ae93e…; config_digest also changes by design) marks the boundary; all pre-T_act BANDRIDGE records stay TRANSITION_OLD_LAW; any pre-T_act FILL is UNPINNED_COST_LAW — NOT PROMOTABLE, disclosed only."
+  ],
+  "outputs": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/A7_a2_prelaunch_REPORT.md",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/HANDOFF_a7_a2_prelaunch.json"
+  ]
+}

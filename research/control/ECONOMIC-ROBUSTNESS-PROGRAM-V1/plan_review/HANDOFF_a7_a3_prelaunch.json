@@ -1,0 +1,68 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "erp1-a3-prelaunch",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "role": "quant-auditor",
+  "lane": "a3-prelaunch",
+  "dispatch_sha": "73e138601e3ac6a5461bad641478a416fa89cc5b",
+  "actual_start_sha": "73e138601e3ac6a5461bad641478a416fa89cc5b",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/A7_a3_prelaunch_REPORT.md",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/HANDOFF_a7_a3_prelaunch.json"
+  ],
+  "tests": [
+    {
+      "command": ".venv/bin/python -m pytest tests/test_xsect_a3_retire.py tests/test_bandridge_a2_pins.py -v  (cwd = PSV1 integration worktree)",
+      "result": "13 passed"
+    },
+    {
+      "command": ".venv/bin/python -m pytest tests/test_shv1_executor.py tests/test_shv1_accounting.py tests/test_shv1_families.py tests/test_funding_accounting.py  (cwd = PSV1 integration worktree)",
+      "result": "78 passed"
+    },
+    {
+      "command": "inline recompute: canonical_digest payload with vs without retire keys (real research.shadow_v1.executor.canonical_digest)",
+      "result": "gate-off payload byte-identical to pre-A3; with-keys digest differs (XSECT-only identity move)"
+    }
+  ],
+  "authority_claims": [
+    "GO gate C1 PASS: GO_RECORDED.json form_check EXACT_MATCH, phrase == draft section-4 phrase, consumed 2026-09-25T04:21:15Z, prerequisites verified (draft in root commit 88016399; independent review PASS r2+2b)",
+    "Verdict AUTHORIZED_FOR_ACTIVATION: 0 HIGH, 2 MEDIUM (F1 terminal re-emission, F3 fixture gap), 3 LOW; none blocking Phase A"
+  ],
+  "known_limitations": [
+    "F1 (MEDIUM): terminal payload re-emits on every post-T_ret flat decision (no one-shot latch); the code comment's 'exactly one row / deterministic terminal event id' idempotence claim is not enforced for later decisions (payload carries the per-decision event_id, so known_ids dedup only covers same-decision re-runs). Canonical terminal record = first (min measured_flat_at_utc) = the 2026-09-26T00:00:00Z close decision. State condition itself is correct and fail-safe (mark gap -> gross None -> no terminal row).",
+    "F2 (LOW, dispatch-expectation correction): terminal payload coincides with the CLOSE decision, not the next decision — exposure is measured post-fill (executor.py:864-865) so gross==0.0 already at the close row. Phase A must expect the terminal row on the 2026-09-26T00:00:00Z decision row itself.",
+    "F3 (MEDIUM): the production stop-open wiring (inline retired_now / approved={} in _execute_decision) is covered by inspect.getsource string assertions only; the test executor is built via object.__new__ so _execute_decision never runs, and the behaviorally tested _retire_override is dead code in production. Bounded by this audit's direct code read + behavioral recompute of the shared _retire_is_due and _rebalance_steps; recommend a feed-stubbed _execute_decision fixture post-activation.",
+    "F4 (LOW): _mk_executor docstring says 'Constructs through the real __init__ path' but uses object.__new__ + hand-replicated digest payload; production digest gating verified independently by this audit.",
+    "F5 (LOW): data_blocked early-return rows carry no retired flag (they carry no target either; harmless).",
+    "Running-worker pre-A3 status verified by process model (started 03:57:05Z, 28 min before the commit existed at 04:25:17Z; Python imports once at startup; long loop never re-imports), not by inspecting process memory.",
+    "Transition window produced ZERO XSECT ledger rows after the 04:21:15Z GO (last row 00:00:00Z observed 00:17:35Z), so TRANSITION_OLD_LAW labeling is untested in vivo (nothing to label)."
+  ],
+  "incidents": [],
+  "tree_status": "PSV1 worktree /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/integration: branch orca/prospective-shadow-v1-integration @ 73e138601e3ac6a5461bad641478a416fa89cc5b (== dispatch sha), status --porcelain CLEAN; frozen adapter research/shadow_v1/families/xsect_fund_carry.py byte-untouched (last commit 7986c297); XSECT ledger 11 rows intact, all event_ids unique, 0 rows after the GO. This audit wrote ONLY the 2 changed_paths in the ROOT repo (root checkout not otherwise modified, no commit made). Running e-worker pid 57505 (started 2026-09-25T03:57:05Z, cwd = PSV1 integration worktree) left untouched — pre-A3 in-memory code, restart belongs to Phase A.",
+  "workers": 0,
+  "verdicts": {
+    "a3_prelaunch": "AUTHORIZED_FOR_ACTIVATION",
+    "C1_go_gate": "PASS",
+    "C2_scope_frozen_adapter_wiring": "PASS",
+    "C3_law_correctness": "PASS_WITH_FINDINGS (F1 MEDIUM, F3/F4 fixture-side)",
+    "C4_timestamp_law": "PASS",
+    "C5_holdings_and_sequence": "PASS (Phase A expectation corrected per F2)",
+    "C6_fixtures": "PASS 91/91 (honesty findings F3/F4)",
+    "C7_ledger_append_only": "PASS",
+    "high": 0,
+    "medium": 2,
+    "low": 3,
+    "blocking": null
+  },
+  "phase_a_requirements": [
+    "Restart e-worker from PSV1 HEAD 73e138601e3ac6a5461bad641478a416fa89cc5b (SIGTERM-clean pid 57505) BEFORE T_ret = 2026-09-25T05:45:00Z; measured margin ~75 min at audit time; hard backstop = first affected decision 2026-09-26T00:00:00Z (or execute the worker comment's documented T_ret-move procedure if activation slips past a decision).",
+    "From 05:45:00Z the committed constant enforces stop-open; holdings {ADA:-0.2, BNB:+0.2, DOGE:-0.2, XRP:+0.2} close at the 2026-09-26T00:00:00Z decision; closing fills lawful and required.",
+    "Terminal payload expected ON the 2026-09-26T00:00:00Z decision row (F2 correction): IDENTITY_RETIRED_COST_DOMINATED + pinned CANDIDATE_FAIL + full decomposition + equity-basis note; later flat rows re-carry it (F1) — consume the first.",
+    "Record the actual activation moment to the second in a Phase A artifact; ledger stays append-only; no backfill of the quiet transition window."
+  ],
+  "outputs": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/A7_a3_prelaunch_REPORT.md",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/HANDOFF_a7_a3_prelaunch.json"
+  ]
+}
