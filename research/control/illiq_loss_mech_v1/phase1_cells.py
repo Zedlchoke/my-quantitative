@@ -124,7 +124,8 @@ def load(cell_id: str) -> dict:
 
 def verdicts() -> dict:
     DAY = 86_400_000_000_000
-    arts = {cid: load(cid) for cid, *_ in CELLS}
+    arts = {cid: load(cid) for cid, *_ in CELLS
+            if cid != "C5_V2AGE_Y2023"}  # NOT_RUN_VOID_CONSTRUCTION (A2)
     out: dict = {"computed_utc": utcnow(), "frozen_bars": {
         "delta_max": DELTA_MAX, "decile_tail_max_ratio": DECILE_TAIL_MAX_RATIO,
         "min_nonfallback_per_fold": MIN_NONFALLBACK_PER_FOLD,
@@ -144,9 +145,8 @@ def verdicts() -> dict:
 
     # ---- H-A (A1-4): delta on Y2023 baseline ANCHOR; Y2022 void check ----
     def ha_delta(art: dict, fold_start_probe: str):
-        fbn = {s: first_bar_ns(s) for s in
-               set(a2["universe"] for a2 in [art] for s in a2["universe"]) |
-               {p["symbol"] for p in art["positions"]}}
+        fbn = {s: first_bar_ns(s)
+               for s in set(art["universe"]) | {p["symbol"] for p in art["positions"]}}
         young = defaultdict(float)
         old = defaultdict(float)
         counts = {"young_n": 0, "old_n": 0}
@@ -177,29 +177,24 @@ def verdicts() -> dict:
     guards = (c23["young_n"] >= MIN_YOUNG_POSITIONS
               and skip_share_23 <= MAX_SKIP_STAMPS_SHARE
               and not arts["C2_BASE_ANCHOR_Y2023"]["book_summary"]["cap_breaches"])
-    # fold-sign non-flip: v2-age vs baseline per fold (from fold_metrics)
-    fm_base = {m["fold_label"]: m for m in arts["C2_BASE_ANCHOR_Y2023"]["fold_metrics"]}
-    fm_age = {m["fold_label"]: m for m in arts["C5_V2AGE_Y2023"]["fold_metrics"]}
-    flips = [k for k in fm_age
-             if fm_base[k]["net_return_sum"] > 0 > fm_age[k]["net_return_sum"]]
-    out["H_A"]["fold_sign_flips_to_negative"] = sorted(flips)
-    if not guards:
-        out["H_A"]["verdict"] = "INCONCLUSIVE"
-    elif flips or delta23 > DELTA_MAX:
-        out["H_A"]["verdict"] = "FAIL"
-    else:
-        out["H_A"]["verdict"] = "PASS"
+    # A2: no v2-age cell executed (C5 NOT_RUN_VOID); H-A has no executable
+    # surface in phase-1 — verdict is the honest INCONCLUSIVE, never a claim.
+    out["H_A"]["fold_sign_flips_to_negative"] = None
+    out["H_A"]["verdict"] = "INCONCLUSIVE_VOID_CONSTRUCTION"
     out["H_A"]["verdict_basis"] = (
-        f"delta_Y2023={delta23:.6f} <= {DELTA_MAX} (directional, young-loses-more); "
-        f"guards young_n>={MIN_YOUNG_POSITIONS}, skip<=20%, no cap breach, no fold flip; "
-        f"Y2022 VOID (young_n={c22['young_n']}) excluded per A1-3")
+        "Amendment A2: A4 universe law leaves zero sub-365d names on both fresh "
+        f"folds (young_n Y2022={c22['young_n']}, Y2023={c23['young_n']}); no v2-age cell "
+        "executed; delta measurements are structural zeros. Owner option: Y2023-H2 "
+        "window pair via separate amendment + fresh GO.")
 
     # ---- H-B (A1-6) ----
     def weekly_short_leg(art: dict) -> dict:
+        # positions exit 8 days after their closing decision stamp
+        # (1d execution lag + 7d holding): bucket by that decision stamp.
         per = defaultdict(float)
         for p in art["positions"]:
             if p["signed_weight"] < 0:
-                per[p["exit_ns"]] += p["net_pnl_per_unit"]
+                per[p["exit_ns"] - 8 * 86_400_000_000_000] += p["net_pnl_per_unit"]
         return dict(per)
 
     def fold_of_ns(ns: int, fold_members: dict) -> str:
@@ -264,11 +259,23 @@ def verdicts() -> dict:
         all(f["sign_preserved"] for f in hb["Y2023"]["per_fold"].values())
     all_eng = all(f["engagement_pass"] for f in hb["Y2022"]["per_fold"].values()) and \
         all(f["engagement_pass"] for f in hb["Y2023"]["per_fold"].values())
-    if all_eng:
-        out["H_B"]["verdict"] = "PASS" if (all_tail and all_sign) else "FAIL"
-    else:
+    # A1-6 reading (recorded): engagement <13 stamps/fold = test powerless on
+    # that fold => INCONCLUSIVE (the more specific (iii) clause); only
+    # DIRECTIONAL failures on engaged folds falsify (tail ratio > bar, sign
+    # flip, or INV coherence (a)/(b)).
+    directional_fail = any(
+        f["tail_pass"] is False and f["engagement_pass"] for f in
+        list(hb["Y2022"]["per_fold"].values()) + list(hb["Y2023"]["per_fold"].values())
+    ) or not all_sign
+    if directional_fail:
+        out["H_B"]["verdict"] = "FAIL"
+    elif not all_eng:
         out["H_B"]["verdict"] = "INCONCLUSIVE"
-        out["H_B"]["verdict_basis"] = "engagement < 13 non-fallback stamps on some fold (A1-6 iii)"
+        out["H_B"]["verdict_basis"] = ("engagement < 13 non-fallback stamps per fold "
+                                       "on the 13-name A4 universe (A1-6 iii); "
+                                       "no directional violation measured")
+    else:
+        out["H_B"]["verdict"] = "PASS"
 
     # ---- INV coherence (A1-6, Y2023: cells 4 vs 8) ----
     inv_base_net = arts["C4_BASE_INV_Y2023"]["portfolio_metrics"]["net_return_sum"]
@@ -281,6 +288,8 @@ def verdicts() -> dict:
         if b and h and b < 0:
             inv_ratios[label] = round(h / b, 4)
     improved_gt30 = any(r < DECILE_TAIL_MAX_RATIO for r in inv_ratios.values())
+    inv_directional_bad = (((inv_base_net > 0) != (inv_hedge_net > 0))
+                           or improved_gt30)
     out["INV_COHERENCE"] = {
         "sign_preserved": (inv_base_net > 0) == (inv_hedge_net > 0),
         "inv_base_net": round(inv_base_net, 6),
@@ -288,12 +297,12 @@ def verdicts() -> dict:
         "tail_ratios_by_fold": inv_ratios,
         "tail_improved_gt30pct": improved_gt30,
         "engagement_hedge": e8,
-        "verdict": ("PASS" if (inv_base_net > 0) == (inv_hedge_net > 0)
-                    and not improved_gt30
-                    and all(v >= MIN_NONFALLBACK_PER_FOLD for v in e8.values())
-                    else "FAIL"),
-        "verdict_basis": "PASS iff sign preserved AND INV tail NOT improved >30% "
-                         "(generic-deleveraging guard) AND engagement >= 13/fold",
+        "verdict": ("FAIL" if inv_directional_bad else
+                    "INCONCLUSIVE" if any(v < MIN_NONFALLBACK_PER_FOLD for v in e8.values())
+                    else "PASS"),
+        "verdict_basis": "directional FAIL iff sign flips or INV tail improved >30% "
+                         "(generic-deleveraging guard); engagement shortfall => "
+                         "INCONCLUSIVE per A1-6(iii)",
     }
 
     # ---- H-B final override: INV FAIL falsifies H-B (A1-6) ----
