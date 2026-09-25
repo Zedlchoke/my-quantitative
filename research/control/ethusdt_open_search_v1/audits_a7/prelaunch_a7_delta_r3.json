@@ -1,0 +1,42 @@
+{
+ "schema": "eos1.a7_prelaunch@1",
+ "audit_type": "delta_r3",
+ "audited_at_utc": "2026-09-25T01:55:00Z",
+ "auditor": "A7-fresh-context",
+ "remediation_commit": "0b92ee65e8f2aaf0f9cff1b2ba45de9cb826637c",
+ "delta_r2_commit": "6d5797d022cf3a30c006b81c159fb543f96c6fab",
+ "go_authorization_commit": "37629434d8ba97906ed7d90c24ec5e80af0aa716",
+ "checks": {
+  "diff_scope_6d5797d0_to_0b92ee65": "PASS",
+  "scored_absence_zero_outcome_exposure": "PASS",
+  "freeze_v3_superseded_and_v4_hashes": "PASS",
+  "fixtures_all_pass_with_test_11": "PASS",
+  "dryrun_84_of_84_clean": "PASS",
+  "go_authorization_unmodified_since_37629434": "PASS"
+ },
+ "checks_detail": {
+  "diff_scope_6d5797d0_to_0b92ee65": "single commit, 5 paths only: run_scored.py gates()-only change (tr comprehension -> refs[BASE_TREND_LF][1.0] fold nets; dead tr_pos line removed, zero remaining references), test_fixtures.py +45 (fixture 11 test_gates_synthetic wired into main), eos1_freeze.json v4 supersession edits, eos1_freeze.v3_SUPERSEDED_BLOCKED.json (byte-identical to pre-diff v3 blob ee0bd787, sha256-verified), events.jsonl +1 line; engine byte-untouched (4728850b identical across v3/v4 and on disk), stage_all.py untouched",
+  "scored_absence_zero_outcome_exposure": "scored/ dir empty (0 entries, untracked); no scored_summary.json or PnL-bearing artifact anywhere under cycle ns; state.json budget 0/8, scored_pnl_seen=false; both TECHABORTs pre-publication",
+  "freeze_v3_superseded_and_v4_hashes": "v1/v2/v3 SUPERSEDED files all present; v4 code_freeze 4/4 and evidence_freeze 4/4 recomputed sha256 MATCH; remediation_r3 + supersedes records present; tree.head=6d5797d0; frozen_utc 2026-09-25T01:40:17Z",
+  "fixtures_all_pass_with_test_11": "exit 0, ALL FIXTURES PASS, 46 PASS lines / 0 failures (the one 'fail' grep hit is the PASS check name 'weak synthetic cell fails G3'); test 11 present with 6 PASS checks: strong-cell ALL-PASS incl. exact G5 arithmetic 140/320=0.4375 and G4 4/4, plus below-wall G3-fail and all_pass=false paths",
+  "dryrun_84_of_84_clean": "exit 0, dry_run_pass=true, 84/84 computations, record_ids_pairwise_distinct=true, leak_scan 15 checked 0 leaked; recomputed artifact differs from frozen bytes only in built_utc (structural diff = 1 field); frozen bytes restored (fd616f62 intact, git status clean)",
+  "go_authorization_unmodified_since_37629434": "zero diff 37629434..HEAD on the path; worktree sha256 2814b4b0 equals git show 37629434 blob; GO remains consumed and valid"
+ },
+ "root_cause_and_plumbing": {
+  "root_cause_reproduced": "old comprehension {k: v['res']['folds'][k]['net'] for k in folds} raises NameError: name 'v' is not defined (Python 3 comprehension scopes do not leak the v from the pos_folds comprehension)",
+  "tr_pos_removal_safe": "tr_pos has zero references anywhere in run_scored.py; it was dead code",
+  "g10_semantics": "tr now built from refs BASE_TREND_LF tier 1.0 fold nets; folds (line 121) are the cell's own fold nets for the flip test; matches frozen G10 text",
+  "scored_only_plumbing_verified": "scored() builds refs incl. BASE_TREND_LF at all tiers; freezes/feasibility.json contains g11_spearman_vs_trend_lf covering all 8 arms (e.g. EOS1-E1-A1 0.709206) so gates() cannot KeyError; go-authorization refusal guard is first statement of scored()",
+  "coverage_note": "dryrun() does not execute gates(); fixture 11 is now the automated coverage of the scored gate path (both pass and fail branches); attempt 1's tier_table construction remains covered by the dry-run's 84 pairwise-distinct book keys"
+ },
+ "findings": [
+  {
+   "id": "F-4R3",
+   "severity": "LOW",
+   "blocking": false,
+   "detail": "Dispatch expectation said '44 checks' for the fixture suite; the actual suite emits 46 PASS lines (40 pre-existing + 6 new in fixture 11). Actual coverage exceeds the stated number; no defect in code, freeze, or evidence."
+  }
+ ],
+ "verdict": "AUTHORIZED_FOR_SCORED_RERUN",
+ "verdict_rationale": "The r3 remediation is exactly as claimed and byte-scoped: the only code change between the r2-audit commit (6d5797d0) and HEAD (0b92ee65) is the gates() tr fix (TREND_LF fold nets now read from refs[BASE_TREND_LF][1.0], dead tr_pos line removed with zero remaining references) plus hardening fixture 11, which exercises gates() end-to-end on a synthetic tier_table through both the ALL-PASS path (exact G5 arithmetic 140/320=0.4375) and the below-wall G3-fail path. Root cause reproduced from bytes (NameError on undefined v). Attempt 2 left zero outcome exposure: scored/ empty, no scored_summary.json or PnL-bearing artifact anywhere, budget 0/8, scored_pnl_seen false. Freeze chain intact: v3 preserved byte-identical as SUPERSEDED_BLOCKED, v4 recomputes 8/8 sha256 matches across code_freeze and evidence_freeze and carries remediation_r3 + supersedes. Fixtures exit 0 ALL PASS (46/46, includes test 11; dispatch's stated 44 undercounts). Dry run exits 0 with dry_run_pass true, 84/84, distinct IDs, leak scan clean, reproducing the frozen artifact modulo built_utc (frozen bytes restored; worktree left clean). go_authorization.json byte-unmodified since 37629434; both r2 LOW doc-lag findings verified fixed at 6d5797d0. The remaining scored-only plumbing surface was independently verified consistent (feasibility.json g11 key present for all 8 arms; refs construction covers BASE_TREND_LF at all tiers). Scored mode may be re-run under the already-consumed GO."
+}
