@@ -74,7 +74,8 @@ from research.v14.families.basislv_premfade.plugin import (
     REASON_FOLD_TERMINAL_FORCE_FLAT,
     BasislvPremfadePlugin,
 )
-from research.v14.families.basislv_premfade.strategy import (
+from research.v14.families.basislv_premfade.strategy import
+    BENCHMARK_SYMBOL, (
     DAY_NS,
     FAMILY_ID,
     STATUS_OK,
@@ -423,7 +424,7 @@ class BasislvWindowFoldPlugin(BasislvPremfadePlugin):
             w0 = getattr(self, "_chr3f_window_start", "")[:7]
         y, m = int(w0[:4]), int(w0[5:7])
         listed = {s for s in frozen if self.FIRST_ARCHIVE_MONTH.get(s, (9999, 1)) <= (y, m)}
-        return tuple(s for s in frozen if s in listed or s == self._benchmark)
+        return tuple(s for s in frozen if s in listed or s == BENCHMARK)
 
     def benchmark_context_symbols(self) -> tuple[str, ...]:
         from replication_data import listed_at
