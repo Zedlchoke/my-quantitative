@@ -1,0 +1,54 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "tracka1-a7-prelaunch",
+ "cycle_id": "ERP1-TRACKA-COHORT-1",
+ "role": "quant-auditor",
+ "lane": "tracka1-a7-prelaunch",
+ "dispatch_sha": "215ce855328d29b911bd05edecbe30c2aa623fa7",
+ "actual_start_sha": "215ce855328d29b911bd05edecbe30c2aa623fa7",
+ "commit_sha": null,
+ "commit_note": "commit_sha is null: this is a read-only audit lane; the two audit artifacts (this handoff + audits/A7_prelaunch_REPORT.md) are intentionally left UNCOMMITTED in the worktree per dispatch instruction. Tree impact: two new untracked files under research/control/ERP1-TRACKA-COHORT-1/{audits,handoffs}/; no tracked file modified; branch tip remains 215ce855328d29b911bd05edecbe30c2aa623fa7. A bookkeeping commit by the owning session can capture them without changing the audited content (dispatch_sha = audit_start_sha = audited tip).",
+ "changed_paths": [
+  "research/control/ERP1-TRACKA-COHORT-1/audits/A7_prelaunch_REPORT.md",
+  "research/control/ERP1-TRACKA-COHORT-1/handoffs/HANDOFF_tracka1_a7_prelaunch.json"
+ ],
+ "tests": [],
+ "authority_claims": [],
+ "verdict": "PRELAUNCH_PASS_WITH_CONDITIONS",
+ "conditions_binding_before_go2": [
+  "C1: normalize cycle registry row workers to measured 0 (currently 1, set by the 2026-09-25T19:23:14Z update; contradicts both lane handoffs workers:0 and the measured process state - no TRACKA worker exists, heavy lock FREE_PROVEN)",
+  "C2: correct freeze/GO1_freeze_artifact.json clock_placebo_rebuild.per_pair.*.arm_config_digest_old (it duplicates the NEW digests 6f754a82303e8160/c53a04331318728a; the true superseded natural-recipe digests are 1309837df94cff94 AUDUSD / b43204afc449f295 USDCAD per commit 3931aed8) or append a signed erratum to the freeze artifact"
+ ],
+ "findings": [
+  "F1 MEDIUM: registry row workers:1 vs handoffs/measured 0 (=> C1)",
+  "F2 LOW: freeze arm_config_digest_old duplicates new digest; report claim 'old digests retained in the rebuild section' is factually wrong; true old digests recoverable from 3931aed8 (=> C2)",
+  "F3 LOW recorded-not-blocking: freeze 'amended_predicate_text_verbatim' is ASCII-normalized + carries an A2.1-quoted denominator clarification, not byte-verbatim vs the skeptic sentence; clause semantics (a)-(f) verified identical",
+  "F4 INFO: full-window census/planes exist by plan design; holdout protection verified via the only two parquet read paths filtering ts<2026-01-01 and the membership pin sha 45ff897d3075d806 recomputed-match",
+  "F5 INFO: root checkout working tree dirty (registry/skeptic edits uncommitted, untracked control dirs) - root owner space, outside lane authority; live registry state matches measured tip",
+  "F6 INFO pre-existing: doctor HIGH frozen-artifact-drift findings are the accepted TERMINAL-cycle class; FX-RANGEFADE-2M-SHADOW-V1 row has LOW head_mismatch + stale heartbeat (daemon itself alive); no TRACKA doctor finding"
+ ],
+ "recompute_evidence": {
+  "go_law": "GO_RECORDED phrase == plan line 38 exact; registry row ACTIVE_LIGHT, budget 0/24, go_phrase REGISTERED_NOT_CONSUMED (GO-2 unconsumed; phrase grep hits only the plan definition); GO-time main 69ddc604 is ancestor of current main 460d2acd (registration commit)",
+  "hash_chain": "linear 460d2acd -> 43a84688 -> 2682422a -> 3931aed8 -> 5b89e1ee -> 43cb8b1f -> 215ce855 (single-parent each, no merges); root main still 460d2acd; worktree tree clean at tip",
+  "data_gate": "census committed==working bytes (AUDUSD d337ff2c..., USDCAD 27958f5a...); all five gates True; nonpos_spread_minutes 0/0; bars15 130160/130102; dup 0; reconcile 0.0; buckets n>=312/321, low_sample empty; manifests 4014 entries/pair, days_missing []; spot-check 5 files/pair sha256+bytes recomputed 10/10 OK",
+  "falsifier": "ledger 27 rows, 3 mandatory labels on every row, net/gross null everywhere; M3 kill row F-5 NOT_SCORED_FALSIFIED with 2*2.0*1.2=4.8>=2.0 reproduced from census_USDCAD buckets (p50 1.2 x3, n 28390/22787/27811); M-1..M-5 recorded with margins matching falsifier_results.json bytes; five freeze pins present incl membership sha 45ff897d3075d806 recomputed-match and zero-PnL attestation sha f91c317cc1adcc6b recomputed-match; ADJUDICATION #2 read and rebuild conforms (r 0.908093/0.887120 recomputed from occupancy, uniform-random hours not anchor distribution, seed 20260925, occurrence ONE consumed)",
+  "no_pnl": "adversarial sweep: net_pips only inside ported engine.py run_strategy/metrics which NO cycle script/test calls; zero non-null net fields in any results/ledger/freeze artifact; no arm-level net number anywhere in the cycle namespace",
+  "holdout": "only two parquet read paths (falsifier_run.py:231, placebo_rebuild.py:74), both filter ts<2026-01-01 before SignalPlane construction; outputs contain only window strings; holdout-membership pin freezes future readers",
+  "boundaries": "S1 SEALED_UNTOUCHED, no S1 usage in cycle; FX-RANGEFADE-2M-SHADOW-V1 daemon PID 79157 + dashboard PID 8093 alive and untouched (4 post-GO mtimes in its namespace are its own runtime writes); heavy lock FREE_PROVEN at audit time",
+  "tests": "pytest tests/ -q from worktree with root venv: 33 passed in 0.96s; spot-run test_m5_truncation_pit_synthetic PASSED, test_m4_self_test_blindness_fixture PASSED",
+  "denominator": "observed 27 = published 27 pre-PnL rows; zero scored cells; budget 0/24 untouched"
+ },
+ "known_limitations": [
+  "audit is byte-level recompute and static code inspection; it did not re-run the battery or rebuild (no-PnL law; also out of audit scope) - it verified recorded outputs against inputs",
+  "uncommitted audit artifacts: worktree tip remains 215ce855; the two artifacts are new untracked files",
+  "registry row read is the LIVE working-tree state of root plans/CYCLE_REGISTRY.json (uncommitted root edits exist in owner space)",
+  "spot-check sampled 5 files/pair of 4014 (deterministic seed 7) plus total-count equality, not a full 8028-file digest sweep"
+ ],
+ "incidents": [],
+ "tree_status": "clean at measured tip 215ce855 (porcelain empty before this lane); after this lane: exactly two new untracked files (audits/A7_prelaunch_REPORT.md, handoffs/HANDOFF_tracka1_a7_prelaunch.json); nothing committed by the audit",
+ "workers": 0,
+ "outputs": [
+  "research/control/ERP1-TRACKA-COHORT-1/audits/A7_prelaunch_REPORT.md",
+  "research/control/ERP1-TRACKA-COHORT-1/handoffs/HANDOFF_tracka1_a7_prelaunch.json"
+ ]
+}
