@@ -124,8 +124,7 @@ def gates(cell: str, tier_table: dict, refs: dict, feas: dict) -> dict:
     conc = (max(pos_folds.values()) / pos_sum) if pos_sum > 0 else 1.0
     shuf = tier_table[f"{cell}|G6-SHUF"][1.0]["res"]["net_total"]
     inv = tier_table[f"{cell}|G6-INV"][1.0]["res"]["net_total"]
-    tr = {k: v["res"]["folds"][k]["net"] for k in folds}
-    tr_pos = {k: v for k, v in tr.items() if v > 0}
+    tr = {k: refs["BASE_TREND_LF"][1.0]["res"]["folds"][k]["net"] for k in folds}
     flips_pos_to_neg = [k for k in tr if tr[k] > 0 and folds[k] < 0]
     g = {
         "G1": c10["res"]["net_total"] > 0,

@@ -276,6 +276,50 @@ def test_settlement_pricing_pit():
           ps2.price(h0 + 2) == 110.0, f"got {ps2.price(h0 + 2)}")
 
 
+def test_gates_synthetic():
+    print("11. gates() synthetic exercise (scored-path plumbing, post-TECHABORT hardening)")
+    import run_scored as R
+    fold_names = [f[0] for f in E.FOLDS]
+
+    def mk_book(net_folds, fills=10, avg_px=2000.0):
+        folds = {fn: {"net": v, "gross": v, "fees": 0.0, "funding": 0.0,
+                      "trades": 1, "fills": 2, "funding_events": 1}
+                 for fn, v in zip(fold_names, net_folds)}
+        return {"res": {"folds": folds, "fills_total": fills,
+                        "settlement_price_fallbacks": 0,
+                        "net_total": sum(net_folds),
+                        "avg_raw_fill_px": avg_px}}
+
+    tier_table = {
+        "CELL": {1.0: mk_book([140.0, 60.0, 70.0, 50.0]),   # 320 > all refs
+                 1.5: mk_book([80.0, 40.0, 50.0, 30.0]),
+                 2.0: mk_book([60.0, 30.0, 40.0, 20.0])},
+        "CELL|G6-SHUF": {1.0: mk_book([10.0, 5.0, 6.0, 4.0])},
+        "CELL|G6-INV": {1.0: mk_book([-50.0, -5.0, -6.0, -4.0])},
+        "BASE_CASH": {1.0: mk_book([0.0, 0.0, 0.0, 0.0])},
+        "BASE_ALWAYS_ON_LONG": {1.0: mk_book([200.0, -80.0, 150.0, 30.0])},
+        "BASE_TREND_LF": {1.0: mk_book([150.0, 20.0, 120.0, 20.0])},
+        "REF_SHORT_ALWAYS": {1.0: mk_book([-100.0, 50.0, -80.0, -20.0])},
+    }
+    refs = {r: tier_table[r] for r in ("BASE_CASH", "BASE_ALWAYS_ON_LONG",
+                                       "BASE_TREND_LF", "REF_SHORT_ALWAYS")}
+    feas = {"g11_spearman_vs_trend_lf": {"CELL": 0.3}}
+    g = R.gates("CELL", tier_table, refs, feas)
+    check("gates returns all G keys",
+          all(k in g for k in ("G1", "G2", "G3", "G4", "G5", "G6", "G7",
+                               "G10", "G11_disclosure", "all_pass")))
+    check("strong synthetic cell ALL-PASS", g["all_pass"] is True,
+          f"failed: {[k for k, v in g.items() if k.startswith('G') and isinstance(v, dict) and not v.get('pass', True)]}")
+    check("G4 4/4 folds positive", g["G4"] is True)
+    check("G5 conc = 0.4375", abs(g["fold_concentration"] - 140.0 / 320.0) < 1e-9)
+    # negative case: cell below the wall must fail G3 and all_pass
+    tier_table["CELL"][1.0] = mk_book([90.0, 40.0, 50.0, 30.0])
+    tier_table["CELL"][1.5] = mk_book([70.0, 30.0, 40.0, 20.0])
+    g2 = R.gates("CELL", tier_table, refs, feas)
+    check("weak synthetic cell fails G3", g2["G3"]["pass"] is False)
+    check("weak synthetic cell not all_pass", g2["all_pass"] is False)
+
+
 def main() -> int:
     test_resample()
     test_indicators()
@@ -287,6 +331,7 @@ def main() -> int:
     test_no_lookahead()
     test_tiers()
     test_settlement_pricing_pit()
+    test_gates_synthetic()
     print()
     if FAILURES:
         print(f"FIXTURES FAILED: {len(FAILURES)} -> {FAILURES}")
