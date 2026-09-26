@@ -1,0 +1,115 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "tracka1-diag-daemon",
+ "cycle_id": "ERP1-TRACKA-COHORT-1",
+ "role": "quant-implementer",
+ "lane": "tracka1-diag-daemon",
+ "dispatch_sha": "4aae62269a8d7dd1736b0d05dd6081cce032da01",
+ "actual_start_sha": "4aae62269a8d7dd1736b0d05dd6081cce032da01",
+ "actual_start_sha_note": "measured at lane start: branch orca/erp1-tracka-cohort-1-diag @ 4aae62269a8d7dd1736b0d05dd6081cce032da01, clean tree (matches the dispatch packet)",
+ "commit_sha": "ebf180b3f5769e2b5d1232c7fa4d4fda154c6c8b",
+ "commit_note": "commit_sha is the single work commit carrying ALL diagnostic deliverables (24 files, pathspec-staged: report, results JSON, 10-row ledger, byte-probe + census + plane-diff + copy-verify JSONs, sha manifests, probe config, 6 diag scripts, 6-test fixture suite; raw .bi5 bytes and .parquet planes machine-local via nested .gitignore, mirroring the cohort convention). This handoff file itself lands in the immediately following bookkeeping commit on the same branch because a file cannot contain its own commit's sha (the cycle's established resolution: see HANDOFF_tracka1_datagate/falsifier/scored commit_notes). Branch head after handoff: git log -1 -- research/control/ERP1-TRACKA-COHORT-1/diag/DIAG_HANDOFF.json",
+ "changed_paths": [
+  "research/control/ERP1-TRACKA-COHORT-1/diag/DIAG_DAEMON_REPORT.md",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/diag_daemon_results.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/diag_ledger.jsonl",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/scripts/copy_data.py",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/scripts/probe_diag.py",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/scripts/pair_config_diag.py",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/scripts/build_bars_diag.py",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/scripts/diag_lib.py",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/scripts/diag_run.py",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/tests/test_daemon_diag.py",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/EURUSD/m1_manifest.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/EURUSD/.gitignore",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/GBPUSD/m1_manifest.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/GBPUSD/.gitignore",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/.gitignore",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/copy_verify_EURUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/copy_verify_GBPUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/probe_EURUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/probe_GBPUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/pair_configs_diag.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/census_EURUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/census_GBPUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/plane_diff_EURUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/plane_diff_GBPUSD.json"
+ ],
+ "tests": [
+  {
+   "command": ".venv/bin/python -m pytest research/control/ERP1-TRACKA-COHORT-1/diag/tests/ -q",
+   "result": "6 passed — hand-built-panel daemon-semantics fixtures: (1) partial-range percentiles hand-computed (searchsorted-left vs trailing-60 full prior-day ranges), first-mode + mid-day flip counts asserted; (2) daemon target chained through the committed engine proving want=target[i-1]: signal on closed bar i8 fills at bar i9 OPEN at the opposite quote (short at a_o - k*s_o = 1.2015 @k1.0, 1.2014 @k2.0), exit at i10 open, pips 13.0/11.0 hand-derived, R-ORIG fills one bar earlier; (3) no-fill-into-day-close + force-flat; (4) ANC plane convention (high = max CLOSE) + spread identity vs true-H/L; (5) diag arm plumbing (5 target arrays, SHORT/LONG ALWAYS mirror, books reconcile); (6) informative G1-G8 block present"
+  },
+  {
+   "command": ".venv/bin/python research/control/ERP1-TRACKA-COHORT-1/diag/scripts/copy_data.py",
+   "result": "COPY_VERIFIED x2 — EURUSD and GBPUSD: 4,014 day files each (2021-01-01..2026-06-30) sha-verified 1:1 against the source fxm.m1_manifest@1 manifests (0 mismatches, 0 missing, 170 outside-window skipped), seed-pinned 20-file sample 20/20 OK, copied manifests byte-identical"
+  },
+  {
+   "command": ".venv/bin/python research/control/ERP1-TRACKA-COHORT-1/diag/scripts/probe_diag.py",
+   "result": "PROBE_PASS x2 — EURUSD scale 1e5 / pip 1e-4 / band [0.80, 1.35]; GBPUSD scale 1e5 / pip 1e-4 / band [1.0268, 1.5658] (covers registered guard ~1.03-1.42; same padding-wins outcome as the USDCAD precedent); OHLC invariants 0 violations, 24-byte layout clean"
+  },
+  {
+   "command": ".venv/bin/python research/control/ERP1-TRACKA-COHORT-1/diag/scripts/build_bars_diag.py (under governance heavy_lock, role diag-census)",
+   "result": "BUILD_PASS x2 — tracka_census@2: EURUSD 130,911 valid 15m / 30,550 H1 bars; GBPUSD 131,488 / 30,876; all gates pass incl. plane-spread identity (ANC vs true-H/L max abs diff 0.0 on both pairs) and census-vs-executor reconcile"
+  },
+  {
+   "command": ".venv/bin/python research/control/ERP1-TRACKA-COHORT-1/diag/scripts/diag_run.py",
+   "result": "one pass completed, both pairs, no tuning — 5 arms x 3 cost tiers; results diag_daemon_results.json (sha chain of committed code + diag code + censuses + manifests + copy-verify + probe), ledger diag_ledger.jsonl (10 rows, 4 labels each)"
+  }
+ ],
+ "authority_claims": [
+  "OWNER instruction 2026-09-26 executed verbatim-intent: score the CURRENT shadow strategy law ('daemon law') on EURUSD and GBPUSD as a DIAGNOSTIC exercise on OUTCOME-EXPOSED surfaces that can NEVER produce promotable evidence regardless of result; every artifact labeled DIAGNOSTIC_OUTCOME_EXPOSED; the frozen cohort trials, integration branch, shadow daemon and registry were not touched",
+  "Pre-registered interpretation written into DIAG_DAEMON_REPORT.md section 0 BEFORE the results section: (a) outcome-exposed windows -> positives cannot count as candidate evidence (umbrella 5.8/6 ancestry law; cohort plan 3); (b) materially positive k=1.0 with PF>>1 and beats beta -> 'warrants a properly frozen new identity + forward shadow test', NOT 'edge proven'; (c) weak/negative -> consistent with the seam attribution, closes the question; (d) no parameter tuned, no variant tried, no rescue — one pass, both pairs, as specified. Clause (b)'s branch was NOT met; the recorded reading is clause (c)",
+  "Emulation authority: R-DAEMON scored via tracka_lib.f_rangeexp_daemon (the falsifier battery's M-3 machinery) REUSED UNMODIFIED from the base scripts (sha-pinned in diag_daemon_results.json sha_chain.committed_code_freeze); executor = committed engine.run_strategy (want=target[i-1], opposite-quote fills, cost = fill bar's own measured spread x k, no fills on/after the 19:00 bar, force-flat at day-close 20:00 UTC, weekend flat); plane = ANCESTRY-convention H1 signal plane (close-column high) per the cohort's plane pin, spreads proven bit-identical to the true-H/L cost plane",
+  "Probe/cost-book authority: pip/scale/band PROVEN from bytes with the cycle's committed derive_scale method on both pairs (EURUSD band [0.80,1.35]; GBPUSD [1.0268,1.5658] covering the registered guard ~1.03-1.42); censuses in the hardened tracka_census@2 schema with the cycle's gate set, all gates PASS",
+  "Isolation: all writes inside research/control/ERP1-TRACKA-COHORT-1/diag/** only; data sources read-only (copied with full sha verification); no push, no merge, no registry/ledger/freeze writes outside the diag namespace; heavy job (census) taken under the machine-wide governance heavy_lock (role diag-census), released FINISHED"
+ ],
+ "known_limitations": [
+  "Contaminated windows: the 2021-2025 folds are the RANGEEXP family's own dev surfaces and 2026-01..06 was consumed by ancestry looks on these pairs — the 2026H1 numbers carry the explicit label CONSUMED_SURFACE_DESCRIPTIVE and nothing in this lane is promotable evidence",
+  "No placebo control in the diagnostic set: the 5-book set is the dispatch's diagnostic set (the cohort's CAUSAL-PLACEBO is not part of it), so schedule-similarity confounds are uncontrolled here",
+  "Ancestry-plane emulation of a TrueFX-marks daemon: the running shadow daemon marks differ from the Dukascopy M1 BID/ASK census bytes this emulation scores — the law's shape is emulated, not the daemon's fill reality (FILL_QUALITY_UNMEASURABLE_ON_M1_BIDASK)",
+  "M1-candle-only byte probe (no tick corpus in the diagnostic sources): the ancestor probe's tick-vs-candle cross-check is unavailable; OHLC invariants + 24-byte layout + census gates are the invariants used",
+  "Single data source (SINGLE_SOURCE_PANEL): Dukascopy M1 BID/ASK for both pairs",
+  "warmup_end_idx = 0 pinned for every arm (no warmup parameter introduced; disclosed in report + results, not tuned); G1-G8 arithmetic ran on the full diagnostic panel (informative only — no promotion semantics exist in a diagnostic), fold assignment and concentration shares cover F1..F6 (2021-2025)",
+  "DSR-style context reported as raw non-annualized daily SR only (no trial-count deflation — a diagnostic adds no promotable trial)"
+ ],
+ "incidents": [
+  "Lane-internal only: the first copy-verification run reported 40 sample 'mismatches' caused by a path-construction bug in the SAMPLE check (manifest key prefix M1/ not present in the copied layout) while the full 4,014-file sha verification had already passed; fixed and re-run to COPY_VERIFIED before any downstream consumer read the data; no data corruption (mismatch count in the full verification was 0 on both runs), no namespace/registry/foreign-lane impact",
+  "git printed an identity-configuration notice on the work commit (committer identity auto-derived from username/hostname); commit landed; no action taken (workspace-local git identity policy is owner-level)"
+ ],
+ "tree_status": "clean (work commit ebf180b3 + handoff bookkeeping commit landed; working tree clean except gitignored machine-local bytes: diag/data_local/*/{BID,ASK}/*.bi5, diag/data_local/derived/*.parquet, diag/.pytest_cache, __pycache__)",
+ "workers": 0,
+ "outputs": [
+  "research/control/ERP1-TRACKA-COHORT-1/diag/DIAG_DAEMON_REPORT.md",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/diag_daemon_results.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/diag_ledger.jsonl",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/DIAG_HANDOFF.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/scripts/",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/tests/test_daemon_diag.py",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/census_EURUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/census_GBPUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/probe_EURUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/probe_GBPUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/copy_verify_EURUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/copy_verify_GBPUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/plane_diff_EURUSD.json",
+  "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/derived/plane_diff_GBPUSD.json"
+ ],
+ "results_summary": {
+  "verdict_class": "DIAGNOSTIC_OUTCOME_EXPOSED — never promotable evidence",
+  "pre_registered_reading": "clause (c): weak-to-negative, consistent with the seam attribution; question closed. Clause (b) branch NOT met (no PF>>1 anywhere).",
+  "R-DAEMON_k1.0": {
+   "EURUSD": {"net_pips": 812.2, "pf": 1.0624, "rt": 1062,
+              "per_fold": {"F1": -188.8, "F2": -884.4, "F3": 1049.8, "F4": 348.3, "F5": -191.5, "F6": 257.0},
+              "w2026H1": {"net_pips": 421.8, "trades": 86, "pf": 1.5502, "label": "CONSUMED_SURFACE_DESCRIPTIVE"}},
+   "GBPUSD": {"net_pips": -1708.9, "pf": 0.9049, "rt": 1066,
+              "per_fold": {"F1": -121.5, "F2": 111.2, "F3": -1272.7, "F4": 789.8, "F5": -407.1, "F6": -728.8},
+              "w2026H1": {"net_pips": -79.8, "trades": 93, "pf": 0.9429, "label": "CONSUMED_SURFACE_DESCRIPTIVE"}}
+  },
+  "beta_check_daemon_minus_SHORT_ALWAYS_k1.0": {"EURUSD": 107.6, "GBPUSD": 643.1},
+  "mode_flips": {
+   "EURUSD": {"days_midday_change": 888, "of": 1427, "events": 1010, "first_mode_flat_days": 687, "orig_active_daemon_flat": 656},
+   "GBPUSD": {"days_midday_change": 923, "of": 1426, "events": 1051, "first_mode_flat_days": 718, "orig_active_daemon_flat": 688}
+  }
+ }
+}
