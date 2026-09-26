@@ -1,0 +1,86 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "pws-cx-sol-c1c2-data-pit-recovery",
+  "cycle_id": "PWS-CX-SOLUSDT-C1",
+  "role": "pit-data-auditor",
+  "lane": "c1c2-data-pit-recovery",
+  "branch": "orca/pws-cx-solusdt-c1-integration",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/pws-cx-solusdt-c1/integration",
+  "dispatch_sha": "5aadae7a515962feb85f523e73410d30ae907296",
+  "actual_start_sha": "5aadae7a515962feb85f523e73410d30ae907296",
+  "authority_claims": [],
+  "commit_sha": "2cad21d4a48df07d3cb213abb5ccdeb79b40168c",
+  "handoff_commit_sha": null,
+  "base_sha_at_start": "5aadae7a515962feb85f523e73410d30ae907296",
+  "note_on_interim_commits": "Two skeptic-lane commits (5b7723cd SKEPTIC_F0_REPORT.md, 9f1a8c4d HANDOFF_skeptic_f0.json) landed on the branch while this lane ran; paths disjoint, no collision; this lane's commit sits on top of 9f1a8c4d.",
+  "changed_files": [
+    "research/control/PWS-CX-SOLUSDT-C1/C1_data_gate_REPORT.md",
+    "research/control/PWS-CX-SOLUSDT-C1/C2_EXPOSURE_VERIFICATION.md",
+    "research/control/PWS-CX-SOLUSDT-C1/C1_machine_KLINE_CENSUS_SOLUSDT.json",
+    "research/control/PWS-CX-SOLUSDT-C1/C1_machine_FUNDING_STATS_SOLUSDT.json",
+    "research/control/PWS-CX-SOLUSDT-C1/C1_machine_SPREAD_CENSUS_SOLUSDT.json",
+    "research/control/PWS-CX-SOLUSDT-C1/data_local/INVENTORY.md",
+    "research/control/PWS-CX-SOLUSDT-C1/data_local/funding/MANIFEST_fapi_merged_SOLUSDT.json",
+    "research/control/PWS-CX-SOLUSDT-C1/data_local/funding/SOLUSDT_funding.json",
+    "research/control/PWS-CX-SOLUSDT-C1/data_local/funding/fapi_scan2026_H1_SOLUSDT.json",
+    "research/control/PWS-CX-SOLUSDT-C1/data_local/funding/fapi_scan2026a_H2_SOLUSDT.json",
+    "research/control/PWS-CX-SOLUSDT-C1/data_local/vision/klines_um_SOLUSDT_1h_MANIFEST.json",
+    "research/control/PWS-CX-SOLUSDT-C1/licenses/Binance_Vision-Terms_of_Use.pdf"
+  ],
+  "changed_paths_note": "12 files committed at 2cad21d4. data_local zips (72 klines zips 2.4MB + 6 bookTicker zips ~12GB) intentionally LEFT UNTRACKED per the >50MB rule; every one is sha256-pinned in data_local/INVENTORY.md (84 files hashed). The handoff JSON itself is committed immediately after the artifact commit (branch convention per P1/P2/skeptic lanes); its sha is discoverable as HEAD~0 child of 2cad21d4.",
+  "verdict": "C1_PASS_WITH_CAVEATS_C2_CONFIRMED",
+  "verdict_components": {
+    "klines_corpus": "PASS (72/72 zip sha256 re-verified; full recount 52145 bars, 0 duplicate open times, floor 2020-09-14T07:00Z exact, 120 missing bars characterized as two venue maintenance windows 2022-02-26..28 (72 bars) + 2022-04-01..02 (48 bars) - disclosed, not repaired)",
+    "funding_series": "PASS_WITH_CAVEATS (n=6580, mean/median/sum/neg_share/worst reproduced bit-exact; floor 2020-09-13 exact; exactly 101 non-8h spacings confined to 2022-11-09T16:00:00.004Z..2022-11-18T08:00:00.016Z = 99x1-4h + 2x5-7h, FTX emergency cadence; cross_check_vision stays NOT_RUN - single-campaign source, never claim dual-source; 10.3-day funding tail uncovered; per-settlement path accounting MUST use actual timestamps, not nominal 8h grid)",
+    "spread_census": "PASS_WITH_CAVEATS (2 sample months recomputed from raw bookTicker zips: all 48 hourly p50 and both monthly max-spread bit-exact at stride offset 0; p99 exact in 27/48 blocks, rest within 1.6e-4 bps; stride warm-up bookkeeping +13/+30 rows of 2.1M/2.2M disclosed, immaterial; units confirmed BASIS POINTS of mid via (ask-bid)/mid*1e4 on transaction_time base; coverage = 6 stratified odd months of the only-12 measurable (2023-05..2024-04); other 56 corpus months unmeasurable keyless)",
+    "license_posture": "PASS (Binance Vision keyless public archive + ToU pdf captured sha 94d6f61a; fapi public endpoint; no credentials anywhere)",
+    "c2_exposure": "CONFIRMED (1h 2020-09..2026-08 = OUTCOME_EXPOSED_baseline per OUTCOME_EXPOSURE_MAP section 2, xsect V11/V14 + funding-carry scope only, no dedicated SOL directional search, FAMILY_FAILURES.jsonl has zero SOLUSDT-keyed rows; 15m/1m = ANCESTRY_EXPOSED_RECLK; funding = cost-authority observable, baseline-exposed via funding-carry; NO provably outcome-free window exists so OOS = prospective accumulation D13/D26/D52, D104 final)"
+  },
+  "summary": "Recovery lane for the C1/C2 PIT-data audit: the machine restart 2026-09-26 ~18:4x local killed the original lane mid-run, leaving the three machine files + data_local (12GB) + license pdf uncommitted; this lane verified every surviving machine file against raw bytes by independent recomputation (not schema checks) and then completed the two reports. Klines: FULL recount of all 72 months (not 3 samples - corpus is only 2.4MB): 52145 bars, 0 duplicate open times, floor 2020-09-14T07:00Z, ideal grid 52265, exactly 120 missing bars in two whole-day venue-maintenance windows (2022-02-26..28, 2022-04-01..02), disclosed not repaired. Funding: merged H1+H2 with 1 boundary duplicate dropped = 6580 settlements; all headline stats bit-exact; SMA200 downtrend state independently recomputed (27 insufficient, 37/72 downtrend months, all labels match); FTX-week anomaly verified as exactly 101 non-8h spacings (99x1-4h + 2x5-7h) all inside the machine's window; cross_check_vision kept NOT_RUN per fail-closed rule. Spread: recomputed 2023-05 (K=13) and 2023-09 (K=32) from raw zips under two stride offsets; p50 and max-spread bit-exact, p99 within 1.6e-4 bps - census confirmed as genuine function of raw bytes; units are bps of mid; 6-month stratified coverage (odd months of 2023-05..2024-04) is the binding sampling caveat. C2: registry+wayfinder evidence only (no outcome files opened): SOLUSDT has NO outcome-free history window, OOS is prospective accumulation (D13/D26/D52, D104 final). Collision fences honored: ETHUSDT-OPEN-SEARCH-V2 S1 untouched (one read-only sha256 cross-corpus comparison disclosed), CHR3F heavy lock FREE_PROVEN at audit time, shadow workers untouched. Committed 12 files at 2cad21d4; zips untracked with full sha256 inventory.",
+  "objective": "Verify the three surviving C1 machine files against raw bytes with independent recomputation; characterize kline gaps, funding FTX anomaly, spread units/coverage; write C1_data_gate_REPORT.md and C2_EXPOSURE_VERIFICATION.md; write the structured handoff; commit by pathspec with zips excluded above the 50MB ceiling.",
+  "outputs": [
+    {
+      "path": "research/control/PWS-CX-SOLUSDT-C1/C1_data_gate_REPORT.md",
+      "result": "PASS_WITH_CAVEATS gate report: verdict table (klines PASS / funding PASS_WITH_CAVEATS / spread PASS_WITH_CAVEATS / license PASS), full recomputation evidence, all caveats as binding conditions, power-analysis inputs (8760 bars/yr, 1095 settlements/yr nominal, 13805136 spread samples), fail-closed items explicit"
+    },
+    {
+      "path": "research/control/PWS-CX-SOLUSDT-C1/C2_EXPOSURE_VERIFICATION.md",
+      "result": "CONFIRMED: sha-pinned classification table SOLUSDT x plane x window from registry-level evidence only; no outcome-free window; OOS prospective D13/D26/D52/D104; collision-fence evidence table; machine-file sha256 table"
+    },
+    {
+      "path": "research/control/PWS-CX-SOLUSDT-C1/data_local/INVENTORY.md",
+      "result": "sha256 of all 84 data files incl. every untracked zip (12GB stays on disk untracked; re-download verifiable byte-exact)"
+    },
+    {
+      "path": "research/control/PWS-CX-SOLUSDT-C1/handoffs/HANDOFF_c1c2_data_pit.json",
+      "result": "PASS - this handoff (schema zcode_orch_v3_handoff@1)"
+    }
+  ],
+  "tests": [
+    "python /tmp/pws_cx_verify_klines_funding.py -> klines: sha256_ok=72/72, recount_total_bars=52145 (=machine), dups=0, first/last exact, ideal 52265, missing 120 in 2 gap groups (2022-02-26T00:00Z..2022-02-28T23:00Z n=72; 2022-04-01T00:00Z..2022-04-02T23:00Z n=48; whole-day all-24-hours shape); funding: merged_copy==H1 scan rows TRUE, 4385+2196-1dup=6580, overall stats bit-exact vs machine, 2022/2026 per-year blocks within 1e-9, extremes timestamps exact, anomalous spacings: 101 non-8h total, all in [2022-11-09T16:00:00.004Z, 2022-11-18T08:00:00.016Z] (=machine window exactly), buckets 99x1-4h+2x5-7h; downtrend recheck: insufficient 27 (=machine), 37 downtrend months all labels match",
+    "python /tmp/pws_cx_verify_spread2.py -> 2023-05: data_rows 27234787 (=machine calibration exactly), off0 n=2094984 (+13 vs machine), p50 24/24 bit-exact, max_spread bit-exact 96.86896223169141, p99 12/24 exact rest <=1.59e-4 bps, invalid 0; 2023-09: data_rows 70830384, off0 n=2213450 (+30), p50 24/24 bit-exact, max_spread bit-exact 57.7224375360748, p99 15/24 exact rest <=7.7e-5 bps, invalid 0; offset-164 sensitivity bound: p50 up to 0.39 bps in isolated hours -> machine scheme identified as offset-0 + small warm-up",
+    "python /tmp/pws_cx_inventory.py -> 84 files sha256-hashed (12GB bookTicker + 2.4MB klines zips untracked, funding JSONs + manifests committed)",
+    "researchctl locks inspect -> FREE_PROVEN (no heavy lock held during lane)",
+    "git -C <worktree> rev-parse HEAD before commit -> 9f1a8c4d (post skeptic lane); artifact commit -> 2cad21d4a48df07d3cb213abb5ccdeb79b40168c; tree clean except 2 intentionally untracked zip dirs"
+  ],
+  "known_limitations": [
+    "Funding cross_check_vision NOT_RUN (no local Vision fundingRate_um_SOLUSDT archive; download budget went to spread census) - funding series is single-campaign (CHR3F fapi H1+H2, 2026-09-23/24); downstream must NOT describe it as dual-source verified; conflict rule (row diff => symbol-month EXCLUDED) stays armed for a future Vision staging.",
+    "Funding series ends 2026-08-21T16:00Z vs klines 2026-08-31T23:00Z: 10.3-day uncovered funding tail.",
+    "FTX-week funding cadence anomaly (101 non-8h spacings 2022-11-09..11-18): settlements retained as events; any per-settlement path accounting MUST use actual fundingTime timestamps, never the nominal 8h grid; machine phrasing '101 spacings of 1-4h' is loose by 2 (they are 5-7h).",
+    "120 missing 1h bars (2022-02-26..28 = 72; 2022-04-01..02 = 48): genuine venue-maintenance gaps, disclosed not repaired; venue-wide attribution is inferred from whole-day all-hours shape + dates, not proven against a second symbol.",
+    "Spread census covers 6 odd-position months of the only 12 keyless-measurable months (2023-05..2024-04); 2020-09..2023-04 and 2024-05..2026-08 are UNMEASURABLE keyless - early-2020/21 spreads likely wider than sampled; the census is the CURRENT evidence class and any freeze consuming it must disclose the sampling; unmeasured-era spread is UNKNOWN_WIDER, never pooled p50.",
+    "Only 2 of 6 census months independently recomputed (2023-05, 2023-09); the other 4 (2023-07, 2023-11, 2024-01, 2024-03) carry prior-lane stats validated only at method level.",
+    "Spread census stride enumeration has a <=K-row warm-up bookkeeping difference (+13/+30 of ~2.1M/2.2M samples; p99 shifts <=1.6e-4 bps) - immaterial, disclosed.",
+    "bookTicker is best-quote snapshot: commission and slippage-beyond-touch are NOT measured (PAPER_TIER/FILL_QUALITY posture).",
+    "2024-01 census month's first/last sampled timestamps inverted (non-chronological on-disk order of that archive file); 2023-05 starts mid-month, 2023-07 ends Jul 15, 2023-09 ends Sep 28, 2023-11 ends Nov 6 - keyless archive content facts, disclosed not repairable.",
+    "data_local zips (12GB) uncommitted per >50MB rule: re-verification of raw bytes depends on the untracked local copies; INVENTORY.md sha256 pins make any re-download byte-verifiable.",
+    "C2 classification is registry/wayfinder-level by design: no scored outcome file was opened; per-symbol scope rests on OUTCOME_EXPOSURE_MAP section 2 (registry-derived authority) - registry rows themselves carry no symbol fields."
+  ],
+  "incidents": [
+    "Machine restart killed the original C1/C2 lane mid-run 2026-09-26 ~18:4x local; machine files survived uncommitted (spread census written 18:46, after the 18:36 P2 handoff that recorded the census as NOT_RUN); this lane verified-then-completed: every machine file re-derived from raw bytes before acceptance. No data loss; no repair of any anomaly.",
+    "Two skeptic-lane commits (5b7723cd, 9f1a8c4d) landed on the branch mid-run; paths disjoint from this lane; no action taken against them."
+  ],
+  "tree_status": "worktree clean after commit 2cad21d4 except two INTENTIONALLY untracked directories: data_local/vision/klines_um_SOLUSDT_1h/ (72 zips, 2.4MB) and data_local/vision/bookTicker_um_SOLUSDT/ (6 zips, ~12GB) - both fully sha256-pinned in committed data_local/INVENTORY.md; funding JSONs (1.7MB) committed.",
+  "workers": 0,
+  "recommended_next_action": "Skeptic/council: cost ceiling may now be derived from the verified caveated numbers (pooled spread p50 0.469 / p99 2.350 bps with UNKNOWN_WIDER for pre-2023-05 era; funding per-settlement on actual timestamps with FTX-week handling per the pinned time-normalized run definition). Then freeze gate parameters pre-outcome and STOP before GO-2 per the plan; OOS remains prospective accumulation D13/D26/D52 (D104 final)."
+}
