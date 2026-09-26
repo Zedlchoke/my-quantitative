@@ -74,6 +74,6 @@ def test_run_battery_verdicts():
 
 
 def test_in_session_mask_bounds():
-    df = _synth(48)
+    df = _synth(48)  # two UTC days of hourly bars
     m = in_session_mask(df, (7, 18))
-    assert m.sum() == 12 and not m[0] and m[7] and m[18] and not m[19]
+    assert m.sum() == 24 and not m[0] and m[7] and m[18] and not m[19]
