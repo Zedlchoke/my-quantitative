@@ -1187,3 +1187,23 @@ promise.
   303/306 (P-9). Detail:
   `.worktrees/illiq-reg-v1/integration/research/control/illiq_reg_v1/
   terminal_report.md`.
+
+## ERP1-TRACKA-COHORT-1 (TERMINAL 2026-09-26, REJECT_ALL)
+
+- Track A cohort 1 of ECONOMIC-ROBUSTNESS-PROGRAM-V1: first cycle to run the
+  program's full falsification-first arc (council -> pre-PnL battery -> frozen
+  scored cells -> repro twin -> A7 terminal -> two-half close).
+- Decisive finding: the RANGEFADE/RANGEEXP "edge" across EURUSD/GBPUSD/USDJPY
+  ancestry AND both fresh pairs (AUDUSD +3,207 / USDCAD +5,030 pips for the
+  leaky twin, all 8 gates) was the whole-day mode lookahead (incident
+  `tracka_cohort1/INCIDENT_RANGEFADE_PIT_SEAM_2026-09-25.md`); the PIT-clean
+  law has PF 1.03-1.05 and dies at 1.5x cost. M3 (quote-state gate) died at
+  the F-5 cost ceiling pre-PnL; M2 (cross-pair gate) died at the D2 novelty
+  veto pre-PnL. Holdout 2026-H1 on AUDUSD/USDCAD remains unread.
+- Owner-directed diagnostic (branch orca/erp1-tracka-cohort-1-diag): the
+  shadow's actual daemon-law (partial-range percentile) emulated on
+  EURUSD/GBPUSD history shows no edge (EURUSD PF 1.06 @1.0x decaying to ~0 at
+  2.0x; GBPUSD negative at every tier) — DIAGNOSTIC_OUTCOME_EXPOSED labels.
+- Control plane: research/control/ERP1-TRACKA-COHORT-1/ (freeze+errata, 42-row
+  ledger, censuses, audits A7 prelaunch+terminal, CYCLE_VERDICT with errata
+  bundle); branch orca/erp1-tracka-cohort-1-integration terminal fa93b807.

@@ -907,3 +907,30 @@ terminal with the named single owner action — no lane burn, no audit arc.
 - Consequence: ILLIQ-REG-V1's launcher/cell split (`phase1_sweep.py` /
   `illiq_reg_cell.py`); future cycles reusing recovered trees must not mix
   the two import domains in one process.
+
+## P-18 (ERP1-TRACKA-COHORT-1): a holdout pass cannot clear a lookahead; only a truncation proof can
+
+- Source: the RANGEFADE ancestry chain (EURUSD-OPEN-SEARCH-V1/V2 ->
+  EURUSD-RANGEEXP-SCORED-V1 -> FX-MAJORS-SEARCH-V1 -> FX-RANGEFADE-2M-SHADOW-V1)
+  "passed" one-look holdouts and cross-pair transfer for years; ERP1-TRACKA-COHORT-1's
+  falsifier battery proved the winning law's regime variable consumed day-d's own
+  FULL-DAY range at day start (v2_lib.py:269-301) — a whole-day lookahead plus a
+  pct==0 hindsight flat-day filter. M-5 (panel-truncation replay) caught it: R-ORIG
+  changes output on 72-75% of truncated replays while the PIT-clean R-ANCHOR changes
+  none. The scored confirmation: R-ORIG passes all 8 gates on both fresh pairs
+  (+3,207/+5,030 pips) exactly as it "passed" holdouts before; R-ANCHOR fails
+  G2/G3/G4 (PF 1.03-1.05). The live daemon meanwhile runs a THIRD law (partial-range
+  percentile, mode flips on ~62-65% of days) whose honest historical emulation shows
+  no edge (EURUSD PF 1.06 dying at cost stress; GBPUSD negative).
+- Lesson: OOS/holdout discipline protects against overfitting, not against
+  information leakage — a deterministic leak "passes" every out-of-sample window by
+  construction. The cheap, decisive tests are structural: (1) replay the exact
+  signal code on panels truncated at each decision time and require byte-identical
+  output; (2) run a one-index-shift PIT-clean twin side by side and preregister a
+  seam band; (3) audit any day-boundary regime variable for same-day statistics;
+  (4) never cite a same-function-same-panel parity self-test as semantics evidence
+  (it is blind to growing-panel vs full-panel divergence by construction).
+- Consequence: tracka_cohort1/INCIDENT_RANGEFADE_PIT_SEAM_2026-09-25.md citation
+  law (ancestor numbers = R-ORIG-semantics facts); the F-PIT-1 battery (M-1..M-5 +
+  3-limb seam law) is now standing pre-PnL law for any day-mode family; the shadow's
+  evidence class is DIAGNOSTIC_PENDING_PIT_REBASE (D-F) until rebased on a clean law.
