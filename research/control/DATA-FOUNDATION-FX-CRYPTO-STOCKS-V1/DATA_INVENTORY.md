@@ -8,7 +8,7 @@ inferred from file existence** — every AVAILABLE_VALIDATED row carries
 this-cycle re-measurement evidence (sha sample/full match + coverage
 census) in its `status_evidence` field.
 
-Status tally (post-conformance-fix): **AVAILABLE_VALIDATED 32 / AVAILABLE_UNVALIDATED 26 / NOT_RUN 28 / BLOCKED_TRANSPORT 2 / BLOCKED_LICENSE 1 / BLOCKED_ACCOUNT 2** — `validate_rows.py` returns VALID on the consolidated file (consolidation erratum: the first D1 commit message claimed validator PASS prematurely; the file then failed with 109 violations, fixed honestly in the erratum commit per P-19: bytes measured from disk, enum mappings conservative + original text preserved, 1 row downgraded for missing byte-level evidence, lane sample sizes referenced not transcribed).
+Status tally (post-conformance-fix): **AVAILABLE_VALIDATED 32 / AVAILABLE_UNVALIDATED 26 / NOT_RUN 28 / BLOCKED_TRANSPORT 2 / BLOCKED_LICENSE 1 / BLOCKED_ACCOUNT 2** — `validate_rows.py` returns VALID on the consolidated file (consolidation erratum: the first D1 commit message claimed validator PASS prematurely; the committed parent file fails with 265 violations under the same validator (A7 F-A7-2; the 109 figure this erratum originally quoted was measured mid-remediation on a partially-fixed working file — original failure UNDERstated; correction verified genuine), fixed honestly in the erratum commit per P-19: bytes measured from disk, enum mappings conservative + original text preserved, 1 row downgraded for missing byte-level evidence, lane sample sizes referenced not transcribed).
 Taxonomy note (plan §14 F9): BLOCKED_TRANSPORT ≡ the owner's 7-state view
 "BLOCKED, cause = transport" (standing SNI-filter environment constraint,
 L-FXFF-1) — it is a superset state, not a new verdict class.
@@ -78,7 +78,7 @@ unpinned (6/111,322 retrieval records carry shas despite
 `f9_artifact_digests.json` claiming per-pull pinning) — a ~2-minute
 SHA256SUMS job closes it (runbook R8).
 
-## SHARED / RATES / VOL / COMMODITIES (17 rows: 15 shared + 2 rates + 1 vol + 4 commodities)
+## SHARED / RATES / VOL / COMMODITIES (20 rows: 13 shared + 2 rates + 1 vol + 4 commodities; OFR/NYFed are shared-class rows cross-listed under Stocks above — arithmetic corrected per A7 F-A7-4)
 
 Validated: NYFed 5 reference rates, OFR 442-mnemonic inventory + 5 series,
 EIA/NWS/USDA (FDF-V1) — all hashed this cycle. Unvalidated: FRED (owner
@@ -106,7 +106,7 @@ they are (a) two-sided FX market data NOT_SUBSCRIBED (bid/ask = −1 over
 
 ## Outcome-exposure separation (D-map)
 
-`pit_license/OUTCOME_EXPOSURE_MAP.md`: 21 outcome-exposed family windows
+`pit_license/OUTCOME_EXPOSURE_MAP.md`: 28 audited data rows (≈21 outcome-exposed + ≈7 falsifier/census reads; corrected per A7 F-A7-1 — original '30' not reproducible)
 (EURUSD/GBPUSD/USDJPY dev + 2026-H1 holdout reads, BTC H1/H4 2020–2026,
 ETH 2020–2026, EODHD panels, etc.) vs 5 UNOPENED classes (S1 everywhere;
 ERP1 sealed 2026-H1 AUDUSD/USDCAD; post-2026-09 prospective streams; all

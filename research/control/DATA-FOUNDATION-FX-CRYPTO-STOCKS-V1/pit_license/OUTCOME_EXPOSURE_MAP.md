@@ -118,3 +118,16 @@ plane).**
    that crosses a stamped boundary even once reclassifies the corpus and is
    an incident (the SRLV/PSV1 "holdout unread" rows are the compliance
    pattern: 0 holdout looks is an auditable property).
+
+---
+
+## ERRATUM (A7 F-A7-1, integration-time, append-only)
+
+The count line above ("30 instrument×window×cycle families, of which 21 …
+and 9 …") is **not reproducible as table rows** and is superseded: A7's
+audited count is **28 data rows** in section (a) (33 pipe-rows − 5 headers).
+Per-row class labels in the tables remain the authority; the headline
+split to carry forward is **≈21 outcome-exposed + ≈7 falsifier/census
+reads under the 28-row rule** (row-level re-derivation required before any
+future use of the split as a number). The separation RULE (section c) is
+unaffected.

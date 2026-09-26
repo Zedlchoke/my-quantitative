@@ -7,9 +7,9 @@ preregistered falsification battery before any scored cell — nothing here
 is a profitability claim. Frontiers lacking validated data are tagged
 BLOCKED and are NOT eligible for a scored cycle.
 
-## F1 (READY) — STOCKS: filing-flow & PIT-rebuilt-state families on the death-inclusive cohort
+## F1 (READY — PARTIAL) — STOCKS: filing-flow & PIT-rebuilt-state families on the death-inclusive cohort
 
-Enabled by validated bytes: Form-4 substrate (345,150 XMLs, digest
+Enabled by validated bytes (core planes): form4_stream, FTD archive, amihud panels. **Partial per A7 F-A7-3:** the Form-4 XML substrate, 4/A corpus and EODHD div/splits rows are AVAILABLE_UNVALIDATED (digest/archive-sha-verified, not full-corpus re-hash) and the acceptance-datetime leg needs probe N2 — a successor must stage+validate those rows before scoring on them. Originally listed as: Form-4 substrate (345,150 XMLs, digest
 `5d351623…` EXACT), 4/A amendment corpus (6,123 files), Form-15 death
 census (3,395 filings), FTD archive (434 zips, P-26 posting-bound), amihud
 panels (4.68M rows full-hash), EODHD div/splits (2,168+2,168 entitled
