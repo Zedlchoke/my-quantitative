@@ -742,3 +742,12 @@ def test_xsect_dormant_default_excludes_family():
     src = __import__("pathlib").Path(sw.__file__).read_text()
     assert "XSECT_DORMANT = True" in src
     assert "family_id == FAMILY_CARRY and XSECT_DORMANT" in src
+
+def test_xsect_dormant_in_valuation_worker_too():
+    import pathlib
+    src = pathlib.Path(
+        __import__("research.control.prospective_shadow_v1.e.valuation_worker", fromlist=["x"]).__file__
+    ).read_text() if False else pathlib.Path(
+        "research/control/prospective_shadow_v1/e/valuation_worker.py"
+    ).read_text()
+    assert "family_id == FAMILY_CARRY" in src and "symmetric" in src

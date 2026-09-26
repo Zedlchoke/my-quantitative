@@ -317,6 +317,11 @@ def run_valuation_loop(
         payload["last_error"] = f"price fetch: {type(exc).__name__}: {exc}"
 
     for family_id in FAMILY_ORDER:
+        if family_id == FAMILY_CARRY:
+            # OWNER ORDER 2026-09-26 option 1 ("không chạy gì hết", symmetric
+            # dormancy): XSECT emits NO further valuation marks; the last
+            # mark stays as the frozen snapshot. Evidence ledger untouched.
+            continue
         try:
             # idempotent seed (CAPITAL_SEED_NO_MARK, never performance)
             seed = valuation.capital_seed_record(family_id, shadow_start_utc)
