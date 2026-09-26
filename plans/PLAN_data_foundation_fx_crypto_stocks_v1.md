@@ -234,5 +234,59 @@ lock it serializes via `researchctl` and yields to foreign cycles.
 "orchestrate một chương trình DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1 làm bước
 đệm cho việc tìm strategy có bằng chứng tốt hơn. Đây là cycle dữ liệu và
 phương pháp, không phải cycle săn PnL…" (full text preserved in
-`research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/OWNER_DIRECTIVE.md`);
-mandatory deliverables 1–6 and stop conditions recorded there are binding.
+`research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/OWNER_DIRECTIVE.md`).
+**The ENTIRE OWNER_DIRECTIVE.md is binding** — including the per-asset
+priority lists (Forex / Crypto / Stocks), the crypto prohibition on inferring
+order book or forced flow from candles, and the no-credentials/no-accounts
+rules — not only the deliverables and stop conditions. Every relevant lane
+packet restates its per-asset priority list verbatim; PIT_AND_COST_CONTRACTS
+encodes the crypto no-candle-inference prohibition as an explicit contract
+clause + fixture requirement.
+
+## 14. Amendment r1 — A7 plan review remediation (binding, 2026-09-26)
+
+A7 verdict `AUTHORIZED_WITH_FINDINGS` (0 CRITICAL / 1 HIGH / 5 MEDIUM / 5 LOW;
+`audits/A7_PLAN_REVIEW_r1.md`). All findings remediated as follows before G1:
+
+- **F1 (HIGH) — disk accounting:** the ≤2.0 GB budget is a **total new-disk
+  footprint cap covering worktree checkouts + probes + artifacts together**;
+  the 5.0 GiB free floor applies to ALL new-byte creation including
+  `git worktree add`. Measured: tracked checkout = 148 MB per worktree; ≤7
+  worktrees ≈ 1.04 GB, leaving ≤0.9 GB for probes. `df` is re-measured and
+  recorded immediately before each `git worktree add` (abort below 6.0 GiB
+  free); per-worktree `du -sh` recorded in G1 evidence; worktrees are lean
+  (no data copies, no venv duplication).
+- **F2 — probe budget machine-readable:** frozen probe-set list (the five in
+  §8); cycle-wide request counter in `probe_ledger.json` — cap 600 requests
+  TOTAL, ≤300 per set, ≤2 sets by default; G5 verifies the counter, not just
+  manifests. A new source outside §3 requires a new A7-screened amendment
+  before any request.
+- **F3 — "of consequence" defined:** every dataset with a §3 ruling row;
+  every dataset cited by any §6 deliverable; every dataset ≥50 MB on disk;
+  every dataset referenced by any registry terminal phase. Any validation
+  skip carries an explicit NOT_RUN + the rule applied.
+- **F4 — registration order:** the cycle is registered via `researchctl`
+  (lifecycle ACTIVE_LIGHT) BEFORE the first lane dispatch; the registry row
+  is G1 evidence alongside the packets.
+- **F5 — no racing reads on live-owned data:** datasets owned by an
+  ACTIVE_LIGHT cycle with workers>0 or heartbeat <24h are censused
+  metadata-only; `manifest_verify` = `INHERITED_NOT_REHASHED_LIVE_OWNER`
+  using that cycle's committed manifests; a MISMATCH verdict is never
+  written from a possibly mid-write file.
+- **F6 — directive scope:** closed by the §13 rewrite above.
+- **F7 — neighbor count:** the ACTIVE_LIGHT neighbor list is re-measured at
+  G1 from the live registry (grep-window caveat noted); §2's "10" is not
+  relied upon.
+- **F8 — sealed bytes:** sealed/holdout inventory uses inherited manifest
+  SHAs (P-13 resolution); byte-level re-hash of sealed files requires
+  explicit owner authorization, else NOT_RUN.
+- **F9 — owner-facing taxonomy:** DATA_INVENTORY.md carries a mapping note:
+  BLOCKED_TRANSPORT ≡ BLOCKED (cause = transport; standing environment
+  constraint per L-FXFF-1) within the owner's 7-state view.
+- **F10 — measured, not estimated:** lanes run their first work chunk under
+  `/usr/bin/time` and abort if projected >10 min CPU or >1 GB temp; A1
+  spot-checks one lane's measurement at G3.
+- **F11 — A7 reproduction charter:** the terminal A7 packet explicitly
+  requires recounting key numbers from committed artifacts, re-deriving ≥5
+  authority-row statuses from their evidence fields, re-hashing ≥3 datasets,
+  and re-measuring ≥2 coverage claims independently.
