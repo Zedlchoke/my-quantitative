@@ -963,3 +963,29 @@ terminal with the named single owner action — no lane burn, no audit arc.
   pin/digest/timestamp/provenance hygiene checklist (A7 F1/F2/F3/F5 class) are now
   standing close-out law for every cycle; HOW_TO_BE_A_LEAD_ENGINEER.md §39 codifies
   the doctrine.
+
+
+## P-27 — Cost-first falsification and the mechanism-class court (ERP1-TRACKA-COHORT-2, 2026-09-26)
+
+- Source: cohort-2 closed REJECT_ALL at 0/18 cells, 0 holdout looks, 0 PnL —
+  7 mechanisms killed pre-PnL by the F-0 court (3 re-gated range-fade
+  variants), declared-band arithmetic (2 blind proposals whose own frozen
+  bands were below the measured stressed book at their own fill hours), the
+  measured conditional cost ceiling (P3-A: genuinely novel, PIT-clean,
+  ancestry-decorrelated at 0.079/0.088 over 47 shadows — killed by a 0.9-pip
+  crossing bill against a 0.41-pip threshold), and ancestry rho (P3-B:
+  day-cadence continuation = the dead momentum class re-clocked).
+- Lesson: (1) run the F-0 mechanism-class court BEFORE rho and BEFORE PnL —
+  "adding an observable/gate" to a dead law is a variant, not a mechanism
+  (skeleton/payer/information tests); (2) price the cost ceiling on the
+  MEASURED fill-hour conditional distribution of the actual gated book
+  (declared priors are hypotheses — Q-8; the gate selecting "cheap" states
+  does not make the executor's bar-open charge cheap — Q-2); (3) novelty,
+  PIT-cleanliness and decorrelation do not fund the bill — a mechanism can
+  clear every information gate and still be unfundable (Q-1); (4) cadence
+  change launders nothing (Q-3 confirmed again).
+- Consequence: the F-0 court + measured-conditional F-5 + one-shot rho +
+  counts-only censuses + SLOT_LEFT_EMPTY are standing pre-PnL law for every
+  future cohort; FAMILY_FAILURES carries the five new entries with their
+  reopening conditions; P3-A's reopening requires measured sub-0.41-pip
+  ALL-IN execution evidence (venue authority), never assumed maker/mid.

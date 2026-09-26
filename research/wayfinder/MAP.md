@@ -1,3 +1,39 @@
+## Sprint state (synced at the ERP1-TRACKA-COHORT-2 terminal, 2026-09-26)
+
+- **ERP1-TRACKA-COHORT-2 CLOSED → `REJECT_ALL`** (2026-09-26; branch
+  `orca/erp1-tracka-cohort-2-integration` terminal 206a157b; budget **0/18 —
+  zero scored cells, zero holdout looks, zero PnL anywhere**; A7 terminal
+  `TERMINAL_AUDIT_PASS` 0C/0H/2L/3I; S1 SEALED; GO-2 died
+  REGISTERED_NOT_CONSUMED; no orders; no shadow worker touched): the first
+  cohort run under the **F-0 mechanism-class court** (owner law 2026-09-26:
+  "adding an observable is not a new mechanism") — **all 7 candidate
+  mechanisms falsified BEFORE any PnL**:
+  - C1 PROV-ABSORB / C2 RECLAIM-ABSORB / C3 PROBE-DEPLETION →
+    `VETO_VARIANT_SAME_FAMILY` at F-0 (skeleton test: strip the gate, the
+    dead RANGEFADE law remains; C1 double-killed by the cost lane's
+    ceiling −1.6/−2.1 pips vs 3.6 stress).
+  - P4-A FIXCERT-01 / P4-B QSKEW-01 (blind open-call, class-distinct) →
+    killed by their OWN frozen declared bands (below the measured stressed
+    book at their own fill hours; P4-B below even base ×1.0).
+  - **P3-A QCRD-H1 — the cohort's flagship negative**: F-0 pass (dealer
+    impact-cost payer), PIT battery PASS (0 truncation/future-mutation
+    diffs), **F-1 PASS with worst |rho| 0.0786/0.0883 over 47 shadows**
+    (A7 independently recomputed exact) — then **F-5 measured
+    `CEILING_NEGATIVE_VETO`**: the binding condition needed tight-state
+    crossings ≤0.41 pips @k=2.0; measured 0.9–1.0 pips. Novelty,
+    PIT-cleanliness and decorrelation did not fund the bill (Q-1 live).
+    Reopens only on measured all-in execution cost below the frozen
+    threshold (broker/venue authority — BLOCKED program-wide).
+  - P3-B DINV-1D → `ANCESTRY_RHO_BLOCK` 0.3032/0.3103 (H1TSMOM/H1DONCH +
+    more; representation-robust): day-cadence quote-gated continuation is
+    the dead momentum class re-clocked (Q-3).
+  - Durable falsifier infrastructure: generic PIT battery (leak-catch
+    proven on the RANGEFADE class), 47-shadow arrays + one-shot rho runner,
+    engine inheritance chain (P-13), F-0 court procedure. Sealed holdouts
+    2026-H1 AUDUSD+USDCAD remain UNREAD program assets. Next: owner-gated
+    cohort-3 viability council (master §7 stop-conditions apply — two
+    consecutive REJECT_ALL cohorts).
+
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
 ## Sprint state (synced at the ETHUSDT-OPEN-SEARCH-V1 terminal, 2026-09-25)
