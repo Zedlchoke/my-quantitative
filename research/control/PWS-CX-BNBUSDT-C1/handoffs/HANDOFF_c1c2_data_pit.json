@@ -1,0 +1,84 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "pws-cx-bnb-c1-c1c2-data-pit",
+ "cycle_id": "PWS-CX-BNBUSDT-C1",
+ "role": "pit-data-auditor",
+ "lane": "c1c2-data-pit",
+ "branch": "orca/pws-cx-bnbusdt-c1-integration",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/pws-cx-bnbusdt-c1/integration",
+ "actual_start_sha": "363cf282d6f3b08b9c8d2f449debdb0e056cf49b",
+ "commit_sha": "802b5011c6d8ef74ff1dd555dc187dd051b82f63",
+ "changed_files": [
+  "research/control/PWS-CX-BNBUSDT-C1/C1_data_gate_REPORT.md",
+  "research/control/PWS-CX-BNBUSDT-C1/C1_machine_KLINE_CENSUS_BNBUSDT.json",
+  "research/control/PWS-CX-BNBUSDT-C1/C1_machine_FUNDING_STATS_BNBUSDT.json",
+  "research/control/PWS-CX-BNBUSDT-C1/C2_EXPOSURE_VERIFICATION.md",
+  "research/control/PWS-CX-BNBUSDT-C1/handoffs/HANDOFF_c1c2_data_pit.json"
+ ],
+ "changed_paths_note": "4 artifact files committed together (C1 report, 2 machine census files, C2 exposure doc); this handoff JSON committed immediately after (branch convention per SOLUSDT precedent lanes) so it can pin the artifact commit sha. data_local/ (79 klines zips 2.7MB + fapi funding scan JSON + INVENTORY.md + kline zip manifest) intentionally left UNTRACKED per dispatch ('do not git add data_local'); every byte is sha256-pinned inside the committed C1_machine_KLINE_CENSUS_BNBUSDT.json (per_zip sha256s), the C1 report section 7, and data_local/INVENTORY.md (untracked).",
+ "incidents": [
+  {
+   "kind": "self_caught_computation_bug",
+   "what": "first write of C1_machine_FUNDING_STATS_BNBUSDT.json recorded stats.overall.sum_rate as 0 because a later loop in the same script clobbered the accumulator variable",
+   "remediation": "sum_rate recomputed directly from the raw fapi scan bytes (-0.00274199) and patched into the machine file with an _audit_note; all other fields were computed before the clobber and were never affected",
+   "status": "RESOLVED"
+  }
+ ],
+ "known_limitations": [
+  "spread census NOT_RUN_DISK_CONSTRAINT: df -g / = 7GB available (228GB capacity, 17GB used, 70%) < 25GB precondition; no bookTicker bytes downloaded; no substitution from any other pair; cost gate fail-closed for scored execution",
+  "funding cross_check_vision NOT_RUN (no budget, per dispatch): funding series is single-campaign fapi; never claim dual-source verification; symbol-month EXCLUDED conflict rule stays armed",
+  "funding scan extends to 2026-09-26T08:00Z, past the klines corpus end 2026-08-31T23:00Z: consumers must clip to their evaluation window",
+  "BNBUSDT bookTicker archive availability UNKNOWN (not probed — probing without disk budget is pointless); not claimable as 404-blocked",
+  "funding median is exactly 0 (3601/7261 settlements are exact zeros): mean-based carry arithmetic required"
+ ],
+ "objective": "C1 data gate (PIT) + C2 exposure verification for pair-child #2 BNBUSDT: stage and census the 1h Vision klines corpus 2020-01..2026-08, measure the full fapi funding distribution census for ceiling×power math, record the disk-constrained spread census fail-closed, verify license posture, verify pair×plane×window exposure against registry/ledgers, pin dev folds F1-F4 pre-outcome",
+ "outputs": [
+  {
+   "path": "research/control/PWS-CX-BNBUSDT-C1/C1_data_gate_REPORT.md",
+   "result": "WRITTEN",
+   "evidence": "verdict table: klines PASS, funding PASS WITH CAVEATS, spread NOT_RUN_DISK_CONSTRAINT, license PASS; all caveats binding and fail-closed items explicit"
+  },
+  {
+   "path": "research/control/PWS-CX-BNBUSDT-C1/C1_machine_KLINE_CENSUS_BNBUSDT.json",
+   "result": "PASS",
+   "evidence": "79 zips 2020-02..2026-08 (404s honestly recorded: 2020-01 pre-listing, 2026-09..12 unpublished/future); 57472 bars; 0 duplicate open_times; grid gapless (ideal==actual, 0 missing); first_open 2020-02-10T08:00Z floor_match true; last_open 2026-08-31T23:00Z; per-zip sha256 + monthly bar counts inside"
+  },
+  {
+   "path": "research/control/PWS-CX-BNBUSDT-C1/C1_machine_FUNDING_STATS_BNBUSDT.json",
+   "result": "PASS_WITH_CAVEATS",
+   "evidence": "n=7261 settlements 2020-02-10T08:00Z..2026-09-26T08:00Z floor_match true; mean -0.00378 bps/settlement; sum -27.42 bps over 6.6y; neg_share 0.2394; worst -58.44 bps (2020-03-13) max +44.19 bps (2021-02-20); ZERO non-8h spacings (no FTX-week cadence anomaly for BNB — pair-contrast fact vs SOL's 101); run census pos>=3:187 >=5:108 >=8:64 longest 63 / neg>=3:166 >=5:94 >=8:55 longest 46; theta sweep K=3 both sides at theta=1/2/3/4 bps; deep prints: zero at >=75bps (no clamp class); neg-mass year-share 2020:25.5%..2025:5.3%,2026:0.07%"
+  },
+  {
+   "path": "research/control/PWS-CX-BNBUSDT-C1/C2_EXPOSURE_VERIFICATION.md",
+   "result": "CONFIRMED",
+   "evidence": "classification ELIGIBLE_DEV_BASELINE_EXPOSED + ANCESTRY_EXPOSED_DEV matches measured registry state: OUTCOME_EXPOSURE_MAP.md line 71 BNB=OUTCOME_EXPOSED_baseline; FAMILY_FAILURES.jsonl 137 rows zero BNBUSDT-keyed; HYPOTHESIS_LEDGER.md zero BNB mentions; ETHUSDT-OPEN-SEARCH-V2 registry row confirms BNB staged (floor 2020-02-10) in 7-series corpus with budget 0/8 zero scored PnL (read-only knowledge, worktree untouched); no dedicated BNB directional scored family anywhere; dev folds F1 2020-02..2021-12, F2 2022-01..2023-06, F3 2023-07..2024-12, F4 2025-01..2026-08 pinned pre-outcome"
+  }
+ ],
+ "tests": [
+  {
+   "name": "kline_census_full_recount",
+   "command": ".venv/bin/python streaming parse of all 79 zips (zipfile+csv): per-zip row counts, global open_time set dedupe, hourly grid gap walk",
+   "numbers": "n_zips=79, total_bars=57472, dups=0, ideal=57472, missing=0, gaps=0, first=2020-02-10T08:00Z, last=2026-08-31T23:00Z"
+  },
+  {
+   "name": "funding_census_full_recount",
+   "command": ".venv/bin/python parse of fapi_scan_BNBUSDT_2026-09-26.json (7261 rows, single paginated scan 8 pages): dedupe, stats, run/theta/deep/spacing censuses",
+   "numbers": "n=7261, dups=0, mean_bps=-0.00377632557498967, median_bps=0.0, sum_bps=-27.4199, neg_share=0.239361, worst=-58.44bps, max=+44.19bps, non-8h spacings=0"
+  },
+  {
+   "name": "disk_constraint_evidence",
+   "command": "df -g /  (recorded twice: dispatch start + inventory build)",
+   "numbers": "available 7GB (capacity 228, used 17, 70%) < 25GB required -> spread NOT_RUN_DISK_CONSTRAINT"
+  },
+  {
+   "name": "exposure_ledger_sweeps",
+   "command": "grep BNBUSDT/bnb across HYPOTHESIS_LEDGER.md (273 lines), FAMILY_FAILURES.jsonl (137 rows), OUTCOME_EXPOSURE_MAP.md, CYCLE_REGISTRY.json (75 cycles), V2/SRLV-CX plans",
+   "numbers": "ledger hits 0; family-failure hits 0; map line 71 OUTCOME_EXPOSED_baseline; registry rows verified for 6 relevant cycles"
+  }
+ ],
+ "tree_status": "clean at start (363cf282); only this cycle's control files written by this lane; no other lane paths touched; no heavy lock held; workers 0",
+ "workers": 0,
+ "verdict": "C1_PASS_WITH_CAVEATS_SPREAD_NOT_RUN_DISK_CONSTRAINT_C2_CONFIRMED",
+ "summary": "BNBUSDT data plane measured from raw bytes this cycle: klines corpus gapless (79 zips, 57472 bars, floor 2020-02-10T08:00Z exact), funding census complete (7261 settlements, near-zero net carry -27.42bps/6.6y, no clamp prints, strict 8h cadence — no FTX anomaly unlike SOL), spread census honestly NOT_RUN_DISK_CONSTRAINT (7GB<25GB df evidence) keeping the cost gate fail-closed, Vision funding cross-check NOT_RUN (no budget) with conflict rule armed, license posture keyless-clean with the SOLUSDT-captured ToU cited by sha. C2 exposure confirmed baseline-only (no BNB scored outcome anywhere; staged-only inclusion in the untouched ETHUSDT-OPEN-SEARCH-V2 corpus), dev folds F1-F4 pinned pre-outcome. Per child plan C4: scored execution not viable this sprint while spread census is NOT_RUN_DISK_CONSTRAINT.",
+ "recommended_next_action": "Proceed to C3 council outcome-blind with the information-novelty test: spread NOT_RUN_DISK_CONSTRAINT makes C4 scored execution non-viable this sprint, so council should evaluate proposals expecting a likely NO_ELIGIBLE_PROPOSAL / empty-slate close unless a proposal is defined to close at C3 without scored PnL; funding distribution census (run/theta/deep blocks) is the skeptic's ceiling×power input; any freeze must disclose the binding caveats (single-campaign funding, spread unmeasured, OOS prospective-only)."
+}
