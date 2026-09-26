@@ -1,0 +1,100 @@
+{
+ "schema": "erp1_trackb_cohort1_trial_freeze@1",
+ "frozen_at_utc": "2026-09-26T07:20:00Z",
+ "frozen_by": "Lead (A1) under owner GO-1 (receipt: research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/trackb_cohort1/GO1_RECORDED.json)",
+ "authority_chain": {
+  "plan_commit": "e02bf36f9c20ba498c5206f9b8dc5240f69ea018",
+  "child_plan": "plans/PLAN_erp1_trackb_cohort_1.md (sha256 c45cc7d5af766763…)",
+  "program_plan": "plans/PLAN_erp_trackb_program_v1.md (sha256 c8cc7b5623c5799e…)",
+  "council_report_sha256_prefix": {
+   "PROPOSER": "10e96486ac06424c",
+   "PITDATA": "44c3b3c272c44060",
+   "SKEPTIC": "3004596f907f302e",
+   "COSTEXEC": "99d861859ffdbec0",
+   "A7_plan_audit": "97268d503e0697d0"
+  }
+ },
+
+ "hypothesis": {
+  "mechanism_id": "M1",
+  "name": "TB1-DN-CARRY-CTG",
+  "class": "A (skeptic F-0 ADMIT conditional — funding-level-gated low-turnover cash-and-carry, breakeven-horizon entry law)",
+  "universe": {"spot": "BTCUSDT (Binance spot)", "perp": "BTCUSDT-PERP (Binance USDⓈ-M)", "venue": "binance-single"},
+  "decision_clock": "weekly; decision at first bar close >= Friday 00:00 UTC on synchronized 1h bars",
+  "warmup": "28d settled funding + 1h bar alignment warmup before first decision epoch",
+  "gate_law": "enter only when expected_carry(p,H) >= C*(H) (F-5 inequality, COSTEXEC §4) computed from the trailing recent-window SETTLED funding distribution available at decision time; predicted-rate inputs forbidden",
+  "funding_pit_law": "settlement consumable only when fundingTime <= T; no forward-fill; funding_predicted quarantined (PITDATA §1)"
+ },
+
+ "arms": {
+  "ANCHOR": {"hold_days": 35, "gate_tier": "x2.0_ceiling", "selectable": true, "arm_id": "M1-ANCHOR-35D"},
+  "N1": {"hold_days": 28, "gate_tier": "x2.0_ceiling", "selectable": false, "role": "holding-period support only", "arm_id": "M1-NEIGH-28D"},
+  "N2": {"hold_days": 42, "gate_tier": "x2.0_ceiling", "selectable": false, "role": "holding-period support only", "arm_id": "M1-NEIGH-42D"},
+  "CAUSAL": {"type": "entry-timing permutation", "seed": 56532041819335, "preserves": "holding distribution + funding-state marginals", "removes": "gate-timing information", "non_vacuity_predicates": {"min_round_trips_differing_from_anchor": 0.9, "both_states_present": true, "occupancy_band": [0.10, 0.40]}, "arm_id": "M1-CTL-TIMINGPERM"},
+  "INVERTED": {"type": "gate-excluded-state book", "holds": "exactly when ANCHOR is flat (expected carry < C*(H))", "arm_id": "M1-INV-GATEEXCLUDED"},
+  "BASELINE": {"composite": ["cash_0pct", "long_btc_spot_same_cost_book", "perp_only_unlevered_if_scoreable_else_BLOCKED"], "arm_id": "M1-BASE-SET"},
+  "DIAG_DTX": {"type": "negative-run exit gate (diagnostic)", "exit_law": "exit iff E[remaining funding] from 21-settlement-day realized run-rate < -exit_RT", "scramble_seed": 275704269488637, "selectable": false, "never_looks_sealed_pass": true, "precondition": "skeptic F-0 ruling on the sign-run exit observable (class-C collision question) — if VETOED, arm empties pre-PnL without touching M1", "arm_id": "M1-DIAG-DTX"}
+ },
+ "slots_2_3": "EMPTY (SLOT_LEFT_EMPTY per F-0 court 2026-09-26; basis-prepaid entry rejected as BASISLV re-tune)",
+
+ "capital_book": {
+  "opening_equity_usdt": 100000,
+  "one_book_two_legs_never_doubled": true,
+  "sizing_law": {"spot_notional_N": 65000, "perp_margin_M": 35000, "perp_short_notional": "= N (1:1 delta hedge)", "status": "PRISTINE_PIN pending venue fee/bracket validation at data gate; re-pin ONCE pre-PnL with dated freeze note if contradicted (never after PnL)"},
+  "buffer_bands": {"re_margin_trigger": "margin < 20% of N (13,000 USDT, adverse delta ~ +33.8%)", "force_exit_band": "margin < 12% of N (7,800 USDT, adverse delta ~ +41.8%)", "liq_boundary_declared": "delta ~ 49-53% (MMR bracket DECLARED until pinned)"},
+  "rebalance_bands_hedge_drift": {"enter": "|drift|/N > 1.0%", "exit": "0.5% (hysteresis)", "force": "5%"},
+  "outage_bands_declared": {"miss_le_3_settlements": "accrual pause, no action", "miss_gt_3_or_gap": "reopen at stressed spread of reopen-hour census bucket + declared 25-50 bps (x2.0 -> 50-100 bps)"},
+  "execution_law": {"synchronization": "both legs same bar at opposite quotes (spot buy@ask, perp sell@bid), one crossing per side per leg", "unmatched_flag": "HEDGE_UNMATCHED — match or unwind by next bar close, drift charged", "no_legging": true, "maker_fills": "FORBIDDEN in cost book (BLOCKED until queue measured)"}
+ },
+
+ "cost_law": {
+  "tiers": ["x1.0", "x1.5", "x2.0"],
+  "census_schema": "(leg, utc_hour, month) histograms; fixed bps buckets [0-0.5,0.5-1,1-2,2-4,4-8,8-16,16-32,>32]; persisted counts; LOW_SAMPLE_BUCKET n<30 -> declared book; EXCLUDED_BUCKET n<10 -> fill hour not scoreable",
+  "f5_ceiling": "C*(H) = 2.0 x RT_measured_conditional(fill-hour census) + OutageBand_declared(H); KILL_COST_CEILING iff for EVERY frozen (premium p, hold H) pair: expected_carry(p,H) < C*(H)",
+  "f5_anchor_band_usable_only_after": "venue fee schedule sha-pinned + reconciled (DECLARED->MEASURED path, COSTEXEC §1#1)",
+  "funding_path_stress": "scenario-path on measured settlement distribution (baseline in-DT p=0.247 negative; declared adverse 50% negative at half DT-mean; worst-path runs at -0.30%/8h anchor); E[>=3-run] ~= 1.9 per 42d hold — budget one 5-run; 5x30bps ~= 1.0% of book (drag, not solvency)",
+  "labels_every_row": ["SINGLE_VENUE_PANEL", "PAPER_TIER", "ANCESTRY_EXPOSED_DEV", "FUNDING_PATH_STRESSED", "LIQUIDATION_MODEL_DECLARED", "FILL_QUALITY_CLASS_<measured|declared>"]
+ },
+
+ "folds": {
+  "dev_window": "2020-07-18..2026-08-21 (ANCESTRY_EXPOSED_DEV)",
+  "fold_contract": "chronological non-overlapping F1..F6, force-flat at boundaries, seed 156535602707752 for any fold-boundary tie-break fixture",
+  "seam_window": "2026-08-22..2026-09-13 SEAM_CONSISTENCY_ONLY; 2026-09-14..freeze ANCESTRY_EXPOSED_SEAM (A7 F2)",
+  "no_substitution_after_pnl": true
+ },
+
+ "gates_dev": {
+  "G1": "net > 0 @ x1.0 measured",
+  "G2": "PF >= 1.20 per-hold distribution",
+  "G3": ">= 4/6 folds net > 0",
+  "G4": "net > 0 @ x1.5 (funding-path stress included)",
+  "G5": "population floors: >=52 valid weekly epochs AND >=40 closed holds AND bootstrap CI on per-hold net excluding 0 (seed 50568814770023)",
+  "G6": "top-fold share <= 50% of positive net",
+  "G7": "top-5-holds share <= 50% of positive net",
+  "G8": "top single funding-episode (contiguous same-sign run) share <= 50% of positive net",
+  "margins_to_fail_mandatory": true
+ },
+
+ "sealed_pass_membership": {
+  "pinned": "ONE pass; covers M1-ANCHOR-35D only + companions computed in the same pass (CAUSAL, INVERTED, BASELINE books)",
+  "never_look": ["M1-NEIGH-28D", "M1-NEIGH-42D", "M1-DIAG-DTX (regardless of outcome)"],
+  "d_gates": "D13/D26/D52 weekly decision epochs post-freeze (umbrella §5.12)",
+  "one_shot": true
+ },
+
+ "falsifier_order": ["F-0 (DTX precondition ruling — skeptic lane)", "F-1 one-shot ancestry rho (skeptic, exact decision-state representation, truncation proofs first)", "F-2 PIT battery M-1..M-5", "F-3 clock-placebo", "F-4 baselines/beta", "F-5 measured conditional cost ceiling", "F-6 nearest-window feasibility", "F-7 concentration pre-check"],
+ "ordering_law": "data gate + F-0..F-7 complete BEFORE any PnL-bearing computation anywhere in the cycle",
+
+ "open_pins_pending_data_gate": {
+  "venue_fee_schedule_sha": null,
+  "perp_margin_bracket_sha": null,
+  "spread_census_tables_sha": null,
+  "funding_staging_manifest_sha": null,
+  "spot_klines_manifest_sha": null,
+  "perp_klines_manifest_sha": null,
+  "note": "appended additively by dated freeze notes when staged; never rewritten in place (P-19)"
+ },
+
+ "kill_laws": ["KILL_COST_CEILING", "KILL_INVERSION", "KILL_CONTROL_REPRODUCED", "KILL_BETA_EXPLAINED", "KILL_PIT_SEAM", "KILL_ANCESTRY_RHO_GT_0.20", "KILL_CONCENTRATION", "TIME_STOP_60D", "NO_MID_COHORT_REPLACEMENT", "NO_RERESCUE_BY_RENAME_PARAM_TIMEFRAME_MAKERASSUMPTION_FEEREDUCTION"],
+ "budget": {"scored_cells_max": 7, "ledger": "research/control/ERP1-TRACKB-COHORT-1/trial_ledger.jsonl"}
+}
