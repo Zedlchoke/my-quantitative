@@ -1,0 +1,69 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "tracka2-pitdata-audit",
+  "cycle_id": "ERP1-TRACKA-COHORT-2",
+  "role": "pit-data-auditor",
+  "lane": "pitdata",
+  "dispatch_sha": "3de439ab988d82cd246731ae6c277a688f6e2c31",
+  "actual_start_sha": "3de439ab988d82cd246731ae6c277a688f6e2c31",
+  "sha_note": "no dispatch-packet sha was supplied in the dispatch; both fields set to the measured HEAD of the root checkout (main) at lane start, per dispatch instruction 'dispatch_sha/actual_start_sha (measured HEAD)'. Cohort-1 asset worktree integration HEAD measured separately: fa93b8071a0a34ebf2dd50f8147dbe3d30cc25bc (branch orca/erp1-tracka-cohort-1-integration, matches registry TERMINAL row).",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/PITDATA_cohort2_REPORT.md",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/HANDOFF_pitdata_cohort2.json"
+  ],
+  "tests": [
+    {
+      "command": ".venv/bin/python (pyarrow.parquet structural scan of 8 parquets in .worktrees/erp1-tracka-cohort-1/integration/research/control/ERP1-TRACKA-COHORT-1/data_local/derived/)",
+      "result": "PASS — all 8 open; rows 130160/130102 (15m), 30420/30386 (1h); ts 2021-01-03T22:15Z..2026-06-30T23:45Z (15m) / 2026-06-30 (1h); monotonic-increasing true, dup_ts 0 on all 8; ALL 8 contain 2026-H1 rows (11885/11871 15m; 2812/2803 1h); dev rows after mask ts<=2025-12-31 23:59:59Z: 118275/118231/27608/27583; ANC vs port ts sets equal 4/4"
+    },
+    {
+      "command": "sha256 of census_AUDUSD.json, census_USDCAD.json, m1_manifest_AUDUSD.json, m1_manifest_USDCAD.json, probe_AUDUSD.json, probe_USDCAD.json vs GO1_freeze_artifact.cost_book pins + pair_configs.json probe pins",
+      "result": "PASS — 6/6 exact matches (census d337ff2c…/27958f5a…; manifests f869cfa3…/0f9a7df7…; probes fe54fe4c…/dcd706be…)"
+    },
+    {
+      "command": "structural pin re-verification: GO1_freeze_artifact.plane_semantics_pin.verification row counts + ts-set equality vs current parquets",
+      "result": "PASS — bars15 130160/130102, bars1h 30420/30386, ts_sets_equal true x4. Parquets have NO byte-level pins in cohort-1 freeze (machine-local per derived/.gitignore); 8 measured parquet sha256 anchors recorded in the report"
+    },
+    {
+      "command": "census key extraction (tracka_census@2, both pairs)",
+      "result": "PASS — verdict BUILD_PASS; gates all true; 8 session-spread buckets with OPEN/CLOSE quantile pips (overall open p50/p99 AUDUSD 1.0/4.1, USDCAD 1.2/6.2); dst_shift_table 24 transitions (22 in-panel, observed first-Sunday-bar hour 21/22); rollover bucket n=3497/3680; sunday_open cell n=312/321; weekend boundaries 286 (p50 48.5h, max 73.25/73.0h); weekday zero-tradable holiday = 2021-01-01 only; micro-gaps 6051/5930; reconcile 0.0 pip"
+    },
+    {
+      "command": "JSON walk of research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/PACKET_dead_family_labels.json (outcome-field scan)",
+      "result": "PASS — schema erp1_tracka_cohort2_blind_packet_deadfamilies_labels@1; exactly 1 numeric leaf (/count=129, list cardinality); 776 string leaves (ids/titles/verdict classes/failure codes); 0 outcome-keyword matches; packet sha256 27764e4491c04b2a51ed0f78367eb5b81b3de1f93c3c0250b677b45e4112e3dd"
+    },
+    {
+      "command": "read plans/CYCLE_REGISTRY.json phase fields (rows 68/69) + LESSON_TO_GATE_MATRIX.md outcome-exposure map; scripts/pair_configs.json listing; researchctl locks inspect",
+      "result": "PASS — cohort-1 TERMINAL/CLOSED_REJECT_ALL s1 SEALED_UNTOUCHED; cohort-2 ACTIVE_LIGHT/REGISTERED s1 SEALED_UNTOUCHED budget 0/18; matrix: AUDUSD/USDCAD dev 2021-2025 OUTCOME-EXPOSED (range-fade class), holdout 2026-H1 SEALED-UNREAD, EURUSD/GBPUSD/USDJPY ancestry-only; pair_configs AUDUSD pip 1e-4 scale 1e5 band [0.5209,0.85], USDCAD pip 1e-4 scale 1e5 band [1.1057,1.6751]; heavy lock FREE_PROVEN"
+    }
+  ],
+  "authority_claims": [
+    "No-PnL honored: cohort-1 SCORED_REPORT.md, scored_*.json, series/*, trial_ledger.jsonl and MAP outcome bullets were never opened; exposure state taken only from plans/CYCLE_REGISTRY.json (phase fields) + LESSON_TO_GATE_MATRIX.md (authoritative) + GO1_freeze_artifact.json windows block",
+    "Structural reads only: pyarrow/pandas schema + timestamp-column min/max/counts; no price statistics computed (spread pips read are costs — authorized census content)",
+    "Corpora re-resolution per P-13: cohort-2 data authority = cohort-1 corpus at /Users/hoangminhlong/my-quantitative/.worktrees/erp1-tracka-cohort-1/integration/research/control/ERP1-TRACKA-COHORT-1/ (registry TERMINAL row resolution location); pins inherited: census/manifest/probe byte pins (all verified) + structural plane pins (all verified) + 8 newly-measured parquet sha256 anchors recorded in the report",
+    "Seal mechanics: all 8 derived parquets physically contain 2026-H1 bars; SEALED status is enforceable only by the timestamp filter ts<=2025-12-31 23:59:59 UTC, deterministic because all files are monotonic with 0 duplicate timestamps; falsifier must assert dev row counts 118275/118231/27608/27583",
+    "No new downloads: USDCHF blocked pending owner D2-2 amendment (GO1_RECORDED forbidden list); F-2 PIT contract for every new signal code delivered in report section A4 (items i-viii with procedure/pass/artifact); pair_configs fixtures verified without executing engine code",
+    "READ-ONLY discipline: exactly two files written (this handoff + PITDATA_cohort2_REPORT.md); cohort-1 freeze artifact and registry untouched"
+  ],
+  "known_limitations": [
+    "Parquets carry no byte-level pins in the cohort-1 freeze (machine-local artifacts); this lane recorded measured sha256 anchors in the report as cohort-2's resolution reference — any future mutation of the parquets is detectable only against these recorded anchors or a re-run of the structural scan",
+    "Panel-truncation replay sample (F-2 iii) and future-data mutation sample (iv) are falsifier-phase work — specified here, not executed by this lane (execution requires the candidate signal code, which does not exist yet)",
+    "AUDUSD bars1h last bar is 2026-06-30 20:00Z vs USDCAD 23:00Z (H1 valid iff 4 consecutive 15m bars) — structural asymmetry recorded; falsifier should not assume identical H1 day tails across pairs",
+    "census by_session_open per-bucket n/p50 were read via the DATAGATE_REPORT table + overall quantiles; per-bucket quantile keys in the census JSON are numeric-string keys ('50'...) — falsifier should read them by quantile key, not by a 'p50' field name"
+  ],
+  "incidents": [],
+  "tree_status": "root checkout main @3de439ab988d82cd246731ae6c277a688f6e2c31; pre-existing foreign modifications/untracked files present (untouched by this lane); this lane added exactly 2 untracked files under research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/; heavy lock FREE_PROVEN; no worker started",
+  "workers": 0,
+  "outputs": {
+    "report": "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/PITDATA_cohort2_REPORT.md",
+    "handoff": "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/HANDOFF_pitdata_cohort2.json"
+  },
+  "verdicts": {
+    "a1": "PASS — 8/8 parquets open, row counts match freeze structural pins, window 2021-01-03..2026-06-30, all 8 contain 2026-H1 (seal enforceable by timestamp filter: monotonic, 0 dup), census BUILD_PASS cost authority (8-bucket session spread curves, DST/rollover/holiday fixtures) present and pinned",
+    "a2": "PASS — 6/6 byte pins exact (2 census + 2 m1 manifests + 2 probe reports); parquets: no byte pins exist (machine-local), structural pins verified 4/4, measured sha256 anchors recorded; P-13 note recorded (cohort-1 worktree = resolution location, registry TERMINAL row)",
+    "a3": "PASS — matrix+registry confirm AUDUSD/USDCAD dev 2021-2025 exposed (range-fade class), 2026-H1 SEALED-UNREAD, EURUSD/GBPUSD/USDJPY ancestry-only; trial_ledger.jsonl not opened",
+    "a4": "PASS — F-2 contract written (items i-viii, each with procedure/pass condition/artifact), incl. RANGEFADE day-boundary audit and executed blind-packet scan (label-only, 1 numeric leaf = list count)",
+    "a5": "PASS — no new downloads authorized (USDCHF gated on D2-2); 5 BUILD_PASS data gates + probe + pair_configs fixtures (AUDUSD/USDCAD pip 1e-4, scale 1e5, bands [0.5209,0.85]/[1.1057,1.6751]) carry over; 7 additional fixture obligations for any new signal enumerated"
+  }
+}

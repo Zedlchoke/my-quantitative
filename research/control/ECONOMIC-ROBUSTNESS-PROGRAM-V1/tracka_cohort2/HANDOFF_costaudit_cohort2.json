@@ -1,0 +1,103 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "tracka2-costaudit-r1",
+  "cycle_id": "ERP1-TRACKA-COHORT-2",
+  "role": "cost-execution-auditor",
+  "lane": "costaudit",
+  "dispatch_sha": "3de439ab988d82cd246731ae6c277a688f6e2c31",
+  "actual_start_sha": "3de439ab988d82cd246731ae6c277a688f6e2c31",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/COSTAUDIT_cohort2_REPORT.md",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/HANDOFF_costaudit_cohort2.json"
+  ],
+  "tests": [
+    {
+      "command": "git -C /Users/hoangminhlong/my-quantitative rev-parse HEAD",
+      "result": "3de439ab988d82cd246731ae6c277a688f6e2c31 (root main; measured, recorded as dispatch/actual_start sha)"
+    },
+    {
+      "command": "shasum -a 256 <cohort1 worktree>/data_local/derived/census_AUDUSD.json census_USDCAD.json",
+      "result": "AUDUSD d337ff2c4e499238f6552c525cebf2027bbd5f2b876babc4e3e086fd09233473; USDCAD 27958f5a6b67ae017dea8bf35cf006868249926b03ff518ceb7663725ff35758; both schema tracka_census@2, verdict BUILD_PASS, all 5 gates true, window 2021-01-03..2026-06-30, pip=0.0001"
+    },
+    {
+      "command": ".venv/bin/python -c \"pandas read_parquet bars1h_{AUDUSD,USDCAD}; assert (a_o-b_o - s_open).abs().max() == 0 and (a_c-b_c - s_close).abs().max() == 0\"",
+      "result": "max_abs_err 0.0 both pairs (executor charging quantity s_open=a_o-b_o confirmed); last-6m window 2026-01-01..2026-06-30 = 154 traded days/pair"
+    },
+    {
+      "command": ".venv/bin/python /tmp/f5_costaudit.py (conditional break-hour measurement: PDH/PDL = previous traded day bid high/low; classes live-break b_c>PDH|b_c<PDL and reclaim traded-beyond-closed-inside; fill bar = next H1 open, hour<=18; window fill_ts in 2026-01-01..2026-07-01; p50/p75/p90 of s_open pips)",
+      "result": "AUDUSD live-break p50 0.9 (n=592), reclaim 0.9 (n=142), union 0.9 (n=734), session 0.9; USDCAD live-break 1.1 (n=639), reclaim 1.0 (n=175), union 1.1 (n=814), session 1.1; full-window live-break p50 1.0/1.2 reconciles with census by_session_open p50 (london/ny buckets)"
+    },
+    {
+      "command": "reconcile check vs census authority",
+      "result": "recomputed full-window session p50 (1.0 AUDUSD / 1.2 USDCAD) equals census spread_pips.by_session_open.p50; census's own reconcile block (method: per-bar s_open/pip medians from persisted bars15, max_abs_diff 0.0) confirms the construction"
+    }
+  ],
+  "authority_claims": [
+    "Measured the per-pair cost book from the sha-pinned cohort-1 censuses: family-session (07:00-18:00 UTC) median 1.0 pip/crossing AUDUSD, 1.2 USDCAD; rollover 2.0/2.3, sunday-open 4.6/6.8 (worst buckets, p99 12.3-21.4). Units pinned: per-crossing = fill-bar's own measured spread (a_o-b_o, verified byte-exact); RT = entry+exit crossings; stress k in {1.0,1.5,2.0} on the fill-bar spread.",
+    "Derived the F-5 conditional break-hour bucket on the LAST 6 MONTHS (Q-6 nearest, 2026-01..06) from census-persisted bars1h parquet using the family's own declared trigger geometry (PDH/PDL prev-traded-day bid H/L; live-break and reclaim classes; fill next H1 open): conditional p50 0.9 AUDUSD / 1.1 USDCAD per crossing; x2.0-stressed conditional RT = 3.6 pips AUDUSD / 4.4 pips USDCAD (base RT 1.8/2.2; x1.5 2.7/3.3).",
+    "F-5 verdicts (rule per dispatch: veto iff declared band upper < stressed conditional RT): C1 PROV-ABSORB (AUDUSD, net band 0.5-1.5, gross 1.0-3.0) = CEILING_NEGATIVE_VETO (1.5-3.6=-2.1 net basis; 3.0-3.6=-0.6 gross basis; own pre-registered 2.0-pip trigger fired; underwater even at x1.0 on the net band). C2 RECLAIM-ABSORB (AUDUSD, band 2-6 gross) = CEILING_PASSED_DECLARED (6.0-3.6=+2.4; lower half of band stressed-underwater). C3 PROBE-DEPLETION GATE (USDCAD, band 2-6 gross) = CEILING_PASSED_DECLARED (6.0-4.4=+1.6, thinnest margin).",
+    "Generic common scale for open-call comparability (one RT per day-session, last 6m): x2.0-stressed RT 3.6 AUDUSD / 4.4 USDCAD pips; stricter inherited precedent line (gross must clear ~2x stressed RT, DATACOST_cohort1_REPORT.md section 7 item 4, inherited via child plan section 6) implies ~7.2 / ~8.8 pips.",
+    "Flagged unresolved for council: under the stricter inherited ~2x precedent line, C2 (6.0) and C3 (6.0) would also fail F-5; verdicts above apply the child plan section 8 operative one-liner as directed by the dispatch packet. Resolution is council/owner's, not this lane's.",
+    "Standing unfundable-arm law restated and checked: no candidate requires sub-M1 sequencing, maker fills, or queue/depth geometry — all three are taker-at-opposite-quote on the H1 open with observables from closed M1/H1 bars (C3's probe counter consumes closed M1 extremes strictly before the H1 close); law NOT triggered by C1, C2 or C3.",
+    "Context (not a verdict): all three candidates still face skeptic F-0 mechanism-class adjudication before any rho/PnL (one-shot, owner law 2026-09-26); ceilings are necessary, not sufficient. C2 carries the binding cohort-1 cross-lane tension (retest/second-probe and displaced-fade class self-vetoes, FXFV2-A4-P2 ancestry).",
+    "Scope held: cost ceilings only. No PnL, strategy code, scored/shadow/series/ledger/MAP outcome surface read. Last-6m window touches the sealed holdout dates but only persisted bid/ask spread columns and price geometry were consumed — the measurement child plan section 8 F-5 itself mandates."
+  ],
+  "known_limitations": [
+    "Census aggregate has no break-conditioned bucket; conditional figures are a documented, reproducible recomputation on census-persisted bars1h parquet (shas pinned in the report), not census-native values.",
+    "Exit-side RT charging assumes both crossings at the conditional fill-bar figure (conservative; true exit hour is event-conditioned, unknowable pre-PnL).",
+    "Commission/slippage-beyond-spread remain DECLARED_UNMEASURED program-wide; all ceilings are measured-spread-only and unmeasured fees can only erode them.",
+    "Single-vendor cost authority (Dukascopy); no independent bid/ask replication exists this program.",
+    "Fill-bar counts (592/639 class-matched over 154 traded days) are spread-distribution samples, not population estimates; F-6 feasibility is another lane's output.",
+    "Q-6 last-6-months book is tighter than the whole-window census book (3.6/4.4 vs 4.0/4.8 stressed RT); the law names the nearest window, and the whole-window figures are reported alongside for reconciliation.",
+    "Lane READ-ONLY except its two artifacts; computation ran in /tmp with the repo venv; no repo file other than the two outputs was created or modified."
+  ],
+  "incidents": [],
+  "tree_status": "root checkout main @ 3de439ab with pre-existing unrelated modifications/untracked files (plans/ACTIVE_CYCLES.json, CYCLE_REGISTRY.events.jsonl, assorted control dirs); this lane added exactly its two artifacts under research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/ and touched nothing else; no commit",
+  "workers": 0,
+  "outputs": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/COSTAUDIT_cohort2_REPORT.md"
+  ],
+  "verdicts": {
+    "c1_cost_book": "DERIVED — AUDUSD session p50 1.0 pip/crossing, USDCAD 1.2 (census d337ff2c…/27958f5a…); conditional break-hour last-6m p50 0.9/1.1 per crossing (bars1h 2a346e02…/c2d9fdb6…); x2.0-stressed conditional RT 3.6 AUDUSD / 4.4 USDCAD pips (base 1.8/2.2, x1.5 2.7/3.3)",
+    "c2_candidate_C1_PROV_ABSORB": {
+      "home_pair": "AUDUSD",
+      "declared_band_field2": "gross 1.0-3.0 pips/RT; net 0.5-1.5 pips/decision",
+      "stressed_conditional_RT_pips": 3.6,
+      "ceiling_net_basis_pips": -2.1,
+      "ceiling_gross_basis_pips": -0.6,
+      "verdict": "CEILING_NEGATIVE_VETO"
+    },
+    "c2_candidate_C2_RECLAIM_ABSORB": {
+      "home_pair": "AUDUSD",
+      "declared_band_field2": "gross 2-6 pips/RT",
+      "stressed_conditional_RT_pips": 3.6,
+      "ceiling_at_band_upper_pips": 2.4,
+      "ceiling_at_band_lower_pips": -1.6,
+      "verdict": "CEILING_PASSED_DECLARED",
+      "conditions": "lower half of band stressed-underwater; commission DECLARED_UNMEASURED erodes margin; stricter ~2x inherited precedent line would fail this band"
+    },
+    "c2_candidate_C3_PROBE_DEPLETION_GATE": {
+      "home_pair": "USDCAD",
+      "declared_band_field2": "gross 2-6 pips/RT",
+      "stressed_conditional_RT_pips": 4.4,
+      "ceiling_at_band_upper_pips": 1.6,
+      "ceiling_at_band_lower_pips": -2.4,
+      "verdict": "CEILING_PASSED_DECLARED",
+      "conditions": "thinnest margin of the three; lower two-thirds of band stressed-underwater; stricter ~2x inherited precedent line would fail this band"
+    },
+    "c3_generic_common_scale": {
+      "note": "one RT per day-session, last 6 months; no declared band — the stressed book IS the scale",
+      "AUDUSD": {"base_RT": 1.8, "x1_5_RT": 2.7, "x2_0_RT": 3.6, "precedent_2x_line": 7.2},
+      "USDCAD": {"base_RT": 2.2, "x1_5_RT": 3.3, "x2_0_RT": 4.4, "precedent_2x_line": 8.8},
+      "f0_context": "all three candidates still require skeptic F-0 mechanism-class adjudication before any rho/PnL; ceilings necessary not sufficient"
+    },
+    "c4_unfundable_arm": {
+      "law": "any arm requiring sub-M1 sequencing/timing, maker fills, or queue/depth geometry => veto pre-PnL (inherited cohort-1 section 6; M3-era law)",
+      "C1_PROV_ABSORB": "NOT_TRIGGERED",
+      "C2_RECLAIM_ABSORB": "NOT_TRIGGERED",
+      "C3_PROBE_DEPLETION_GATE": "NOT_TRIGGERED"
+    },
+    "blocked": []
+  }
+}
