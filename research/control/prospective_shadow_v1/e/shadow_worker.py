@@ -252,6 +252,13 @@ CARRY_LOOKBACK_SECONDS = float(7 * 86400)
 #: lawful); exactly one terminal row when measured FLAT. Ledger stays
 #: append-only forever; the historical CANDIDATE_FAIL label is pinned.
 XSECT_RETIRE_AFTER_UTC = "2026-09-25T05:45:00Z"
+#: OWNER ORDER 2026-09-26T01:2xZ "Tôi không muốn nó chạy gì hết": XSECT is
+#: DORMANT — the family is excluded from the build entirely; no further
+#: decision rows, no terminal correction, no book activity of any kind.
+#: The ledger (13 rows incl. the recovery marker) stays append-only
+#: evidence, FROZEN as-recorded (the 4 restored positions remain the
+#: last recorded state by owner choice). Evidence is NOT deleted (law).
+XSECT_DORMANT = True
 XSECT_RETIRE_TERMINAL = {
     "label": "IDENTITY_RETIRED_COST_DOMINATED",
     "historical_verdict_label": (
@@ -758,6 +765,8 @@ def build_executors(
 
     executors: Dict[str, ForwardExecutor] = {}
     for family_id in FAMILY_ORDER:
+        if family_id == FAMILY_CARRY and XSECT_DORMANT:
+            continue  # owner order 2026-09-26: XSECT dormant, zero activity
         entry = entries[family_id]
         engine = engine_config_for(family_id)
         config: Dict[str, Any] = {
