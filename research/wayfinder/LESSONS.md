@@ -1044,3 +1044,32 @@ terminal with the named single owner action — no lane burn, no audit arc.
   (không settlement nào trong [t_entry, t_exit]); nếu law literal không
   chứng minh được, subset strict là dạng frozen duy nhất, biến thể literal
   + measured funding chỉ là diagnostic.
+
+## P-29 — PWS-CX-SOLUSDT-C1 (2026-09-26): cổng độ bền trên chuỗi dấu autocorrelated CHÍNH là level-window chết; representation-rho + lưới ceiling×power giết pre-PnL bằng một buổi chiều
+
+- **Gate-cosmetics đo được bằng đại diện, không cần PnL**: funding sign
+  lag-1 autocorr +0.853 / P(same sign) 0.812 trên SOL ⇒ run-gate "≥K
+  settlement cùng dấu, run-mean ≥ θ" tương quan 0.316–0.703 với CARRY
+  level-window chết (và +0.615 với unconditional receiver) — mọi cửa đủ
+  power đều gấp 1.5–3.5× bar 0.20. Luật vận hành: trước khi cấp
+  "information layer mới" cho bất kỳ gate bền nào trên một chuỗi, đo
+  representation-rho của TRẠNG THÁI gate vs tổ tiên dead của chính chuỗi
+  đó; gate chỉ sống khi trạng thái của nó thoát bar — không phải khi câu
+  chuyện payer hay hay.
+- **Lưới ceiling×power là kill một dòng**: vẽ toàn grid (θ,K) và kiểm
+  đồng thời (ceiling: run-mean × H_min ≥ RT stress) VÀ (power: số episode
+  ≥ sàn). Tập rỗng = veto trước scoring không cần ước tính thêm. Deep
+  payments là single settlements (7 print −200 bps = 19.3% negative mass)
+  — không gate ≥K-run nào chạm được tiền lớn nhất của chuỗi.
+- **Sweep phải cùng chiều với proposal (A7 bắt, P-19)**: skeptic quét
+  một chiều trên proposal hai chiều; A7 re-verify nửa thiếu (rho hai chiều
+  0.316–0.703, 8 episodes ≪ 100) — kill sống cả hai cách đọc, nhưng bản
+  ghi phải đúng: khớp sides của sweep với sides của identity TRƯỚC khi
+  trích số.
+- **Pair-swap không mở lại không gian**: child #1 của chương trình
+  pair-by-pair đóng slate trống với 0 cell/0 look; fences killing nó là
+  pair-agnostic trên cùng lớp observable (klines + settled funding) —
+  pair #2 với cùng lớp observable và không có góc thông tin mới có kết
+  quả lặp lại. Tiêu 1/100 slot registry cho mỗi lần thử lại gọi là tiến
+  bộ chỉ khi có trục mới (payer/information/risk) — chi phí cơ hội của
+  slot là phần đo được của multiple-testing.

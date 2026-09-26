@@ -153,3 +153,21 @@
   DSR + N_registry mọi terminal; PBO khi đủ cấu trúc; kết quả âm là
   first-class; dừng đúng stop conditions — không chạy vô hạn để ép winner;
   REJECT_ALL/NO_CANDIDATE/BLOCKED là thành phẩm (Q-16).
+
+## 6. Kết quả pair-child #1 (cập nhật cuối phiên 2026-09-26, dưới ủy quyền)
+
+- **PWS-CX-SOLUSDT-C1 đóng TERMINAL `NO_ELIGIBLE_PROPOSAL`** (A7 terminal
+  `CONFIRM_NO_ELIGIBLE_PROPOSAL`, 0 HIGH/1 MED/4 LOW; two-half close đầy
+  đủ: FAMILY_FAILURES entry #137, MAP bullet, LESSONS P-29, errata, registry
+  flip). 0/18 scored cells, 0 outcome views, 0 OOS looks, S1 SEALED, GO-2
+  chết UNCONSUMED. Chi tiết: CYCLE_VERDICT tại worktree
+  `orca/pws-cx-solusdt-c1-integration` @ `c3671fad`.
+- IDENTITY_REGISTRY: 1/100 (I001 PROPOSED → F0_KILLED).
+- Tài sản để lại: data plane SOL đã kiểm (tái dùng không tải lại), phương
+  pháp kill rẻ (representation-rho + ceiling×power grid) cho BNB/BTC/ETH.
+- **Quyết định master tiếp theo (chưa tiêu — không tự mở)**: pair #2
+  BNBUSDT hợp pháp theo thứ tự đã duyệt (stop-rule cần 2 slate trống liên
+  tiếp), NHƯNG fences của pair #1 pair-agnostic trên cùng lớp observable —
+  khuyến nghị A1/A7: chỉ mở pair #2 kèm proposer angle có bằng chứng thông
+  tin mới; nếu không, cân nhắc viability council sớm cho track CX thay vì
+  đốt slot registry lặp lại. Quyết định này thuộc owner (hoặc ủy quyền mới).

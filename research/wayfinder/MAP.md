@@ -1,3 +1,36 @@
+## Sprint state (synced at the PWS-CX-SOLUSDT-C1 terminal, 2026-09-26)
+
+- **PWS-CX-SOLUSDT-C1 CLOSED → `NO_ELIGIBLE_PROPOSAL`** (2026-09-26; branch
+  `orca/pws-cx-solusdt-c1-integration` terminal `c3671fad`; the FIRST
+  pair-child of PWS-PROGRAM-V1 — the ≤100-identity pair-by-pair program
+  opened 2026-09-26 under recorded owner delegation after double A7 plan
+  review; budget **0/18 scored cells, 0 outcome views (trial_ledger 0
+  rows), 0 holdout looks, S1 SEALED_UNTOUCHED**; A7 terminal
+  `CONFIRM_NO_ELIGIBLE_PROPOSAL` 0 HIGH/1 MED/4 LOW with independent
+  recompute of every decisive number; GO-2 phrase died UNCONSUMED; no
+  orders; no shadow/worker touched): council outcome-blind ran 2 proposer
+  lanes + skeptic F-0 court — **P1 killed all 11 expressible direction
+  sources on the authorized observables pre-proposal; P2's sole identity
+  I001 TAILPAYER-RUN-REGIME (funding run-capture) died `VETOED_SAME_FAMILY`
+  by representation math on the funding plane, no PnL needed**: run-gate
+  state correlates 0.316–0.703 (two-sided, A7-verified) with dead CARRY
+  level-window shadows — SOL funding sign autocorr +0.853 makes a sign-run
+  gate a smoothed level window (cosmetic gate, P-27 again); ceiling×power
+  grid is jointly EMPTY (θ≥5.23 bps ⇒ ≤8 episodes vs ≥100 floor; deep
+  payments are 7 single −200 bps prints = 19.3% of negative mass, invisible
+  to any ≥K-run gate); K-CONC pre-kill (2022 = 59.1%, FTX 9-day = 42.2%).
+  Durable assets: verified SOL data plane (klines 52,145 bars floor-exact
+  + funding 6,580 settlements bit-exact + 6-month bookTicker spread census
+  p50 0.469 bps, sha-pinned inventory, license ToU captured); the cheap
+  pre-PnL kill pattern (representation-rho + ceiling×power grid) reusable
+  for BNB/BTC/ETH children. IDENTITY_REGISTRY 1/100 consumed (I001
+  F0_KILLED). Track note: pair-child #2 (BNBUSDT) remains lawful under the
+  approved order (stop-rule needs 2 consecutive empty slates) but the
+  fences here are pair-agnostic on the same observable classes — A7/A1
+  recommend pair #2 only with an evidenced new-information angle, else the
+  outcome repeats. Revival conditions in FAMILY_FAILURES
+  `PWSCXSOL1-I001-TAILPAYER-RUN-REGIME`.
+
 ## Sprint state (synced at the SRLV-CX-C1 terminal, 2026-09-26)
 
 - **SRLV-CX-C1 CLOSED → `REJECT_ALL`** (2026-09-26; branch
