@@ -1,0 +1,55 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "dfv1-lane-cx",
+  "cycle_id": "DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1",
+  "role": "A3-class data-authority survey lane (crypto census + validation)",
+  "lane": "L-CX",
+  "dispatch_sha": "189c6d23ab2a6f50475819cf6df2e2e4def92820",
+  "actual_start_sha": "189c6d23ab2a6f50475819cf6df2e2e4def92820",
+  "commit_sha": null,
+  "commit_sha_note": "self-referential under the one-clean-commit rule (handoff is included in the same single commit it would name); the actual commit sha of this task is reported in the lane's terminal reply to the orchestrator, measured with git rev-parse after the commit",
+  "changed_paths": [
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/cx/inventory_rows.jsonl",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/cx/LANE_REPORT.md",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/cx/HANDOFF_L-CX.json"
+  ],
+  "tests": [
+    {"command": "git -C <worktree> branch --show-current && git -C <worktree> rev-parse HEAD && git -C <worktree> status --porcelain | wc -l", "exit_code": 0, "result": "orca/dfv1-lane-cx @ 189c6d23ab2a6f50475819cf6df2e2e4def92820, clean at start and verified again before commit"},
+    {"command": ".venv/bin/python research/researchctl.py cycle list | grep ACTIVE_LIGHT; .venv/bin/python research/researchctl.py locks inspect", "exit_code": 0, "result": "10 ACTIVE_LIGHT cycles re-measured; heavy lock FREE_PROVEN; F5 metadata-only applied to PWS-CX-BNBUSDT-C1, CRYPTO-HISTORICAL-REPLICATION-3F-V1, LIVE-DATA-GATEWAY-V1, ETHUSDT-OPEN-SEARCH-V2"},
+    {"command": "ps aux | grep -i ethusdt | grep -v grep", "exit_code": 1, "result": "no writer process; inherited committed manifests used, 7-zip sample permitted by packet"},
+    {"command": "python (json+hashlib) sample: crypto-ng4-ws 12/12, data-edge-unlock-v1 8/8, pws-sol 8/8, ethusdt-v2 7/7, erp1-trackb 3/3 — sha256+bytes vs committed manifests", "exit_code": 0, "result": "38/38 sampled files ALL_MATCH; zero MISMATCH verdicts written"},
+    {"command": "/usr/bin/time shasum loop over 2 SOLUSDT bookTicker zips (~7.5GB)", "exit_code": 0, "result": "7.24s real — F10 heavy-job threshold respected with wide margin; no chunk exceeded it"},
+    {"command": "python json.loads over inventory_rows.jsonl + required-key check", "exit_code": 0, "result": "21 rows parse; statuses: 6 AVAILABLE_VALIDATED / 2 AVAILABLE_UNVALIDATED / 13 NOT_RUN; manifest_verify: 9 ALL_MATCH, 8 NO_MANIFEST, 3 INHERITED_NOT_REHASHED_LIVE_OWNER, 1 MISMATCH (P-13 archive drift, not a data file)"},
+    {"command": "[ -f ~/staging_backups/crypto-v14_full.tar.gz ] etc. (8 checks)", "exit_code": 1, "result": "8 of 14 P-13-listed archives ABSENT from disk (incl. V14 staged basis/OI/klines) — incident I-1 reported"},
+    {"command": "find .worktrees ~/.my-quantitative-data -iname '*openInterest*' -o -iname '*oi_*' -o -iname '*liquidation*'", "exit_code": 0, "result": "zero files — OI/liquidation/L2 history absent program-wide; prohibition carried verbatim in report and in each such row"}
+  ],
+  "authority_claims": [
+    "binance_vision_klines_um_1h_panel AVAILABLE_VALIDATED (canonical ethusdt-open-search-v2 committed sha manifest, 7/7 sampled this cycle)",
+    "funding_settled_8h_usdm AVAILABLE_VALIDATED (per-symbol sha-pinned; BTC floor 2019-09-10, global 7-symbol floor 2020-07-18 per CHR3F committed p0)",
+    "bookticker_spread_census_solusdt_um AVAILABLE_VALIDATED (2/2 large zips re-hashed; p50 0.469 bps inherited from committed census)",
+    "ws_collectors_coinbase_kraken_deribit AVAILABLE_VALIDATED (38-shard sample family; depth limited to ~8.5h total, PROSPECTIVE-only)",
+    "erp1_trackb_spot_perp_1h_planes AVAILABLE_VALIDATED (3/3 sampled; spot floor 2017-08)",
+    "oi_history_usdm / liquidation_history / l2_orderbook_history NOT_RUN with verbatim owner prohibition carried: 'Không suy ra order book hay forced flow từ nến'",
+    "PWS-CX-BNBUSDT-C1 and CRYPTO-HISTORICAL-REPLICATION-3F-V1 rows cite COMMITTED files only (git show HEAD / committed p0), per F5; no live bytes hashed",
+    "spot_perp_basis_15m_fapi + mark_index_klines_fapi_vision are live-owner in-flight (CHR3F); this lane asserts floors only from committed p0_feasibility_table.md"
+  ],
+  "known_limitations": [
+    "commit_sha is null inside this file (self-reference under the one-commit rule); actual sha reported in the terminal reply",
+    "ALL_MATCH claims are SAMPLED per the hashing budget (corpora >500MB), never full re-hashes: 12/146 ng4 shards, 8/19 DEU shards, 8/84 SOL inventory files, 7/572 EOSV2 entries, 3/273 trackb zips; full re-verify remains available to A7 (F11)",
+    "I-2 self-reported: one transcription slip during SOL sampling (row misalignment 2022-01 vs 2022-02) was caught by independent re-hash and corrected; no verdict was affected",
+    "BTC H4/H1 raw bars of the phase-strategy era were not located as bytes in any surviving tree; the H4 family row is NOT_RUN with derived-artifact pointers only",
+    "frontier dossiers (crypto_frontier_2026-09, ng5_ng6_frontier) used as pointers only per packet; their internal probe bytes were not re-inventoried",
+    "regime-strategy-mapping H1 manifest (bulk_response_manifest_BTC_H1.json) is 1,124B vs H4's 1,091B and was read for presence, not row-audited"
+  ],
+  "incidents": [
+    "I-1 P-13 manifest-vs-disk drift: 8 of 14 archives in ~/staging_backups/SHA256SUMS.txt ABSENT (crypto-v14_full.tar.gz = staged basis/OI/klines; legacy_root_data.tar.gz incl oi_data 98M; forex-free-v5_full 224M; 5 more). Cause not attributable from this lane; owner decision required (accept+annotate or attempt restore; staged bytes were gitignored so git-based restore is not possible)",
+    "I-3 evidence note: PWS-CX-BNBUSDT-C1 data_local/ currently untracked in its worktree (live GO-1 session); only committed HEAD files (acdd4649) were used as authority"
+  ],
+  "tree_status": "clean (verified after commit by pathspec)",
+  "workers": 0,
+  "outputs": {
+    "inventory_rows": "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-cx/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/cx/inventory_rows.jsonl",
+    "lane_report": "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-cx/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/cx/LANE_REPORT.md",
+    "handoff": "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-cx/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/cx/HANDOFF_L-CX.json"
+  }
+}
