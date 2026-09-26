@@ -66,24 +66,43 @@ class Probe(EWrapper, EClient):
     def marketDataType(self, reqId, mdt):
         self.state["mdt_events"].append({"reqId": reqId, "mdt": mdt})
 
+    _tick_prints = 0
     def tickPrice(self, reqId, tickType, price, attrib):
         # record bid(1)/ask(2) price ticks event-driven, server-side attribution by reqId
+        if Probe._tick_prints < 30 and price:
+            Probe._tick_prints += 1
+            print(json.dumps({"ev": "TICK", "req": reqId, "tt": tickType, "px": price}), flush=True)
         if tickType in (1, 2) and price > 0:
             with self._lock:
                 self._raw.write(json.dumps(
                     {"ev": "tick", "req": reqId, "tt": tickType, "px": price}) + "\n")
 
     def error(self, *a):
-        # catch-all signature: ibapi versions differ in arity; never let logging kill the reader
         reqId, errorCode, errorMsg = a[0], (a[2] if len(a) >= 4 else a[1]), a[-2]
         self.state["errors"].append({"reqId": reqId, "code": errorCode,
                                      "msg": str(errorMsg)[:160]})
+        if errorCode not in (2100, 2103, 2104, 2105, 2106, 2108, 2119, 2158, 2107, 1019):
+            print(json.dumps({"ev": "ERR", "req": reqId, "code": errorCode,
+                              "msg": str(errorMsg)[:120]}), flush=True)
 
 
-app = Probe()
 import random as _rnd
-_ok = app.connect("127.0.0.1", 7497, 9100 + _rnd.randrange(800))
-connected = bool(app.isConnected())
+app = None
+connected = False
+for _cid in range(3):
+    _c = 9100 + _rnd.randrange(800)
+    app = Probe()
+    try:
+        app.connect("127.0.0.1", 7497, _c)
+    except Exception:
+        continue
+    if app.isConnected():
+        connected = True
+        break
+    try:
+        app.disconnect()
+    except Exception:
+        pass
 v1 = {"component": "V1_api_connectivity", "status": "PASS" if connected else "FAIL",
       "port": 7497, "paper_session": True, "variant": "raw-ibapi"}
 print(json.dumps({"V1": v1}))
@@ -146,7 +165,7 @@ for rid, p in req_ids.items():
     c.conId = d["conId"]; c.symbol = p[:3]; c.secType = "CASH"
     c.exchange = "IDEALPRO"; c.currency = p[3:]
     mrid = rid + 100
-    app.reqMktData(mrid, c, "", False, False)
+    app.reqMktData(mrid, c, "", False, False, [])
     md_req[mrid] = p
 time.sleep(8)  # let LIVE attempts settle; record subscription errors
 
