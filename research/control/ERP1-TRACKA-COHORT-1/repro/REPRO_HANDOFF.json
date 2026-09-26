@@ -1,0 +1,76 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "tracka1-repro",
+  "cycle_id": "ERP1-TRACKA-COHORT-1",
+  "role": "quant-reproducer",
+  "lane": "tracka1-repro",
+  "dispatch_sha": "9e21ce6fe5c8450a433a67e8ece7fbd9e0e9cb8c",
+  "actual_start_sha": "9e21ce6fe5c8450a433a67e8ece7fbd9e0e9cb8c",
+  "commit_sha": null,
+  "commit_note": "Artifacts left UNCOMMITTED in the detached twin worktree (.worktrees/erp1-tracka-cohort-1/repro_twin, HEAD 9e21ce6fe5c8450a433a67e8ece7fbd9e0e9cb8c, detached) for A1 harvest per dispatch. Measured fact: df9dda49e934c99120ed209fca69afcc09bedd86 (scored work commit) differs from dispatch head 9e21ce6f ONLY by the handoff bookkeeping file (git diff --stat: 1 file, HANDOFF_tracka1_scored.json +95) - code and published outputs byte-identical across the two.",
+  "changed_paths": [
+    "research/control/ERP1-TRACKA-COHORT-1/repro/REPRO_REPORT.md",
+    "research/control/ERP1-TRACKA-COHORT-1/repro/REPRO_HANDOFF.json",
+    "research/control/ERP1-TRACKA-COHORT-1/repro/compare_repro.py",
+    "research/control/ERP1-TRACKA-COHORT-1/repro/comparison_result.json",
+    "research/control/ERP1-TRACKA-COHORT-1/repro/repro_dryrun_stdout.json",
+    "research/control/ERP1-TRACKA-COHORT-1/repro/repro_scored_stdout.json",
+    "research/control/ERP1-TRACKA-COHORT-1/repro/pre_run_snapshot/ (byte-identical copy of the published baseline incl. 12 series files, verified cmp-equal to the integration worktree before the re-run)",
+    "research/control/ERP1-TRACKA-COHORT-1/scored_dryrun.json (rewritten by re-run)",
+    "research/control/ERP1-TRACKA-COHORT-1/scored_dev_cells.json (rewritten by re-run)",
+    "research/control/ERP1-TRACKA-COHORT-1/scored_holdout_look.json (rewritten by re-run)",
+    "research/control/ERP1-TRACKA-COHORT-1/scored_dsr.json (rewritten by re-run)",
+    "research/control/ERP1-TRACKA-COHORT-1/SCORED_REPORT.md (rewritten by re-run)",
+    "research/control/ERP1-TRACKA-COHORT-1/trial_ledger.jsonl (14 rows appended by re-run; append-only prefix preserved)",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/bars1h_ANC_AUDUSD.parquet (machine-local copy, sha256 4e0ca174a21e155271a481727259daa0d3df888bb9f96eb7a34d8c6f06881364)",
+    "research/control/ERP1-TRACKA-COHORT-1/data_local/derived/bars1h_ANC_USDCAD.parquet (machine-local copy, sha256 335a6e2aab25aebff17f9198f1b939448262186ed20e63f3041f8818d02f376b)",
+    "research/control/ERP1-TRACKA-COHORT-1/series/*.json (rewritten by re-run; all 12 BYTE-IDENTICAL to published - git shows them unmodified)"
+  ],
+  "tests": [
+    {
+      "command": "cd <twin>/research/control/ERP1-TRACKA-COHORT-1 && /Users/hoangminhlong/my-quantitative/.venv/bin/python scripts/scored_run.py dryrun",
+      "result": "exit 0; all gates TRUE: leak_scan_clean, non_vacuous, ids_pairwise_distinct, replay ids+schedule-counts identical with ledger_unchanged=true, machinery identities all true on both pairs (prefix identity, placebo prefix identity, M1 recheck, placebo counts match frozen, no fold straddles)"
+    },
+    {
+      "command": "cd <twin>/research/control/ERP1-TRACKA-COHORT-1 && /Users/hoangminhlong/my-quantitative/.venv/bin/python scripts/scored_run.py scored",
+      "result": "exit 0 in ~5 s; 14 ledger rows appended (append-only startswith assert held); terminal verdicts reproduced: AUDUSD R-ANCHOR KILL_PIT_SEAM, USDCAD R-ANCHOR KILL_PIT_SEAM; HOLDOUT_UNREAD_CONSUMED_BY_NONE both pairs (windows again NOT read); DSR 0.000798/0.001631"
+    },
+    {
+      "command": "cd <twin>/research/control/ERP1-TRACKA-COHORT-1 && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/ -q",
+      "result": "38 passed"
+    },
+    {
+      "command": "cd <twin>/research/control/ERP1-TRACKA-COHORT-1 && /Users/hoangminhlong/my-quantitative/.venv/bin/python repro/compare_repro.py",
+      "result": "VERDICT ALL_MATCH after classification: scored_seam_law.json + scored_kill_laws.json + all 12 series files BYTE-IDENTICAL; scored_dev_cells.json / scored_holdout_look.json / scored_dsr.json identical modulo created_utc; scored_dryrun.json identical modulo created_utc + 3 ledger-sha sequence-metadata paths (published 5830065a... = sha of the 27-line pre-scored ledger at original dryrun time, twin 83597880... = sha of the 41-line ledger at twin time - both values independently re-hashed and confirmed); SCORED_REPORT.md differs only by the Generated: line and one hand-authored narrative paragraph absent from committed write_report() output whose machine numbers all verify EXCEPT a prose slip (USDCAD R-ORIG '5/6 folds' - machine artifacts, published AND twin byte-equal, record 6/6); all 14 appended ledger rows differ in exactly one field (sha_chain.scored_code scored_lib.py: published eabe8e84... = uncommitted run-time bytes, twin 1a5a9e00... = committed bytes, matching the scored handoff's disclosed post-run float-coercion fix with no re-run); substantive numeric/verdict/record differences: ZERO"
+    }
+  ],
+  "authority_claims": [
+    "REPRO VERDICT: ALL_MATCH - the GO-2 scored execution (work commit df9dda49, head 9e21ce6f) is independently re-derivable from the frozen inputs at the scored SHA: 12 dev cells, per-cell net/gross at k=1.0/1.5/2.0, G1-G8 verdicts and margins, seam-law S (+2884.1 AUDUSD / +4348.6 USDCAD, all three limbs, c_rt recompute 2.0/2.4 exact), kill laws (KILL_PIT_SEAM + KILL_INVERSION both pairs; KILL_CONTROL_REPRODUCED no; KILL_BETA_EXPLAINED no), per-trade record evidence (per_trade_pips sequences + per-fold counts + exclusion-zone trade IDs), 14 ledger rows, DSR (0.000798/0.001631, SR0 0.082127, N=12, PBO fail-closed) and 12 series files all reproduce with ZERO substantive differences.",
+    "Per P-4: ALL_MATCH proves determinism and re-derivability only, NOT truth - SINGLE_SOURCE_PANEL / PAPER_TIER / FILL_QUALITY_UNMEASURABLE_ON_M1_BIDASK inherit unchanged.",
+    "HOLDOUT LAW: the twin re-run consumed no holdout window - scored_holdout_look.json reproduces HOLDOUT_UNREAD_CONSUMED_BY_NONE for both pairs; 2026-01-01..2026-06-30 remain unread by anyone.",
+    "FINDING R1 (provenance gap, recorded not repaired): the published ledger rows record sha_chain.scored_code['scripts/scored_lib.py'] = eabe8e84ee00c792eae824def2b2cecacf5cbd182c00aa0eda12231422d7a859, which corresponds to NO committed blob (dryrun commit 44a58af9 has d8bf6777..., scored commit df9dda49 has 1a5a9e00...). The scored run executed an uncommitted intermediate scored_lib.py; the post-run float-coercion fix was committed afterwards without a re-run, exactly as the scored handoff's incidents disclose. The twin's byte-exact reproduction empirically confirms 'numbers unchanged'.",
+    "FINDING R2 (documentation slip in published prose, recorded not repaired): the hand-authored paragraph in the published SCORED_REPORT.md states USDCAD R-ORIG passed '5/6 folds'; the machine artifacts (published and twin, byte-equal) record 6/6 positive folds (G3 PASS either way). AUDUSD 5/6 is correct.",
+    "Environment parity: machine-local input parquets copied byte-identical from the integration worktree (sha256 verified both files); GO-2 record read from the root checkout at its committed path, git-clean, sha eb8b4f04... matching the published rows' sha_chain.go2_record_sha256; heavy lock FREE_PROVEN at start, not acquired (re-run is compute-only, ~5 s, per dispatch 'skip if it runs in minutes')."
+  ],
+  "known_limitations": [
+    "The twin could not re-execute the ORIGINAL run-time bytes of scored_lib.py (eabe8e84... never committed) - reproduction ran the committed bytes (1a5a9e00...); byte-exact agreement of all numeric outputs is therefore evidence the post-run fix was numerically inert, not proof of byte-level code identity with what originally executed.",
+    "Per-trade entry/exit timestamps, directions and raw prices are not persisted in any published artifact (trades stripped on write); record-level equality is established through the persisted per-trade pip sequences, per-fold trade counts/nets and exclusion-zone trade IDs, which pin the trade records jointly.",
+    "Machine-local input parquets were copied from the integration worktree (untracked, unhashed-by-any-authority); the twin verified copy integrity but cannot independently verify those files equal what the M1->bars pipeline would rebuild from the .bi5 corpus (no rebuild performed - read-only re-run per dispatch).",
+    "Wall-clock fields, the dryrun ledger-sha sequence metadata, the authored report paragraph and the ledger scored_lib.py sha are the ONLY differences; full enumeration in repro/REPRO_REPORT.md section 3."
+  ],
+  "incidents": [
+    "None blocking. No pipeline-read file modified; integration worktree untouched; no registry/plans/FX-shadow writes; nothing committed; no push/merge."
+  ],
+  "tree_status": "twin worktree detached at 9e21ce6fe5c8450a433a67e8ece7fbd9e0e9cb8c; 6 tracked files modified by the re-run (scored_dryrun.json, scored_dev_cells.json, scored_holdout_look.json, scored_dsr.json, SCORED_REPORT.md, trial_ledger.jsonl) + untracked repro/ + gitignored machine-local parquet copies and __pycache__/.pytest_cache; ALL left uncommitted for A1 harvest",
+  "workers": 0,
+  "outputs": [
+    "research/control/ERP1-TRACKA-COHORT-1/repro/REPRO_REPORT.md",
+    "research/control/ERP1-TRACKA-COHORT-1/repro/REPRO_HANDOFF.json",
+    "research/control/ERP1-TRACKA-COHORT-1/repro/compare_repro.py",
+    "research/control/ERP1-TRACKA-COHORT-1/repro/comparison_result.json",
+    "research/control/ERP1-TRACKA-COHORT-1/repro/repro_dryrun_stdout.json",
+    "research/control/ERP1-TRACKA-COHORT-1/repro/repro_scored_stdout.json",
+    "research/control/ERP1-TRACKA-COHORT-1/repro/pre_run_snapshot/ (published baseline snapshot, 8 files + 12 series)",
+    "re-run outputs in place: scored_dryrun.json, scored_dev_cells.json, scored_holdout_look.json, scored_seam_law.json, scored_kill_laws.json, scored_dsr.json, SCORED_REPORT.md, trial_ledger.jsonl (+14 rows), series/*.json"
+  ]
+}
