@@ -1,0 +1,87 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "erp1-ta1-failres-a7repro",
+ "cycle_id": "ERP1-TRACKA-COHORT-1",
+ "role": "a7-reproducer",
+ "lane": "failres-a7",
+ "dispatch_sha": "3b1c29fa5401daf9214ed32dff384421581dda48",
+ "actual_start_sha": "3b1c29fa5401daf9214ed32dff384421581dda48",
+ "commit_sha": "ed3e0bbf65a14c65c6f166cf7adbfb372c1d5a0c",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/erp1-tracka-cohort-1/failres-a7",
+ "branch": "orca/erp1-ta1-failres-a7",
+ "audited_object": "failres-attrib Phase A at base 3b1c29fa (work commit da4a92c2175ee92f2b9d353d8fcfb65f06ef13c9): ATTRIB_failres_REPORT.md C1-C5 + committed trades/agg/daily JSONs + tests",
+ "changed_paths": [
+  "research/control/ERP1-TRACKA-COHORT-1/failres/A7_failres_repro_REPORT.md",
+  "research/control/ERP1-TRACKA-COHORT-1/failres/failres_a7_repro_results.json",
+  "research/control/ERP1-TRACKA-COHORT-1/failres/failres_a7_repro_PROVENANCE.json",
+  "research/control/ERP1-TRACKA-COHORT-1/failres-a7-work/.gitignore",
+  "research/control/ERP1-TRACKA-COHORT-1/failres-a7-work/scripts/a7_sample_sha.py",
+  "research/control/ERP1-TRACKA-COHORT-1/failres-a7-work/scripts/a7_build_h1_anc.py",
+  "research/control/ERP1-TRACKA-COHORT-1/failres-a7-work/scripts/a7_recompute.py",
+  "research/control/ERP1-TRACKA-COHORT-1/failres-a7-work/scripts/a7_l3_checks.py",
+  "research/control/ERP1-TRACKA-COHORT-1/failres-a7-work/layer_results/a7_m1_sample_sha.json",
+  "research/control/ERP1-TRACKA-COHORT-1/failres-a7-work/layer_results/a7_plane_rebuild.json",
+  "research/control/ERP1-TRACKA-COHORT-1/failres-a7-work/layer_results/a7_l2_recompute.json",
+  "research/control/ERP1-TRACKA-COHORT-1/failres-a7-work/layer_results/a7_l3_checks.json"
+ ],
+ "tests": [
+  {
+   "file": "failres-a7-work/scripts/a7_sample_sha.py",
+   "runner": "venv python 3.12.14",
+   "result": "PASS — 20/20 M1 day files sha256 OK vs committed manifest (random.Random(20260926), 4014 on-disk files)"
+  },
+  {
+   "file": "failres-a7-work/scripts/a7_build_h1_anc.py",
+   "runner": "venv python 3.12.14 under governance.heavy_lock (role a7-repro-plane-rebuild, FINISHED 07:38:05Z..07:38:25Z)",
+   "result": "PASS — full 4,014-file sha verify 0 mismatches; rebuilt 30,550 H1 ANC rows; vs audited parquet: rows equal, ts equal, max abs diff 0.0 on all 8 OHLC/spread columns"
+  },
+  {
+   "file": "failres-a7-work/scripts/a7_recompute.py",
+   "runner": "venv python 3.12.14",
+   "result": "ALL_MATCH — 52 checks (39 EURUSD on the rebuilt plane, 13 GBPUSD on the audited copy), 0 failed: C5 folds/totals delta 0.0, C1 per-pair-fold FF/TE tables + REVERSAL 0, C2 gross/cost/direction, C3 flip pools, C4 rho/beta, k-decay supplement"
+  },
+  {
+   "file": "failres-a7-work/scripts/a7_l3_checks.py",
+   "runner": "venv python 3.12.14",
+   "result": "ALL_MATCH — 48 checks, 0 failed (per-trade gross+cost==net on ALL rows both pairs; trade/daily/agg fold+total identities; REPORT tables vs agg JSON; GBPUSD F3 internal bucket sums; pytest 8 passed in 2.28s)"
+  },
+  {
+   "file": "research/control/ERP1-TRACKA-COHORT-1/failres/tests/test_failres_attrib.py (audited lane's suite, re-run in this worktree)",
+   "runner": "pytest 9.1.1, python 3.12.14",
+   "result": "8 passed in 2.28s"
+  }
+ ],
+ "authority_claims": [
+  "L1_plane_rebuild ALL_MATCH: the audited bars1h_ANC_EURUSD.parquet (sha 2e175b06...4f9d) is bit-exactly determined by the pinned M1 corpus + documented ANC convention — A7's own aggregation code, full-corpus sha verification (4014 files vs the committed manifest 12304eac...), max abs diff 0.0",
+  "L2_book_recompute ALL_MATCH: A7's own fill-law executor (engine.py not imported) on the rebuilt plane reproduces every C1-C5 number at reporting precision: R-DAEMON F1..F6 -188.8/-884.4/+1049.8/+348.3/-191.5/+257.0 (RT 164/166/164/166/159/157), totals +812.2/1062RT, +7322.7, +1052.7, +704.6, -1665.5; GBPUSD -1708.9 total, F3 -1272.7; C1 FF -5466.2/839 vs TE +6278.4/223 EURUSD (FF -9429.7/842, TE +7720.8/224 GBPUSD), F2 FF -2116.5/128 vs TE +1232.1/38, REVERSAL 0, FF<0/TE>0 in all 12 pair-folds; C2 gross -769.1 cost -115.3 net -884.4, long -696.0/95 vs short -188.4/71; C3 flip -1455.5/102 (-14.27) vs non-flip +571.1/64 (+8.92); C4 rho -0.188858, daemon-SHORT -1723.2",
+  "L3_artifact_consistency ALL_MATCH: committed JSONs are internally consistent (net==gross+cost all rows; trade/fold/daily/agg identities both pairs; GBPUSD F3 buckets all sum to -1272.7) and the REPORT tables match the JSONs; the attribution lane's own 8 tests pass in the A7 worktree",
+  "overall ALL_MATCH — the failres-attrib Phase-A numbers are confirmed by independent reproduction; the lane's findings stand as stated (with the 3 cosmetic findings below)"
+ ],
+ "known_limitations": [
+  "L1 rebuild is EURUSD-only (dispatch scope); GBPUSD L2 checks used the audited byte copy (sha 5aad8415...) read-only",
+  "signal laws imported from committed tracka_lib (frozen objects under audit, per dispatch); T.SignalPlane plumbing (ts/hour/day/skip/fill_ok/is_day_close) reused to feed them — fills/PnL/exit-types/folds/aggregation are A7's own",
+  "committed diag builder NOT re-run as-is (probe-derived pair config + corpus bytes not committed in this worktree): dispatch-sanctioned fallback used — own aggregation code per the documented convention, with FULL-corpus sha verification (stronger than the 20-file sample)",
+  "REPORT display roundings (-942.1 for -942.05; -0.189 for -0.188858) checked at printed precision, not 1e-6",
+  "DIAGNOSTIC_OUTCOME_EXPOSED surfaces; audit artifacts are never promotable evidence"
+ ],
+ "incidents": [
+  "none affecting foreign lanes or audited artifacts. Lane-internal harness corrections before final runs (disclosed in failres_a7_repro_PROVENANCE.json): per-pair C1 F2 claims, printed-precision tolerances for rounded REPORT numbers, trades-JSON R-books-only scope, pytest cwd, results dir renamed layer_results/ (root .gitignore ignores results/)"
+ ],
+ "tree_status": "clean at handoff (work commit ed3e0bbf + this bookkeeping commit; rebuilt parquet and staged test planes gitignored/untracked-by-design)",
+ "workers": 0,
+ "lock_final": "FREE_PROVEN (inspected after the heavy job; no conflicts at any point)",
+ "verdicts": {
+  "L1_plane_rebuild": "ALL_MATCH",
+  "L2_book_recompute": "ALL_MATCH",
+  "L3_artifact_consistency": "ALL_MATCH",
+  "overall": "ALL_MATCH",
+  "findings_count": 3
+ },
+ "outputs": [
+  "research/control/ERP1-TRACKA-COHORT-1/failres/A7_failres_repro_REPORT.md",
+  "research/control/ERP1-TRACKA-COHORT-1/failres/failres_a7_repro_results.json",
+  "research/control/ERP1-TRACKA-COHORT-1/failres/failres_a7_repro_PROVENANCE.json",
+  "research/control/ERP1-TRACKA-COHORT-1/failres-a7-work/scripts (4 A7 scripts)",
+  "research/control/ERP1-TRACKA-COHORT-1/failres-a7-work/layer_results (4 raw layer-result JSONs)"
+ ]
+}
