@@ -1,0 +1,68 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "tracka2-a7-terminal",
+ "cycle_id": "ERP1-TRACKA-COHORT-2",
+ "role": "quant-auditor",
+ "lane": "a7-terminal",
+ "dispatch_sha": "a7c3c5c60f44125a1034251c3ccfd6a564655530",
+ "actual_start_sha": "a7c3c5c60f44125a1034251c3ccfd6a564655530",
+ "sha_note": "measured worktree HEAD at lane start (branch orca/erp1-tracka-cohort-2-integration, tree clean, porcelain empty) — identical to the dispatch-claimed head. This lane commits NOTHING: commit_sha is null by design; the Lead commits the two audit outputs in the terminal close commit and flips the registry per the close-out conditions in A7_terminal_REPORT.md.",
+ "commit_sha": null,
+ "changed_paths": [
+  "research/control/ERP1-TRACKA-COHORT-2/audits/A7_terminal_REPORT.md",
+  "research/control/ERP1-TRACKA-COHORT-2/audits/HANDOFF_a7_terminal_cohort2.json"
+ ],
+ "output_artifact_sha256": {
+  "research/control/ERP1-TRACKA-COHORT-2/audits/A7_terminal_REPORT.md": "de604d26eb354a79c5e8be30974f89c7a048b6ce3262b7bd30c02bd489b84a59"
+ },
+ "tests": [
+  {"command": "git -C <worktree> rev-parse HEAD && git status --porcelain", "result": "a7c3c5c60f44125a1034251c3ccfd6a564655530 on orca/erp1-tracka-cohort-2-integration; tree clean at lane start"},
+  {"command": "sha256 of t2_planes_manifest.json / f1_rho_run.py / tracka_lib.py / pit_battery2.py / qcrd_dinv_lib.py / dev_plane2.py + re-hash of all 112 .npy planes vs manifest", "result": "all script shas match F1/F2 artifact pins (7cdf3104, 76f2a01c, 1e09b368, 7daf5dfe, d5d8d79f, 9b3c7b7d); 112/112 npy sha256 match t2_planes_manifest.json — 0 mismatches"},
+  {"command": "independent Spearman recompute (own average-tie-rank implementation, NumPy only) of worst shadows from t2_*_anchor.npy x t2shadow_*.npy on full dev grid", "result": "P3A AUDUSD/FX2-SESSMA-C2 = -0.078552, P3A USDCAD/FX2-SESSMA-C4 = -0.088284, P3B AUDUSD/FX2-H1DONCH-C1 = +0.310253, P3B USDCAD/FX2-H1TSMOM-C1 = +0.303153 — all exact to 6dp vs F1_rho_results.json; pooled argmax rule consistent in all 4 pair blocks; gate 0.20 -> P3A PASS_F1, P3B ANCESTRY_RHO_BLOCK both pairs"},
+  {"command": "F5 recompute: F6_census_counts.json fill-hour histograms x bars1h_{AUDUSD,USDCAD}.parquet s_open/s_close medians; ceiling + P4-A/P4-B census session arithmetic", "result": "P3A entry/exit 1.0/1.0 (dev) and 0.9/0.9 (last6m) pips vs <=0.41 @k2.0 -> fail both; ceilings -2.38/-1.98/-0.38/-0.18 pips exact; P3B entry 1.3 / exit 1.2 pips, mid 1.35137, ceiling +1.30 bps exact; P4A band 3.0/2.5 bps < stressed 6.2/3.6 bps (AUDUSD also < base 3.1); P4B band 2.0/1.6 bps < base 3.1/1.8 bps — all kills confirmed"},
+  {"command": ".venv/bin/python scripts/dev_plane2.py (sealed_audit)", "result": "all_pins_match true; dev pins 27608/27583 (1h) and 118275/118231 (15m) match A1 sealed map; holdout rows physically present unfiltered (2812/2803 @1h, 11885/11871 @15m); m1agg dev-only"},
+  {"command": "recursive PnL-field walk over every committed cycle JSON + git grep for pnl/equity/pips fields", "result": "only nulls and verdict labels; F5/F6 pips are cost/spread-layer; trial_ledger.jsonl = 7 rows, all net_pnl/gross_pnl/exclusion_zones null, verdict NOT_SCORED_FALSIFIED, labels present, PRE_PNL_FALSIFICATION"},
+  {"command": ".venv/bin/python -m pytest tests/ -q (cycle tests)", "result": "13 passed"},
+  {"command": "researchctl locks inspect", "result": "FREE_PROVEN (flock free, no live heavy worker)"},
+  {"command": "git diff --name-only 017d2464..a7c3c5c6; git rev-parse --abbrev-ref @{u}; root-commit path scope check", "result": "153 changed files all under research/control/ERP1-TRACKA-COHORT-2/; no upstream configured (no push); root cycle commits touch only tracka_cohort2/** + registry; shadow namespaces untouched"}
+ ],
+ "authority_claims": [
+  "T1 CONFIRMED: GO-1 lawful — GO1_RECORDED.json exact phrase match to plan §0 ('GO ERP1 TRACKA COHORT 2 REGISTER AND COUNCIL'), typed at the registration gate 2026-09-26T01:46:48Z; registry row ACTIVE_LIGHT 0/18 head a7c3c5c6 s1 SEALED_UNTOUCHED GO-2 REGISTERED_NOT_CONSUMED; no GO2 artifact anywhere in either cycle namespace",
+  "T2 CONFIRMED 7/7 kills recomputed from bytes: C1/C2/C3 F-0 VETO_VARIANT_SAME_FAMILY (three-test tables + §5 one-shot on measured base 6a507f582061…); P3A F-1 PASS_F1 0.0786/0.0883 then F-5 CEILING_NEGATIVE_VETO (recomputed); P3B F-1 ANCESTRY_RHO_BLOCK 0.3103/0.3032 (recomputed); P4A/P4B F-5 declared-band kills (recomputed); F-2 PASS_PIT x4",
+  "T3 CONFIRMED: zero outcome PnL anywhere; 7 ledger rows all-null PnL NOT_SCORED_FALSIFIED; F5/F6 pips are cost-layer only",
+  "T4 CONFIRMED: series/ dir does not exist; sealed_audit pins match; holdout bars physical-but-unfiltered as claimed; no verdict input consumed 2026-H1 outcome data (census cost-layer disclosure recorded as finding F-1 LOW)",
+  "T5 CONFIRMED: freeze kills-table matches recomputed verdicts; slate EMPTY; all pins real ancestors (worktree 5ed2457b/0e2e2ab8/752b9028/cf5ef82c/c474ef44; root 3de439ab/6a507f58/dc94824c)",
+  "T6 CONFIRMED: budget 0/18 used; zero scored cells; observed==published on all 7 pre-PnL rows",
+  "T7 CONFIRMED: tree clean, no upstream/push, heavy lock free, branch diff cycle-scoped, shadow namespaces untouched",
+  "T8 CERTIFIED: terminal label REJECT_ALL (umbrella §9 'no mechanism survived its falsifier battery') is the strongest-allowed correct label; NO_ELIGIBLE_PROPOSAL ruled out (council produced 2 slated freezable mechanisms — they died in falsification); all BLOCKED_* ruled out (nothing blocked — data passed, cost was MEASURED); CANDIDATE_PENDING_PROSPECTIVE/TECHABORT ruled out (0 cells; aborts fail-closed and disclosed)"
+ ],
+ "known_limitations": [
+  "F-1 LOW: census_AUDUSD/USDCAD.json span 2021-01-03..2026-06-30 — aggregate spread/cost percentiles include the sealed 2026-H1 (inherited cohort-1 archive bytes, sha-pinned; cost layer only, no outcome fields). F5 round-2 binding numbers are dev-only; round-1 census-2026 usage for the unconditioned family book disclosed and superseded; P4 kills used the whole-window book in the candidate-adverse direction. '0 holdout looks' holds under the outcome-look definition; disclosure must be carried into the close record (condition C-2)",
+  "F-4 LOW: freeze pins.root_control_plane lists 'pending: skeptic F-1 + cost F-5 reports' — resolved post-freeze by root commit 2fea8fb8; close commit should record resolution",
+  "F-2/F-3/F-5 INFO: F-1 two disclosed pre-measurement fail-closed aborts + fold diagnostics NOT_RUN (report-only, gate unaffected); engine.py retains an inherited net_pips code path (outputs stripped at source this cycle); P4A USDCAD stressed RT 3.5 vs 3.60 bps mid-rounding (kill unchanged)",
+  "This lane inherits no implementer verdict; every number above was recomputed from committed bytes. commit_sha null — the Lead commits these two outputs in the close commit"
+ ],
+ "incidents": [],
+ "tree_status": "clean at a7c3c5c60f44125a1034251c3ccfd6a564655530 before this lane's outputs; the two audits/ files are the only additions; no upstream, no push, heavy lock free",
+ "workers": 0,
+ "verdicts": {
+  "overall": "TERMINAL_AUDIT_PASS",
+  "t1": "CONFIRMED",
+  "t2": "CONFIRMED",
+  "t3": "CONFIRMED",
+  "t4": "CONFIRMED",
+  "t5": "CONFIRMED",
+  "t6": "CONFIRMED",
+  "t7": "CONFIRMED",
+  "t8": "CONFIRMED",
+  "terminal_label": "REJECT_ALL certified",
+  "findings": {"critical": 0, "high": 0, "low": 2, "info": 3},
+  "close_out_conditions": [
+   "C-1 registry flip: lifecycle ACTIVE_LIGHT->TERMINAL, verdict REJECT_ALL (umbrella §9), head->close commit sha, budget 0/18 unchanged, go_phrase_state stays REGISTERED_NOT_CONSUMED, s1 SEALED_UNTOUCHED, F-4 pending-pin resolution noted",
+   "C-2 carry the census cost-layer disclosure (2021..2026-06-30 aggregates, inherited cohort-1 bytes, binding verdicts dev-only) into the terminal record scoping the 0-holdout-looks claim",
+   "C-3 P-9 stamp: +0 published/+0 observed scored cells (0/18; 7 pre-PnL falsified rows; 0 holdout looks; 0 survivors); program total re-stamped 257/260, 0 survivors",
+   "C-4 FAMILY_FAILURES.jsonl appends: TRACKA2-P3A-QCRD-H1 (CEILING_NEGATIVE_VETO_F5, passed F-0/F-1/F-2 — killed by the bill), TRACKA2-P3B-DINV-1D (ANCESTRY_RHO_BLOCK_F1, momentum-family collapse), TRACKA2-P4A-FIXCERT-01 (DECLARED_BAND_COST_KILL_F5), TRACKA2-P4B-QSKEW-01 (DECLARED_BAND_COST_KILL_F5, must add vol-content control on re-entry), + S1 range-edge re-confirmation addendum (C1/C2/C3)",
+   "C-5 LESSONS entry: cost-first pre-screening of tight-state conditional crossings; momentum null transfers across cadences (pre-screen day hypotheses vs H1TSMOM-class rho); declared proposer bands systematically optimistic vs measured books; keep one-shot fail-closed F-1, counts-only engine runs, slot-left-empty policy"
+  ]
+ }
+}
