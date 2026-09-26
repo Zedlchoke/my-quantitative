@@ -1017,3 +1017,30 @@ terminal with the named single owner action — no lane burn, no audit arc.
   the kill (ancestry identity rho) was unaffected — identity holds on any
   grid — but the record carries the corrected facts, and the incident is
   in FAMILY_FAILURES/ledger rows verbatim.
+
+## P-28 — SRLV-CX-C1 (2026-09-26): revival clause được trao cơ hội trọn vẹn và chết bởi số đo
+
+- **F-0 court hoạt động như thiết kế**: skeptic veto 3/4 đề xuất same-family
+  TRƯỚC PnL (0 cell tiêu tốn cho chúng); duy nhất cơ chế có payer mới +
+  lớp thông tin đo được (lịch settlement 8h) được cấp revival clause trọn
+  vẹn — và chết ở dev gates bằng số đo, không phải bằng định kiến. Kết quả
+  âm 6 cells là 6 cells rẻ.
+- **K-CTRL inverted là kill rẻ nhất chương trình**: chiều continuation
+  out-earn chiều absorption trên cả hai pair (ETH inverted còn dương nhẹ
+  PF 1.035) — một thí nghiệm đơn giản định hướng payer story trước khi ai
+  đầu tư thêm vào biến thể.
+- **Fixture fail-closed đã tự chứng minh**: 2 lần chạy bị chặn vì fixture
+  sai thiết kế (so exit-fields thay vì decision-fields; hằng số warmup tùy
+  ý) trước khi scored run đầu tiên xảy ra — engine chưa bao giờ được phép
+  chạy với test đỏ. Luật: fixture so trường QUYẾT ĐỊNH; exits được phép
+  thích ứng dữ liệu sau quyết định.
+- **Đơn vị dtype giết bằng chứng phụ**: datetime64[ms] astype(int64) đã là
+  ms — chia thêm 10⁶ làm funding BTC sập về 1 key; cột nhầm r[1]
+  (interval) thay r[2] (rate) làm funding ETH phình 10⁴×. PnL anchor không
+  nhiễm (funding ≡ 0 theo pin-10 + fixture) nhưng baselines thì nhiễm —
+  mọi số funding phải cross-check với anchor %/yr đã biết trước khi ghi.
+- **Pin-10 (sửa mâu thuẫn nội tại proposal pre-outcome)**: khi claim
+  "funding ≡ 0 by construction" thì fixture phải chứng minh được điều đó
+  (không settlement nào trong [t_entry, t_exit]); nếu law literal không
+  chứng minh được, subset strict là dạng frozen duy nhất, biến thể literal
+  + measured funding chỉ là diagnostic.

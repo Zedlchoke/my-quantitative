@@ -1,4 +1,30 @@
-## Sprint state (synced at the ERP1-TRACKA-COHORT-2 terminal, 2026-09-26)
+## Sprint state (synced at the SRLV-CX-C1 terminal, 2026-09-26)
+
+- **SRLV-CX-C1 CLOSED → `REJECT_ALL`** (2026-09-26; branch
+  `orca/srlv-cx-c1-integration`; budget **6/18 scored cells observed, 0
+  holdout/OOS looks, S1 SEALED_UNTOUCHED**; A7 terminal
+  `CONFIRM_REJECT_ALL` via independent recompute under both freeze
+  readings): cohort-1 of SRLV-PROGRAM-V1 (crypto track: S/R · sweep ·
+  vol-state on Binance perps). Council outcome-blind froze 1 mechanism
+  (skeptic vetoed 3 same-family pre-PnL; 2 slots left empty+closed):
+  **M1 SETTLE-RESOLVE** — settlement-adjacent sweep-then-absorption at
+  N=6 pivots, BTC/ETH 1h 2020-2026, flat-by-settlement (pin-10), fee
+  5bps+1tick DECLARED. Died at dev gates on BOTH pairs: BTC net −24,956
+  bps PF 0.651 (n=1,482; 749/733 per direction), ETH −33,515 bps PF 0.634
+  (n=1,518); all folds/directions/tiers negative; DSR 0.0. Kill laws:
+  G1–G4 + **K-CTRL inverted out-earns anchor both pairs (ETH inverted
+  +2,573 PF 1.035 — settlement adjacency favors continuation, not
+  absorption)** + **K-ANC rho 0.248 (rev24, BTC) / 0.256 (bandfade, ETH)
+  > 0.20**. Baselines crush (long-hold +64.8k/+114.2k bps; funding
+  measured 11.81/13.96%/yr). Fixtures ALL PASS pre-scoring (truncation
+  0/512, mutation 0/25, flat 0 violations) — kill is economics, not
+  leakage. The F-0 revival clause ("settlement schedule = new information
+  layer") was granted in full and died at measured outcome. Surface
+  closed against re-clock/re-label/buffer/window variants
+  (FAMILY_FAILURES `SRLVCX1-M1-SETTLE-RESOLVE`). FX track untouched —
+  NO_CANDIDATE stands, no reopener evidence yet.
+
+- **ERP1-TRACKA-COHORT-2 CLOSED → `REJECT_ALL`** (2026-09-26; branch
 
 - **ERP1-TRACKA-COHORT-2 CLOSED → `REJECT_ALL`** (2026-09-26; branch
   `orca/erp1-tracka-cohort-2-integration` terminal 206a157b; budget **0/18 —
