@@ -1,0 +1,59 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "pws-cx-sol-c1-a7-terminal",
+  "cycle_id": "PWS-CX-SOLUSDT-C1",
+  "role": "a7-independent-auditor",
+  "lane": "a7-terminal",
+  "branch": "orca/pws-cx-solusdt-c1-integration",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/pws-cx-solusdt-c1/integration",
+  "actual_start_sha": "caccc2e6d587486c8f78018f39eef31b30bc29cd",
+  "commit_sha": null,
+  "commit_sha_note": "Same-commit limitation (as prior lanes recorded): the dispatch mandates the report + this handoff in ONE commit, and a commit cannot contain its own sha. Both files are carried by the child of c3671faddfc9be01e9c54c4852a56ee1f7c3d5da on orca/pws-cx-solusdt-c1-integration with message 'PWS-CX-SOLUSDT-C1 A7 terminal audit CONFIRM_WITH_FINDINGS (independent recompute)'. Verify with: git -C <worktree> rev-parse HEAD.",
+  "changed_files": [
+    "research/control/PWS-CX-SOLUSDT-C1/audits_a7/A7_TERMINAL_REPORT.md",
+    "research/control/PWS-CX-SOLUSDT-C1/handoffs/HANDOFF_a7_terminal.json"
+  ],
+  "changed_paths": [
+    "research/control/PWS-CX-SOLUSDT-C1/audits_a7/",
+    "research/control/PWS-CX-SOLUSDT-C1/handoffs/"
+  ],
+  "incidents": [
+    "Dispatch-state drift (no repair performed, disclosed in report L4): at session start HEAD was caccc2e6 (dispatch sha, verified) but a prior A7 lane's commits 033c2bef (audit artifacts at this lane's exact output paths) and c3671fad (errata) landed on the branch mid-session, and the owner had already flipped the root registry to TERMINAL at 2026-09-26T13:57:18Z citing an A7 CONFIRM. My dispatch expected ACTIVE_LIGHT / REGISTERED_NOT_CONSUMED. Resolution: my independent artifacts supersede the prior files at the designated paths (git history preserves the prior versions); my commit leaves the registry head stale (c3671fad) until the owner re-points it.",
+    "None otherwise. No repairs made (auditor role); recomputation scripts written only under /tmp/a7_audit/; data_local/ untracked dirs untouched."
+  ],
+  "known_limitations": [
+    "Rho reproduction is a re-implementation, not byte-identical code: episode counts, occupancies, run census and theta sweep match EXACTLY under the identified convention; per-cell rho deltas up to 0.018 remain (shadow warm-up / rank-tie conventions), tolerance-irrelevant vs the 0.20 bar (min power-viable cell 0.231).",
+    "Spread census consumed at manifest level only (pooled/by-hour p50 fields, 0.469 bps p50 feeding RT_base=10.469): the raw 353 MB bookTicker zips were not re-streamed in this run; the census artifact is sha-inventoried in the committed INVENTORY.md and was bit-verified by the prior A7 lane's independent pass.",
+    "Two-sided rho encoding choice is mine (position-signed state vs signed trailing-level shadows); different encodings shift cells by <=0.1 without approaching the 0.20 bar from above.",
+    "K-CONC FTX-window share recomputed 42.3% (machine anomaly bounds) vs claimed 42.2% - window-edge rounding, recorded not filed.",
+    "commit_sha null by construction (see commit_sha_note)."
+  ],
+  "objective": "Independent A7 terminal audit of the PWS-CX-SOLUSDT-C1 close: verify 16-artifact integrity (sha256), recompute from raw machine files the funding census, run-structure math, ceiling-x-power emptiness, ancestry rho spot-check and klines census, verify trial accounting and gate consistency (0-row ledger, 0/18 budget, I001 identity transitions, zero outcome views), and issue CONFIRM / CONFIRM_WITH_FINDINGS / REFUSED.",
+  "outputs": [
+    {
+      "path": "research/control/PWS-CX-SOLUSDT-C1/audits_a7/A7_TERMINAL_REPORT.md",
+      "result": "CONFIRM_WITH_FINDINGS - terminal claim NO_ELIGIBLE_PROPOSAL CONFIRMED (0 HIGH/CRITICAL; 1 MED verdict-neutral; 4 LOW)",
+      "evidence": "Sections 0-5: artifact inventory + 16 sha256; recomputation vs expected with deltas; trial-accounting/gate consistency; findings table; verdict"
+    },
+    {
+      "path": "research/control/PWS-CX-SOLUSDT-C1/handoffs/HANDOFF_a7_terminal.json",
+      "result": "This handoff at the dispatch-mandated handoffs/ path (unoccupied before; the prior A7 lane had placed its handoff at audits_a7/HANDOFF_a7_terminal.json, which remains intact at commit 033c2bef)",
+      "evidence": "schema zcode_orch_v3_handoff@1; tests carry the recompute numbers"
+    }
+  ],
+  "tests": [
+    "sha256 16 required artifacts: all present; trial_ledger.jsonl = e3b0c442...b855 (empty-file hash, 0 rows); raw funding sources 3dcac8d8/3c536649/9e850cb4 match machine pins; 72/72 kline zips match zip_sha256_manifest_json (0 mismatches)",
+    "funding census (merged H1+H2, dedupe fundingTime, sort): n=6580 EXACT; mean +1.37616869300912e-06 (bit-exact to machine float, +0.0137617 bps); median 8.5755e-05 (+0.85755 bps); neg_share 1883/6580=28.6170% (claim 28.62%); 1 zero settlement EXACT; 6y sum +0.9055%; worst -200 bps @ 2022-11-09T20:00:00.018Z; max +33.25 bps; first/last exact; 101 anomalous <7h spacings confined to 2022-11-09T16:00Z..2022-11-18T08:00Z EXACT",
+    "run structure: 1234 maximal same-sign runs (zeros break) EXACT; len>=3/5/8 = 484/258/153 EXACT; theta sweep K=3 first-3-mean (positive-side signed convention, no pin): >=1->56, >=2->3, >=3->2, >=4->0 EXACT; skeptic episode table (positive-side + whole-run span>=18h + state ON from K-th settlement): 147/48/8/3/1 episodes and 48.5/26.7/3.9/1.9/0.2% occupancy at theta=0.5/1.0/1.5/2.0/3.49 - all EXACT",
+    "ceiling x power: RT_base=10.469 (fee 10 + spread p50 0.469), theta_min=3.490/5.234/6.979 (claim 3.49/5.23/6.98); one-sided episodes at theta>=5.23: K3->0, K5->1(12 settl), K8->1(12 settl); grid max over all ceiling-satisfying theta = 17 episodes (K5 base) - feasible set (ceiling law AND >=100 RT) EMPTY as claimed; two-sided addendum: 8 negative-side episodes at theta>=5.23 (196 settl, 4/8 FTX-season) - still empty intersection",
+    "ancestry rho (theta=0.50 gate state, pooled Spearman n=6580): W3 +0.623 (claim +0.607), W9 +0.566 (+0.540), W21 +0.510 (+0.493), W90 +0.371 (+0.353), uncond +0.615 EXACT; excl-current-window variant +0.608/+0.541/+0.496/+0.366; theta=1.0: +0.387/+0.347/+0.321/+0.231, uncond +0.383 (claim +0.377/+0.333/+0.310/+0.203/+0.383) - every power-viable gate 1.15-3.1x the 0.20 K-ANC bar; two-sided signed variant: theta=0.5 -> 0.428-0.699 (248 eps, 60.0% occ), theta=1.0 -> 0.332-0.506 (101 eps, 34.3% occ) - kill robust two-sided (MED finding M1 verdict-neutral)",
+    "persistence + K-CONC: rate autocorr lag-1/2/3/6 = 0.853/0.780/0.731/0.527 EXACT; P(next same sign) 0.813 (claim 0.812); negative mass 7252.5 bps EXACT; 2022 share 59.1% EXACT; FTX anomaly window 42.3% (claim 42.2%, window-edge); count(rate==-0.02)=7 -> 1400 bps = 19.3% (prose said '4 deepest = 13.8%'; 13.8% = top-5) - finding L1, understates concentration",
+    "klines census (72 zips, full recount): 52145 bars EXACT; 0 duplicate open times; first 2020-09-14T07:00Z, last 2026-08-31T23:00Z; ideal grid 52265 EXACT; missing 120 EXACT in exactly 2 windows (2022-02-26..28=72, 2022-04-01..02=48); all 72 monthly counts match machine",
+    "trial accounting: wc -l trial_ledger.jsonl = 0; root registry budget {0,18}, s1 SEALED_UNTOUCHED, workers 0, go_phrase_state now DEAD(extinguished at close per P-8/RULES7) with phase 'GO-2 died UNCONSUMED', events trail documents GO-1 consumed 11:14Z under delegation + terminal flip 13:57:18Z; IDENTITY_REGISTRY exactly 2 rows I001 PROPOSED(13:02:13Z)->F0_KILLED(13:59:00Z) with status_evidence citing skeptic artifacts; grep pnl|scored_cell|outcome_view|SCORED_RUN|net_edge|sharpe|drawdown over cycle namespace: prose-only hits, NO outcome artifact exists"
+  ],
+  "tree_status": "At commit time: branch orca/pws-cx-solusdt-c1-integration @ c3671faddfc9be01e9c54c4852a56ee1f7c3d5da (advanced from dispatch sha caccc2e6 by prior A7 lane commits 033c2bef + c3671fad during this session); only lane changes are the two superseded-in-place audit artifacts staged by explicit pathspec; pre-existing untracked data_local/vision/bookTicker_um_SOLUSDT/ and data_local/vision/klines_um_SOLUSDT_1h/ untouched; no push, no merge, root untouched.",
+  "workers": 0,
+  "verdict": "CONFIRM_WITH_FINDINGS",
+  "summary": "Independent A7 terminal re-audit (fresh context, own /tmp scripts, prior A7 report read only after my numbers were pinned) of the PWS-CX-SOLUSDT-C1 NO_ELIGIBLE_PROPOSAL close. All load-bearing claims reproduce from raw bytes: funding census exact (n=6580, mean +0.0137617 bps, median +0.85755, neg 28.617%, 1 zero, worst -200 bps, 101 FTX spacings); run census 1234/484/258/153 exact; skeptic theta sweep 56/3/2/0 and episode table 147/48/8/3/1 with occupancies exact under the reverse-engineered positive-side convention; ceiling x power intersection EMPTY at every (K,theta) (max 17 episodes vs >=100 RT floor); ancestry rho 0.23-0.62 at every power-viable gate vs the 0.20 bar with the unconditional anchor exact at +0.615; klines 52,145 bars exact with 120 missing in the two disclosed 2022 windows; ledger 0 rows, budget 0/18, S1 sealed, workers 0, GO-2 dies UNCONSUMED, I001 PROPOSED->F0_KILLED (1/100). Findings 0 HIGH/CRITICAL, 1 MED (skeptic arithmetic is one-sided vs the two-sided proposal; my two-sided recompute keeps the kill: 8 negative-side episodes vs 100 floor, 4/8 FTX-concentrated, two-sided signed rho 0.332-0.699), 4 LOW (deep-print prose 7x-200bps=19.3% not '4=13.8%'; rho prose range quotes only the theta=0.5 row with the theta=1.0 W90 cell near the bar; handoffs/ holds 4 files not 5; dispatch-staleness/registry-head-lag from the mid-flight prior A7 commits and 13:57Z TERMINAL flip). Verdict: CONFIRM_WITH_FINDINGS - the close is a sound pre-PnL empty-slate termination.",
+  "recommended_next_action": "Master/owner: (1) the terminal close NO_ELIGIBLE_PROPOSAL stands - this is a second independent confirmation; optionally record the double-confirmation and re-point registry head past the supersession commit; (2) carry M1/L1 corrections into any REUSE of the F-0 representation-math on BNBUSDT (pair-child #2): state gate convention one-sided vs two-sided, use 7x-200bps=19.3% for deep-print concentration, and keep the >=100-RT power floor and 0.20 rho bar as the binding fences; (3) master stop-rule 9(a) has seen 1 of 2 consecutive empty pair-children."
+}
