@@ -1,0 +1,130 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "srlv-cx-c1-pit-audit-f2",
+  "cycle_id": "SRLV-CX-C1",
+  "role": "pit-data-auditor",
+  "lane": "pit",
+  "dispatch_sha": null,
+  "actual_start_sha": "d3f063a05338e498912a16d4678d4451fd0cb838",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/SRLV-CX-C1/c3_council/PITAUDIT_F2_C1_REPORT.md",
+    "research/control/SRLV-CX-C1/c3_council/HANDOFF_pit.json"
+  ],
+  "tests": [
+    {
+      "command": "n/a (audit lane, no code executed)",
+      "result": "literal bar-index audit of all 4 proposals against PLAN_srlv_program_v1.md §3 (items 1-8) + §2.4, C1_DATAGATE_VERDICT.md and EXPOSURE_VERIFICATION_C1.md: 9 audit points per proposal checked; no lookahead defect found; 2 constructibility defects found (F-1 P1 flat-exit/entry-open collision at window end; F-2 P2-M2 time-stop semantics reading-dependent for the flat-by-settlement guarantee), both with unique fail-closed resolutions encoded as mandatory freeze pins and fixture gates; off-by-one proof for P1 pivot (bar j+6 cannot sweep or break the level it confirms, by strict pivot inequality); P2-M1 t/t+1/t+2 sequence verified as exactly the engine law (decision bar t+1, fill t+2 open); P2-M2 9-hour flat table verified under the +4h exit reading"
+    }
+  ],
+  "authority_claims": [
+    "worktree verified: /Users/hoangminhlong/my-quantitative/.worktrees/srlv-cx-c1/integration, branch orca/srlv-cx-c1-integration, HEAD d3f063a05338e498912a16d4678d4451fd0cb838",
+    "wrote ONLY the two assigned paths under research/control/SRLV-CX-C1/c3_council/; no commit",
+    "read: PROPOSAL_P1.md, PROPOSAL_P2.md, plans/PLAN_srlv_program_v1.md (§2.4, §3, §7.2, §8, §10), C1_DATAGATE_VERDICT.md, EXPOSURE_VERIFICATION_C1.md; no outcome/PnL/ledger/MAP/LESSONS file read (none exists to read)",
+    "verdicts are conditional on the freeze pins listed in the report: an implementation shipped without them is K-PIT at fixture stage regardless of the CONSTRUCTIBLE label"
+  ],
+  "known_limitations": [
+    "audit is textual/bar-arithmetic on the proposal prose; code-level verification happens at the F1-F7 fixtures against the frozen code digest",
+    "SOL/BNB funding grid unverified (funding NOT staged): any flat-by-settlement arm on those pairs is gated by F-GRID/F-M2-FLAT against the ACTUAL historical settlement grid; venues have historically changed funding intervals, so the assumed 8h grid must be verified, fail-closed",
+    "bar labeling convention (UTC open time, close = open+1h) is assumed, not stated in either proposal; pinned as P0 — all window math flips if the convention differs",
+    "float byte-identity in F1/F2 requires a pinned fixed-decimal serialization, defined in this report and binding at freeze"
+  ],
+  "verdicts": [
+    {
+      "proposal": "P1-A",
+      "title": "SETTLE-SWEEP-ABSORB",
+      "verdict": "PIT_CONSTRUCTIBLE",
+      "conditional_on": [
+        "P0 bar-labeling convention (open-time, close=open+1h)",
+        "P1-1 flat-exit precompute: T_exit = open of last bar closing before S_{k+1}-2h; skip event if T_exit <= entry open-time (defect F-1, fail-closed resolution)",
+        "P1-2 sweep-bar close partition table (trade / P1-B-only / dead-zone flat-both)",
+        "P1-3 ATR24 window pinned (x-23..x or x-24..x-1, one only) and recomputed at every consumption instant",
+        "P1-4 intactness closes-only evaluated over bars t_known < k < s",
+        "P1-5 precedence/re-arm rules (one position per pair, events during hold ignored, simultaneous both-side = skip)",
+        "P1-6 opposite-side exit object defined exactly",
+        "P1-7 forced time exit wins at T_exit instant",
+        "P1-8/P1-9 strict pivot inequalities; candidate-bar range pinned",
+        "P1-10 SOL/BNB flat arms gated on actual settlement-grid verification (F-GRID)",
+        "P1-11 missing-bar no-fill rule total over all required windows"
+      ],
+      "required_fixtures": [
+        "F1 truncation-byte-identity (512 decision times)",
+        "F2 future-mutation invariance",
+        "F3 delay-pair delay-0/delay-1 (fill c+2)",
+        "F4 non-vacuity >=2% decision rate + census vs 100-RT floor",
+        "F5 dry-run leak scan (static AST + runtime taint + funding sentinel)",
+        "F6 independent implementation record-level diff",
+        "F7 fold force-flat",
+        "F-P1A-FLAT (window-end collision skip, zero settlement-spanning holds)",
+        "F-P1-OFFBYONE (bar j+6 cannot trigger)",
+        "F-P1-PARTITION",
+        "F-ATR-INSTANT",
+        "F-GAP",
+        "F-WARMUP (25 bars)",
+        "F-PRECEDENCE"
+      ]
+    },
+    {
+      "proposal": "P1-B",
+      "title": "SETTLE-BREAK-CASCADE",
+      "verdict": "PIT_CONSTRUCTIBLE",
+      "conditional_on": [
+        "all P1-A pins (shared level machinery)",
+        "P1-B-1 intactness closes-only at break bar b's open; buffer ATR24 evaluated at close of b per P1-3"
+      ],
+      "required_fixtures": [
+        "F1-F7 common core",
+        "F-P1B-FLAT (same collision gate as F-P1A-FLAT)",
+        "F-P1-OFFBYONE (bar j+6 cannot break its own level)",
+        "F-ATR-INSTANT (buffer/stop evaluation instants)",
+        "F-GAP",
+        "F-WARMUP (25 bars)",
+        "F-PRECEDENCE"
+      ]
+    },
+    {
+      "proposal": "P2-M1",
+      "title": "PDSR prior-UTC-day-extreme sweep-reclaim",
+      "verdict": "PIT_CONSTRUCTIBLE",
+      "conditional_on": [
+        "P0 bar-labeling convention",
+        "P2M1-1 close_{t+1} outside [L,H] and not acceptance (continuation through the whole range) = expires flat, logged; inclusive/strict boundary bounds frozen verbatim",
+        "P2M1-2 absorption median window exactly t-23..t",
+        "P2M1-3 day-roll level freeze verbatim",
+        "P2M1-4 warmup: max(panel day-2 start, trigger bar index >= 23)",
+        "P2M1-5 precedence/re-arm rules",
+        "optional SOL/BNB flat-by-settlement neighbour inherits P1-10/P1-11 and F-M2-FLAT-equivalent gating"
+      ],
+      "required_fixtures": [
+        "F1-F7 common core",
+        "F-M1-DAY (d-1 level, same-day exclusion, continuation-out-of-range skip, ==H boundary)",
+        "F3 delay-pair (fill t+3) — verified the spec t+1-close->t+2-open fill IS the engine law",
+        "F-WARMUP",
+        "F-PRECEDENCE"
+      ]
+    },
+    {
+      "proposal": "P2-M2",
+      "title": "WSA weekly-shelf break-acceptance impulse",
+      "verdict": "PIT_CONSTRUCTIBLE",
+      "conditional_on": [
+        "P0 bar-labeling convention",
+        "P2M2-1 GATE: time stop = exactly 4 held bars, exit decision at close of E+3, execution at entry open +4h; verified 9-row flat table (01->05...19->23 UTC, >=1 bar before next 00/08/16 boundary). FLIP CONDITION: if this reading cannot be pinned, verdict flips to PIT_FAIL_FLAT_BY_SETTLEMENT_NOT_GUARANTEED (alternative reading exits AT the boundary for entry hours 03/11/19)",
+        "P2M2-2 missing bar anywhere in shelf/median/event/acceptance/fill/exit windows = no decision, no partial-window shelf",
+        "P2M2-3 time-stop bar arithmetic frozen (E = t+2 fill bar)",
+        "P2M2-4 admissible-hour mask applies to fill opens; skips logged; identical mask on all controls",
+        "P2M2-5 warmup: event bar index >= 168, first fill open >= 170"
+      ],
+      "required_fixtures": [
+        "F1-F7 common core",
+        "F-M2-SHELF (t-exclusion proof vs self-inclusion bug)",
+        "F-M2-FLAT (9-row table re-derived against ACTUAL settlement grid; GATE for SOL/BNB flat arms)",
+        "F-GRID (actual per-pair funding-interval enumeration, fail-closed)",
+        "F-GAP (incl. no-partial-shelf assertion)",
+        "F3 delay-pair (fill t+3)",
+        "F-WARMUP (168 bars)",
+        "F-PRECEDENCE (out-of-mask fill-open skips)"
+      ]
+    }
+  ]
+}

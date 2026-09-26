@@ -1,0 +1,156 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "srlv-cx-c1-cost-audit-f5",
+  "cycle_id": "SRLV-CX-C1",
+  "role": "cost-execution-auditor",
+  "lane": "cost",
+  "dispatch_sha": null,
+  "actual_start_sha": "d3f063a05338e498912a16d4678d4451fd0cb838",
+  "commit_sha": null,
+  "date": "2026-09-26",
+  "changed_paths": [
+    "research/control/SRLV-CX-C1/c3_council/COSTAUDIT_F5_C1_REPORT.md",
+    "research/control/SRLV-CX-C1/c3_council/HANDOFF_cost.json"
+  ],
+  "tests": [
+    {
+      "command": "pwd && git -C /Users/hoangminhlong/my-quantitative/.worktrees/srlv-cx-c1/integration branch --show-current && git -C /Users/hoangminhlong/my-quantitative/.worktrees/srlv-cx-c1/integration rev-parse HEAD",
+      "result": "PASS: /Users/hoangminhlong/my-quantitative/.worktrees/srlv-cx-c1/integration on orca/srlv-cx-c1-integration @ d3f063a05338e498912a16d4678d4451fd0cb838"
+    },
+    {
+      "command": "python (root .venv, pandas 3.0.5): read data_local/funding_events.parquet (N=7,643) and data_local/vision/fundingRate_um_ETHUSDT/*.zip (80 zips, N=7,305); per-settlement distribution, negative share, worst, annualized mean*1095, per-year, bear windows 2022 / 2022-H1 / 2021-11-10..2022-12-31",
+      "result": "BTC mean +1.0774 bp/settle = +11.80%/yr (matches proposal's 11.798 anchor), 14.11% negative, worst -30.00 bp @ 2020-03-13 08:00 UTC, 3 settlements < -10 bp; 2022 22.1% neg, 2022-H1 25.8% neg. ETH mean +1.2737 bp = +13.95%/yr, 13.83% negative, worst -35.63 bp @ 2021-05-19 16:00 UTC, 2022 34.2% neg. Both series uniformly 8h interval, 0 duplicate timestamps"
+    },
+    {
+      "command": "python: tick = gcd(x1e10-scaled successive close increments) over last 8 monthly kline zips per pair (~5,832 bars), cross-checked gcd-over-levels + first-2,500-bar early window; min-low per sample; bar counts vs C1 datagate",
+      "result": "BTCUSDT 0.1 (early era 0.01), ETHUSDT 0.01, SOLUSDT 0.01 modern (refutes dispatched 0.001 guess; early 0.0001), BNBUSDT 0.01 (early 0.001). Bar counts reproduce datagate exactly (58,440/58,440/52,145/57,472; SOL 2 gap bars). Worst tick burden: BTC 0.028, ETH 0.119, SOL 0.936, BNB 0.160 bp/tick/side (fail-closed coarsest tick x lowest price)"
+    },
+    {
+      "command": "python event census (counts only, no fills/PnL/exits) on /tmp parquet caches of staged klines: P2-M1 prior-day-extreme close-through+reclaim (with/without expansion filter); P2-M2 rolling-168h break+acceptance with 9-hour mask {01,02,03,09,10,11,17,18,19} on SOL/BNB; P1 N=6 pivot machinery (strict inequalities, intact = no far-side close since t_known, settlement windows open-hours {S-2..S+2} S in {0,8,16}, 0.25*ATR24 buffers, P1-B break = first far-side close beyond buffer)",
+      "result": "P1-A per direction: BTC 1875L/1758S, ETH 2085L/1769S, SOL 1519L/1425S, BNB 1794L/1548S (thinnest fold cell SOL F1 long 94). P1-B: BTC 1380/1560, ETH 1487/1527, SOL 1157/1202, BNB 1334/1316. P2-M1: BTC 942up/831dn raw, 656/613 expansion-filtered; ETH 920/797 raw, 646/588 filtered (proposal claim 80-160/pair is ~10x conservative). P2-M2: BTC 569/341, ETH 678/345 unmasked; SOL masked 247/157, BNB masked 282/142 (thin: 1.4-1.6x floor pre-dedup). Counts are UPPER bounds (no one-position dedup)"
+    },
+    {
+      "command": "RT cost book arithmetic: 2 x (5 bps + worst-corner tick burden); x1.5/x2.0 uniform bands; P2-spec stress fees*2+3 ticks; + measured worst settlement for funding-exposed arms",
+      "result": "base: BTC 10.06 / ETH 10.24 / SOL 11.87 / BNB 10.32 bps; x1.5: 15.08/15.35/17.81/15.48; x2.0: 20.11/20.47/23.74/20.65; P2-spec stress: 20.19/20.83/26.55/21.13; +worst settlement: BTC 50.19, ETH 56.46 bps"
+    }
+  ],
+  "authority_claims": [
+    "worktree verified: /Users/hoangminhlong/my-quantitative/.worktrees/srlv-cx-c1/integration, branch orca/srlv-cx-c1-integration, HEAD d3f063a05338e498912a16d4678d4451fd0cb838; wrote ONLY the two assigned paths under research/control/SRLV-CX-C1/c3_council/; no commit; /tmp used solely as scratch cache outside the repo",
+    "read: PROPOSAL_P1.md, PROPOSAL_P2.md, plans/PLAN_srlv_program_v1.md (§7.1, §7.2, §8, §10, §11), C1_DATAGATE_VERDICT.md; HANDOFF_pit.json read for envelope format only AFTER this lane's analysis was complete (its F-1 flat-exit defect is independently corroborated in §5.8 of the report); no outcome/PnL/ledger/MAP/LESSONS file read (none exists)",
+    "layer discipline confirmed: all four proposals label fee 5 bps + 1 adverse tick as DECLARED (never measured), funding as MEASURED-while-held / structural-zero for flat-by-settlement fixtures, spread census as NOT_RUN — labels correct; numeric disclosures partially wrong (P1 SOL tick burden overstated ~50-100x; P2-M2 SOL/BNB 2-tick figure 0.5-0.7 bps not reconcilable; ETH worst settlement is -35.63 bp not -30)",
+    "spread-materiality ruling (BLOCKED power exercised): entry style is market-at-open taker in all four proposals; on BTC/ETH the 1-adverse-tick convention cannot be flipped by plausible spread widening (tick 0.005-0.12 bp) so the census is a GO-gate (Q-8), not a BLOCK; on SOL/BNB the tick burden reaches 0.16-0.94 bp/tick at 2020-21 price floors so 10-50-tick spreads equal the entire claimed premium — every SOL/BNB arm of P1-A, P1-B, P2-M2 is BLOCKED_MISSING_COMPONENT until the fill-hour spread census is staged, unless the council removes SOL/BNB from the allowed scored panel",
+    "funding anchors are MEASURED by this lane from the staged C1 corpus and reconcile the bear-recon precedent: BTC +11.80%/yr (exact), worst -30.00 bp (exact), downtrend negative share 22.1-25.8% window-dependent (precedent ~24.7% in-band)",
+    "ceiling verdicts compare CLAIMED gross bands vs MEASURED cost books; the binding test remains freeze-time F-g (measured median gross >= stress RT on the anchor's own fill distribution); no GO on any arm before the spread census (all arms) and the BTC funding dual-source cross-check (funding-exposed arms) — the cross-check is NOT_RUN (BTC Vision funding zips unstaged)"
+  ],
+  "known_limitations": [
+    "census event counts are upper bounds: one-position-per-pair dedup, fold force-flat skips and the P1 late-entry collision skip (PIT lane F-1) are NOT applied; power verdicts are optimistic in count only — all cost arithmetic is fail-closed",
+    "census is this lane's re-derivation of proposal observables, not the frozen implementation; PIT lane fixtures F1-F7 adjudicate the real counts",
+    "tick GCD is computed on the staged kline record; an intra-month venue tick change would be absorbed into the GCD without dating; covered by the fail-closed coarsest-tick convention",
+    "P1-A internal inconsistency found and referred to council: its §5 window W_k = 5 bars/settlement makes settlement-adjacency 62.5% of hours (narrowest reading 37.5%), contradicting the §2 '≤ ~2% of hours' tail-selection premise ~30x; ±4h placebo windows overlap anchor windows on 1-2 bars per settlement",
+    "ETH funding sourced from Vision zips, BTC from bear-recon fapi parquet (sha manifest data_local/funding_sha256.json); row-level dual-source cross-check NOT_RUN",
+    "ceiling convention for funding-exposed arms is UNPINNED: on the measured-distribution reading P2-M1/P2-M2 BTC-ETH survive; if the freeze pins the per-trade ceiling at worst-settlement-inclusive stress (50.19/56.46 bps), P2-M1 and P2-M2 BTC/ETH arms flip to CEILING_NEGATIVE_VETO at their claimed 20-40/15-40 bps bands — council must pin before scoring"
+  ],
+  "verdicts": [
+    {
+      "proposal": "P1-A",
+      "title": "SETTLE-SWEEP-ABSORB (settlement-adjacent sweep-reclaim, flat-by-settlement)",
+      "verdict": "PASS",
+      "ceiling": "CEILING_SURVIVABLE on BTC/ETH (conditional on freeze-time F-g: measured median gross >= stress RT)",
+      "numbers": {
+        "claimed_gross_bps": "10-30",
+        "rt_base_bps": {"BTCUSDT": 10.06, "ETHUSDT": 10.24, "SOLUSDT": 11.87, "BNBUSDT": 10.32},
+        "rt_x1_5_bps": {"BTCUSDT": 15.08, "ETHUSDT": 15.35, "SOLUSDT": 17.81, "BNBUSDT": 15.48},
+        "rt_x2_0_bps": {"BTCUSDT": 20.11, "ETHUSDT": 20.47, "SOLUSDT": 23.74, "BNBUSDT": 20.65},
+        "funding_base_book": "structural 0 (flat-by-settlement fixture, verified consistent under PIT F-1 skip pin)",
+        "funding_stress_path_measured": {"BTCUSDT_worst_settlement_bps": -30.0, "ETHUSDT_worst_settlement_bps": -35.63},
+        "event_census_per_direction": {"BTCUSDT": [1875, 1758], "ETHUSDT": [2085, 1769], "SOLUSDT": [1519, 1425], "BNBUSDT": [1794, 1548]},
+        "power_floor_100rt": "met on paper all pairs/directions (counts are upper bounds)"
+      },
+      "blocked_arms": [
+        "SOLUSDT + BNBUSDT arms: BLOCKED_MISSING_COMPONENT — fill-hour spread census (bookTicker/aggTrades) not staged; ceiling undecidable there (tick burden 0.16-0.94 bp/tick at low-price corners, 1-adverse-tick convention unbounded)"
+      ],
+      "conditions": [
+        "F-g at freeze: measured median gross/trade >= stress RT on the anchor's own fill distribution, else K-COST fail-closed",
+        "no GO before spread census (Q-8 tier-floor validation)",
+        "flat-boundary convention pinned (exit strictly before settlement print; late-entry events skipped) or structural funding==0 claim is void",
+        "SOL tick-burden disclosure replaced with measured values (0.01 bp/tick at $100; <=0.94 bp/tick at $1.07 floor)"
+      ]
+    },
+    {
+      "proposal": "P1-B",
+      "title": "SETTLE-BREAK-CASCADE (settlement-adjacent acceptance-break, same windows)",
+      "verdict": "PASS",
+      "ceiling": "CEILING_SURVIVABLE on BTC/ETH (marginal at claim bottom edge 15 vs x1.5 15.08/15.35; conditional on F-g)",
+      "numbers": {
+        "claimed_gross_bps": "15-50",
+        "rt_base_bps": {"BTCUSDT": 10.06, "ETHUSDT": 10.24, "SOLUSDT": 11.87, "BNBUSDT": 10.32},
+        "rt_x1_5_bps": {"BTCUSDT": 15.08, "ETHUSDT": 15.35, "SOLUSDT": 17.81, "BNBUSDT": 15.48},
+        "rt_x2_0_bps": {"BTCUSDT": 20.11, "ETHUSDT": 20.47, "SOLUSDT": 23.74, "BNBUSDT": 20.65},
+        "funding_base_book": "structural 0 (flat-by-settlement fixture)",
+        "funding_stress_path_measured": {"BTCUSDT_worst_settlement_bps": -30.0, "ETHUSDT_worst_settlement_bps": -35.63},
+        "event_census_per_direction": {"BTCUSDT": [1380, 1560], "ETHUSDT": [1487, 1527], "SOLUSDT": [1157, 1202], "BNBUSDT": [1334, 1316]},
+        "power_floor_100rt": "met on paper all pairs/directions"
+      },
+      "blocked_arms": [
+        "SOLUSDT + BNBUSDT arms: BLOCKED_MISSING_COMPONENT — fill-hour spread census (same as P1-A)"
+      ],
+      "conditions": [
+        "F-g at freeze (same as P1-A)",
+        "no GO before spread census",
+        "flat-boundary convention pinned (shared machinery with P1-A)",
+        "P1-B break definition = first far-side close beyond 0.25*ATR24 buffer (only candidate once intact-entering-bar is enforced) — census used this reading; pin at freeze"
+      ]
+    },
+    {
+      "proposal": "P2-M1",
+      "title": "PDSR prior-day-extreme sweep-reclaim reversal (BTC/ETH funding-exposed)",
+      "verdict": "PASS",
+      "ceiling": "CEILING_SURVIVABLE on BTC/ETH (conditional on F-g); FLIP CONDITION recorded: if the freeze pins the per-trade ceiling at worst-settlement-inclusive stress (50.19 BTC / 56.46 ETH bps), verdict flips to CEILING_NEGATIVE_VETO at claimed 20-40 bps",
+      "numbers": {
+        "claimed_gross_bps": "20-40",
+        "rt_base_bps": {"BTCUSDT": 10.06, "ETHUSDT": 10.24},
+        "rt_base_plus_typical_funding_bps": {"BTCUSDT": 11.0, "ETHUSDT": 11.2},
+        "rt_x1_5_bps": {"BTCUSDT": 15.08, "ETHUSDT": 15.35},
+        "rt_x2_0_bps": {"BTCUSDT": 20.11, "ETHUSDT": 20.47},
+        "p2_spec_stress_fees_x2_3ticks_bps": {"BTCUSDT": 20.19, "ETHUSDT": 20.83},
+        "worst_settlement_inclusive_stress_bps": {"BTCUSDT": 50.19, "ETHUSDT": 56.46},
+        "funding_measured": {"mean_bp_per_settlement": {"BTCUSDT": 1.0774, "ETHUSDT": 1.2737}, "median_bp": {"BTCUSDT": 0.93, "ETHUSDT": 1.0}, "annualized_pct": {"BTCUSDT": 11.8, "ETHUSDT": 13.95}, "worst_bp": {"BTCUSDT": -30.0, "ETHUSDT": -35.63}},
+        "event_census_per_direction_raw": {"BTCUSDT": [942, 831], "ETHUSDT": [920, 797]},
+        "event_census_per_direction_expansion_filtered": {"BTCUSDT": [656, 613], "ETHUSDT": [646, 588]},
+        "power_floor_100rt": "met raw and filtered (>5x floor pre-dedup); proposal's own 80-160 event estimate is ~10x conservative"
+      },
+      "blocked_arms": [],
+      "conditions": [
+        "F-g at freeze on measured median gross vs stress RT",
+        "ceiling convention (median-path vs worst-settlement-inclusive) pinned BEFORE scoring — pin determines SURVIVABLE vs NEGATIVE_VETO",
+        "BTC funding dual-source cross-check (fapi vs Vision) is a named GO gate — NOT_RUN today",
+        "no GO before spread census (BTC/ETH GO-gate, not ceiling-flipping)"
+      ]
+    },
+    {
+      "proposal": "P2-M2",
+      "title": "WSA weekly-shelf break-acceptance impulse (BTC/ETH funding-exposed + SOL/BNB flat-by-settlement)",
+      "verdict": "PASS",
+      "ceiling": "CEILING_SURVIVABLE on BTC/ETH arms (marginal: claim lower half 15-20.8 below fee-stress; conditional on F-g); SOL/BNB flat arms CEILING_UNDECIDABLE_MISSING_SPREAD",
+      "numbers": {
+        "claimed_gross_bps": "15-40",
+        "rt_base_bps": {"BTCUSDT": 10.06, "ETHUSDT": 10.24, "SOLUSDT": 11.87, "BNBUSDT": 10.32},
+        "rt_x1_5_bps": {"BTCUSDT": 15.08, "ETHUSDT": 15.35, "SOLUSDT": 17.81, "BNBUSDT": 15.48},
+        "rt_x2_0_bps": {"BTCUSDT": 20.11, "ETHUSDT": 20.47, "SOLUSDT": 23.74, "BNBUSDT": 20.65},
+        "worst_settlement_inclusive_stress_bps": {"BTCUSDT": 50.19, "ETHUSDT": 56.46},
+        "funding_SOLBNB_arms": "structural 0 (flat-by-settlement: max entry hour 19 + 4-bar hold -> flat by open 23:00, >=1 bar before next 00/08/16 boundary — verified arithmetically)",
+        "event_census_acceptance_per_direction": {"BTCUSDT": [569, 341], "ETHUSDT": [678, 345], "SOLUSDT_masked": [247, 157], "BNBUSDT_masked": [282, 142]},
+        "power_floor_100rt": "BTC/ETH met; SOL/BNB dn side 142-157 raw = 1.4-1.6x floor pre-dedup -> MEDIUM NOT_RUN_THIN risk (and arms blocked anyway)"
+      },
+      "blocked_arms": [
+        "SOLUSDT + BNBUSDT flat arms: BLOCKED_MISSING_COMPONENT — fill-hour spread census (additive to PIT lane's F-GRID/F-M2-FLAT settlement-grid gates)"
+      ],
+      "conditions": [
+        "F-g at freeze (same discipline)",
+        "same ceiling-convention pin as P2-M1 for the BTC/ETH funding-exposed arms",
+        "SOL/BNB 2-tick disclosure (0.5-0.7 bps) replaced with measured per-pair values (SOL 0.02 modern to 1.87 worst-corner; BNB 0.03-0.32)",
+        "no GO before spread census and BTC funding cross-check"
+      ]
+    }
+  ]
+}
