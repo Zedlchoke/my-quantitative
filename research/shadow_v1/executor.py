@@ -473,6 +473,242 @@ class ForwardExecutor:
         self._last_decision_utc: Optional[str] = None
 
     # ------------------------------------------------------------------
+    # boot-time sleeve recovery (incident 2026-09-26)
+    # ------------------------------------------------------------------
+    def recover_sleeve_from_ledger(self) -> Dict[str, Any]:
+        """Rebuild this family's sleeve state by replaying its own ledger.
+
+        INCIDENT 2026-09-26 (restart wipes sleeve accounts): the executor
+        constructed a fresh ``SleeveAccount`` at every build, so EVERY
+        e-worker restart reset all four virtual sleeves — XSECT lost its
+        4 open positions and its 99,948.38 book (ledger row 12's equity
+        100,000 is the wipe artifact, not a trade), ILLIQ lost its 8
+        positions. This method is the root-cause fix: at boot, before
+        the first ``run_due``, the family's append-only ledger is the
+        authority and is replayed into a FRESH account.
+
+        Replay law (minimal, deterministic):
+        - rows are processed in file order; per row the recorded funding
+          delta is applied FIRST, then the recorded virtual fills — the
+          same order ``_execute_decision`` booked them live (settled
+          funding before the rebalance), so replayed cash reproduces the
+          recorded cash bit-for-bit for fill-only rows;
+        - fills are applied through
+          :meth:`accounting.SleeveAccount.apply_recorded_fill` — the
+          recorded-economics replay primitive that shares apply_fill's
+          mutation core (same cash/position/book arithmetic, same
+          identity assertion) WITHOUT re-running the live admission
+          guards. WHY (measured, not assumed): the guards' no-leverage
+          gross check measures open positions at MARKS; per-row
+          full-universe marks are NOT in the ledger, so a replay holds
+          only stale fill-ref marks and re-running the guard spuriously
+          refuses recorded shorts (dry-run on the real ledgers: XSECT
+          replay cash 17,033 vs its recorded 99,948 book; ILLIQ lost its
+          XRP short) — the recovery would corrupt the very book it
+          recovers. Admission was enforced live, pre-mutation, with
+          full decision-time marks and the start-of-rebalance basis;
+          the append-only ledger is the record of what was lawfully
+          admitted, and FILLS ARE THE AUTHORITY here. Any
+          ``AccountingError`` (e.g. an identity-assert failure —
+          theoretically impossible for a consistent ledger) is RECORDED
+          as a discontinuity and the replay CONTINUES — it never aborts
+          and never mutates on refusal;
+        - funding deltas go through
+          :meth:`accounting.SleeveAccount.apply_recorded_funding` (sign
+          convention verified against the live booking path);
+        - VERIFICATION LAW: after each row, the replayed cash is compared
+          to that row's recorded cash (abs diff <= 0.01). At the FIRST
+          divergence a ``RECOVERY_DISCONTINUITY`` entry {row_ts,
+          recorded_cash, replay_cash, delta} is recorded — that is a
+          wipe made visible — and the replay CONTINUES. Two disjoint
+          continuations, by the recorded evidence in the diverging row:
+          * the row EXECUTED a rebalance (has virtual fills): the live
+            book had been RESET to a fresh account BEFORE that row —
+            the row is a LINEAGE BOUNDARY (measured on the real XSECT
+            ledger: row 2026-09-19 carries ``previous_weights: {}`` and
+            cash == 100,000 minus exactly its own rebalance costs, i.e.
+            an earlier, previously-undocumented wipe). Fills are the
+            authority WITHIN a lineage, not across one — replaying the
+            new lineage's fill quantities on top of the old book would
+            net them into garbage positions (cash continuity cannot
+            catch it: cash mutations are position-independent). The
+            replay is therefore RESEEDED to a fresh account and the
+            row's funding + fills re-applied on it, after which the
+            recorded cash trail re-verifies row by row. The action and
+            the ``flat_evidenced`` flag (``previous_weights == {}``:
+            the reset row's own proof that nothing was held before it,
+            so the reconstructed positions are faithful) are recorded
+            in the discontinuity entry.
+          * the row has ZERO fills: a pure artifact (the 2026-09-26
+            decision on an empty post-wipe book — equity reset with
+            nothing executed, no lineage of its own). The fill truth is
+            KEPT and the artifact's recorded cash is disclosed as the
+            discontinuity (action ``TRUTH_KEPT``).
+          Further divergences are collected the same way.
+
+        Idempotent/deterministic: a pure function of the ledger bytes and
+        the cost books. The sleeve is rebuilt FRESH before replay, so
+        calling this twice yields the identical state (no double-apply).
+        The ledger is never written by this method (the worker appends
+        the deterministic recovery marker row); a corrupt/partial ledger
+        raises ``LedgerCorruptError`` (refuse, never truncate) and the
+        worker refuses to boot fail-closed.
+
+        Cost-book replay limitation (disclosed): replay recomputes fill
+        economics with the CURRENT cost books. Exact for every existing
+        fill (XSECT/ILLIQ books never changed; BANDRIDGE has zero fills).
+        A future cost-regime change while positions are open would need
+        regime-aware replay — out of scope here, noted for the owner.
+        Decision/order-intent counters and per-position ``funding_paid``
+        attribution are not reconstructible from the aggregate records
+        and intentionally restart at their replay-derived values.
+        """
+        rows = ledger.scan_events(self.ledger_file)
+        # Fresh account: recovery is idempotent (never double-applies).
+        self.sleeve = accounting.SleeveAccount(
+            sleeve_id=f"sleeve_{self.family_id}",
+            books={name: book.params for name, book in self.sleeve.books.items()},
+            starting_cash=self.sleeve.starting_cash,
+            primary_book=self.primary_book,
+        )
+        self._last_decision_utc = None
+        summary: Dict[str, Any] = {
+            "family_id": self.family_id,
+            "arm_id": self.arm_id,
+            "ledger_rows": len(rows),
+            "rows_replayed": 0,
+            # fills/funding counted toward the RECOVERED (current) state;
+            # a reseed discards the pre-reset lineage's contributions
+            "fills_replayed": 0,
+            "funding_booked": 0.0,
+            "first_row_ts": None,
+            "last_row_ts": None,
+            "reseeded_at": None,
+            "discontinuities": [],
+            "verdict": "RECOVERED_CLEAN",
+        }
+        lineage_fills = 0
+        lineage_funding = 0.0
+        for row in rows:
+            row_ts = row.get("scheduled_decision_utc")
+            if summary["first_row_ts"] is None:
+                summary["first_row_ts"] = row_ts
+            summary["last_row_ts"] = row_ts
+            # Only plan-section-8 decision rows replay; the recovery
+            # marker rows themselves carry no fills/funding and are
+            # skipped defensively by schema.
+            if row.get("schema") == events.SCHEMA:
+                # Live order: settled funding was booked BEFORE fills.
+                funding_delta = float(row.get("funding_cashflow") or 0.0)
+                fills = row.get("virtual_fill_events") or []
+
+                def _apply_row(funding: float, fill_events):
+                    """One row's funding-then-fills onto the current
+                    sleeve; returns (fills_applied, funding_applied)."""
+                    applied_funding = 0.0
+                    applied_fills = 0
+                    if funding != 0.0:
+                        self.sleeve.apply_recorded_funding(funding)
+                        summary["funding_booked"] += funding
+                        applied_funding = funding
+                    for fill in fill_events:
+                        try:
+                            self.sleeve.apply_recorded_fill(
+                                str(fill["symbol"]),
+                                str(fill["side"]),
+                                float(fill["qty"]),
+                                float(fill["ref_price"]),
+                                float(fill["tick_size"]),
+                                str(fill["ts_utc"]),
+                            )
+                            applied_fills += 1
+                        except accounting.AccountingError as exc:
+                            # Recorded honestly, replay continues; the
+                            # refusal mutated nothing (accounting refuses
+                            # pre-mutation).
+                            summary["discontinuities"].append(
+                                {
+                                    "kind": "FILL_REFUSED",
+                                    "row_ts": row_ts,
+                                    "symbol": fill.get("symbol"),
+                                    "error": f"{type(exc).__name__}: {exc}",
+                                }
+                            )
+                    return applied_fills, applied_funding
+
+                applied_fills, applied_funding = _apply_row(funding_delta, fills)
+                summary["fills_replayed"] += applied_fills
+                lineage_fills += applied_fills
+                lineage_funding += applied_funding
+                summary["rows_replayed"] += 1
+                self._last_decision_utc = row_ts
+
+                # VERIFICATION LAW: recorded-cash continuity, in order.
+                recorded_cash = row.get("cash")
+                if isinstance(recorded_cash, (int, float)) and not isinstance(
+                    recorded_cash, bool
+                ):
+                    replay_cash = self.sleeve.cash
+                    delta = replay_cash - float(recorded_cash)
+                    if abs(delta) > 0.01:
+                        entry = {
+                            "kind": "RECOVERY_DISCONTINUITY",
+                            "row_ts": row_ts,
+                            "recorded_cash": float(recorded_cash),
+                            "replay_cash": replay_cash,
+                            "delta": delta,
+                        }
+                        if fills:
+                            # LINEAGE BOUNDARY: the diverging row executed
+                            # a live rebalance, so the live book had been
+                            # reset to a fresh account BEFORE it (a wipe
+                            # earlier recorded only through this row's
+                            # own reset signature). Reseed and re-apply
+                            # the row on the fresh account; the recorded
+                            # cash trail re-verifies from here.
+                            self.sleeve = accounting.SleeveAccount(
+                                sleeve_id=f"sleeve_{self.family_id}",
+                                books={
+                                    name: book.params
+                                    for name, book in self.sleeve.books.items()
+                                },
+                                starting_cash=self.sleeve.starting_cash,
+                                primary_book=self.primary_book,
+                            )
+                            summary["funding_booked"] -= lineage_funding
+                            summary["fills_replayed"] -= lineage_fills
+                            lineage_fills = 0
+                            lineage_funding = 0.0
+                            re_fills, re_funding = _apply_row(funding_delta, fills)
+                            summary["fills_replayed"] += re_fills
+                            lineage_fills += re_fills
+                            entry["action"] = "RESEEDED_TO_FRESH_LINEAGE"
+                            entry["flat_evidenced"] = row.get(
+                                "previous_weights"
+                            ) == {}
+                            entry["reseeded_cash_after"] = self.sleeve.cash
+                            entry["reseeded_verifies"] = (
+                                abs(self.sleeve.cash - float(recorded_cash)) <= 0.01
+                            )
+                            summary["reseeded_at"] = row_ts
+                        else:
+                            # Pure artifact: equity reset with nothing
+                            # executed (the 2026-09-26 terminal row). The
+                            # fill truth is the authority; keep it.
+                            entry["action"] = "TRUTH_KEPT"
+                        summary["discontinuities"].append(entry)
+        summary["positions_after"] = {
+            symbol: pos.qty
+            for symbol, pos in self.sleeve.positions.items()
+            if pos.qty != 0.0
+        }
+        summary["cash_after"] = self.sleeve.cash
+        summary["equity_after"] = self.sleeve.equity_snapshot().equity
+        if summary["discontinuities"]:
+            summary["verdict"] = "RECOVERED_WITH_DISCONTINUITIES"
+        return summary
+
+    # ------------------------------------------------------------------
     # run loop
     # ------------------------------------------------------------------
     def run_due(self, now_utc, *, from_utc=None) -> Dict[str, Any]:

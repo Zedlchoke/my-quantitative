@@ -1,0 +1,101 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "psv1-sleeve-recovery",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "role": "quant-implementer",
+  "lane": "sleeve-recovery",
+  "branch": "orca/prospective-shadow-v1-integration",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/integration",
+  "dispatch_sha": "3cca68331aec93b5ff155ff90785066bf7908f8c",
+  "actual_start_sha": "3cca68331aec93b5ff155ff90785066bf7908f8c",
+  "commit_sha": null,
+  "commit_sha_note": "self-reference: this handoff is committed inside the single commit it describes (first commit attempt 92cb301233e8c977995dccf85cf81603486eaeee was amended to include this file); see git log -1 orca/prospective-shadow-v1-integration for the final SHA",
+  "summary": "Root-cause fix for INCIDENT_psv1_restart_wipes_sleeve_accounts_2026-09-26 (owner-delegated decision OWNER_DELEGATED_DECISION_engine_fix_2026-09-26.json decision[0]/[1]). (1) accounting.py: SleeveAccount.apply_recorded_funding(delta) — replay primitive whose sign convention was VERIFIED against the live apply_funding path (the ledger's per-decision funding_cashflow is the accounting convention: cash += delta, negative = cost paid — the dispatch context's '(positive = cost paid)' was inverted; every production cost book shares the default LONG_PAYS_POSITIVE_RATE convention so the recorded delta applies identically to every book; expected-equity identity asserted). SleeveAccount.apply_recorded_fill(...) — recorded-economics replay primitive that shares apply_fill's mutation core BIT-FOR-BIT via the extracted _apply_fill_mutation (same per-book economics, same cash mutation, same position bookkeeping, same identity assertion) but does NOT re-run the live admission guards. (2) executor.py: ForwardExecutor.recover_sleeve_from_ledger() -> dict: rebuilds the sleeve FRESH (idempotent, pure function of ledger bytes + cost books), replays rows in order (funding first, then fills — the live booking order, so fill-only rows reproduce recorded cash exactly), and enforces the VERIFICATION LAW per row (replayed cash vs recorded cash, abs diff <= 0.01). Divergences are disclosed as RECOVERY_DISCONTINUITY entries with two evidence-driven continuations: a diverging row that EXECUTED a rebalance is a LINEAGE BOUNDARY (the live book had been reset to a fresh account before it — reseed to the fresh account and re-apply the row; recorded cash trail re-verifies from there) while a diverging row with ZERO fills is the pure wipe artifact (fill truth kept, action TRUTH_KEPT). Any AccountingError during replay is recorded (kind FILL_REFUSED) without aborting; corrupt/partial ledgers raise LedgerCorruptError and the worker refuses to boot (fail closed). (3) shadow_worker.py build_executors: after constructing each executor, calls recover_sleeve_from_ledger() BEFORE any run_due and appends THE one deterministic recovery marker row via ledger.append_event only when fills_replayed > 0 or discontinuities exist: event_id = events.compute_event_id(family_id, arm_id, f'RECOVERY-{first ledger row scheduled_decision_utc}') (append-only anchor -> restart-idempotent, no duplicates; the frozen decision clock can never produce a RECOVERY-* stamp, and run_due's known_ids is ledger.event_ids, so the scheduler can never treat the marker as a decision). Marker carries scheduled_decision_utc (= anchor) for the ledger scans that max() on it (heartbeat _last_completed, scheduler.run_once/heartbeat) and schema psv1_sleeve_recovery@1 with the full recovery summary nested (no top-level cash/funding keys, so valuation.rebuild_positions reads it as a no-op). Families that never held anything (empty ledger; BANDRIDGE 67 rows zero fills; BASISLV DATA_BLOCKED-only) get NO marker. DEVIATION FROM DISPATCH (measured, disclosed): the dispatch suggested replaying fills via apply_fill(gross_cap_equity=None); the read-only dry-run on the REAL ledgers falsified that choice — per-row full-universe marks are not in the ledger, so the guards' gross check measured open positions at stale fill-ref marks and spuriously refused recorded shorts (XSECT would have 'recovered' to cash 17,033 vs its recorded 99,948 book; ILLIQ lost its XRP short). The recorded fills already passed admission live with decision-time marks and the start-of-rebalance basis; re-admission with degraded information re-litigates settled history and corrupts the very book being recovered. apply_recorded_fill keeps the guards' intent intact (refusals were enforced live, pre-mutation; the ledger is the record of what was lawfully admitted) and keeps the identity assertion. A second measured correction: the ledger itself records evidence of TWO flat-evidenced resets BEFORE the 2026-09-26 artifact (XSECT rows 2026-09-19 and 2026-09-25 both carry previous_weights {} and cash == 100,000 minus exactly that row's own rebalance costs), so a single-continuum replay would net the new lineage's fill quantities against the old book into garbage positions (cash continuity cannot catch it — cash mutations are position-independent); hence the lineage-boundary reseed rule.",
+  "changed_paths": [
+    "research/shadow_v1/accounting.py",
+    "research/shadow_v1/executor.py",
+    "research/control/prospective_shadow_v1/e/shadow_worker.py",
+    "tests/test_sleeve_recovery.py"
+  ],
+  "tests": [
+    {
+      "command": ".venv/bin/python -m pytest tests/test_sleeve_recovery.py tests/test_bandridge_a2_pins.py tests/test_xsect_a3_retire.py tests/test_shv1_executor.py tests/test_shv1_accounting.py tests/test_shv1_families.py tests/test_funding_accounting.py -q",
+      "result": "102 passed (11 new sleeve-recovery fixtures a-h + all six dispatch-required suites)"
+    },
+    {
+      "command": ".venv/bin/python -m pytest tests/test_shv1_worker_config.py tests/test_shv1_scheduler.py tests/test_shv1_valuation.py tests/test_shv1_dashboard.py tests/test_funding_carry.py tests/test_shv1_replay_guard.py -q",
+      "result": "92 passed (adjacent consumer suites: worker config, scheduler idempotence, valuation replay, dashboard, funding carry, replay guard)"
+    },
+    {
+      "command": ".venv/bin/python -m pytest tests/ -q --ignore=tests/fixtures --ignore=tests/data_fusion --deselect tests/test_family_failures.py --deselect tests/test_shv1_identity_recovery.py::test_every_listed_file_exists_and_hashes_match",
+      "result": "1960 passed, 1 skipped — the two deselected failures REPRODUCE AT CLEAN HEAD 3cca6833 (verified via git stash): test_family_failures (registry data: verdict_class SCORED_REJECTION / signature NEGATIVE_EXPECTANCY) and test_shv1_identity_recovery (sha256 drift of a WORKING_TREE_TRACKED file in a FOREIGN worktree .worktrees/btc-h4-band-risk-v1/.../SPEC.md) — both pre-existing environmental, untouched by this lane"
+    }
+  ],
+  "known_limitations": [
+    "Cost-book replay limitation (disclosed in code): replay recomputes fill economics with the CURRENT cost books; exact for every existing fill (XSECT/ILLIQ books never changed — per-fill recorded fee/slippage/fill_price re-verified against the current books to 1e-9; BANDRIDGE has zero fills). A future cost-regime change while positions are open would need regime-aware replay — out of scope, noted for the owner.",
+    "Live admission guards are NOT re-run on replay (apply_recorded_fill): measured on the real ledgers, re-running them on stale replay marks spuriously refuses recorded shorts. Guards were enforced live, pre-mutation; recovery trusts the append-only record. Invalid fills (bad side/qty/ref/tick) are still refused by the primitive and an identity-assert failure would be recorded as a FILL_REFUSED discontinuity without aborting.",
+    "Decision/order-intent counters and per-position funding_paid attribution are not reconstructible from the aggregate per-decision records; they restart at replay-derived values (funding_paid stays 0 on recovered positions). Informational only — sizing/caps/retire law never read them.",
+    "equity_after in the recovery summary is measured at the lineage's own fill-reference marks (per-row full-universe marks are not in the ledger); for the net-zero XSECT/ILLIQ books it equals the recorded cash to the cent, and the next live decision refreshes all marks via update_marks before sizing, so no decision ever sizes off stale marks.",
+    "The lineage-boundary reseed adopts the fresh-account basis with cash re-verifying exactly (cash mutations are position-independent); position reconstruction is faithful when the reset row is flat-evidenced (previous_weights == {} — true for BOTH real reset rows). A hypothetical reset row with non-empty previous_weights would re-anchor cash but best-effort positions, disclosed via flat_evidenced: false and verdict RECOVERED_WITH_DISCONTINUITIES.",
+    "CODE_FREEZE_SHA constant in shadow_worker.py intentionally left unchanged (it pins the audited engine bytes of the G8 lineage; changing it is an owner-level re-pin decision — the A2/A3 amendments likewise advanced behavior without moving the constant)."
+  ],
+  "incidents": [
+    "INCIDENT_psv1_restart_wipes_sleeve_accounts_2026-09-26 (root repo, severity HIGH): the defect this lane fixes. Remediation option 1 (engine fix) delivered here; options 2 (RETIRE_TERMINAL_CORRECTION) and 3 (valuation ghost-marks reconcile) remain sequenced follow-ups per the owner delegation — NOT executed in this lane.",
+    "NEW LEDGER EVIDENCE found by the recovery dry-run (append-only bytes, hash-verified untouched): XSECT row 2026-09-19T00:00:00Z (previous_weights {}, cash 99947.2560345751 == 100,000 minus exactly its own 4-fill rebalance costs of 52.744) and row 2026-09-25T00:00:00Z (previous_weights {}, cash 99948.37724941608 == 100,000 minus 51.623) are BOTH flat-evidenced lineage resets — i.e. the wipe also fired at the 09-24 08:21 worker-35779 start, BEFORE the incident's stated wipe #1 at the 09-25 03:57 A2 activation. The incident's trigger table ('09-24 08:21 ... accounts hold real state') therefore understates the damage window; the incident's row-11 'last truthful book' (99,948.38, 4 positions) is itself the product of the 09-25-lineage fresh book. Owner may want a one-line incident addendum; remediation is unchanged.",
+    "XSECT row 2026-09-26T00:00:00Z (the known artifact) verified as a pure zero-fill reset claim: recovery keeps the fill truth (cash 99948.37724941608) and discloses the artifact delta -51.6227505839197 — exactly the incident's 51.62 jump, seen from the replay side."
+  ],
+  "tree_status": "clean after one commit (changed_paths staged by explicit pathspec; handoff self-committed per lane convention; results/prospective_shadow_v1 ledgers untouched — dry-run was read-only with sha256 before/after equality asserted on all four ledger files; branch orca/prospective-shadow-v1-integration; no process restarted, no network/S1, no orders, no scored cells)",
+  "workers": 0,
+  "outputs": {
+    "recovery_marker_row": {
+      "schema": "psv1_sleeve_recovery@1",
+      "event_id_rule": "events.compute_event_id(family_id, arm_id, 'RECOVERY-' + first_ledger_row_scheduled_decision_utc)",
+      "appended_when": "fills_replayed > 0 or discontinuities non-empty (never for families that never held anything)",
+      "scheduler_safety": "run_due known_ids = ledger.event_ids; decision stamps come from frozen schedules and can never equal 'RECOVERY-*'; marker carries scheduled_decision_utc = anchor for max()-scans"
+    },
+    "production_recovery_preview_read_only_dry_run": {
+      "method": "executors built against a throwaway runtime_root; each ledger_file re-pointed at the REAL production ledger; recover_sleeve_from_ledger() run twice per family (idempotence asserted equal); production ledger sha256 verified unchanged before/after",
+      "ILLIQ-AMIHUD-28D-W": {
+        "verdict": "RECOVERED_CLEAN",
+        "rows_replayed": 1,
+        "fills_replayed": 8,
+        "cash_after": 99936.78612475483,
+        "equity_after": 99936.78612475483,
+        "positions_after": {
+          "APTUSDT": 16724.645437516727,
+          "ATOMUSDT": 7046.223224351747,
+          "BTCUSDT": -0.1531042811631516,
+          "ETCUSDT": 1452.4750174297003,
+          "ETHUSDT": -4.668307421114941,
+          "OPUSDT": 99104.09894553239,
+          "SOLUSDT": -111.27926644707559,
+          "XRPUSDT": -8768.85303402315
+        },
+        "discontinuities": 0
+      },
+      "XSECT-FUND-CARRY-7D": {
+        "verdict": "RECOVERED_WITH_DISCONTINUITIES",
+        "rows_replayed": 12,
+        "fills_replayed": 4,
+        "cash_after": 99948.37724941608,
+        "equity_after": 99948.37724941608,
+        "positions_after": {
+          "ADAUSDT": -79968.01279488204,
+          "BNBUSDT": 25.653194464040634,
+          "DOGEUSDT": -207684.31983385255,
+          "XRPUSDT": 12925.74161442513
+        },
+        "gross_at_recovered_marks_approx": 0.8004,
+        "discontinuities": [
+          {"row_ts": "2026-09-19T00:00:00Z", "action": "RESEEDED_TO_FRESH_LINEAGE", "flat_evidenced": true, "delta": -1542.735360583174, "reseeded_verifies": true},
+          {"row_ts": "2026-09-25T00:00:00Z", "action": "RESEEDED_TO_FRESH_LINEAGE", "flat_evidenced": true, "delta": 428.1533459807979, "reseeded_verifies": true},
+          {"row_ts": "2026-09-26T00:00:00Z", "action": "TRUTH_KEPT", "delta": -51.6227505839197}
+        ],
+        "note": "recovered cash/positions equal the incident's 'last truthful book' (ledger row 11) exactly; the next retire-law decision (2026-09-27T00:00Z) will close these 4 restored positions with real fills — owner-delegated follow-up (RETIRE_TERMINAL_CORRECTION) then has a lawful book to decompose"
+      },
+      "BASISLV-PREMFADE-28D": {"verdict": "RECOVERED_CLEAN", "fills_replayed": 0, "marker": "none (nothing ever held; DATA_BLOCKED-only ledger)"},
+      "BTC4H-BANDRIDGE": {"verdict": "RECOVERED_CLEAN", "rows_replayed": 67, "fills_replayed": 0, "marker": "none (never filled; 100k flat throughout)"}
+    }
+  },
+  "recommended_next_action": "Controller gate before restart (per the owner delegation this lane does NOT restart anything): independently review this handoff + the diff + the two measured deviations (apply_recorded_fill no-re-admission; lineage reseed), then restart the e-worker in the controller's own window — on boot build_executors will recover ILLIQ (8 positions, RECOVERED_CLEAN) and XSECT (4 positions, row-11 book, 3 disclosed discontinuities) and append one deterministic marker row to each of those two ledgers only; BANDRIDGE/BASISLV stay marker-free. After the restart, verify heartbeat + the two marker rows, then sequence the owner-delegated follow-ups: XSECT RETIRE_TERMINAL_CORRECTION after the 2026-09-27T00:00Z decision closes the restored positions, and the valuation-worker ghost-mark reconcile under its own gate. The two pre-existing full-tree test failures (registry data; foreign-worktree SPEC drift) are reported here for the A7 delta reviewer but belong to other lanes."
+}

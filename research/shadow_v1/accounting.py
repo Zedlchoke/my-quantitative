@@ -456,6 +456,75 @@ class SleeveAccount:
                         f"above equity {cap_equity:.10f}; no leverage permitted"
                     )
 
+        return self._apply_fill_mutation(
+            symbol, side, qty, ref_price, tick_size, ts_utc, fill_id, econ
+        )
+
+    def apply_recorded_fill(
+        self,
+        symbol: str,
+        side: str,
+        qty: float,
+        ref_price: float,
+        tick_size: float,
+        ts_utc: str,
+        fill_id: Optional[str] = None,
+    ) -> VirtualFillEvent:
+        """Replay primitive (boot-time sleeve recovery): apply a fill
+        RECORDED in the append-only ledger.
+
+        The live admission control (no-margin / no-leverage guards in
+        :meth:`apply_fill`) is intentionally NOT re-run: the recorded
+        fill already passed those guards at execution time, measured on
+        full decision-time marks with the start-of-rebalance basis —
+        information a boot-time replay cannot reconstruct from the
+        aggregate ledger (per-row marks are not recorded). Re-running
+        the gross guard on stale replay marks spuriously refuses
+        recorded fills and would corrupt the very book being recovered
+        (measured on the production XSECT/ILLIQ ledgers during the
+        2026-09-26 incident fix).
+
+        Everything else is the IDENTICAL mutation path as
+        :meth:`apply_fill` — same per-book fill economics, same cash
+        mutation, same position bookkeeping, same book cost increments,
+        same equity-identity assertion — sharing
+        :meth:`_apply_fill_mutation` bit-for-bit. The fill carries its
+        ref as the new mark for its symbol, exactly as live.
+        """
+        if side not in ("buy", "sell"):
+            raise AccountingError(f"invalid side {side!r}")
+        qty = float(qty)
+        ref_price = float(ref_price)
+        tick_size = float(tick_size)
+        if qty <= 0 or ref_price <= 0 or tick_size <= 0:
+            raise AccountingError("qty/ref_price/tick_size must be positive")
+        return self._apply_fill_mutation(
+            symbol, side, qty, ref_price, tick_size, ts_utc, fill_id, None
+        )
+
+    def _apply_fill_mutation(
+        self,
+        symbol: str,
+        side: str,
+        qty: float,
+        ref_price: float,
+        tick_size: float,
+        ts_utc: str,
+        fill_id: Optional[str],
+        econ: Optional[Dict[str, Tuple[float, float, float]]],
+    ) -> VirtualFillEvent:
+        """The shared fill mutation core (apply_fill / apply_recorded_fill).
+
+        Capture pre-fill mark for mark-to-market, mutate cash (primary
+        book economics), update the position book, increment every
+        book's fee/slippage exactly once, build the event, and assert
+        the equity identity moved by mark PnL minus the booked costs.
+        """
+        if econ is None:
+            econ = self._fill_economics(side, qty, ref_price, tick_size)
+        primary_fill, primary_fee, _ = econ[self.primary_book]
+        signed = qty if side == "buy" else -qty
+
         # Capture pre-fill quantity and mark: the fill itself carries the
         # new mark (ref) for its symbol, and any gap between the previous
         # mark and ref is mark-to-market on the pre-fill quantity,
@@ -595,6 +664,37 @@ class SleeveAccount:
         self._settled_funding_keys.add(key)
         self._assert_identity(expected_equity=self._expected_equity + primary_cf)
         return BookingResult(booked=True, reason="settled_while_held", cashflow=primary_cf)
+
+    def apply_recorded_funding(self, delta: float) -> BookingResult:
+        """Replay primitive (boot-time sleeve recovery): apply ONE
+        recorded per-decision funding delta from the ledger.
+
+        Sign convention VERIFIED against :meth:`apply_funding` (the live
+        booking path): the ledger's ``funding_cashflow`` is the sum of
+        the BOOKED events' primary cashflows, in the accounting
+        convention ``cash += delta`` (negative delta = cost paid; the
+        positive delta is a credit RECEIVED). Every production cost book
+        shares the default ``LONG_PAYS_POSITIVE_RATE`` convention and
+        ``cashflow_for`` depends on no per-book parameter, so each book's
+        accumulated funding equals the same delta — mirroring
+        ``apply_funding`` exactly means ``cash += delta`` and
+        ``book.funding_cashflow += delta`` for EVERY book, with the
+        expected-equity identity moved by the same delta (asserted).
+
+        Position-level ``funding_paid`` attribution is NOT reconstructible
+        from the aggregate per-decision delta and is intentionally left
+        untouched (informational field; disclosed recovery limitation).
+        """
+        delta = float(delta)
+        if not math.isfinite(delta):
+            raise AccountingError(f"non-finite funding delta {delta!r}")
+        if delta == 0.0:
+            return BookingResult(booked=False, reason="zero_delta")
+        self.cash += delta
+        for book in self.books.values():
+            book.funding_cashflow += delta
+        self._assert_identity(expected_equity=self._expected_equity + delta)
+        return BookingResult(booked=True, reason="replayed_from_ledger", cashflow=delta)
 
     # ------------------------------------------------------------------
     # exposure

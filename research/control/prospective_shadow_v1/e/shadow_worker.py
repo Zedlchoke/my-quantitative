@@ -119,6 +119,7 @@ if WORKTREE_ROOT not in sys.path:
 
 from research.shadow_v1 import (  # noqa: E402
     data_feed,
+    events,
     ledger,
     risk,
     scheduler,
@@ -140,6 +141,18 @@ import urllib.request  # noqa: E402
 WORKER_SCHEMA = "shv1_e_worker@1"
 HEARTBEAT_SCHEMA = "shv1_e_worker_heartbeat@1"
 LABEL_PROSPECTIVE = start_guard.NAMESPACE_PROSPECTIVE
+
+#: Boot-time sleeve recovery marker (incident 2026-09-26: restart wipes
+#: sleeve accounts; owner-delegated engine fix,
+#: research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/
+#: OWNER_DELEGATED_DECISION_engine_fix_2026-09-26.json). The marker row
+#: is NOT a plan-section-8 decision record: run_due builds known_ids from
+#: ledger.event_ids (any string event_id), and the frozen decision clock
+#: can never produce a "RECOVERY-*" stamp, so the scheduler can never
+#: treat it as a decision. valuation.rebuild_positions and the
+#: heartbeat's _last_completed read it harmlessly (no fills, no funding
+#: delta, scheduled_decision_utc carried for the max() scans).
+RECOVERY_SCHEMA = "psv1_sleeve_recovery@1"
 
 #: FIXED execution order (plan 12-E: one scheduler serializes writes).
 FAMILY_ORDER = (FAMILY_ILLIQ, FAMILY_PREMFADE, FAMILY_CARRY, FAMILY_BANDRIDGE)
@@ -666,6 +679,49 @@ def btc_betas_for(family_id: str) -> Optional[Dict[str, float]]:
 
 
 # ----------------------------------------------------------------------
+# boot-time sleeve recovery (incident 2026-09-26 root-cause fix)
+# ----------------------------------------------------------------------
+def _append_recovery_marker(executor: ForwardExecutor, summary: Mapping[str, Any]):
+    """Append THE one deterministic recovery marker row (idempotent).
+
+    Appended only when the replay actually restored something (fills > 0)
+    or disclosed a discontinuity — a family that never held anything
+    (empty ledger, BANDRIDGE so far, DATA_BLOCKED-only BASISLV) gets NO
+    marker row. The event_id is derived from the ledger's FIRST row
+    timestamp (append-only, immutable), so re-boots compute the same id
+    and ``ledger.append_event`` skips instead of duplicating.
+    """
+    if (
+        summary.get("fills_replayed", 0) <= 0
+        and not summary.get("discontinuities")
+    ):
+        return None
+    rows = ledger.scan_events(executor.ledger_file)
+    if not rows:
+        return None
+    anchor = rows[0].get("scheduled_decision_utc")
+    marker = {
+        "schema": RECOVERY_SCHEMA,
+        "cycle_id": events.CYCLE_ID,
+        "family_id": executor.family_id,
+        "arm_id": executor.arm_id,
+        "event_id": events.compute_event_id(
+            executor.family_id, executor.arm_id, f"RECOVERY-{anchor}"
+        ),
+        # carried for ledger scans that max() on this field (heartbeat
+        # _last_completed, scheduler.run_once); the anchor is the ledger's
+        # first decision stamp, so it never distorts the max.
+        "scheduled_decision_utc": anchor,
+        "observed_at_utc": start_guard.to_iso_z(
+            dt.datetime.now(dt.timezone.utc)
+        ),
+        "recovery_anchor_utc": anchor,
+        "summary": dict(summary),
+    }
+    return ledger.append_event(executor.ledger_file, marker)
+
+
+# ----------------------------------------------------------------------
 # executor construction
 # ----------------------------------------------------------------------
 def build_executors(
@@ -750,6 +806,15 @@ def build_executors(
         executors[family_id] = ForwardExecutor(
             family_id, config, runtime_root, feed, shadow_start_utc
         )
+        # INCIDENT 2026-09-26 root-cause fix: BEFORE the first run_due,
+        # replay the family ledger into the fresh sleeve so a restart no
+        # longer wipes cash/positions. A hard failure here (corrupt or
+        # partial ledger, LedgerCorruptError) propagates and the worker
+        # refuses to boot — failing closed instead of trading on a wiped
+        # book. The marker row is appended once per ledger (deterministic
+        # event_id; restart-idempotent).
+        recovery_summary = executors[family_id].recover_sleeve_from_ledger()
+        _append_recovery_marker(executors[family_id], recovery_summary)
     return executors
 
 
