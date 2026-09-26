@@ -1,0 +1,68 @@
+{
+ "schema": "failres_a7_repro_provenance@1",
+ "cycle_id": "ERP1-TRACKA-COHORT-1",
+ "role": "a7-reproducer",
+ "lane": "failres-a7",
+ "labels": [
+  "A7_INDEPENDENT_REPRODUCTION",
+  "FAILURE_ROOT_CAUSE_RESEARCH",
+  "DIAGNOSTIC_OUTCOME_EXPOSED",
+  "SINGLE_SOURCE_PANEL",
+  "FILL_QUALITY_UNMEASURABLE_ON_M1_BIDASK",
+  "PAPER_TIER"
+ ],
+ "verdict_class": "DIAGNOSTIC_OUTCOME_EXPOSED audit of the failres-attrib lane's Phase-A outputs; never promotable evidence",
+ "audited_lane": "failres-attrib",
+ "audited_work_commit": "da4a92c2175ee92f2b9d353d8fcfb65f06ef13c9",
+ "base_sha": "3b1c29fa5401daf9214ed32dff384421581dda48",
+ "dispatch_sha": "3b1c29fa5401daf9214ed32dff384421581dda48",
+ "actual_start_sha": "3b1c29fa5401daf9214ed32dff384421581dda48",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/erp1-tracka-cohort-1/failres-a7",
+ "branch": "orca/erp1-ta1-failres-a7",
+ "python": "3.12.14",
+ "run_date_utc": "2026-09-26",
+ "authority_chain": {
+  "m1_corpus_readonly": "/Users/hoangminhlong/my-quantitative/.worktrees/erp1-tracka-cohort-1/diag-daemon/research/control/ERP1-TRACKA-COHORT-1/diag/data_local/EURUSD",
+  "m1_manifest_committed_in_a7_worktree": "research/control/ERP1-TRACKA-COHORT-1/diag/data_local/EURUSD/m1_manifest.json",
+  "m1_manifest_sha256": "12304eac4199b7b4a704fdb87d384c32d5fc91f26d532d393d6365cc1f3c3e64",
+  "m1_manifest_note": "committed manifest sha == the diag lane copy_verify's SOURCE manifest sha (chain intact); 4184 entries, 4014 in-window day files on disk (2021-01-01..2026-06-30)",
+  "audited_plane_EURUSD": "failres-attrib data_local/derived/bars1h_ANC_EURUSD.parquet sha256 2e175b06209dfc6f942a4e614ee0c574d86be3d8077c9835102b8ad7612e4f9d (== diag lane derived copy, == EXPECTED_EURUSD_H1_SHA in failres_attrib_run.py)",
+  "audited_plane_GBPUSD": "failres-attrib data_local/derived/bars1h_ANC_GBPUSD.parquet sha256 5aad8415b38bff9ce4dada05b250ed1346b3336345be93675974c63da04e05b7",
+  "build_convention_read_from": "research/control/ERP1-TRACKA-COHORT-1/diag/scripts/build_bars_diag.py + scripts/build_bars.py CANDLE_DTYPE + diag pair_configs_diag.json (read-only); convention REIMPLEMENTED, committed builder NOT imported/executed"
+ },
+ "l1_m1_sample": {
+  "method": "random.Random(20260926).sample over the 4014 on-disk BID/ASK day files, sha256 vs the committed manifest",
+  "n": 20, "ok": 20, "mismatches": [],
+  "full_corpus_verify_in_build": "all 4014 files (both sides) sha-verified before decode; 0 mismatches",
+  "detail": "failres-a7-work/layer_results/a7_m1_sample_sha.json"
+ },
+ "lock_handling": {
+  "inspect_before_all": {"verdict": "FREE_PROVEN", "at": "2026-09-26, before any compute"},
+  "inspect_before_heavy_build": {"verdict": "FREE_PROVEN"},
+  "heavy_build_job": {
+   "role": "a7-repro-plane-rebuild",
+   "status": "FINISHED",
+   "started_at": "2026-09-26T07:38:05Z",
+   "released_at": "2026-09-26T07:38:25Z",
+   "heartbeats": "500-day cadence, last at day 2000"
+  },
+  "inspect_after_heavy_build": {"verdict": "FREE_PROVEN"},
+  "conflicts": "none; no foreign worker touched"
+ },
+ "fallback_disclosure": {
+  "committed_builder_rerun": false,
+  "reason": "the committed diag builder cannot run standalone in this worktree: it requires (a) the probe-derived pair_configs_diag.json and (b) the corpus bytes under this worktree's diag/data_local — neither is committed here; per the dispatch's sanctioned fallback, A7 re-aggregated the H1 ANC plane with its OWN code following the documented convention (15m valid iff 15 tradable consecutive minutes; ANC high = max CLOSE column, low = min LOW column; H1 = exactly 4 consecutive 15m bars in-hour; spreads from opens/closes), with full-corpus (not merely 20-file) sha verification before decode",
+  "parameters_pinned_from": "build_bars_diag.py/build_bars.py (CANDLE_DTYPE sec,o,c,l,h,v >i4/>f4, 24B), diag pair_configs_diag.json (pip 1e-4, price_scale 1e5, band 0.80..1.35)",
+  "strength": "the rebuild is MORE independent than re-running the committed builder (own aggregation code), and content-equality vs the audited parquet is EXACT (max abs diff 0.0 on every OHLC/spread column, ts arrays equal, 30550 rows)"
+ },
+ "known_limitations": [
+  "L1 rebuild covers EURUSD only (per dispatch); GBPUSD L2 checks ran on the audited byte copy (sha-pinned), not a rebuild",
+  "signal laws (f_rangeexp_daemon/orig/anchor_shift) imported from committed tracka_lib — the frozen objects under audit; A7 independence covers plane bytes, fill law, exit types, folds, aggregation",
+  "plane construction plumbing (T.SignalPlane ts/hour/day/skip/fill_ok/is_day_close arrays) reused from committed tracka_lib to feed the imported signal laws; the fill/PnL state machine is A7's own",
+  "REPORT display roundings (e.g. -942.05 printed as -942.1, rho -0.188858 printed as -0.189) were checked at the printed precision, not at 1e-6",
+  "DIAGNOSTIC_OUTCOME_EXPOSED surfaces; nothing here is promotable evidence"
+ ],
+ "incidents": [
+  "none affecting foreign lanes. Lane-internal harness corrections during the audit (no audited artifact was ever modified): (1) L2 first run wrongly applied the EURUSD F2 FF/TE claims to GBPUSD — corrected to per-pair claims; (2) C3/C4 display-rounded claims first checked at 1e-6 — corrected to printed precision; (3) L3 first run expected SHORT/LONG books in the trades JSON (they are R-books-only by schema) and ran pytest from a wrong cwd — corrected."
+ ]
+}

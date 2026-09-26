@@ -1,0 +1,71 @@
+{
+ "schema": "failres_costexec_provenance@1",
+ "cycle_id": "ERP1-TRACKA-COHORT-1",
+ "lane": "failres-cost",
+ "role": "cost-execution-lane",
+ "labels": [
+  "FAILURE_ROOT_CAUSE_RESEARCH",
+  "DIAGNOSTIC_OUTCOME_EXPOSED",
+  "SINGLE_SOURCE_PANEL",
+  "FILL_QUALITY_UNMEASURABLE_ON_M1_BIDASK",
+  "PAPER_TIER"
+ ],
+ "verdict_class": "DIAGNOSTIC_OUTCOME_EXPOSED (never promotable evidence, regardless of result)",
+ "base_sha": "3b1c29fa5401daf9214ed32dff384421581dda48",
+ "dispatch_sha": "3b1c29fa5401daf9214ed32dff384421581dda48",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/erp1-tracka-cohort-1/failres-cost",
+ "branch": "orca/erp1-ta1-failres-cost",
+ "python": "3.12.14",
+ "run_date_utc": "2026-09-26",
+ "seed_sample_verification": 20260926,
+ "sample_size_per_pair": 50,
+ "sample_tolerance_pips": 0.01,
+ "inputs_sha256": {
+  "failres/failres_attrib_trades_EURUSD.json": "38430020a64d9d108997ecbaaae9cda58d6d7c83457fdadb8bb91d26b681771c",
+  "failres/failres_attrib_trades_GBPUSD.json": "90ddc781bddb69a6b6a127e12ebaa7896d84c3783046730aab7baa4ac70a61e6",
+  "failres/failres_attrib_agg_EURUSD.json": "fc9aa763de73bb6a8159d7bed2c55f6534c1191fdafd4d9ca66125e17de289f7",
+  "failres/failres_attrib_agg_GBPUSD.json": "76f0907dc15be04ea7c47cf0f544e3cc83a4dc8fd69bae76cdaef5a27d00efa6",
+  "failres/failres_daily_EURUSD.json": "351220ab354e016f8fd56d41e8669cef03c38341cc0e84c684a2edb8a86afe32",
+  "failres/failres_daily_GBPUSD.json": "471b10364f80aad69a934cc6f6b987273ff76c65560c9b651a4b91cb958d210d",
+  "diag/data_local/derived/census_EURUSD.json": "c1d41bfe584f2f9bee537b3ea1865a6a223b32c86655928a86d72c7c2d572b42",
+  "failres/data_local/derived/bars1h_ANC_EURUSD.parquet": "2e175b06209dfc6f942a4e614ee0c574d86be3d8077c9835102b8ad7612e4f9d",
+  "diag/data_local/derived/census_GBPUSD.json": "a08ab8a0f371b2063c31627515d53e8fc1705ccd37f65a01a41d6cf0c3c75786",
+  "failres/data_local/derived/bars1h_ANC_GBPUSD.parquet": "5aad8415b38bff9ce4dada05b250ed1346b3336345be93675974c63da04e05b7"
+ },
+ "code_sha256": {
+  "scripts/engine.py": "9b1d037c9b58a7a83eb57e71e6ada0ed29ca9fbb60ff7aeb2d99aff25b0f209b",
+  "scripts/tracka_lib.py": "1e09b368b240c6592ac518314e53fc7b470e371129c8043ddecf688f8e13df90",
+  "scripts/falsifier_run.py": "e3fb43e91f2c0d26d6dd5b38c7cfcb9f8348296b217cec1e8836fc0525273959",
+  "diag/scripts/pair_config_diag.py": "230d379bad1da4aa3163ea8e9705bc17d6f6b51b4ed3c3d6548ae90791647e0c",
+  "failres/scripts/failres_costexec_run.py": "96546bd56f03c95480c36263bd24b04eed474f0f5303d8a3e1b705aeadef3a65",
+  "failres/tests/test_failres_costexec.py": "a08fad2911d600053d6b92bd2d0ac9a6138c137ea708084c2397de39f5a7a8ca"
+ },
+ "parquet_copy_note": "bars1h_ANC_{pair}.parquet are byte copies of the failres-attrib lane's untracked data files (gitignored); sha256 match failres_attrib_PROVENANCE.parquet_sha256 exactly (EURUSD 2e175b06..., GBPUSD 5aad8415...)",
+ "lock_verdict_before_compute": {
+  "verdict": "FREE_PROVEN",
+  "reason": "no registry row and the lock file is not flocked",
+  "flock_state": "free"
+ },
+ "lock_verdict_after_compute": {
+  "verdict": "FREE_PROVEN",
+  "reason": "no registry row and the lock file is not flocked",
+  "flock_state": "free"
+ },
+ "charging_law_reference": "engine.run_strategy fills: entry b_o+k*s_o / a_o-k*s_o; non-day-close exits at bar-open effective prices; force-flat settles at the CLOSE of the day-close bar; SignalPlane (tracka_lib) semantics: s_open:=a_o-b_o, s_close:=a_c-b_c recomputed from quote columns; day-close = last tradable bar (hour<=19); taker PAYS the spread; k in {1.0 primary, 1.5, 2.0 stress}; cost := net(k1)-net(k0)",
+ "ceiling_source": "diag/data_local/derived/census_{pair}.json spread_pips.by_session_open conditional p50s (program law: never global p50); non-fragility line = 2x stressed RT (VIABILITY_cohort3_REPORT.md section A frozen council line; AUDUSD/USDCAD stressed RT 3.6/4.4 pips cited as program floor context only)",
+ "incidents": [
+  {
+   "id": "INC_COSTEXEC_RECOMPUTE_PLANESPEC_2026-09-26",
+   "severity": "lane-internal, corrected",
+   "desc": "first sample recompute reported DEVIATION up to 17.9/14.5 pips (EURUSD/GBPUSD): the recompute read the parquet's stored s_open/s_close columns and used the calendar-last bar as day-close, whereas the committed SignalPlane recomputes spreads as a-b and marks the last TRADABLE bar (hour<=19) as day-close. After matching SignalPlane semantics: max dev ~3e-12 pips, verdict PASS. No attribution-lane artifact was edited; no FINDING against the attribution lane."
+  }
+ ],
+ "known_limitations": [
+  "FILL_QUALITY_UNMEASURABLE_ON_M1_BIDASK: fill quality is not measurable on M1 bid/ask bars; per-fill spread state inside the bar is unmeasured; the executor charges the fill bar's own spread",
+  "SINGLE_SOURCE_PANEL: one M1 corpus per pair (Dukascopy census)",
+  "DIAGNOSTIC_OUTCOME_EXPOSED: folds are the family's dev surfaces; nothing here is promotable evidence",
+  "census ceiling arithmetic uses conditional p50s = optimistic bounds; commission and slippage-beyond-spread DECLARED_UNMEASURED, stress-covered",
+  "EURUSD F1 verdict is a borderline 50.2/49.8 gross/cost split (mechanical label GROSS_NEGATIVE; MIXED-equivalent within row-rounding noise)",
+  "correlation with any per-fold/per-hour/per-exit-type factor is NOT causation; no event data used"
+ ]
+}
