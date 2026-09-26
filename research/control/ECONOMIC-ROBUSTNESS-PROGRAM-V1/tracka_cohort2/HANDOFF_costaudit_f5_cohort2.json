@@ -1,0 +1,76 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "tracka2-costaudit-f5-r2",
+  "cycle_id": "ERP1-TRACKA-COHORT-2",
+  "role": "cost-execution-auditor",
+  "lane": "costaudit",
+  "dispatch_sha": "dc94824cb997fb9e44ca239547faedb70965f6ad",
+  "actual_start_sha": "dc94824cb997fb9e44ca239547faedb70965f6ad",
+  "commit_sha": "cf5ef82cd8d5821e9634eb7e213107808a449394",
+  "commit_note": "worktree commit on orca/erp1-tracka-cohort-2-integration (start HEAD 752b90289e774923b6d390d2b9465ad6af5d7626), single-file explicit-pathspec commit of research/control/ERP1-TRACKA-COHORT-2/falsifier/F5_ceiling_measured.json; no other worktree writes; root artifacts left uncommitted for the owner",
+  "changed_paths": [
+    ".worktrees/erp1-tracka-cohort-2/integration/research/control/ERP1-TRACKA-COHORT-2/falsifier/F5_ceiling_measured.json (committed cf5ef82c)",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/COSTAUDIT_F5_cohort2_REPORT.md (root, for owner commit)",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/HANDOFF_costaudit_f5_cohort2.json (root, for owner commit)"
+  ],
+  "tests": [
+    {
+      "command": "shasum -a 256 worktree bars1h_{AUDUSD,USDCAD}.parquet vs round-1 census pins",
+      "result": "2a346e028f3867b892d3cfd0e1df33677fd5a6e2948ea93249e1406899a90344 / c2d9fdb641afbe2a842113a03fca30ba2aca6ca8cffa739bd7af52d564e126de — byte-identical to the cohort-1 census-pinned archive bytes measured in round 1"
+    },
+    {
+      "command": ".venv/bin/python -c \"assert (a_o-b_o - s_open).abs().max()==0 and (a_c-b_c - s_close).abs().max()==0\"",
+      "result": "max_abs_err 0.0 both pairs (charging quantity verified)"
+    },
+    {
+      "command": ".venv/bin/python /tmp/f5_round2.py (fill-hour-weighted pooled crossing medians keyed to F6_census_counts.json histograms; windows whole-dev [2021-01-04,2026-01-01) and last6m [2025-07-01,2026-01-01); P3-A exit = entry hour +1 s_open; P3-B exit = hour-19 s_close with hour-20 s_open adjacency check)",
+      "result": "P3-A/AUDUSD crossing 1.0 dev / 0.9 last6m (RT 2.0/1.8 base; 4.0/3.6 at k=2.0 = 5.98/5.50 bps); P3-A/USDCAD 1.2/1.3 (4.8/5.2 at k=2.0); P3-B/USDCAD entry 1.3 dev ({0:205,1:20,4:1}) / 1.4 last6m ({0:39}), exit 1.2, RT 2.5/2.6 base, 5.0/5.2 at k=2.0 = 3.70/3.76 bps; P3-B/AUDUSD RT 4.0/3.6 at k=2.0 = 5.98/5.50 bps; hour-0 p50 1.3/1.4 USDCAD (= census asia_00_07 p50 1.3), hour-19 s_close 1.2 (= census ny_late_16_21 p50 1.2)"
+    },
+    {
+      "command": "git -C <worktree> add -- <json path> && git commit -- <json path>",
+      "result": "cf5ef82cd8d5821e9634eb7e213107808a449394, 1 file changed (71 insertions); concurrent skeptic-lane untracked files (F1_rho_results.json, f1_rho_run.py, trial_ledger.jsonl) untouched"
+    }
+  ],
+  "authority_claims": [
+    "P3-A QCRD-H1 (home AUDUSD) verdict CEILING_NEGATIVE_VETO under skeptic intake section 3.1 item 4: measured tight-state conditional crossing 1.0 (whole-dev) / 0.9 (last-6m dev) pips vs binding <= 0.41 at k=2.0 and <= 0.81 at k=1.0 — FAILS at both stress levels; ceiling band-upper 2.5 bps (~1.62 pips skeptic-pinned) minus stressed RT = -2.38/-1.98 pips (k=2.0) and -0.38/-0.18 (k=1.0); in bps at measured mid -3.48/-3.00. Even the conditional entry p25 (0.8) exceeds 0.41. USDCAD replicate also negative (-1.05 bps).",
+    "P3-B DINV-1D (home USDCAD) verdict CEILING_PASSED_MEASURED under skeptic intake section 3.2 item 4: the day-open fill lands in census bucket asia_00_07 ([00:00,07:00) UTC), NOT late_22_24 (1.7) or rollover_21_22 (2.3) — measured hour-0 p50 1.3 dev / 1.4 last-6m vs census bucket p50 1.3; exit at the 20:00 close charged at the hour-19 bar (ny_late_16_21), measured 1.2; RT 2.5 dev / 2.6 last-6m base, x2.0-stressed 5.0/5.2 pips = 3.70/3.76 bps vs band upper 5 bps => ceiling +1.30/+1.24 bps.",
+    "P3-B conditions recorded: margin is thin and carries the DECLARED_UNMEASURED commission component (erosion only); PRECEDENT-FRAGILE per skeptic section 3.1 item 9 — 2x stressed RT = 7.40/7.52 bps > band upper 5 bps, freeze record must disclose; AUDUSD replicate leg is NEGATIVE at k=2.0 (5.98/5.50 bps vs 5) — two-pair terminal semantics must be pinned before any scored cell.",
+    "Method: fill-hour-weighted pooled crossing medians keyed to the implementer's counts-only histograms (the skeptic-mandated 'actual fill-hour distribution of the actual gated book'); windows keyed to the gated books' own dev span and dev last-6-months 2025-07-01..2025-12-31 (F6 'last6m' key); the sealed 2026 window was never opened this round.",
+    "Residual disclosed (Q-8): within-hour spread state of the actual fill minutes is UNMEASURABLE from counts-only histograms; the engine charges the fill bar's own s_open whose median is hour-unconditional; the proposer's 0.2-0.4 pip/fill prior is not authority. Overturning requires a PnL-free per-fill s_open artifact from the implementer.",
+    "Scope held: spread/price-geometry measurement only, no PnL, no outcome surface; labels in force SINGLE_SOURCE_PANEL, FILL_QUALITY_UNMEASURABLE_ON_M1_BIDASK, PAPER_TIER; commission remains DECLARED_UNMEASURED and every ceiling is measured-spread-only."
+  ],
+  "known_limitations": [
+    "Hour-keyed book is the authority available; per-fill spread conditioning unmeasurable until the implementer persists fill-level s_open (PnL-free).",
+    "Q-6 window for the gated books is dev last-6-months 2025-07..12 (their nearest populated window); round-1's census-last-6m (2026 H1) contains no gated population (sealed).",
+    "Exit conventions declared and fixed (P3-A next-bar s_open; P3-B hour-19 s_close; hour-20 s_open adjacency identical at median).",
+    "Single-vendor cost authority (Dukascopy) inherited; no independent bid/ask replication.",
+    "bps conversions use measured window-median mids (AUDUSD 0.66864/0.6543, USDCAD 1.35137/1.38352); skeptic-pinned conversions (1.62 pips AUDUSD, 6.8 pips USDCAD) used for the binding comparisons — both reported, verdicts identical under either."
+  ],
+  "incidents": [],
+  "tree_status": "worktree orca/erp1-tracka-cohort-2-integration: exactly one committed file (cf5ef82c, pathspec-clean); concurrent skeptic-lane untracked files present and untouched. Root: this lane added COSTAUDIT_F5_cohort2_REPORT.md + HANDOFF_costaudit_f5_cohort2.json under tracka_cohort2/ (uncommitted, for owner); no other root writes",
+  "workers": 0,
+  "outputs": [
+    ".worktrees/erp1-tracka-cohort-2/integration/research/control/ERP1-TRACKA-COHORT-2/falsifier/F5_ceiling_measured.json (committed cf5ef82cd8d5821e9634eb7e213107808a449394)",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/COSTAUDIT_F5_cohort2_REPORT.md"
+  ],
+  "verdicts": {
+    "p3a_qcrd_h1_audUSD": {
+      "binding_condition": "crossing <= 0.41 pips @k=2.0 (<= 0.81 @k=1.0); band upper 2.5 bps ~= 1.62 pips",
+      "measured_crossing_pips": {"whole_dev": 1.0, "last6m_dev": 0.9},
+      "rt_k20": {"whole_dev": {"pips": 4.0, "bps": 5.98}, "last6m": {"pips": 3.6, "bps": 5.5}},
+      "ceiling": {"k20": {"whole_dev": -2.38, "last6m": -1.98, "unit": "pips (skeptic 1.62 conversion)"}, "k10": {"whole_dev": -0.38, "last6m": -0.18, "unit": "pips"}},
+      "precedent_line_2x": "FAILS (band 2.5 vs ~11.0-11.96 bps) — moot",
+      "verdict": "CEILING_NEGATIVE_VETO"
+    },
+    "p3b_dinv_1d_usdcad": {
+      "binding_condition": "band upper 5 bps (~6.8 pips) vs x2.0-stressed measured RT at the actual fill buckets; marginal positive only if day-open lands outside rollover",
+      "bucket_resolution": "hour-0 lands in asia_00_07 (measured 1.3 dev / 1.4 last6m); exit 20:00 close = hour-19 bar in ny_late_16_21 (measured 1.2)",
+      "measured_rt": {"whole_dev": {"base_pips": 2.5, "k20_pips": 5.0, "k20_bps": 3.7}, "last6m": {"base_pips": 2.6, "k20_pips": 5.2, "k20_bps": 3.76}},
+      "ceiling_k20_bps": {"whole_dev": 1.3, "last6m": 1.24},
+      "precedent_line_2x": "NOT CLEARED (7.40/7.52 bps vs 5) — precedent-fragile disclosure armed per skeptic section 3.1 item 9",
+      "audusd_replicate": "NEGATIVE at k=2.0 (5.98/5.50 bps vs 5) — disclosed; pin two-pair terminal semantics before any scored cell",
+      "verdict": "CEILING_PASSED_MEASURED"
+    },
+    "blocked": []
+  }
+}

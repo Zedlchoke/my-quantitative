@@ -1,0 +1,99 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "tracka2-skeptic-f1",
+  "cycle_id": "ERP1-TRACKA-COHORT-2",
+  "role": "economic-skeptic",
+  "lane": "skeptic-f1",
+  "dispatch_sha": "752b90289e774923b6d390d2b9465ad6af5d7626",
+  "actual_start_sha": "752b90289e774923b6d390d2b9465ad6af5d7626",
+  "commit_sha": "c474ef44d40a14d5dbb55d321399c1604eca838e",
+  "changed_paths": [
+    ".worktrees/erp1-tracka-cohort-2/integration/research/control/ERP1-TRACKA-COHORT-2/falsifier/F1_rho_results.json (COMMITTED in c474ef44)",
+    ".worktrees/erp1-tracka-cohort-2/integration/research/control/ERP1-TRACKA-COHORT-2/scripts/f1_rho_run.py (COMMITTED in c474ef44)",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/SKEPTIC_F1_cohort2_REPORT.md (ROOT, uncommitted — owner commits)",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/HANDOFF_skeptic_f1_cohort2.json (ROOT, uncommitted — owner commits)"
+  ],
+  "tests": [
+    {
+      "command": "git -C <worktree> rev-parse HEAD / branch",
+      "result": "752b9028 (start, = dispatch head), branch orca/erp1-tracka-cohort-2-integration; my commit c474ef44d40a14d5dbb55d321399c1604eca838e contains exactly 2 files (explicit pathspec, no git add -A)"
+    },
+    {
+      "command": "manifest sha verification: sha256 every committed t2*.npy (94 shadows + 18 candidate arrays, both pairs) against t2_planes_manifest.json BEFORE consuming anything",
+      "result": "112/112 MATCH, 0 missing entries, 0 status!=OK among consumed shadows (47/47 per pair OK, 0 NOT_CONSTRUCTIBLE); tracka_lib.py bytes sha == pinned 1e09b368b240c6592ac518314e53fc7b470e371129c8043ddecf688f8e13df90"
+    },
+    {
+      "command": "anchor-array invariants (fail-closed pre-run)",
+      "result": "p3a_anchor/p3b_anchor: int8, len 27608/27583 (dev pins), values subset {-1,0,1}, nonzero 1171/1229 (P3-A) and 6001/4540 (P3-B) == manifest, warmup region flat (first nonzero bar 1522/1316 AUDUSD, 1324 USDCAD vs warmup_index 1334/1307)"
+    },
+    {
+      "command": "runner pinned pre-execution (P-12): py_compile + shasum",
+      "result": "final measurement runner sha256 76f2a01c2237fe9a4370c4b2806dcd1abf86d314b8fc3a663f5a406359f50b7b; bytes untouched after the measurement (a cosmetic stdout label defect recorded, NOT fixed, to preserve sha binding)"
+    },
+    {
+      "command": "F-1 execution (single persisting run): tracka_lib.spearman_rho, candidate anchor vs each of 47 shadows, FULL dev grid including zero rows, both pairs, pooled = max |rho|, gate 0.20 immovable",
+      "result": "P3-A: AUDUSD pooled 0.078552 (worst FX2-SESSMA-C2), USDCAD 0.088284 (worst FX2-SESSMA-C4) -> WITHIN_GATE both -> PASS_F1 (margin-to-fail 0.1117 on the worse pair). P3-B: AUDUSD 0.310253 (worst FX2-H1DONCH-C1), USDCAD 0.303153 (worst FX2-H1TSMOM-C1) -> ANCESTRY_RHO_BLOCK both pairs -> DEAD (home blocked; multiple independent families over the bar: STOCH 0.29, PDHLOC 0.25-0.29)"
+    },
+    {
+      "command": "representation-robustness check (diagnostic, report-only): zero-excluded rho",
+      "result": "P3-B zero-excluded 0.60-0.74 vs the blocking families => block holds (worse) on either grid reading. P3-A zero-excluded vs SESSMA/ASIAFADE is NEGATIVE -0.26..-0.36 (sign anti-correlation on occupied bars) => the PASS is a genuinely low-overlap book, not same-sign dilution"
+    },
+    {
+      "command": "runner stdout label check",
+      "result": "DEFECT recorded: final print loop mislabels both candidate blocks 'TRACKA2-P3B-DINV-1D' (variable reuse); JSON correctly keyed by p3a_anchor/p3b_anchor with candidate_id fields; all prose numbers quoted from JSON fields (P-19); runner bytes left untouched post-measurement"
+    }
+  ],
+  "authority_claims": [
+    "F-1 executed EXACTLY per the frozen SKEPTIC_F0_cohort2_REPORT.md section 4 protocol: consumed arrays sha-verified from committed bytes before any rho; Spearman via the pinned A7-certified tracka_lib bytes; full dev grid including zero rows (P-12 representation); pooled worst-shadow |rho| <= 0.20 immovable per candidate per pair; NOT_CONSTRUCTIBLE would have failed closed (none occurred: 47/47 per pair).",
+    "One-shot law: two pre-measurement aborts occurred BEFORE any rho was persisted, printed or seen (abort-1 fail-closed invariant-scope fix, P-23 class; abort-2 assembly TypeError with the partial in-memory result discarded unseen) — both disclosed in F1_rho_results.json pre_measurement_aborts, the commit message and the report; attempt-3 is the single persisted measurement; no re-run to influence any number was possible.",
+    "VERDICTS: P3-A TRACKA2-P3A-QCRD-H1 = PASS_F1 (both pairs <= 0.20 with margin 0.1117); P3-B TRACKA2-P3B-DINV-1D = ANCESTRY_RHO_BLOCK, DEAD on both pairs (home USDCAD blocked) — NOT_SCORED_FALSIFIED pre-score class, zero scored cells, its sealed holdout look never consumed (A1 sealed map needs only P3-A).",
+    "Cohort consequence: effective slate = 1 surviving mechanism (P3-A, home AUDUSD) proceeding to remaining falsifiers (F-2 already PASS_PIT 4/4 from prep lane; F-5 tight-state conditional bucket measurement is the chief open intake condition, lane C rules); P3-B's slate slot vacated by measurement and NOT refilled (no same-family replacement; different-family refill = new open-call, owner/council decision) => 1 slated survivor + 2 empty slots, empty preferred over weak filler. P4-A/P4-B remain F-0-PASS/not-slated, unchanged.",
+    "No PnL anywhere; sealed window (ts > 2025-12-31) never read: all consumed arrays dev-masked by construction with dev row pins re-asserted in-run; consumed only committed falsifier artifacts + the two frozen proposal laws' committed arrays."
+  ],
+  "known_limitations": [
+    "Runner stdout cosmetic mislabel (JSON authoritative); runner sha deliberately preserved over a cosmetic fix.",
+    "Per-fold rho diagnostics depend on the committed bars1h_ANC plane timestamps mapped through the frozen fold table; report-only, gate-independent.",
+    "M3 shadow is the prep lane's faithful implementation of the skeptic spec text (cohort-1 M3 code not byte-available to diff); its rho ~0.05 is immaterial to both verdicts.",
+    "P3-A's PASS binds to the frozen full-grid representation (P-12); A7 prelaunch recomputes by default from the committed runner + manifest.",
+    "This measurement does NOT clear P3-A's cost gate: the F-5 ceiling question (declared 2.5 bps band upper vs measured tight-state x2.0 RT, needs crossing <= 0.41 pips) is open and expected to be the primary kill per F-0 intake conditions."
+  ],
+  "incidents": [],
+  "tree_status": "worktree orca/erp1-tracka-cohort-2-integration clean after my commit c474ef44 (2 files); root checkout untouched by this lane except the two uncommitted root artifacts under tracka_cohort2/ (owner commits); no push, no merge, no registry edits; heavy lock not needed (array-scale computation only)",
+  "workers": 0,
+  "outputs": [
+    ".worktrees/erp1-tracka-cohort-2/integration/research/control/ERP1-TRACKA-COHORT-2/falsifier/F1_rho_results.json",
+    ".worktrees/erp1-tracka-cohort-2/integration/research/control/ERP1-TRACKA-COHORT-2/scripts/f1_rho_run.py",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/SKEPTIC_F1_cohort2_REPORT.md"
+  ],
+  "verdicts": {
+    "P3A_TRACKA2-P3A-QCRD-H1": {
+      "verdict": "PASS_F1",
+      "pooled_worst_abs_rho_AUDUSD": 0.078552,
+      "worst_shadow_AUDUSD": "FX2-SESSMA-C2",
+      "pooled_worst_abs_rho_USDCAD": 0.088284,
+      "worst_shadow_USDCAD": "FX2-SESSMA-C4",
+      "gate": 0.2,
+      "n_shadows": 47,
+      "not_constructible": 0,
+      "margin_to_fail_worse_pair": 0.1117,
+      "next": "remaining falsifiers F-3..F-7 under the frozen F-0 intake conditions; F-5 tight-state bucket = primary open risk"
+    },
+    "P3B_TRACKA2-P3B-DINV-1D": {
+      "verdict": "ANCESTRY_RHO_BLOCK",
+      "dead": true,
+      "pooled_worst_abs_rho_AUDUSD": 0.310253,
+      "worst_shadow_AUDUSD": "FX2-H1DONCH-C1",
+      "pooled_worst_abs_rho_USDCAD": 0.303153,
+      "worst_shadow_USDCAD": "FX2-H1TSMOM-C1",
+      "gate": 0.2,
+      "n_shadows": 47,
+      "not_constructible": 0,
+      "other_blocks": "AUDUSD: FX2-H1TSMOM-C1 0.3024, FX2-STOCH-C4 0.2947, FX2-PDHLOC-C3 0.2909; USDCAD: FX2-H1DONCH-C1 0.3001, FX2-STOCH-C4 0.2952, FX2-H1TSMOM-C2 0.2673, FX2-PDHLOC-C1 0.2474",
+      "representation_robust": "zero-excluded diagnostics 0.60-0.74 vs same families — block holds on either grid reading",
+      "consequence": "candidate dead pre-score (home pair blocked); zero scored cells; sealed holdout look never consumed; slot vacated, NOT refilled (slot policy)"
+    },
+    "slate_after_f1": ["P3A_TRACKA2-P3A-QCRD-H1"],
+    "slots_left_empty": 2,
+    "f1_one_shot": "single persisted measurement (runner 76f2a01c, commit c474ef44); re-runs require owner amendment"
+  }
+}
