@@ -1,0 +1,65 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "dfv1-lane-st",
+  "cycle_id": "DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1",
+  "role": "A3-class data-authority survey lane (stocks census + validation)",
+  "lane": "L-ST",
+  "dispatch_sha": "189c6d23ab2a6f50475819cf6df2e2e4def92820",
+  "actual_start_sha": "189c6d23ab2a6f50475819cf6df2e2e4def92820",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/stocks/inventory_rows.jsonl",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/stocks/LANE_REPORT.md",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/stocks/HANDOFF_L-ST.json"
+  ],
+  "tests": [
+    {"command": "git -C .worktrees/data-foundation-v1/lane-st branch --show-current && git -C .worktrees/data-foundation-v1/lane-st rev-parse HEAD", "exit_code": 0, "result": "orca/dfv1-lane-st @ 189c6d23ab2a6f50475819cf6df2e2e4def92820 (== dispatch sha); porcelain clean before work"},
+    {"command": "ps aux | grep -iE 'stocks|eodhd|edgar|ftd|sha256|rsync' (writers check)", "exit_code": 0, "result": "no writer processes; STOCKS-SEARCH-V1 (BLOCKED-not-terminal) sampled normally per packet"},
+    {"command": "full re-hash amihud staging vs crawl_manifest_v2.jsonl (8,219 files, /usr/bin/time)", "exit_code": 0, "result": "8219/8219 sha256+bytes MATCH, 0 missing, 0 mismatch (1.71s real)"},
+    {"command": "streaming coverage census amihud staging_eod_csv (/usr/bin/time)", "exit_code": 0, "result": "8,219 symbols, 4,676,951 data rows, first 2017-07-03, last 2022-12-30, 0 empty (6.23s real)"},
+    {"command": "cross-worktree sha identity amihud-retest copy vs origin (AABA/SPY/AAPL) + full row/window re-measure of copy", "exit_code": 0, "result": "3/3 IDENTICAL; 4,676,951 rows, same window; quarantine_manifest.jsonl = 9,001 codes (Q4_NO_SERIES 8356, Q1_GHOST 499, Q2_VENDOR_TEST 52, Q3 dup 10)"},
+    {"command": "stocks-search-v1 eod_cache census: p0_census_cohort.json.gz parse + 10 raw files parsed + 6 files hashed", "exit_code": 0, "result": "111,322 names, 142,609,234 served rows, 2015-01-02..2026-09-17, 7,476 zero-served; CKHGF.json.gz sha256 EXACT match to retrieval_manifest pin (4d0cf52f...); defect found: only 6/111,322 pull records carry shas"},
+    {"command": "shasum -a 256 of 9 ~/staging_backups archives vs committed SHA256SUMS manifests", "exit_code": 0, "result": "9/9 MATCH: stocks-free-v13_integration 57a9d42c..., stocks-ng5 e3f7dddf..., stocks-ng6 808ca4f1..., stocks-ng2_form4a 22f30ead..., rates_r_twin cd6196af..., vol_r_twin 9e96f766..., comm_r_twin 223d1bc4..., vol-ng1 dd4c2f32..., forex-v8_staged 0c0d4768..."},
+    {"command": "tar -xzOf stocks-free-v13_integration.tar.gz substrate_manifest.json | shasum -a 256 (/usr/bin/time)", "exit_code": 0, "result": "EXACT match to committed pin 5d351623675f71a9950d0e290b1fafff89901265f18bf6c687660e96285ea26b (packet digest 5d351623... verified, SAMPLED check PASSED); sidecar counts: 345,150 form4 XML docs / 546,039 stream rows / div 2,168 / splits 2,168 / submissions_alive 410"},
+    {"command": "tar -xzOf stocks-free-v13_integration.tar.gz form4_stream.jsonl | shasum -a 256 (/usr/bin/time)", "exit_code": 0, "result": "EXACT match to committed pin 6ac2cd5bdd62566efe106b46de715030e9a8a940cb90f5a991df5f05ba6742b2"},
+    {"command": "4/A archive member count via tar -tzf stocks-ng2_form4a.tar.gz", "exit_code": 0, "result": "6,124 file members = 6,123 corpus (CIK dirs) + 1 form4a_fetch_state.jsonl; matches recorded 3,062-accession re-ingest"},
+    {"command": "FTD archive: 15/15 sampled zip sha256 vs committed sec_ftd_archive_manifest.json (seed 11) + file census", "exit_code": 0, "result": "15/15 MATCH, 0 missing, 0 mismatch; 434 zips on disk (cnsfails200907a..202608b + 22 cnsp quarterly backfill); official_page_inventory.html re-hashed EXACT e811f192... MATCH"},
+    {"command": "shasum -a 256 ~/.my-quantitative-data/free-data-frontier-v1/raw/sec_nport/2026q2_nport.zip", "exit_code": 0, "result": "EXACT 077cc836... MATCH vs committed sec_nport_manifest.json; QQQ holdings = 102 rows measured from target_holdings_filtered.tsv (103 lines incl header)"},
+    {"command": "git show orca/stocks-free-v13-integration:research/control/stocks_free_v9_run/cohort_v9.json | shasum -a 256", "exit_code": 0, "result": "EXACT 6a95401ff84bff2144ac3c0b9426a6fa86daf3dde8d478195666249e3fa2aa62 == NG6 cohort_manifest expected_sha256; census counts measured (3,395 filings / 2,301 death filers / 12B-12G buckets; cohort 410 alive + 1,769 dead)"},
+    {"command": "OFR + NYFed sample re-hash vs committed manifests", "exit_code": 0, "result": "OFR 3/3 MATCH (FNYR-SOFR-A 209551ca..., FNYR-EFFR-A ecf2a2ae..., inventory_mnemonics 63cf5e2a...); NYFed 2/2 MATCH (rate_effr 24b2f0b9..., rate_sofr 2e993646...); revisionIndicator field confirmed in NYFed bytes"},
+    {"command": "git show streaming reads of terminal verdicts (ng3 terminal, ng6 p0_verdict + cohort_manifest, deu f2 posting scan, vol p0_ingest_manifest, rates p0_treasury_census + p0_fred_repin, stooq probe_verdict, twelvedata p0b2_probe_verdict)", "exit_code": 0, "result": "all ruling rows recorded from committed/verdict artifacts only; Treasury 37y/9,181 rows 1990..2026-09-11; FRED 7/7 PINNED; CBOE VIX sha-pinned at ingest"}
+  ],
+  "authority_claims": [
+    "EODHD price family (4 panels: search-v1 cache, amihud, amihud-retest, ng6) inventories complete with statuses; amihud staging is the ONLY AVAILABLE_VALIDATED stocks price panel (full re-hash ALL_MATCH + byte census this cycle); L-SAMV1-1/2/3 defect laws carried, adjusted prices confirmed NOT PIT (AAPL 2015 adjusted_close 24.17 vs close 109.33 observed)",
+    "DEFECT: stocks-search-v1 1.9G staging identity is effectively unpinned — only 6/111,322 retrieval_manifest records carry shas although f9_artifact_digests.json claims per-pull pinning; cheap one-pass SHA256SUMS job would close it",
+    "Form-4 substrate: manifest digest 5d351623... verified EXACT by streamed re-hash from the sha-verified archive (SAMPLED per packet); form4_stream 6ac2cd5b... verified EXACT (full-byte); 4/A corpus archive sha MATCH with 6,123-file count confirmed; bytes survive ONLY inside ~/staging_backups tarballs (worktrees stocks-free-v13 / stocks-ng2 / stocks-free-v9 are emptied)",
+    "FTD archive AVAILABLE_VALIDATED (15/15 sample + inherited terminal ALL_MATCH 435/435 + file/vintage census); P-26 timing contract recorded in-row: posting_bound = half-month end +15d, guard >=16d (17 conservative), machine-readable posting dates NOT found, settlement date NEVER availability, historical scored use RETROSPECTIVE_ONLY",
+    "N-PORT 2026q2 QQQ: zip byte-verified EXACT this cycle; 102 holdings measured; FILING_DATE+1d availability, lag p50 57d / p95 62d, supersession rule recorded",
+    "Form-15 death-inclusive cohort census: cohort_v9.json git blob sha EXACTLY equals cross-cycle pin 6a95401f...; 12B/12G taxonomy + counts measured; raw EDGAR FTS bytes GONE (hashes survive, re-pullable keyless)",
+    "OFR (3/3) and NYFed (2/2) sampled sha MATCH vs committed manifests; RETRIEVAL_TIME_ONLY rulings recorded; NYFed revisionIndicator machine-served",
+    "Terminal rulings recorded from artifacts only: Stooq NOT_RUN (P-7 canary kill 0/14 dead names, can never be primary), TwelveData NOT_RUN (gate-3 delisted kill + F4 no-cost-authority), FINRA BLOCKED_LICENSE (P-25 ToU, reopen = FINRA data license), EODHD earnings channels BLOCKED_ACCOUNT (NG3 terminal 403 map, reopen = entitlement upgrade)",
+    "Shared macro rows flagged asset_class=shared for L-PIT consolidation: Treasury par yields (37y, 9,181 rows), FRED granted set (7 series pinned + vintaged S2 machinery), CBOE VIX family (4 indices sha-pinned at ingest)",
+    "Gap candidates drafted per packet: G1 earnings timestamps via entitled EDGAR acceptance datetimes (P1, fixes NG3 kill, free), G3 PIT corp actions from already-entitled div/splits bytes + 8-K (P2, fixes L-SAMV1-1), G6 dated identity mapping (P2), G2 trades/quotes SIP/IEX (P3, IEX-runbook inputs only), G4 borrow/short-fee, G5 halts/auction, G7 execution cost basis (P4, only-with-mechanism)"
+  ],
+  "known_limitations": [
+    "OFFLINE lane: zero network requests; entitlement/channel states recorded from terminal verdict artifacts and committed git blobs only, never re-probed",
+    "stocks-search-v1 census is metadata + sampled files only (BLOCKED-not-terminal owner; writers check performed; 1.9G corpus not re-hashed — flagged as cheap follow-up)",
+    "Form-4 XML per-file re-hash (345,150) not re-run this cycle (archive extraction would exceed sampling budget); two committed full re-hashes exist (P0 + A7); archive-level + manifest + stream shas verified instead",
+    "stocks-ng6 panel 3.21M-row figure is inherited (packet known-ruling + terminal artifacts), not re-measured from panel bytes; worktree empty, archive sha verified",
+    "Form-15 raw EDGAR FTS bytes absent from disk (v9 worktree removed, bytes gitignored); census JSONs + hashes verified in git; re-pull is keyless FTS",
+    "Stooq zip disposition (~/Downloads) not re-verified this cycle (owner space, out of scope); its row is a ruling record, not a dataset claim",
+    "Cross-source checks (OFR vs NYFed, FRED vs Treasury, static cost bands vs measured) identified but not run — candidate fixture probes for a follow-up cycle",
+    "Shared macro rows carry only archive-level + committed-manifest verification; per-file byte re-hash deferred to L-PIT consolidation"
+  ],
+  "incidents": [
+    "MINOR (hygiene, self-recorded): one tar listing written to /tmp/none_write_here.txt (~50MB, outside repo, deleted in the same command); read-only rule intent is repo/data surfaces — recording for A7 transparency; F10 temp budget (<=1GB) held; subsequent passes used pure pipes with zero disk writes",
+    "NONE blocking. No boundary hits: no network, no .env/keys read, no sealed/S1/holdout content, no writes outside allowed path, no git history ops, no foreign-process interference"
+  ],
+  "tree_status": "clean (verified after commit by pathspec)",
+  "workers": 0,
+  "outputs": [
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-st/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/stocks/inventory_rows.jsonl",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-st/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/stocks/LANE_REPORT.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-st/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/stocks/HANDOFF_L-ST.json"
+  ]
+}
