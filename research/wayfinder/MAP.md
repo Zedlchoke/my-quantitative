@@ -33,6 +33,16 @@
     2026-H1 AUDUSD+USDCAD remain UNREAD program assets. Next: owner-gated
     cohort-3 viability council (master §7 stop-conditions apply — two
     consecutive REJECT_ALL cohorts).
+  - **Viability council verdict 2026-09-26: `NO_CANDIDATE` on the currently
+    authorized frontier** (`forex_program/VIABILITY_cohort3_REPORT.md`: 0/12
+    remaining mechanism classes pass pre-PnL checks; the measured cost floor
+    3.6/4.4-pip stressed RT partitions the space with zero remainder;
+    P3-A's reopening condition confirmed unsatisfiable without owner action;
+    sealed map NOT empty, so frontier-terminal, not program-terminal). NO
+    cohort-3 opened. Reopening = owner actions R1–R5 in
+    `forex_program/OWNER_PACKET_program_status_2026-09-26.md` (broker cost
+    authority via IBKR probe / EDQ1 source decision / financing band /
+    USDCHF slate / new evidenced information layer).
 
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
