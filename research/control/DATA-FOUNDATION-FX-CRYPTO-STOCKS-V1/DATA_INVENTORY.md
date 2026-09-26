@@ -1,6 +1,6 @@
 # DATA_INVENTORY — DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1 (deliverable D1)
 
-Machine authority: `data_inventory.jsonl` (93 rows, merged from the 5 lane
+Machine authority: `data_inventory.jsonl` (91 rows after consolidator dedup (nyfed/fred cross-lane duplicates) + 1 honest R1 downgrade, merged from the 5 lane
 files with `source_lane` tags; two intentional cross-lane duplicate ids —
 `nyfed_reference_rates`, `fred_granted_set` — censused by both L-ST and
 L-PIT with consistent facts). Statuses are per plan §5; **no PASS was
@@ -8,8 +8,7 @@ inferred from file existence** — every AVAILABLE_VALIDATED row carries
 this-cycle re-measurement evidence (sha sample/full match + coverage
 census) in its `status_evidence` field.
 
-Status tally: **AVAILABLE_VALIDATED 33 / AVAILABLE_UNVALIDATED 27 / NOT_RUN
-28 / BLOCKED_TRANSPORT 2 / BLOCKED_LICENSE 1 / BLOCKED_ACCOUNT 2.**
+Status tally (post-conformance-fix): **AVAILABLE_VALIDATED 32 / AVAILABLE_UNVALIDATED 26 / NOT_RUN 28 / BLOCKED_TRANSPORT 2 / BLOCKED_LICENSE 1 / BLOCKED_ACCOUNT 2** — `validate_rows.py` returns VALID on the consolidated file (consolidation erratum: the first D1 commit message claimed validator PASS prematurely; the file then failed with 109 violations, fixed honestly in the erratum commit per P-19: bytes measured from disk, enum mappings conservative + original text preserved, 1 row downgraded for missing byte-level evidence, lane sample sizes referenced not transcribed).
 Taxonomy note (plan §14 F9): BLOCKED_TRANSPORT ≡ the owner's 7-state view
 "BLOCKED, cause = transport" (standing SNI-filter environment constraint,
 L-FXFF-1) — it is a superset state, not a new verdict class.
