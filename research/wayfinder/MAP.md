@@ -1253,3 +1253,35 @@ promise.
 - Control plane: research/control/ERP1-TRACKA-COHORT-1/ (freeze+errata, 42-row
   ledger, censuses, audits A7 prelaunch+terminal, CYCLE_VERDICT with errata
   bundle); branch orca/erp1-tracka-cohort-1-integration terminal fa93b807.
+
+## ERP1-TRACKB-COHORT-1 (TERMINAL 2026-09-26, REJECT_ALL) — BTCUSDT spot–perp delta-neutral carry: the funding axis is closed by identity, at zero cells
+
+- Owner opened Track B (BTCUSDT spot–perp delta-neutral basis/carry) under
+  ECONOMIC-ROBUSTNESS-PROGRAM-V1 with gate-by-gate authority; GO-1 consumed
+  verbatim at its gate (`GO ERP1 TRACKB COHORT 1 REGISTER AND FREEZE`).
+- Council (4 outcome-blind lanes + A7 plan-audit) admitted exactly ONE of
+  nine mechanism classes: funding-level-gated low-turnover cash-and-carry
+  with a breakeven-horizon entry law (enter only when trailing expected
+  carry over the hold ≥ the ×2.0 all-in bill ≈45–60 bps; measured anchors:
+  two-leg taker RT 20–25 bps; mean funding 11.798%/yr but only 1.11 bps/day
+  in-downtrend; 24.7% in-downtrend settlements negative).
+- The falsifier battery killed it before any PnL: **F-1 one-shot ancestry
+  rho — the class's lawful entry observable IS the dead carry class's
+  observable** (continuous pooled |rho| 1.0000 vs the CARRY-BAB proxy;
+  binary 0.5308 skeptic / 0.658 A7-recompute, vs the immovable 0.20 bar).
+  Everything else was CLEAN: PIT battery M-1..M-5 all PASS (318/318
+  truncation-replay byte-identical), 42 non-overlapping holds ≥ floor,
+  221/318 gate fires — the kill is ancestry identity, not leakage, not
+  power, not cost.
+- Outcome: `REJECT_ALL`, 0/7 scored cells, 0 PnL, 0 sealed looks, S1
+  SEALED, GO-2 died REGISTERED_NOT_CONSUMED. The BTCUSDT funding/basis
+  surface is closed against ALL funding-level-derived gates; reopening only
+  on a non-funding-level PIT axis (OI / liquidation tape — both BLOCKED) or
+  a dated measured cost-regime break.
+- Durable assets: staging pipeline (funding 6,819 settlements zero-gap +
+  spot/perp 1h corpus), the gate-law + PIT-fixture harness, the skeptic F-1
+  rho runner, the F-0 court procedure (second adjudication), and the
+  lesson: **vision spot archives switched to microsecond open_time in 2025
+  — an ms-guard silently truncates grids; scale-normalize + verify grid
+  endpoint against the declared window** (caught by the skeptic's
+  independent epoch count, not by the author).

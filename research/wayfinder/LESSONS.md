@@ -989,3 +989,31 @@ terminal with the named single owner action — no lane burn, no audit arc.
   future cohort; FAMILY_FAILURES carries the five new entries with their
   reopening conditions; P3-A's reopening requires measured sub-0.41-pip
   ALL-IN execution evidence (venue authority), never assumed maker/mid.
+
+## L-TRACKB1-1 (2026-09-26, ERP1-TRACKB-COHORT-1): archive timestamps change scale silently — validate the grid endpoint, not just the row count
+
+- Source: Binance vision spot monthly klines switched to MICROSECOND
+  open_time in 2025. The loader's ms-scale range guard (`t > hi_ms:
+  continue`) silently dropped every 2025+ row — no parse error, no gap
+  flag; the weekly epoch grid ended 2024-12-27 while the row count (79k
+  bars) looked healthy. Two downstream numbers were wrong in prose ("0
+  fires last 6m", "34<40 holds") until the SKEPTIC lane's independent
+  epoch count disagreed with the author's — the adversarial lane caught
+  what the author's own tests could not (their count of Fridays to
+  2026-08 vs the artifact's last stamp).
+- Lesson: a coverage check that counts rows is blind to a STAMP-SCALE
+  migration; the check that catches it is cheap and must be standing:
+  (1) assert the loaded grid's LAST stamp is within one bar of the
+  declared window end (first/last stamps printed at load); (2) normalize
+  stamp scale by magnitude (us values > 1e14) with a loud count of how
+  many rows were rescaled; (3) any independent lane consuming a grid
+  artifact recomputes the grid from the raw source, never trusts the
+  artifact's extent. Fixture-v1 defects the same session (M-2 probe
+  operationalization, M-5 cross-poisoned windows) reinforce P-19: a
+  fixture whose verdict looks decisive must still be checked against the
+  SEMANTICS it claims to test before the verdict is relied on.
+- Consequence: `_norm_ms` + endpoint assertion are now part of the trackb
+  harness; battery numbers regenerated on the corrected 318-epoch grid;
+  the kill (ancestry identity rho) was unaffected — identity holds on any
+  grid — but the record carries the corrected facts, and the incident is
+  in FAMILY_FAILURES/ledger rows verbatim.
