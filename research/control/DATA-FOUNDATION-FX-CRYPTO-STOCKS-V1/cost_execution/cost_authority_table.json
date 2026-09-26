@@ -1,0 +1,462 @@
+{
+  "schema": "dfv1_cost_authority_table@1",
+  "cycle_id": "DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1",
+  "lane": "L-COST",
+  "task_id": "dfv1-lane-cost",
+  "dispatch_sha": "189c6d23ab2a6f50475819cf6df2e2e4def92820",
+  "measured_utc": "2026-09-26T22:30:00Z+/-30m (session-local, all reads offline)",
+  "census_number": 4,
+  "census_lineage": [
+    "census #1-2: FOREX-NG6 P0-F4 + FOREX-NG7 F4 (vendor channel adjudication)",
+    "census #3: DATA-EDGE-UNLOCK-V1 Lane F ten-component dossier (verdict BLOCKED_BROKER_COST_AUTHORITY, stress 2.0 frozen)",
+    "census #4: THIS table — adds the 2026-09-26 IBKR TWS SIM probe (tick MEASURED account-bound), the ERP1 measured cost floors (stressed RT 3.6/4.4 pips), and the crypto measured books (funding, SOL spread census)"
+  ],
+  "evidence_classes": {
+    "MEASURED_FROM_BYTES": "value read from committed bytes (venue archive, account-bound API transcript, or sha-pinned census aggregate)",
+    "DECLARED": "venue-published rule frozen before use, never validated against fills (Q-8: a hypothesis carried as a declared constant)",
+    "STATED_VENDOR": "vendor/official web page statement, not attached to any account; never silently upgraded",
+    "UNMEASURED": "no citable value in the authorized evidence space; never inferred, never zero-filled",
+    "qualifiers_used": ["SINGLE_SAMPLE", "CONSERVATIVE_DEFAULT_NOT_MEASURED", "FROZEN", "NOT_SUBSCRIBED", "REPORT_ONLY"]
+  },
+  "assets": {
+    "fx_majors": {
+      "instruments": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "NZDUSD", "USDCAD"],
+      "authority_verdict": "BLOCKED_BROKER_COST_AUTHORITY (census #3 + #4 concur); ERP1 vendor-book cost floors are the only measured cost authority in the program",
+      "components": {
+        "spread": {
+          "class": "MEASURED_FROM_BYTES",
+          "qualifier": "vendor venue book (Dukascopy M1 bid/ask archive); broker-executable two-sided = NOT_SUBSCRIBED on the owner's IBKR SIM (bid/ask = -1 on all 5 pairs, 0 valid observations in 2x360s streams)",
+          "value": {
+            "EURUSD": {"session_p50_pips": 0.3, "rollover_21_22": {"p50": 0.9, "p99": 7.8}, "sunday_open_21_22_p50": 3.0},
+            "GBPUSD": {"session_p50_pips": 0.8},
+            "USDJPY": {"session_p50_pips": 0.5, "price_scale": "1e-3 probe-proven, never assumed"},
+            "AUDUSD": {"session_mixture_median_pips": 1.0, "conditional_last6m_p50_pips": 0.9, "conditional_last6m_p25": 0.8},
+            "USDCAD": {"session_mixture_median_pips": 1.2, "conditional_last6m_p50_pips": 1.1},
+            "stressed_RT_x2.0_pips": {"AUDUSD": 3.6, "USDCAD": 4.4},
+            "stressed_RT_x2.0_bps": {"AUDUSD": 5.5, "USDCAD": 3.7}
+          },
+          "source_artifacts": [
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort1/DATACOST_cohort1_REPORT.md (EURUSD/GBPUSD/USDJPY censuses, corpora 4,014 files/pair, window 2021-01..2026-06)",
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/COSTAUDIT_cohort2_REPORT.md (AUDUSD/USDCAD session buckets, stressed RT table)",
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/COSTAUDIT_F5_cohort2_REPORT.md (fill-hour-keyed round-2 re-pricing)",
+            ".worktrees/erp1-tracka-cohort-1/integration/research/control/ERP1-TRACKA-COHORT-1/data_local/derived/census_AUDUSD.json (sha256 d337ff2c...33473, re-measured this cycle)",
+            ".worktrees/erp1-tracka-cohort-1/integration/research/control/ERP1-TRACKA-COHORT-1/data_local/derived/census_USDCAD.json (sha256 27958f5a...5758, re-measured this cycle)",
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/broker_cost_probe_FX_majors_2026-09/EVIDENCE_sanitized_2026-09-26.json (NOT_SUBSCRIBED finding)"
+          ],
+          "what_is_missing": "account-bound two-sided executable quotes at any broker the owner holds (IBKR SIM lacks FX market data subscription)",
+          "owner_action": "enable FX delayed (free) via TWS 'Manage Data Subscriptions' or share subscriptions from a funded account, then re-run the one-command probe for a spread distribution (DELAYED- or LIVE-flagged)"
+        },
+        "commission": {
+          "class": "UNMEASURED",
+          "value": null,
+          "source_artifacts": [
+            "git show orca/forex-ng6-integration:research/control/forex_ng6_run/p0/p0_census_verdict.json (sha256 7fbb6347...a4a8a5: commission.measurable_from_td=false)",
+            ".worktrees/data-edge-unlock-v1/lane-f/research/control/data_edge_unlock_v1/lane_f/f_cost_authority_dossier.json (zero broker statement/export files on machine; no stated-class declaration made)",
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/forex_program/OWNER_PACKET_program_status_2026-09-26.md (commission = 0 authorized bytes)"
+          ],
+          "what_is_missing": "any account-bound commission/markup row or schedule",
+          "owner_action": "Activity/Flex (or XML) statement covering a window with FX trades; Trade+Commission rows (Cash Report 'Fees/Subtotal') become component-2 evidence"
+        },
+        "minimum_size": {
+          "class": "UNMEASURED",
+          "value": null,
+          "qualifier": "measured attempt exists: CASH contractDetails returned minSize=null, sizeIncrement=null on all 5 pairs (IBKR SIM, 2026-09-26)",
+          "source_artifacts": [
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/broker_cost_probe_FX_majors_2026-09/EVIDENCE_sanitized_2026-09-26.json (contract_details blocks)",
+            "git show orca/forex-ng6-integration:research/control/forex_ng6_run/p0/p0_census_verdict.json (minimum_size.measurable_from_td=false)"
+          ],
+          "what_is_missing": "minSize/sizeIncrement from a statement or contract spec (API channel returned null)",
+          "owner_action": "Activity/Flex statement fill-granularity, or broker contract-spec document bound to the account"
+        },
+        "tick_size": {
+          "class": "MEASURED_FROM_BYTES",
+          "qualifier": "account-bound (paper SIM session, Read-Only server-side proven: order-channel reads rejected 321)",
+          "value": "minTick = 0.00005 = 0.5 pip on ALL five pairs (EURUSD/GBPUSD/USDCAD/AUDUSD/NZDUSD, IDEALPRO CASH, two independent runs 20260926T054652Z + 20260926T055513Z)",
+          "consequence": "minimum positive spread at this venue = 0.5 pip => base crossing >= 0.5 pip => x2.0 >= 1.0 pip = 2.4x the frozen P3-A threshold of 0.41 pips BEFORE commission — P3-A measured-dead at IBKR IDEALPRO by tick geometry",
+          "source_artifacts": [
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/broker_cost_probe_FX_majors_2026-09/VERDICT_session2.md",
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/broker_cost_probe_FX_majors_2026-09/EVIDENCE_sanitized_2026-09-26.json"
+          ],
+          "what_is_missing": "nothing for tick geometry at this venue; per-venue tick map for other venues still open",
+          "owner_action": "none needed for this venue (measured); other venues only via the same probe pattern"
+        },
+        "swap_financing_per_pair": {
+          "class": "UNMEASURED",
+          "qualifier": "BINDING PASS-minimum component (A7 F-C1); long and short both",
+          "value": null,
+          "source_artifacts": [
+            "git show orca/forex-ng7-integration:research/control/forex_ng7_run/terminal_verdict_forex_ng7.json (sha256 be73305f...2828c2: 'a citable FINANCING band was hunted across the entire authorized evidence space and NONE exists')",
+            ".worktrees/data-edge-unlock-v1/lane-f/research/control/data_edge_unlock_v1/lane_f/f_cost_authority_dossier.json (components 3+4)",
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/forex_program/VIABILITY_cohort3_REPORT.md (carry class BLOCKED at gate: 'holds >1 day cannot even be costed')"
+          ],
+          "what_is_missing": "per-instrument swap/financing lines by side and date, account-bound",
+          "owner_action": "Activity/Flex statement with at least one full Wed-Sun window holding overnight FX positions; 'Interest Accruals' rows per FX position",
+          "pass_minimum_note": "independently sufficient to fail the broker PASS minimum"
+        },
+        "triple_swap_day": {
+          "class": "UNMEASURED",
+          "qualifier": "BINDING PASS-minimum component (A7 F-C1); CONSERVATIVE-DEFAULT-NOT-MEASURED 3x-weekday multiplier carried in models, never invented as a measured number",
+          "value": null,
+          "source_artifacts": [
+            "research/control/xauusd_ibkr_probe_2026-09/probe_contract_freeze_supplement.json (sha256 3d31cdf3...2d75ef, frozen default + law)",
+            ".worktrees/data-edge-unlock-v1/lane-f/research/control/data_edge_unlock_v1/lane_f/f_cost_authority_dossier.json (component 5)"
+          ],
+          "what_is_missing": "dated accrual rows around Wednesdays from an account statement",
+          "owner_action": "same Interest Accruals statement window as swap component; the 3x-charged weekday pattern is measured from the rows"
+        },
+        "margin": {
+          "class": "UNMEASURED",
+          "qualifier": "REPORT_ONLY by law — never a profit input; whatIf/order channels forbidden under the read-only discipline",
+          "value": null,
+          "source_artifacts": [
+            "research/control/xauusd_ibkr_probe_2026-09/cost_authority_checklist.json (margin item: 'UNMEASURED — no number invented')",
+            ".worktrees/data-edge-unlock-v1/lane-f/research/control/data_edge_unlock_v1/lane_f/f_cost_authority_dossier.json (component 9)"
+          ],
+          "what_is_missing": "Account Summary InitMarginReq/MaintMarginReq lines",
+          "owner_action": "include Account Summary in the exported statement (report-only)"
+        },
+        "slippage_latency": {
+          "class": "UNMEASURED",
+          "qualifier": "DECLARED_UNMEASURED erosion-only line in every ERP1 cost table (no number permitted); fill quality unmeasurable on M1 bid/ask by construction",
+          "value": null,
+          "measured_adjacent_facts": {
+            "rollover_bucket_p50_pips": {"AUDUSD": 2.0, "USDCAD": 2.3},
+            "rollover_bucket_p99_pips": {"AUDUSD": 12.304, "USDCAD": 16.7},
+            "sunday_open_p50_pips": {"AUDUSD": 4.6, "USDCAD": 6.8}
+          },
+          "source_artifacts": [
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/COSTAUDIT_cohort2_REPORT.md (C1.1 session table + labels)",
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/COSTAUDIT_F5_cohort2_REPORT.md (labels: FILL_QUALITY_UNMEASURABLE_ON_M1_BIDASK, PAPER_TIER)"
+          ],
+          "what_is_missing": "per-fill slippage vs decision-price distribution — requires an account-bound fill log",
+          "owner_action": "Activity/Flex fills export (per-fill price vs concurrent quote) — same statement window as commission"
+        },
+        "currency_conversion": {
+          "class": "UNMEASURED",
+          "qualifier": "conversion FEE unmeasured; the pip<->bps conversion factors used in ERP1 ARE measured (dev mid AUDUSD 0.66864 / last-6m 0.6543; USDCAD 1.35137 / 1.38352) and are pure arithmetic on measured mids",
+          "value": null,
+          "source_artifacts": [
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/COSTAUDIT_F5_cohort2_REPORT.md (Units section)"
+          ],
+          "what_is_missing": "account currency-conversion fee schedule/rows (only relevant if PnL currency != quote currency at the broker)",
+          "owner_action": "statement 'Fees' section covering an FX conversion, or explicit owner note that accounts quote in USD"
+        },
+        "api_fees": {
+          "class": "UNMEASURED",
+          "qualifier": "no account-attached API/market-data fee schedule exists in the evidence space; SIM market-data posture = NOT_SUBSCRIBED (free delayed FX not enabled)",
+          "value": null,
+          "source_artifacts": [
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/broker_cost_probe_FX_majors_2026-09/VERDICT_session2.md (V2 NOT_SUBSCRIBED two-sided)",
+            ".worktrees/data-edge-unlock-v1/lane-f/research/control/data_edge_unlock_v1/lane_f/f_cost_authority_dossier.json (FXCM/Dukascopy doc verification NOT_RUN inside request budget; OANDA OWNER_GATED)"
+          ],
+          "what_is_missing": "the owner's actual subscription/cost page bound to the account",
+          "owner_action": "owner reads 'Manage Data Subscriptions' cost line when enabling FX delayed; or any statement line naming market-data fees"
+        },
+        "stress_multiplier": {
+          "class": "FROZEN",
+          "value": 2.0,
+          "qualifier": "PRIMARY, frozen pre-outcome 2026-09-17 (cycle budgets 0 scored cells by construction); application rule: frozen-probe medians only, never single-connectivity samples",
+          "source_artifacts": [
+            ".worktrees/data-edge-unlock-v1/lane-f/research/control/data_edge_unlock_v1/lane_f/f_cost_authority_dossier.json (component 10)",
+            "research/control/xauusd_ibkr_probe_2026-09/probe_contract_draft.json (sha256 326cff71...cd3e)"
+          ]
+        },
+        "p3a_frozen_threshold": {
+          "class": "FROZEN",
+          "value": "conditional crossing <= 0.41 pips at k=2.0 (<= 0.81 at k=1.0)",
+          "measured_against": "AUDUSD conditional crossing 0.9 (last-6m) / 1.0 (whole dev) pips, p25 0.8 => CEILING_NEGATIVE_VETO pre-PnL at both stress levels; ceiling -1.98 to -3.48 pips (-0.18/-0.38 at k=1.0)",
+          "source_artifacts": [
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/tracka_cohort2/COSTAUDIT_F5_cohort2_REPORT.md",
+            "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/forex_program/OWNER_PACKET_program_status_2026-09-26.md"
+          ]
+        }
+      }
+    },
+    "xauusd": {
+      "instruments": ["XAUUSD (IBKR CMDTY conId 69067924, SMART, US/Eastern)"],
+      "authority_verdict": "PROBE_PAUSED (NOT_RUN_TWS_UNAVAILABLE at 2026-09-16 freeze; the instrument was NOT retried by the 2026-09-26 FX probe per lane law)",
+      "components": {
+        "spread": {
+          "class": "MEASURED_FROM_BYTES",
+          "qualifier": "SINGLE_SAMPLE — connectivity proof ONLY, zero distributional weight",
+          "value": "bid 4332.77 / ask 4333.17 => 0.40 USD/oz = 0.923 bps @ mid 4332.97 (marketDataType=1 LIVE, at probe freeze)",
+          "source_artifacts": ["research/control/xauusd_ibkr_probe_2026-09/cost_authority_checklist.json (observed_live_bid_ask_spread item)", "research/control/xauusd_ibkr_probe_2026-09/probes/tws_light_check.json"],
+          "what_is_missing": "a sampled spread distribution (session buckets, rollover)",
+          "owner_action": "resume the preregistered XAU probe once TWS API is available (templates frozen; handshake diagnosis requires new preregistration)"
+        },
+        "commission": {
+          "class": "STATED_VENDOR",
+          "value": "London Gold / US Spot Gold tiered commission schedule, quoted from raw HTML of the official ibkr.com metals commissions page",
+          "source_artifacts": ["research/control/xauusd_ibkr_probe_2026-09/cost_authority_checklist.json (commission_schedule item)", "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/commissions-metals.html"],
+          "what_is_missing": "measured execution commissions from account rows",
+          "owner_action": "Activity/Flex statement with a metals trade (Q-8: stated schedule stays a hypothesis until then)"
+        },
+        "minimum_size": {
+          "class": "STATED_VENDOR",
+          "qualifier": "educational page dated Jan 2022 — indicative only",
+          "value": "IBKR Campus lesson values (US Spot Gold minimum order/size increment)",
+          "source_artifacts": ["research/control/xauusd_ibkr_probe_2026-09/cost_authority_checklist.json (minimum_order_size item)"],
+          "what_is_missing": "contractDetails minSize (null for CASH FX; not captured for CMDTY) or a fill-granularity observation",
+          "owner_action": "same resumed probe pulls CMDTY contractDetails; or statement fill granularity"
+        },
+        "tick_size": {
+          "class": "MEASURED_FROM_BYTES",
+          "value": "minTick = 0.01 USD/oz — MEASURED from owner TWS contractDetails; DISCREPANCY LOGGED vs STATED $0.001 from the educational page (10x conflict; measured wins, Q-8 exemplar)",
+          "source_artifacts": ["research/control/xauusd_ibkr_probe_2026-09/cost_authority_checklist.json (price_increment item)"],
+          "what_is_missing": "nothing (measured at this venue)",
+          "owner_action": "none"
+        },
+        "swap_financing_per_pair": {
+          "class": "STATED_VENDOR",
+          "value": "long storage: 0.10% per annum stated, page example USD 2.64/day (annualized /360); short borrow: tiered benchmark-linked schedule stated (balance cutoffs 0-1,000,000 USD => ...)",
+          "source_artifacts": ["research/control/xauusd_ibkr_probe_2026-09/cost_authority_checklist.json (long_storage_fee, short_borrow_financing_fee items)", "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/ie-products-metals.html"],
+          "what_is_missing": "account-bound interest/accrual rows",
+          "owner_action": "Activity/Flex statement with overnight metals position"
+        },
+        "triple_swap_day": {
+          "class": "UNMEASURED",
+          "qualifier": "CONSERVATIVE-DEFAULT-NOT-MEASURED: every calendar day accrues; weekday before a 2+ day closure charged 3x — a stress default, never a measured number",
+          "value": null,
+          "source_artifacts": ["research/control/xauusd_ibkr_probe_2026-09/probe_contract_freeze_supplement.json"],
+          "what_is_missing": "dated accrual rows",
+          "owner_action": "statement window covering a weekend"
+        },
+        "margin": {
+          "class": "UNMEASURED",
+          "qualifier": "official margin page attempted — JS wizard shell, not retrievable",
+          "value": null,
+          "source_artifacts": ["research/control/xauusd_ibkr_probe_2026-09/cost_authority_checklist.json (margin_requirement item)"],
+          "what_is_missing": "account-bound margin lines",
+          "owner_action": "Account Summary export (report-only)"
+        },
+        "slippage_latency": {
+          "class": "UNMEASURED",
+          "qualifier": "RULE (declared): simulated paper fills carry ZERO evidential weight for execution cost",
+          "value": null,
+          "source_artifacts": ["research/control/xauusd_ibkr_probe_2026-09/cost_authority_checklist.json (paper_fill_limitations item)"],
+          "what_is_missing": "live fill log — out of scope at paper tier",
+          "owner_action": "none at paper tier (by law)"
+        },
+        "currency_conversion": {
+          "class": "UNMEASURED",
+          "value": null,
+          "source_artifacts": ["research/control/xauusd_ibkr_probe_2026-09/cost_authority_checklist.json"],
+          "what_is_missing": "USD account assumed but not evidenced; conversion fee rows absent",
+          "owner_action": "statement Fees section if any conversion occurred"
+        },
+        "api_fees": {
+          "class": "STATED_VENDOR",
+          "qualifier": "same official commissions page (fetched) serves as the only fee surface; nothing account-attached",
+          "value": "published metals commission schedule (see commission)",
+          "source_artifacts": ["research/control/xauusd_ibkr_probe_2026-09/probes/fetched/commissions-metals.html"],
+          "what_is_missing": "account market-data/API cost lines",
+          "owner_action": "Account Settings export naming subscription costs"
+        }
+      }
+    },
+    "crypto": {
+      "instruments": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT"],
+      "authority_verdict": "PARTIAL_MEASURED: funding + per-settlement costs MEASURED per pair; commission DECLARED; spread MEASURED for SOLUSDT only; owner directive prohibition: NO order-book/flow inference from candles",
+      "components": {
+        "spread": {
+          "class": "MEASURED_FROM_BYTES",
+          "qualifier": "SOLUSDT only; BTCUSDT/ETHUSDT/BNBUSDT spread census NOT_RUN (required by the SRLV cost-book contract)",
+          "value": "SOLUSDT bookTicker monthly-archive census (Binance Vision keyless, transaction_time PIT): n=13,805,136; overall p50 0.4689 bps, p25 0.1090, p75 0.5155, p99 2.3497, mean 0.4420; by-hour table pooled 2023-05..; max sampled 96.87 bps",
+          "source_artifacts": [".worktrees/pws-cx-solusdt-c1/integration/research/control/PWS-CX-SOLUSDT-C1/C1_machine_SPREAD_CENSUS_SOLUSDT.json (schema PWS_CX_SOLUSDT_C1_spread_census@1, generated 2026-09-26)"],
+          "what_is_missing": "same-census for BTC/ETH/BNB from bookTicker monthly zips",
+          "owner_action": "none needed technically (keyless) — but corpus bytes + runtime belong to an authorized probe set under a cycle that owns them (racing-read rule: PWS-CX-SOLUSDT-C1 is live; metadata-only here)"
+        },
+        "commission": {
+          "class": "DECLARED",
+          "qualifier": "frozen declared book from CHR3F: taker 5 bps + 1 adverse tick; venue-published tier floor + convention tick; NOT validated against fills (Q-8)",
+          "value": "5 bps taker + 1 adverse tick per fill",
+          "source_artifacts": ["research/control/SRLV-PROGRAM-V1/DATACOST_FEASIBILITY_MATRIX.md (fee row + 'DECLARED book' clause)"],
+          "what_is_missing": "measured fill-vs-quoted fee/tick outcomes at the owner's actual tier",
+          "owner_action": "account fee-tier readout (Binance 'Fee Schedule' page bound to the account) or measured fills; currently no account channel exists"
+        },
+        "minimum_size": {
+          "class": "UNMEASURED",
+          "value": null,
+          "source_artifacts": ["research/control/SRLV-PROGRAM-V1/DATACOST_FEASIBILITY_MATRIX.md (no minNotional captured in any cited artifact)"],
+          "what_is_missing": "exchangeInfo PERCENT_PRICE/MIN_NOTIONAL/LOT_SIZE filters per symbol",
+          "owner_action": "keyless exchangeInfo pull inside an authorized probe set (public, no credentials)"
+        },
+        "tick_size": {
+          "class": "UNMEASURED",
+          "qualifier": "implied by the '1 adverse tick' convention and by bookTicker price granularity, but PRICE_FILTER tickSize not captured as authority",
+          "value": null,
+          "source_artifacts": ["research/control/SRLV-PROGRAM-V1/DATACOST_FEASIBILITY_MATRIX.md"],
+          "what_is_missing": "exchangeInfo PRICE_FILTER tickSize per symbol",
+          "owner_action": "same keyless exchangeInfo pull"
+        },
+        "swap_financing_per_pair": {
+          "class": "MEASURED_FROM_BYTES",
+          "value": {
+            "BTCUSDT": "annualized mean drag 11.798%/yr; median 9.279e-05 per 8h; 85.89% settlements positive; PSV1 frozen constant 1.508%/yr underestimates 7.824x",
+            "ETHUSDT": "funding measured floor-exact 2020-01..2026-08, 7,305 settlements (ETH-V1 lineage)",
+            "SOLUSDT": "measured via fapi; symbol-month conflicts excluded by rule; FTX-week emergency interval increase noted",
+            "BNBUSDT": "n=7,261 settlements, 0 duplicate fundingTimes, floor exact 2020-02-10T08:00Z .. 2026-09-26; PASS WITH CAVEATS (Vision cross-check NOT_RUN; tail beyond 2026-08-31 must be clipped by consumers; single-campaign source)",
+            "funding_path_stress": "24.7% of settlements negative in the downtrend sample (dual-book funding-path stress input)"
+          },
+          "source_artifacts": [
+            ".worktrees/btc-h4-edge-search-v1/integration/research/control/btc_h4_edge_search_v1/freezes/feasibility_census.json (sha256 ee2c0364...76da, re-measured this cycle)",
+            "research/control/SRLV-PROGRAM-V1/DATACOST_FEASIBILITY_MATRIX.md",
+            ".worktrees/pws-cx-bnbusdt-c1/integration/research/control/PWS-CX-BNBUSDT-C1/C1_data_gate_REPORT.md + C1_machine_FUNDING_STATS_BNBUSDT.json (metadata-only: live owner)"
+          ],
+          "what_is_missing": "BNB Vision cross-check (NOT_RUN in its own gate); per-pair funding census for any NEW symbol follows the same measured path",
+          "owner_action": "none for the four measured pairs; new symbols = new measured funding pull (keyless)"
+        },
+        "triple_swap_day": {
+          "class": "MEASURED_FROM_BYTES",
+          "qualifier": "N/A-by-construction: perp funding settles natively every 8h and the measured per-settlement series carries interval changes (e.g. FTX week) — no weekly convention needs to be assumed",
+          "value": "funding series natively timed per settlement (see swap_financing_per_pair)",
+          "source_artifacts": ["same as swap_financing_per_pair"],
+          "what_is_missing": "nothing for perps; any dated/quarterly future would reintroduce a convention component",
+          "owner_action": "none"
+        },
+        "margin": {
+          "class": "UNMEASURED",
+          "qualifier": "venue leverage-tier schedules not captured; report-only class (never a profit input)",
+          "value": null,
+          "source_artifacts": ["research/control/SRLV-PROGRAM-V1/DATACOST_FEASIBILITY_MATRIX.md"],
+          "what_is_missing": "leverageBracket endpoints (keyless) not pulled",
+          "owner_action": "keyless leverageBracket pull inside an authorized probe set"
+        },
+        "slippage_latency": {
+          "class": "UNMEASURED",
+          "qualifier": "OWNER DIRECTIVE (binding): order book and forced flow may NOT be inferred from candles; only top-of-book bookTicker/aggTrades are measured surfaces; no fills exist at paper tier",
+          "value": null,
+          "source_artifacts": [
+            "plans/PLAN_data_foundation_fx_crypto_stocks_v1.md §13 (crypto prohibition encoded in owner directive)",
+            "research/control/SRLV-PROGRAM-V1/DATACOST_FEASIBILITY_MATRIX.md (spread/slippage census = required verify-coverage item)"
+          ],
+          "what_is_missing": "fill-based slippage or queue/impact model — permanently out of scope absent an account channel",
+          "owner_action": "none lawful at this tier; paper-tier cost books stay DECLARED(taker fee)+MEASURED(spread census)"
+        },
+        "currency_conversion": {
+          "class": "UNMEASURED",
+          "qualifier": "all cited series are USDT-quoted; non-USDT legs and USDT<-> fiat conversion unmeasured",
+          "value": null,
+          "source_artifacts": ["research/control/SRLV-PROGRAM-V1/DATACOST_FEASIBILITY_MATRIX.md"],
+          "what_is_missing": "conversion fee rows or venue schedule bound to an account",
+          "owner_action": "only relevant once an account channel exists"
+        },
+        "api_fees": {
+          "class": "DECLARED",
+          "qualifier": "keyless public endpoints = zero API fee (authorized posture, plan §3); rate-limit headroom MEASURED live by LDGW: premiumIndex REST @5s = 11.5 calls/min live-verified, weight ~115/min vs soft 1200/min",
+          "value": "0 (keyless posture); rate-limit headroom measured",
+          "source_artifacts": [
+            "plans/CYCLE_REGISTRY.json LIVE-DATA-GATEWAY-V1 row (Amendment 1, live-verified 11.5 calls/min)",
+            ".worktrees/live-data-gateway-v1/integration/research/control/live_data_gateway_v1/g1_evidence.json + canary/leg_a_marks.jsonl (2,824 batches; metadata-only: live owner)"
+          ],
+          "what_is_missing": "nothing for keyless research posture",
+          "owner_action": "none"
+        },
+        "mark_divergence": {
+          "class": "MEASURED_FROM_BYTES",
+          "qualifier": "metadata-only citation (live owner LDGW): canary leg A 97%+ compared, gateway-vs-venue premiumIndex median ~1 bps, 0 observations >50 bps",
+          "source_artifacts": ["plans/CYCLE_REGISTRY.json LIVE-DATA-GATEWAY-V1 row; canary/leg_a_marks.jsonl"]
+        }
+      }
+    },
+    "stocks": {
+      "instruments": ["US equities universe (EODHD 'All World' EOD; AMIHUD illiquidity lineage)"],
+      "authority_verdict": "NO EXECUTION-COST BASIS IN CHANNEL: EOD bars carry no bid/ask, no fill, no spread; cost authority BLOCKED_ACCOUNT (no broker channel); FINRA NMS short-sale ToU INCOMPATIBLE (terminal, STOCKS-NG4 P-25)",
+      "components": {
+        "spread": {
+          "class": "UNMEASURED",
+          "qualifier": "EOD channel cannot carry it; Q-2 law binds any future cost book: spreads are conditional (time-of-day 3.33x/3.35x open-vs-midday volatility/spread co-movement, price level, name liquidity) — flat constants are an accounting gap, not conservatism",
+          "value": null,
+          "source_artifacts": [
+            "research/wayfinder/LESSONS.md Q-2 (lines 389-397)",
+            "plans/PLAN_data_foundation_fx_crypto_stocks_v1.md §3 (EODHD ruling row)"
+          ],
+          "what_is_missing": "any quote/fill channel for equities",
+          "owner_action": "broker account documents (fills + commission schedule) or an entitled intraday quote channel before any equities cost book is built"
+        },
+        "commission": {
+          "class": "UNMEASURED",
+          "qualifier": "Q-2 extension: per-share commission is a tax on low prices — cheap volatile names are exactly where signals drift and costs bite",
+          "value": null,
+          "source_artifacts": ["research/wayfinder/LESSONS.md Q-2"],
+          "what_is_missing": "account-bound commission schedule/rows",
+          "owner_action": "broker commission schedule bound to the owner's account"
+        },
+        "minimum_size": {
+          "class": "UNMEASURED",
+          "value": null,
+          "source_artifacts": ["research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/forex_program/VIABILITY_cohort3_REPORT.md (stocks surface carries no size authority in cited artifacts)"],
+          "what_is_missing": "lot/odd-lot rules from a broker channel",
+          "owner_action": "broker contract specs"
+        },
+        "tick_size": {
+          "class": "UNMEASURED",
+          "value": null,
+          "source_artifacts": ["plan §3 EODHD row (channel is EOD)"],
+          "what_is_missing": "sub-penny/tick regime facts from an entitled channel",
+          "owner_action": "broker/venue contract specs via owner"
+        },
+        "swap_financing_per_pair": {
+          "class": "UNMEASURED",
+          "qualifier": "stock borrow/financing never measured; short-sale data authority itself terminal (FINRA ToU INCOMPATIBLE)",
+          "value": null,
+          "source_artifacts": ["plans/PLAN_data_foundation_fx_crypto_stocks_v1.md §3 (FINRA row, STOCKS-NG4 P-25)"],
+          "what_is_missing": "borrow rate schedule from a broker channel",
+          "owner_action": "broker account borrow schedule; no public substitute is lawful (P-25)"
+        },
+        "triple_swap_day": {
+          "class": "UNMEASURED",
+          "qualifier": "N/A for equities financing convention in this program; nothing measured",
+          "value": null,
+          "source_artifacts": ["same as swap_financing_per_pair"],
+          "what_is_missing": "same",
+          "owner_action": "same"
+        },
+        "margin": {
+          "class": "UNMEASURED",
+          "qualifier": "report-only class",
+          "value": null,
+          "source_artifacts": ["plan §3"],
+          "what_is_missing": "account summary lines",
+          "owner_action": "broker statement export"
+        },
+        "slippage_latency": {
+          "class": "UNMEASURED",
+          "qualifier": "BINDING EXECUTION LAW L-SAMV1-3 (X1/X2 in the retest): an EOD open bar does not certify a fill — volume=0 bars must be unfillable; order notional <= participation fraction of that bar's dollar volume; fill constraint firewalled from signal/sizing; unfillable entries skipped AND counted, never silently filled",
+          "value": null,
+          "source_artifacts": ["research/wayfinder/LESSONS.md L-SAMV1-3 (lines 884-891, STOCKS-AMIHUD-V1 2026-09-23)"],
+          "what_is_missing": "any fill-quality measurement (class: unmeasurable on EOD)",
+          "owner_action": "broker fill log (only with an account channel)"
+        },
+        "currency_conversion": {
+          "class": "UNMEASURED",
+          "value": null,
+          "source_artifacts": ["plan §3 (EODHD channel USD-quoted)"],
+          "what_is_missing": "FX conversion fees for non-USD listings",
+          "owner_action": "broker statement if non-USD trading is ever authorized"
+        },
+        "api_fees": {
+          "class": "DECLARED",
+          "qualifier": "EODHD 'All World' is an owner entitlement (§3 ruling): subscription cost already paid by owner; earnings-history channel 403 (dead); no per-call fee surface measured",
+          "value": "owner-entitled subscription; EOD + some channels OK",
+          "source_artifacts": ["plans/PLAN_data_foundation_fx_crypto_stocks_v1.md §3 (EODHD row, STOCKS-NG3)"],
+          "what_is_missing": "nothing for the entitled channels; dead channel documented",
+          "owner_action": "none (entitlement exists); any new channel requires L-PIT license screen FIRST (P-25)"
+        }
+      }
+    }
+  },
+  "stats_by_asset": {
+    "fx_majors": {"MEASURED_FROM_BYTES": 2, "DECLARED": 0, "STATED_VENDOR": 0, "UNMEASURED": 8, "FROZEN_extras": 2},
+    "xauusd": {"MEASURED_FROM_BYTES": 2, "DECLARED": 0, "STATED_VENDOR": 3, "UNMEASURED": 5},
+    "crypto": {"MEASURED_FROM_BYTES": 3, "DECLARED": 2, "STATED_VENDOR": 0, "UNMEASURED": 5, "MEASURED_extras": 1},
+    "stocks": {"MEASURED_FROM_BYTES": 0, "DECLARED": 1, "STATED_VENDOR": 0, "UNMEASURED": 9}
+  },
+  "notes": [
+    "fx_majors counts the 10 canonical components: spread (vendor-book basis; broker side NOT_SUBSCRIBED) + tick MEASURED_FROM_BYTES, 8 UNMEASURED; stress multiplier + P3-A threshold are FROZEN extras, not components.",
+    "xauusd: spread (SINGLE_SAMPLE) + tick MEASURED; commission, minimum_size, swap_financing, api_fees STATED_VENDOR; triple_swap, margin, slippage, currency_conversion UNMEASURED.",
+    "crypto canonical 10: spread (SOL only) + swap_financing + triple_swap_day MEASURED; commission + api_fees DECLARED; minimum_size, tick_size, margin, slippage_latency, currency_conversion UNMEASURED; plus 1 extra measured row (mark_divergence, metadata-only from live owner).",
+    "stocks: all 10 components lack measured cost basis in the EOD channel (9 UNMEASURED; api_fees/entitlement DECLARED).",
+    "Every number above cites its artifact; no DECLARED/STATED class was upgraded anywhere in this table (Q-8/Q-2 carried)."
+  ]
+}
