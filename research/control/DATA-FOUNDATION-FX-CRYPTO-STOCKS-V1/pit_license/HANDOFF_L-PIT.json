@@ -1,0 +1,82 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "dfv1-lane-pit",
+  "cycle_id": "DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1",
+  "role": "LANE AGENT L-PIT (PIT/license cross-asset + pipeline & fixture contracts + outcome-exposure map)",
+  "lane": "lane-pit",
+  "dispatch_sha": "189c6d23ab2a6f50475819cf6df2e2e4def92820",
+  "actual_start_sha": "189c6d23ab2a6f50475819cf6df2e2e4def92820",
+  "dispatch_sha_matches_actual_start_sha": true,
+  "branch": "orca/dfv1-lane-pit",
+  "commit_sha": "SELF_REFERENTIAL_SINGLE_COMMIT — the final commit SHA is reported verbatim in the lane chat report; this handoff is committed inside that same single commit, so it cannot carry its own hash",
+  "handoff_path_note": "handoff written before the final git status check and included in the lane's single pathspec commit, per COMMON.md commit discipline",
+  "changed_paths": [
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/LICENSE_RULINGS_VERIFIED.md",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/authority_row_schema.json",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/validate_rows.py",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/inventory_rows.jsonl",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/PIPELINE_CONTRACT_DRAFT.md",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/FIXTURE_BATTERY_CONTRACT.md",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/OUTCOME_EXPOSURE_MAP.md",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/LANE_REPORT.md",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/HANDOFF_L-PIT.json"
+  ],
+  "tests": [
+    {
+      "command": "validate_rows.py inventory_rows.jsonl authority_row_schema.json (first run, from pit_license dir)",
+      "exit_code": 1,
+      "result": "INVALID: 16 row(s), 3 violation(s) — R1 x2 (sec_ftd_archive, sec_nport_quarterly coverage not byte-censused), R4 x1 (exchange_calendars bytes==0); rows fixed honestly, no evidence invented"
+    },
+    {
+      "command": "/usr/bin/time .venv/bin/python validate_rows.py inventory_rows.jsonl authority_row_schema.json (from pit_license dir, after fixes)",
+      "exit_code": 0,
+      "result": "PASS — VALID: 16 row(s) conform to dfv1_authority_row@1 (0.03s real)"
+    },
+    {
+      "command": "/usr/bin/time .venv/bin/python research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/validate_rows.py research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/inventory_rows.jsonl ... (from worktree root, pre-commit re-run)",
+      "exit_code": 0,
+      "result": "PASS — VALID: 16 row(s) conform to dfv1_authority_row@1"
+    },
+    {
+      "command": "sampled sha256 verification of FDF corpora vs committed manifests on orca/free-data-frontier-v1-integration and orca/free-data-frontier-v1r1-integration (python hashlib; sample sizes: nyfed 5/5, eia 7/7, nws 8/8, usda 4/4, ofr 6/6, sec_ftd_archive 20/435 SAMPLED, sec_nport 2/2)",
+      "exit_code": 0,
+      "result": "PASS — 52/52 sampled files byte-identical to committed manifests; 435/435 archive entries exist on disk"
+    },
+    {
+      "command": "worktree identity checks: git branch --show-current + git rev-parse HEAD + git status --porcelain before first write and before commit",
+      "exit_code": 0,
+      "result": "PASS — branch orca/dfv1-lane-pit at 189c6d23ab2a6f50475819cf6df2e2e4def92820, tree clean at start"
+    }
+  ],
+  "authority_claims": [
+    "Plan §3 rulings: 15/15 rows verified against source artifacts — 13 VERIFIED (rows 9 and 15 with recorded compression caveats), 1 PARTIAL (row 13: CFTC/Treasury/CBOE/FRED evidenced, ECB reachability-only, BIS UNVERIFIED); all shas measured via git rev-parse this session (LICENSE_RULINGS_VERIFIED.md)",
+    "Authority-row schema dfv1_authority_row@1 instantiated (authority_row_schema.json) + stdlib validator (validate_rows.py); own inventory passes: VALID 16 rows",
+    "16 owned shared/macro dataset rows: 7 hashed-this-cycle corpora (5 ALL_MATCH full, sec_ftd_archive SAMPLED 20/435 with stated sample, sec_nport 2/2), 2 AVAILABLE_UNVALIDATED (fred_granted_set per packet directive — key existence from prior name-only artifacts, key use forbidden; exchange_calendars_substrate library measured 4.13.2), 7 NOT_RUN with reasons (rates/vol/commodities raw pruned with worktrees + zero-network rule; BIS no artifact; ECB probe-only)",
+    "PIPELINE_CONTRACT_DRAFT.md: 5-layer contract with per-layer EXISTS/PARTIAL/DESIGN-ONLY inventory (CADS, mdp quality reason codes, data_fusion PIT/identity/conflicts, calendar_engine, QueryPlane, ERP1 pit_battery2, EURUSD truncation fixtures, cost-book precedents); crypto law encoded verbatim as clause C-CX-1 + named fixture F-CX-NOBOOK-1 (DESIGN-ONLY)",
+    "FIXTURE_BATTERY_CONTRACT.md: 11 named fixtures inventoried — 6 EXISTS, 5 PARTIAL, plus companion fixture F-CX-NOBOOK-1 DESIGN-ONLY",
+    "OUTCOME_EXPOSURE_MAP.md: 30 exposed instrument×window×cycle family rows (21 outcome-exposed, 9 read-for-falsifier/census) vs 5 UNOPENED classes (S1 everywhere; ERP1 2026-H1 AUDUSD/USDCAD holdouts — metadata only; post-2026-09 prospective streams; all future windows; BNBUSDT pre-read plane) + the 5-rule separation law",
+    "Boundary compliance: zero network requests; .env never opened; S1/holdout content never read; wayfinder read-only; single light process (heaviest chunk 0.05s real); pathspec-only staging planned; no other worktree touched"
+  ],
+  "known_limitations": [
+    "Packet said '~17' §3 ruling rows; the committed plan table has 15 — all 15 processed",
+    "Rates/VOL/Commodities raw corpora are NOT re-verifiable on disk this cycle (worktrees pruned; zero-network lane) — rows are honest NOT_RUN with inherited branch censuses as evidence; re-pull deterministic per recorded URLs",
+    "ALFRED stays host-fail-closed (FOREX-V5 measured CSV hang); any change needs owner-side network action",
+    "Exposure map rows are family-level, assembled from ledger/MAP prose; MIXED-corpus boundaries (post-2026-08) are conventions, not byte censuses",
+    "Validator R5 (UNOPENED seal citation) is keyword-heuristic due to stdlib-only constraint",
+    "commit_sha is self-referential (single-commit convention); final sha reported in the lane chat report"
+  ],
+  "incidents": [],
+  "tree_status": "CLEAN after single pathspec commit on orca/dfv1-lane-pit (verified post-commit)",
+  "workers": 0,
+  "outputs": [
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-pit/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/LICENSE_RULINGS_VERIFIED.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-pit/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/authority_row_schema.json",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-pit/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/validate_rows.py",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-pit/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/inventory_rows.jsonl",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-pit/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/PIPELINE_CONTRACT_DRAFT.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-pit/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/FIXTURE_BATTERY_CONTRACT.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-pit/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/OUTCOME_EXPOSURE_MAP.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-pit/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/LANE_REPORT.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-pit/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/pit_license/HANDOFF_L-PIT.json"
+  ]
+}

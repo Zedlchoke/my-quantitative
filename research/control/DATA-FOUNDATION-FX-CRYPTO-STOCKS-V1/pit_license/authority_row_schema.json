@@ -1,0 +1,171 @@
+{
+  "schema": "dfv1_authority_row@1",
+  "authority": "plans/PLAN_data_foundation_fx_crypto_stocks_v1.md section 5 (verbatim field structure) + COMMON.md authority-row output rules + plan section 14 amendment r1 (F3/F5/F8)",
+  "authored_by": "L-PIT (DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1)",
+  "authored_utc": "2026-09-26",
+  "description": "Machine-readable contract for every DATA_INVENTORY authority row (one JSON object per jsonl line). Validator: validate_rows.py (stdlib-only, .venv/bin/python).",
+  "type": "object",
+  "required": [
+    "dataset_id",
+    "asset_class",
+    "source",
+    "local_presence",
+    "coverage",
+    "timing",
+    "timezone",
+    "quality",
+    "economics",
+    "costs",
+    "status",
+    "status_evidence"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "dataset_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$",
+      "description": "stable snake_case identifier"
+    },
+    "asset_class": {
+      "type": "string",
+      "enum": ["forex", "crypto", "stocks", "rates", "vol", "commodities", "shared"]
+    },
+    "source": {
+      "type": "object",
+      "required": ["provider", "channel", "license_ruling"],
+      "additionalProperties": false,
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "channel": { "type": "string", "minLength": 1, "description": "exact endpoint/bundle/product" },
+        "terms_url": { "type": "string" },
+        "license_ruling": {
+          "type": "string",
+          "minLength": 1,
+          "description": "cite plan section 3 row (LICENSE_RULINGS_VERIFIED.md row number) or the new ruling + its artifact"
+        }
+      }
+    },
+    "local_presence": {
+      "type": "object",
+      "required": ["paths", "bytes", "manifest_path", "manifest_verify"],
+      "additionalProperties": false,
+      "properties": {
+        "paths": { "type": "array", "items": { "type": "string" } },
+        "bytes": { "type": "integer", "minimum": 0, "description": "measured (du/stat) when paths exist; 0 only when paths=[] or truly empty" },
+        "manifest_path": { "type": "string" },
+        "manifest_verify": {
+          "type": "string",
+          "enum": [
+            "ALL_MATCH",
+            "MISMATCH",
+            "NO_MANIFEST",
+            "NOT_RUN",
+            "SAMPLED",
+            "INHERITED_NOT_REHASHED_LIVE_OWNER"
+          ],
+          "description": "SAMPLED requires the sample size stated in status_evidence; INHERITED_NOT_REHASHED_LIVE_OWNER requires a live ACTIVE_LIGHT owner with committed manifests (plan 14 F5); a MISMATCH verdict is never written from a possibly mid-write file"
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["instruments", "start", "end", "resolution", "measured_from"],
+      "additionalProperties": false,
+      "properties": {
+        "instruments": { "type": "array", "items": { "type": "string" } },
+        "start": { "type": "string", "description": "ISO date/timestamp or empty when unmeasured" },
+        "end": { "type": "string", "description": "ISO date/timestamp or empty when unmeasured" },
+        "resolution": { "type": "string" },
+        "measured_from": {
+          "type": "string",
+          "enum": ["bytes", "metadata", "stated"],
+          "description": "bytes = this-lane byte-level census; metadata = committed manifest/census fields read this lane; stated = prior artifact claim, not re-measured"
+        }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "required": ["event_time", "available_at", "ingested_at", "revision_policy"],
+      "additionalProperties": false,
+      "properties": {
+        "event_time": { "type": "string", "enum": ["present", "absent", "approx"] },
+        "available_at": { "type": "string", "description": "availability semantics or UNKNOWN-with-reason" },
+        "ingested_at": { "type": "string" },
+        "revision_policy": { "type": "string" }
+      }
+    },
+    "timezone": {
+      "type": "object",
+      "required": ["declared", "dst_evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "declared": { "type": "string" },
+        "dst_evidence": { "type": "string" }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "required": ["missingness", "gaps", "duplicates", "cross_source_check"],
+      "additionalProperties": false,
+      "properties": {
+        "missingness": { "type": "string" },
+        "gaps": { "type": "string" },
+        "duplicates": { "type": "string" },
+        "cross_source_check": { "type": "string" }
+      }
+    },
+    "economics": {
+      "type": "object",
+      "required": ["hypotheses_opened", "prior_kill_fixed", "falsifying_control"],
+      "additionalProperties": false,
+      "properties": {
+        "hypotheses_opened": { "type": "array", "items": { "type": "string" } },
+        "prior_kill_fixed": { "type": "string" },
+        "falsifying_control": { "type": "string", "description": "the control that would falsify this dataset's marginal value (owner directive: every dataset names one)" }
+      }
+    },
+    "costs": {
+      "type": "object",
+      "required": ["acquisition", "storage_bytes", "api_limits", "reproducible"],
+      "additionalProperties": false,
+      "properties": {
+        "acquisition": { "type": "string" },
+        "storage_bytes": { "type": "integer", "minimum": 0 },
+        "api_limits": { "type": "string" },
+        "reproducible": { "type": "string", "enum": ["yes", "partial", "no"] }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "AVAILABLE_VALIDATED",
+        "AVAILABLE_UNVALIDATED",
+        "BLOCKED_LICENSE",
+        "BLOCKED_ACCOUNT",
+        "BLOCKED_COST",
+        "BLOCKED_STORAGE",
+        "BLOCKED_TRANSPORT",
+        "NOT_RUN"
+      ],
+      "description": "BLOCKED_TRANSPORT == BLOCKED(cause=transport) in the owner 7-state view (plan 14 F9). AVAILABLE_VALIDATED requires a THIS-cycle re-measured coverage/checksum check from bytes (manifest ALL_MATCH or explicitly SAMPLED + first/last/row-count census); file existence alone never implies it. BLOCKED_* rows must name the exact owner action that unblocks."
+    },
+    "status_evidence": {
+      "type": "string",
+      "minLength": 1,
+      "description": "the command or artifact that produced the status; for SAMPLED include the sample size; for NOT_RUN include the reason and the rule applied (plan 14 F3)"
+    },
+    "outcome_exposure": {
+      "type": "string",
+      "enum": ["OUTCOME_EXPOSED", "UNOPENED", "MIXED", "NOT_APPLICABLE"],
+      "description": "research-vs-confirmation separation tag (plan section 7; OUTCOME_EXPOSURE_MAP.md). UNOPENED windows are readable only by a future owner-authorized confirmation plan; prospective streams are never replayed into research."
+    }
+  },
+  "validation_rules": [
+    "R1: AVAILABLE_VALIDATED => manifest_verify in [ALL_MATCH, SAMPLED, INHERITED_NOT_REHASHED_LIVE_OWNER] AND coverage.measured_from = 'bytes' AND status_evidence names the command/census (COMMON: no inferred PASS)",
+    "R2: status in [BLOCKED_LICENSE, BLOCKED_ACCOUNT, BLOCKED_COST, BLOCKED_STORAGE, BLOCKED_TRANSPORT] => status_evidence names the exact owner action that unblocks (plan section 5)",
+    "R3: manifest_verify = 'INHERITED_NOT_REHASHED_LIVE_OWNER' => status_evidence names the live owning cycle and its committed manifest",
+    "R4: local_presence.paths non-empty => bytes > 0 (a stated path with zero measured bytes is a census defect)",
+    "R5: outcome_exposure = 'UNOPENED' => timing/available_at must not claim any read; the row must cite the seal (S1 / ERP1 holdout manifest metadata / prospective-only contract)",
+    "R6: dataset_id unique across the inventory file (checked by validate_rows.py across lines)"
+  ]
+}
