@@ -368,7 +368,12 @@ def _seed_carry_ledger(runtime_root: Path) -> Path:
     return ledger_path
 
 
-def test_c_marker_row_deterministic_and_never_duplicated(tmp_path):
+def test_c_marker_row_deterministic_and_never_duplicated(tmp_path, monkeypatch):
+    # XSECT is DORMANT by owner order 2026-09-26 (worker skips the family);
+    # this test exercises the RECOVERY MECHANISM, so dormancy is disabled
+    # locally — the production default is asserted in test_xsect_dormant.
+    monkeypatch.setattr(sw, "XSECT_DORMANT", False, raising=True)
+    assert sw.XSECT_DORMANT is False  # monkeypatch took effect
     carry = sw.FAMILY_CARRY
     runtime_root = Path(tmp_path) / "runtime"
     ledger_path = _seed_carry_ledger(runtime_root)
@@ -729,3 +734,11 @@ def test_g_recorded_fill_does_not_rerun_live_admission_guard():
         replayed.apply_recorded_fill(BTC, "sell", -1.0, ref, TICK, D1)
     with pytest.raises(accounting.AccountingError):
         replayed.apply_recorded_fill(BTC, "hold", qty, ref, TICK, D1)
+
+
+def test_xsect_dormant_default_excludes_family():
+    """Owner order 2026-09-26: XSECT builds nothing, emits nothing."""
+    assert sw.XSECT_DORMANT is True
+    src = __import__("pathlib").Path(sw.__file__).read_text()
+    assert "XSECT_DORMANT = True" in src
+    assert "family_id == FAMILY_CARRY and XSECT_DORMANT" in src
