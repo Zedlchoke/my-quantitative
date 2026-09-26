@@ -1,0 +1,92 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "tracka2-impl-falsifier-prep",
+  "cycle_id": "ERP1-TRACKA-COHORT-2",
+  "role": "implementer",
+  "lane": "impl-falsifier-prep",
+  "dispatch_sha": "5ed2457be9a7b6550406e1f34a78e6a2fc3540b2",
+  "actual_start_sha": "5ed2457be9a7b6550406e1f34a78e6a2fc3540b2",
+  "sha_note": "measured worktree HEAD at lane start (branch orca/erp1-tracka-cohort-2-integration, clean tree) — identical to the dispatch sha. Artifacts commit 0e2e2ab806528051bfd280f650aa595e9e6be263 (single pathspec commit of everything except this handoff); this handoff file is committed immediately after so its commit_sha field can carry the real value (no amend, no history rewrite).",
+  "commit_sha": "0e2e2ab806528051bfd280f650aa595e9e6be263",
+  "changed_paths": [
+    "research/control/ERP1-TRACKA-COHORT-2/scripts/qcrd_dinv_lib.py",
+    "research/control/ERP1-TRACKA-COHORT-2/scripts/build_t2_planes.py",
+    "research/control/ERP1-TRACKA-COHORT-2/scripts/run_f2_battery.py",
+    "research/control/ERP1-TRACKA-COHORT-2/scripts/f6_census.py",
+    "research/control/ERP1-TRACKA-COHORT-2/tests/test_t2_laws.py",
+    "research/control/ERP1-TRACKA-COHORT-2/falsifier/F2_battery_results.json",
+    "research/control/ERP1-TRACKA-COHORT-2/falsifier/F6_census_counts.json",
+    "research/control/ERP1-TRACKA-COHORT-2/falsifier/FALSIFIER2_PREP_REPORT.md",
+    "research/control/ERP1-TRACKA-COHORT-2/data_local/derived/t2_planes_manifest.json",
+    "research/control/ERP1-TRACKA-COHORT-2/data_local/derived/m1agg_AUDUSD.parquet",
+    "research/control/ERP1-TRACKA-COHORT-2/data_local/derived/m1agg_USDCAD.parquet",
+    "research/control/ERP1-TRACKA-COHORT-2/data_local/derived/t2_p3a_{AUDUSD,USDCAD}_{anchor,index_shift_pool,mirror_wide,volgate,ungated}.npy (10 files)",
+    "research/control/ERP1-TRACKA-COHORT-2/data_local/derived/t2_p3b_{AUDUSD,USDCAD}_{anchor,mirror_wide,ungated,weekday_shuffle}.npy (8 files)",
+    "research/control/ERP1-TRACKA-COHORT-2/data_local/derived/t2shadow_{R-ANCHOR,R-ORIG,M3_SPREADGATEDFADE,FX2-<11 families>-C1..C4}_{AUDUSD,USDCAD}.npy (94 files)",
+    "research/control/ERP1-TRACKA-COHORT-2/handoffs/HANDOFF_impl_falsifier_prep.json"
+  ],
+  "tests": [
+    {
+      "command": ".venv/bin/python -m pytest research/control/ERP1-TRACKA-COHORT-2/tests/ -q (worktree integration checkout)",
+      "result": "PASS 13/13 — 6 pre-existing pit_battery2 fixtures + 7 new test_t2_laws fixtures: (a) clean P3-A and clean P3-B synthetic panels PASS_PIT (M-T 24-point truncation replay, M-F, M-F-ext, all twins M-V >=2%); (b) deliberately leaky P3-A (whole-panel percentile pool incl. decision bar + future) and leaky P3-B (future-window re-anchored same-weekday pool, decision day included) both FAIL M-T with kill_class KILL_PIT_SEAM; (c) wide-mirror twin non-vacuity >=2% on synthetic for both laws; (d) warmup boundary — zero decisions while session-day ordinal <61, forced-fire fires exactly at ordinal 61"
+    },
+    {
+      "command": "scripts/build_t2_planes.py (heavy lock impl-t2-planes, M1 pass over ~2x1830 dev day files/pair, sha-verified vs cohort-1 manifests)",
+      "result": "PASS — dev row pins asserted fail-closed: bars1h_ANC 27608 AUDUSD / 27583 USDCAD; bars15_ANC 118275 / 118231; m1agg nmin==60 gate 0 violations; manifest data_local/derived/t2_planes_manifest.json written with per-array sha256, code shas, warmup index (1334/1307), frozen fold table F1..F6 (217/217/216/216/216/216 traded days both pairs)"
+    },
+    {
+      "command": "scripts/run_f2_battery.py -> falsifier/F2_battery_results.json",
+      "result": "PASS — 4/4 law-pair runs PASS_PIT: P3-A/AUDUSD, P3-A/USDCAD, P3-B/AUDUSD, P3-B/USDCAD; M-T 0 diffs everywhere; M-F and M-F-ext 0 prefix moves everywhere; M-V twins all >=2% (weakest: P3-A index_shift_pool 0.027-0.032)"
+    },
+    {
+      "command": "scripts/f6_census.py -> falsifier/F6_census_counts.json (counts only; engine pips/px/equity stripped at source, equity discarded unread, _assert_clean walk over the persisted JSON)",
+      "result": "PASS — all 4 books clear both floors: P3-A/AUDUSD 1049 RT (F1..F6: 85/131/233/168/185/247; last6m 137), P3-A/USDCAD 1113, P3-B/USDCAD 226 (18/4/42/84/39/39; last6m 39), P3-B/AUDUSD 293; entry spans 1721-1736 days; fill-hour histograms emitted for gated entries (P3-B day-open: USDCAD {0:205,1:20,4:1}; P3-A spread over hours 1..18 with hour-19 fills dropped by the inherited engine)"
+    }
+  ],
+  "authority_claims": [
+    "NO-PnL discipline: no profit/expectancy/PF/equity number was computed, persisted, printed or reported anywhere in this lane; engine runs were used ONLY for trade counts, entry/exit timestamps, hold bars and fill-hour histograms; f6_census strips engine trade records to {entry_ts, exit_ts, dir, hold_bars}, discards the equity array unread, and a recursive sanitizer asserts no PnL-class key exists in the persisted census JSON",
+    "Sealed window never read: every plane came through scripts/dev_plane2.py (ts<=2025-12-31 23:59:59Z filter + row pins, fail-closed); during the M1 aggregation pass only day files containing dev-plane bars were opened — 2026 day files were never opened; battery and census consume only dev-loaded frames",
+    "No re-derivation from memory: both laws implemented from the frozen proposal texts with line-for-line citations in scripts/qcrd_dinv_lib.py docstring (P3-A mass 0.25 / gate p40 / 60-calendar-day same-hour pool / decision clock tau_t in [01:00,19:00]; P3-B mass 0.20 / gate p40 / 60 same-weekday trailing pool / 20:00 decision, day-open entry, 20:00 exit; warmup 61 traded days from SKEPTIC 3.1/3.2/4); 9 ambiguities quoted and resolved explicitly in falsifier/FALSIFIER2_PREP_REPORT.md section 7 — no silent picks",
+    "Shadow sources read-only with shas recorded: tracka_lib.py consumed at the pinned certified bytes 1e09b368 (freeze/ENGINE_INHERITANCE_shas.txt); v2_lib.py efb87e37... and v2_campaign.py 6147beff... imported verbatim from the EURUSD-OPEN-SEARCH-V2 worktree with an in-code import-order assertion that module 'engine' binds the census ancestor engine (E.PIP=1e4 == both pairs' pip multiplier); census configs taken frozen from v2_campaign.py (positional passing per its own lambdas — never re-chosen)",
+    "Heavy-lock law honored: the M1 build ran under the machine-wide heavy lock (role impl-t2-planes); battery and census are single bounded processes and ran lock-free; no foreign worker was touched",
+    "Commit discipline: single explicit pathspec add of research/control/ERP1-TRACKA-COHORT-2 (never git add -A); no push, no merge, no history rewrite; one follow-up commit contains only this handoff file"
+  ],
+  "known_limitations": [
+    "P3-A execution delta: the inherited engine's fill law (SignalPlane.fill_ok hour<=18) drops fills scheduled onto the 19:00 bar; the decision law keeps the proposal's full clock (open-hours 0..18), so census books are engine-executable books (1 of 19 decision hours affected) — disclosed in report section 7 item 7",
+    "M3 shadow conventions declared (hour spread = median of the hour's four 15m s_open; p60 = np.quantile linear; base = R-ANCHOR fade-arm days only) — cohort-1's own M3 code was not available in the cohort-1 scripts dir for byte-diff; implemented from the skeptic section 4 spec text",
+    "P3-A index_shift_pool M-V share is 2.7-3.2%, above the 2% floor but with thin margin (mechanically expected for a +/-1-of-60 pool perturbation)",
+    "P3-B 'trailing 60 same-weekday days' resolved to 60 same-weekday traded-day occurrences (~60 weeks), the literal reading; the alternative reading (~8 occurrences inside 60 calendar days) is recorded in the report as the rejected interpretation",
+    "M-F runs dual: the frozen pit_battery2 6-column mutation cannot perturb M1-derived inputs, so run_f2_battery adds future_mutation_test_ext (same logic/seed, extended columns incl. m1agg + s_close) and requires both PASS; the frozen harness file was not modified",
+    "arrays/parquets under data_local/derived are machine-local build outputs committed for sha binding (GO-1 precedent); A7 recompute remains the default verification path"
+  ],
+  "incidents": [
+    "INCIDENT-1 (self-caught, fixed, fully re-run, disclosed): the first P3-B target encoding (sign only on the 19:00 decision bar + next-day session bars) made the engine enter at 01:00 instead of the day open — the 20:00-24:00 non-session bars wash the target[i-1] signal. Caught by this lane's own first census fill-hour histogram ({1:170, 0:40} USDCAD before fix). Fixed by carrying the sign on decision-day non-session bars + intervening non-session-day bars + position-day 00:00..18 session bars (carry bars never fill-eligible); post-fix histogram {0:205, 1:20, 4:1}. Full suite re-run after the fix: 13/13 fixtures, 4x PASS_PIT battery, census rebuilt",
+    "Two early build invocations aborted on a missing research/ sys.path entry for the governance import BEFORE any manifest write (only the AUDUSD m1agg cache was written); the final build revalidated everything fail-closed; no partial artifact was consumed"
+  ],
+  "tree_status": "worktree erp1-tracka-cohort-2/integration branch orca/erp1-tracka-cohort-2-integration; start HEAD 5ed2457be9a7b6550406e1f34a78e6a2fc3540b2 (clean); artifacts commit 0e2e2ab806528051bfd280f650aa595e9e6be263; handoff commit follows; heavy lock released FINISHED; no other lane touched",
+  "workers": 0,
+  "outputs": {
+    "report": "research/control/ERP1-TRACKA-COHORT-2/falsifier/FALSIFIER2_PREP_REPORT.md",
+    "battery": "research/control/ERP1-TRACKA-COHORT-2/falsifier/F2_battery_results.json",
+    "census": "research/control/ERP1-TRACKA-COHORT-2/falsifier/F6_census_counts.json",
+    "manifest": "research/control/ERP1-TRACKA-COHORT-2/data_local/derived/t2_planes_manifest.json",
+    "handoff": "research/control/ERP1-TRACKA-COHORT-2/handoffs/HANDOFF_impl_falsifier_prep.json"
+  },
+  "verdicts": {
+    "laws_implemented": [
+      "TRACKA2-P3A-QCRD-H1 (home AUDUSD, replicate USDCAD) — anchor + 4 declared twins {index_shift_pool, mirror_wide P>=p60, volgate, ungated}",
+      "TRACKA2-P3B-DINV-1D (home USDCAD, replicate AUDUSD) — anchor + 3 declared twins {weekday_shuffle seeded marginal-preserving, mirror_wide P>=p60, ungated}"
+    ],
+    "battery": {
+      "P3A/AUDUSD": "PASS_PIT",
+      "P3A/USDCAD": "PASS_PIT",
+      "P3B/AUDUSD": "PASS_PIT",
+      "P3B/USDCAD": "PASS_PIT"
+    },
+    "shadows_constructed": 47,
+    "shadows_not_constructible": [],
+    "census_floors": "4/4 books >=100 RT total and >=6 months entries (counts: 1049/1113/226/293)",
+    "no_pnl": "verified by construction + persisted-JSON sanitizer walk",
+    "sealed_window": "never read (dev loader pins + 2026 day files never opened)"
+  }
+}
