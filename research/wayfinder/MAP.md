@@ -1,3 +1,26 @@
+## Sprint state (synced at the DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1 terminal, 2026-09-26)
+
+- **DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1 CLOSED → `DATA_FOUNDATION_V1_FOUNDATION_READY_FOR_NARROW_RESEARCH__BLOCKED_WITH_ACQUISITION_RUNBOOK`**
+  (2026-09-26; branch `orca/data-foundation-v1-integration` terminal
+  `bb010bc9`; owner-directed data/methodology cycle, **0 scored cells,
+  0/0 budget, S1 SEALED, no orders, no PnL anywhere**; A7 plan review
+  AUTHORIZED_WITH_FINDINGS (1 HIGH disk) remediated pre-registration +
+  A7 terminal audit 0C/0H/3M/3L all closed; 5 survey lanes (fx/cx/st/pit/
+  cost) with structured handoffs integrated serially; **91 authority rows
+  validator-VALID — 32 AVAILABLE_VALIDATED re-measured from bytes**
+  (Dukascopy M1 ×5 corpora, amihud 8,219/8,219 full re-hash, FTD 434 zips,
+  Form-4 substrate digest EXACT, SOL/ETHUSDT/DEU crypto families 38/38
+  sampled ALL_MATCH); PS1 probe measured **premiumIndexKlines available
+  keyless on Binance Vision (sha-verified)** resolving the forecast-funding
+  gap at ~7 MB; exposure map 28 audited rows vs 5 UNOPENED classes; cost
+  authority census #4: FX 2/10 components measured (IBKR TWS alive today,
+  API proven — gates are FX-subscription + statement export), crypto 3/10,
+  stocks 0/10; **owner runbook R1–R8** (R1 = one IBKR Activity/Flex
+  statement + free FX delayed data = highest-leverage action; R7 = 8/14
+  staging_backups archives ABSENT incl. V14 OI forest — P-13 drift owner
+  item); next frontiers F1 stocks READY-PARTIAL / F2 crypto READY / F3 FX
+  BLOCKED-R1; denominators unchanged per P-9).
+
 ## Sprint state (synced at the PWS-CX-SOLUSDT-C1 terminal, 2026-09-26)
 
 - **PWS-CX-SOLUSDT-C1 CLOSED → `NO_ELIGIBLE_PROPOSAL`** (2026-09-26; branch
