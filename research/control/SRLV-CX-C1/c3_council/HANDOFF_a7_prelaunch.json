@@ -1,0 +1,63 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "srlv-cx-c1-a7-prelaunch",
+  "cycle_id": "SRLV-CX-C1",
+  "role": "a7-independent",
+  "lane": "a7-prelaunch",
+  "dispatch_sha": "2104a5b96b7cca1e44f662a36b0ce1354bb674ca",
+  "actual_start_sha": "2104a5b96b7cca1e44f662a36b0ce1354bb674ca",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/SRLV-CX-C1/c3_council/A7_PRELAUNCH_REPORT.md",
+    "research/control/SRLV-CX-C1/c3_council/HANDOFF_a7_prelaunch.json"
+  ],
+  "tests": [
+    {
+      "command": "shasum -a 256 research/control/SRLV-CX-C1/freeze/TRIAL_FREEZE_GO1.md research/control/SRLV-CX-C1/c3_council/PROPOSAL_P1.md research/control/SRLV-CX-C1/c3_council/SKEPTIC_F0_C1_REPORT.md research/control/SRLV-CX-C1/c3_council/COSTAUDIT_F5_C1_REPORT.md research/control/SRLV-CX-C1/c3_council/PITAUDIT_F2_C1_REPORT.md; plus 'git show 2104a5b9:research/control/SRLV-CX-C1/freeze/TRIAL_FREEZE_GO1.md | shasum -a 256'",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "506640db24528267bd689249571139edf3fcaf9941e895c21a4e56d04af71a1a"
+    },
+    {
+      "command": ".venv/bin/python research/researchctl.py cycle list  (from repo root /Users/hoangminhlong/my-quantitative)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "c5391c4a326800ae1fd69221606552e6ea511136bc6fe3899d924db9f7cc099b"
+    },
+    {
+      "command": ".venv/bin/python research/researchctl.py locks inspect  (from repo root /Users/hoangminhlong/my-quantitative)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "cfb18a49d18cd0dd1761749fd295f295f2221cc08176cda5912d5d7cdedca0c8"
+    },
+    {
+      "command": "find research/control/SRLV-CX-C1 -type f | sort; grep -rliE 'scored_outcome|pnl|net_bps|expectancy|sharpe' research/control/SRLV-CX-C1/; read trial_ledger.jsonl",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "e57c1251206531dc39f3c60162860af03cf47da795078b49cac1bbb592fa14c3"
+    },
+    {
+      "command": "python3 json.load + required-field check over HANDOFF_P1.json, HANDOFF_P2.json, HANDOFF_skeptic.json, HANDOFF_cost.json, HANDOFF_pit.json",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "recorded inline in A7_PRELAUNCH_REPORT.md section 2 (all five parse; schema zcode_orch_v3_handoff@1; cycle_id SRLV-CX-C1; strict-shape deviations recorded as observation O2)"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Audit is content-consistency: the freeze's compressed pins (pivot neighbour set, close-time window semantics) rely on the sha-pinned PROPOSAL_P1.md by reference; code-level constructibility is adjudicated by the fixture battery (F1-F7 + per-mech), not by this audit.",
+    "Council handoffs deviate from the strict v3 shape (dispatch_sha null, tests entries {command,result}, outputs without sha256 in 4 of 5); they were accepted at GO-1 integration. Recorded as observation O2; fixture-phase handoffs must use the full shape.",
+    "The freeze + GO1_freeze_sha256.txt amendment is uncommitted working-tree state (the only dirty paths in the worktree); both shas (original 41ef0624..., amendment 64aba7c3...) independently reproduced, but the Lead must commit the amendment before scored-run time so the pinned chain is fully in-history.",
+    "Per-pair adjudication (PASS on BOTH BTC+ETH, pooled diagnostic-only) diverges from skeptic battery item 12's thin-pair pooled adjudicator; divergence is strictly fail-closed and pre-outcome (recorded in report section 1(d))."
+  ],
+  "incidents": [],
+  "tree_status": "worktree /Users/hoangminhlong/my-quantitative/.worktrees/srlv-cx-c1/integration, branch orca/srlv-cx-c1-integration, HEAD 2104a5b96b7cca1e44f662a36b0ce1354bb674ca verified at lane start and end (identical). Only dirty paths: the pre-existing freeze amendment files (TRIAL_FREEZE_GO1.md, GO1_freeze_sha256.txt — not this lane's). This lane wrote exactly its two assigned paths under research/control/SRLV-CX-C1/c3_council/; no commit (per dispatch); no other path touched; heavy lock FREE_PROVEN throughout.",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "research/control/SRLV-CX-C1/c3_council/A7_PRELAUNCH_REPORT.md",
+      "sha256": "d99221caa987779f6c4fdaab303e9eac90ad40d4a1c220186d2932aea3e1af7d"
+    }
+  ],
+  "recommended_next_action": "A7 prelaunch VERDICT: PASS. Proceed in order: (1) Lead commits the pre-outcome freeze amendment (TRIAL_FREEZE_GO1.md + GO1_freeze_sha256.txt) so the sha-pinned chain is in-history; (2) implement and run the frozen fixture battery F1-F7 plus per-mech fixtures (F-P1A-FLAT, F-P1-OFFBYONE, F-P1-PARTITION, F-ATR-INSTANT, F-GRID, F-GAP, F-WARMUP, F-PRECEDENCE) on the exact frozen code digest, plus exact-arm dry-run with no PnL headline; emit ride-arm report and per-shadow rho table as disclosed diagnostics (observations O4/O6); (3) STOP — scored run only after the owner types 'GO SRLV CX C1 SCORED EXECUTION' (go_phrase_state REGISTERED_NOT_CONSUMED at audit time; consumption is the owner's act alone)."
+}
