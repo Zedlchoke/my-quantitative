@@ -1,0 +1,45 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "trackb1-council-pitdata",
+  "cycle_id": "ECONOMIC-ROBUSTNESS-PROGRAM-V1",
+  "role": "quant-auditor",
+  "lane": "trackb-cohort1-pitdata",
+  "dispatch_sha": "e4e3b9159685b9da0bafeed6814f0a73c872cbcb",
+  "actual_start_sha": "e4e3b9159685b9da0bafeed6814f0a73c872cbcb",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/trackb_cohort1/PITDATA_cohort1_REPORT.md",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/trackb_cohort1/HANDOFF_trackb1_pitdata.json"
+  ],
+  "tests": [],
+  "authority_claims": [
+    "outcome-blind",
+    "Read-only except the two deliverable files; nothing committed; no ledger/registry/scoring surface touched (AGENTS.md lane boundaries honored)"
+  ],
+  "known_limitations": [
+    "Spot BTCUSDT 15m bars are NOT staged anywhere in the repo/catalog (measured via find across repo root and the CHR3F worktree catalog) — data-gate items 6 is BLOCKED-until-staged; this is the largest open precondition at GO-1.",
+    "Staged perp bars cover only 2025-08-20T02:45Z..2026-08-20T02:29:59.999Z (measured, 35,039 contiguous 15m rows, zero intra-series gaps) in the catalog channel 'BTCUSDT-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL' — windows earlier than that require vision monthly klines; the catalog parquets under crypto_perpetual/BTCUSDT-PERP.BINANCE/ are instrument-DEFINITION snapshots (1 row each, onboardDate 2019-09-25T08:00Z measured, corroboration-only per CHR3F), not bars (dispatch wording nuance, disclosed).",
+    "Catalog perp bars are bar-CLOSE-stamped ('...:14:59.999' style) and LAST(last-trade)-price, byte-encoded fixed precision; vision/fapi klines are bar-OPEN-stamped — mixing legs without normalizing shifts one leg 15 minutes; mark/index 15m series are not staged and must come from fapi markPriceKlines/indexPriceKlines as separate channels if needed.",
+    "Measured pre-floor divergence: vision-derived funding panel (research/control/bear_opportunity_recon_2026-09/data_a2/funding_events.parquet, cols calc_time/funding_interval_hours/last_funding_rate) starts 2019-09-10, before the fapi floor 2020-07-18 (CHR3F §2), and carries a '...:00.001' stamp residue — both feed the mandatory minute-quantization and exclusion-not-merge checks in the spec.",
+    "fapi /fapi/v1/fundingRate serves {symbol,fundingTime,fundingRate} per precedent rows; there is NO fundingCount field — settlement counts are census-derived (Q-8 field-name law recorded in spec §1).",
+    "Predicted funding (fapi premiumIndex lastFundingRate) vs settled separation is specified as a structural quarantine (separate loader/tag/grep audit) but no code exists yet in this lane to enforce it — it is a child-cycle gate item with PASS/FAIL semantics.",
+    "BLOCKED and unmeasurable today: liquidation tape, borrow rates / spot-margin terms, queue position / maker fills, second-venue funding (OKX/Bybit), replay-vs-fill slippage (paper tier, no own fills) — each with its unblock condition in spec §5.",
+    "No truncation-replay fixture was runnable in this lane (no child engine exists yet at council stage); the byte-identical panel-truncation proof is specified as gate item 5 for the child to run at GO-1."
+  ],
+  "incidents": [],
+  "tree_status": "clean-except-deliverables",
+  "workers": 0,
+  "verdicts": {
+    "data_gate_feasibility": "FEASIBLE_AS_SPECIFIED — funding PIT law already codified (research/funding_pit.py bisect_right fundingTime<=ts, fail-closed reasons, no forward-fill; V8 census template research/audits/v8p/funding_coverage_v8.json; CHR3F §4 conflict policy); the two open preconditions (spot staging, pre-2025-08 perp staging) are bounded staging work, not research risk.",
+    "top_pit_risks_ranked": [
+      "1 settlement timing: predicted-vs-settled conflation, off-by-one settlement at boundary stamps, forward-fill across gaps (mitigated by §1 contract + gate items 4-5)",
+      "2 alignment: close-stamp catalog bars vs open-stamp vision klines (measured 15-min shift) + LAST vs mark/index observable conflation (mitigated by §2 + gate items 7-8)",
+      "3 coverage: silent merge across the measured pre-2020-07-18 fapi/vision divergence and unenumerated missing settlement/bar stamps (mitigated by §3 + gate items 1-3, 6-10)"
+    ],
+    "survivorship_applicability": "Cross-sectional survivorship NOT APPLICABLE (single symbol BTCUSDT, no universe selection); P-7 channel canaries APPLICABLE per channel (fapi REST, vision funding zip, vision spot klines, vision bookTicker/aggTrades, catalog parquet = 5 channels, PASS on one licenses nothing)."
+  },
+  "outputs": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/trackb_cohort1/PITDATA_cohort1_REPORT.md",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/trackb_cohort1/HANDOFF_trackb1_pitdata.json"
+  ]
+}
