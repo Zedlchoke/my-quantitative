@@ -31,6 +31,34 @@
   outcome repeats. Revival conditions in FAMILY_FAILURES
   `PWSCXSOL1-I001-TAILPAYER-RUN-REGIME`.
 
+- **PWS-CX-BNBUSDT-C1 CLOSED → `NO_ELIGIBLE_PROPOSAL`** (2026-09-26 tối;
+  branch `orca/pws-cx-bnbusdt-c1-integration` terminal `33a69f10`; budget
+  **0/18 scored cells, 0 outcome views (trial_ledger 0 rows), 0 holdout
+  looks, S1 SEALED_UNTOUCHED**; A7 terminal `CONFIRM_WITH_FINDINGS` 0
+  HIGH/CRITICAL + 3 LOW errata'd — every recompute exact; GO-2 phrase died
+  UNCONSUMED; **0 IDENTITY_REGISTRY slots consumed** — N_registry stays
+  1/100; no orders): pair-child #2 under the discovery sprint (owner
+  instruction 13:41Z: "kiểm tra pair kế tiếp theo luật PWS; nếu cùng thông
+  tin cũ ⇒ đóng, không chạy backtest"; GO-1 consumed 14:10Z under the
+  delegation GO-chain reading + independent A7 plan-review 9caac6ba
+  AUTHORIZED_FOR_GO1_GATE; both readings recorded in the GO RECORD). C1
+  measured BNB's own plane: klines 57,472 bars GAPLESS floor-exact
+  2020-02-10; funding n=7,261, median 0, 49.6% zero prints, neg_share
+  23.94%, worst −58.44 bps, 0 deep prints, 0 anomalous spacings — a REAL
+  pair-contrast vs SOL; spread census `NOT_RUN_DISK_CONSTRAINT` (df 7GB <
+  25GB, fail-closed, no substitution). Council: P1 blind enumeration 0/11
+  direction sources survive (5 autopsies; BNB event-layer burn/SEC-DOJ =
+  BLOCKED_NEW_DATA_OWNER_GATE, R5-class revival condition for the owner);
+  skeptic-verify measured the kill ON BNB's series: sign persistence lag-1
+  +0.759, representation rho 1.12×–2.97× the 0.20 bar vs CARRY level-window
+  shadows at both thetas and BOTH side conventions; ceiling×power at
+  fee-only floor 80 episodes < 100 floor (not empty like SOL — disclosed);
+  K-CONC pre-kill does NOT transfer (25.5% < 50% — disclosed; the kill
+  rests on same-family + K-ANC). **Track PWS-CX stop-rule §9(a) FIRES: 2
+  consecutive empty pair-children ⇒ viability council mandatory before any
+  new pair-child; LESSON P-29 "pair-swap opens nothing" now
+  measured-confirmed on a second pair.**
+
 ## Sprint state (synced at the SRLV-CX-C1 terminal, 2026-09-26)
 
 - **SRLV-CX-C1 CLOSED → `REJECT_ALL`** (2026-09-26; branch

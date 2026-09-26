@@ -171,3 +171,28 @@
   khuyến nghị A1/A7: chỉ mở pair #2 kèm proposer angle có bằng chứng thông
   tin mới; nếu không, cân nhắc viability council sớm cho track CX thay vì
   đốt slot registry lặp lại. Quyết định này thuộc owner (hoặc ủy quyền mới).
+
+## 7. Kết quả pair-child #2 + sprint tối 2026-09-26 (dưới ủy quyền + chỉ thị sprint 13:41Z)
+
+- **PWS-CX-BNBUSDT-C1 đóng TERMINAL `NO_ELIGIBLE_PROPOSAL`** (A7 terminal
+  `CONFIRM_WITH_FINDINGS` 0 chặn + 3 LOW errata'd; two-half close đầy đủ).
+  0/18 scored cells, 0 outcome views, 0 OOS looks, S1 SEALED, GO-2 chết
+  UNCONSUMED, **0 slot registry tiêu** (N_registry = 1/100). Chi tiết:
+  CYCLE_VERDICT tại worktree `orca/pws-cx-bnbusdt-c1-integration` @
+  `33a69f10`. Kill được ĐO trên chính chuỗi BNB (rho 1.12–2.97× bar 0.20,
+  persistence +0.759, ceiling 80 < 100) — P-29 "pair-swap opens nothing"
+  xác nhận bằng số đo trên pair thứ hai.
+- **Stop-rule track CX §9(a) KÍCH HOẠT** (2 pair-child liên tiếp slate rỗng):
+  viability council bắt buộc trước khi mở pair mới.
+
+### Quyết định owner đang chờ (một quyết định)
+
+| Option | Nội dung | Khuyến nghị A1 |
+|---|---|---|
+| **O1** | Dừng mở pair-child CX trên cùng lớp observable; duyệt MỘT information layer mới có authority (ứng viên đo sẵn: **BNB event calendar** — burn quý/SEC-DOJ 2023/Launchpool, sự kiện công khai có ngày) ⇒ DATACOST row mới + child plan + A7 + council | **KHUYẾN NGHỊ** — cửa duy nhất có bằng chứng tonight-recorded |
+| O2 | Vẫn mở BTCUSDT/ETHUSDT trên lớp observable cũ | Không khuyến nghị (P-29 đo 2 lần; đốt slot/OCR 14 ngày mỗi pair) |
+| O3 | Giải phóng disk ≥25GB để spread census BNB chạy lại | Chỉ có nghĩa sau O1 có identity vượt F-0 |
+| FX | Không đổi: chờ reopener R1/R2/R3 bằng chứng bytes (owner-external) | Giữ nguyên |
+
+GO chain hiện trạng: GO-1 SOLUSDT + GO-1 BNBUSDT đã tiêu dưới ủy quyền;
+GO-2 chưa từng tiêu; GO-3 chưa từng; S1 SEALED mọi nơi.
