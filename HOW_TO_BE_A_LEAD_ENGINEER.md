@@ -1189,6 +1189,49 @@ Tưởng tượng Lead là người quản lý một phòng thí nghiệm:
 Lead giỏi không phải người luôn tìm ra vàng. Lead giỏi là người có thể chứng
 minh thứ đang cầm là vàng, hoặc dũng cảm ghi đúng rằng nó không phải vàng.
 
+## 39. Luật từ ERP1-TRACKA-COHORT-1 (2026-09-26): PIT seam, xác nhận thao tác, và giá trị của một cái chết sớm
+
+Sáu luật rút từ cohort đầu tiên chạy trọn vòm falsification-first của chương
+trình (council mù-kết-quả → battery trước-PnL → scored cells đóng băng →
+repro twin → A7 terminal → two-half close; `REJECT_ALL` sau 12 cells giấy).
+Bằng chứng đầy đủ: `research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/
+tracka_cohort1/`, `research/control/ERP1-TRACKA-COHORT-1/CYCLE_VERDICT.md`,
+LESSONS P-18/P-19.
+
+1. **Ba bộ luật tại mọi seam backtest→live.** Cùng một "strategy" tồn tại
+   dưới ít nhất ba dạng: luật scored (full-panel), luật PIT-clean re-spec,
+   và luật mà runtime thực sự chạy (growing-panel replay). Phải ĐO sự phân
+   kỳ của chúng (tỷ lệ bar lệch, tỷ lệ ngày đổi chế độ) trước khi tin bất
+   kỳ số nào; parity self-test so sánh cùng-hàm-cùng-panel thì mù bẩm sinh
+   với dạng phân kỳ này và không bao giờ được dẫn làm bằng chứng ngữ nghĩa.
+2. **Holdout không chứng minh được không-lookahead.** Một leak tất định
+   "pass" mọi cửa sổ out-of-sample. Bộ test rẻ và quyết định là cấu trúc:
+   replay tín hiệu trên panel cắt tại mỗi thời điểm quyết định (phải
+   byte-identical), chạy cặp song sinh dịch-một-chỉ-số với seam band
+   preregistered, và soi mọi biến chế độ theo ngày tìm thống kê cùng ngày.
+   Đây là luật đứng TRƯỚC PnL cho mọi họ có biến chế độ (F-PIT-1).
+3. **Diagnostic theo chỉ thị owner trên surface đã tiêu:** pre-register
+   cách đọc (4 mệnh đề: không-bao giờ-promote / dương→đáng-mở-identity-mới
+   / âm→khép-câu-hỏi / không-tune-không-thử-lại) TRƯỚC khi chạy; dán nhãn
+   `DIAGNOSTIC_OUTCOME_EXPOSED`; chạy trên lane worktree riêng để không
+   đụng chuỗi audit đang bay.
+4. **A1 không tự nới predicate của lane khác.** Lane nào pin một tiêu chí
+   thì lane đó thẩm định mọi sửa đổi của nó (ADJUDICATION pattern — ví dụ
+   clock-placebo rebuild với one-shot calibration, không vòng lặp). Giữ
+   separation of duties ngay cả khi sửa là hiển nhiên đúng.
+5. **Chuỗi thao tác được cửa-sát-bằng-máy:** edit → xác-minh → commit;
+   update → đọc-lại → commit; message commit chỉ mô tả trạng thái đã xác
+   minh. cwd là trạng thái persisted — lệnh control-plane phía root phải
+   re-anchor mỗi lần. SHA đo, không gõ. Amendment một artifact đóng băng
+   thì refresh các pin/digest phụ thuộc TRONG CÙNG commit. Timestamp lấy
+   từ đồng hồ đo lúc nhận. Số trong văn bản lấy từ artifact — sai thì
+   errata công khai, không sửa lén.
+6. **Chết sớm là thành quả của kiến trúc.** Một `REJECT_ALL` 12 cells giấy
+   với reproduction byte-exact và holdout còn nguyên là kết quả TỐT của
+   một cohort: câu hỏi được trả lời trước khi tiền thật hoặc surface live
+   bị đặt cược. Đừng đánh giá Lead bằng survivor; đánh giá bằng chất lượng
+   bằng chứng của cái chết.
+
 ---
 
 ## Phụ lục: changelog v2 (2026-09-11)
@@ -1206,3 +1249,7 @@ minh thứ đang cầm là vàng, hoặc dũng cảm ghi đúng rằng nó khôn
 - Dệt P-12..P-17 và Q-1..Q-16 (QuantPulse dossier, nhập theo chỉ thị owner
   2026-09-11) vào các mục tương ứng; bản dịch đầy đủ trong
   `research/wayfinder/LESSONS.md`.
+- 2026-09-26 (ERP1-TRACKA-COHORT-1): §39 thêm — ba bộ luật tại seam
+  backtest→live, holdout không thay truncation proof (P-18), luật
+  diagnostic theo chỉ thị owner, ADJUDICATION pattern cho predicate của
+  lane, chuỗi thao tác cửa-sát-bằng-máy (P-19), chết sớm là thành quả.

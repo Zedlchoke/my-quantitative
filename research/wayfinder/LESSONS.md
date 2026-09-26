@@ -934,3 +934,32 @@ terminal with the named single owner action — no lane burn, no audit arc.
   law (ancestor numbers = R-ORIG-semantics facts); the F-PIT-1 battery (M-1..M-5 +
   3-limb seam law) is now standing pre-PnL law for any day-mode family; the shadow's
   evidence class is DIAGNOSTIC_PENDING_PIT_REBASE (D-F) until rebased on a clean law.
+
+## P-19 (ERP1-TRACKA-COHORT-1): the operator's own error register — verification-gated sequences
+
+- Source: five A1-side defects caught during the cycle (all recorded, none silently
+  repaired): (1) commit `c28577ef`'s message claimed a freeze erratum its edit script
+  had FAILED to apply (KeyError aborted the edit; the commit ran anyway with only the
+  A7 artifacts) — corrected by follow-up commit `5ca85682`, history untouched; (2) cwd
+  drift — a root control-plane commit landed stale registry state because the
+  `cycle update` in the same command ran from the worktree path (`.venv` not found)
+  and failed before the commit succeeded; (3) a dispatch packet carried a hand-typed
+  sha (`…f826…`) — caught by the lane's measure-first rule, recorded as its incident
+  I1; (4) freeze pins went stale after a sanctioned append-only rebuild (code pin not
+  refreshed; `digest_old` duplicated `digest_new` — A7 F1/F2, fixed by signed erratum
+  E1 after byte-verification against commit `3931aed8`); (5) GO-2 receipt timestamp
+  rounded to midnight (A7 F3) and one hand-authored report paragraph diverged from
+  the machine artifacts ("5/6" vs machine 6/6 — A7 F5, erratum appended).
+- Lesson: every state-changing sequence is gated on machine verification of the
+  PREVIOUS step before the NEXT one runs: edit -> re-read/verify -> commit;
+  registry-update -> read-back -> commit — a commit message describes only verified
+  state. The shell cwd is persistent state: root-side control-plane commands re-anchor
+  (`cd <root> && …`) every time. Shas in packets/records are measured, never typed.
+  Any sanctioned amendment of a frozen artifact refreshes dependent pins/digests in
+  the SAME commit (old values byte-verified against git history). Receipt timestamps
+  come from the measured clock at receipt. Numbers quoted in prose come from artifact
+  fields, not memory — hand paragraphs get errata, not silent edits.
+- Consequence: the errata-bundle close-out practice (CYCLE_VERDICT C-1) and the
+  pin/digest/timestamp/provenance hygiene checklist (A7 F1/F2/F3/F5 class) are now
+  standing close-out law for every cycle; HOW_TO_BE_A_LEAD_ENGINEER.md §39 codifies
+  the doctrine.
