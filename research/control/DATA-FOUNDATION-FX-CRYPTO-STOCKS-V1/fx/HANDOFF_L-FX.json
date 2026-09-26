@@ -1,0 +1,98 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "dfv1-lane-fx",
+  "cycle_id": "DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1",
+  "role": "A3-data-lane",
+  "lane": "fx",
+  "dispatch_sha": "189c6d23ab2a6f50475819cf6df2e2e4def92820",
+  "actual_start_sha": "189c6d23ab2a6f50475819cf6df2e2e4def92820",
+  "commit_sha": "35e749d435db26d590215fd92aba33346581c745",
+  "changed_paths": [
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/fx/inventory_rows.jsonl",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/fx/LANE_REPORT.md",
+    "research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/fx/HANDOFF_L-FX.json"
+  ],
+  "tests": [
+    {
+      "command": ".venv/bin/python research/researchctl.py cycle list (root)",
+      "exit_code": 0,
+      "result": "FX-RANGEFADE-2M-SHADOW-V1 ACTIVE_LIGHT (F5 metadata-only applied); Dukascopy owner cycles all TERMINAL; heavy lock FREE_PROVEN"
+    },
+    {
+      "command": "/usr/bin/time first census chunk (find data roots in 4 Dukascopy worktrees)",
+      "exit_code": 0,
+      "result": "0.06s real, 1.75MB max RSS — far under F10 abort thresholds (10min/1GB)"
+    },
+    {
+      "command": "file-count vs manifest + 5-file sha256/bytes sample per corpus (python, hashlib) over eosv1/eosv2/rangeexp/GBPUSD/USDJPY",
+      "exit_code": 0,
+      "result": "5/5 corpora: disk count == manifest entries (3652, 4014, 4014, 4184, 4184); 5/5 sampled files sha_match + bytes_match per corpus; first/last day-file names recorded"
+    },
+    {
+      "command": "shasum -a 256 m1_manifest.json (eosv2 vs rangeexp)",
+      "exit_code": 0,
+      "result": "identical (ef154574c34af7b20f16c2850237ad3704904413d152f73b3a1e70d0791121c6) — rangeexp corpus is a byte-identical duplicate of eosv2 (storage redundancy flagged)"
+    },
+    {
+      "command": "shasum -a 256 forex-ng6 p0/staging/XAUUSD_1day_full.json + row count from bytes",
+      "exit_code": 0,
+      "result": "49c2684ebb045302acf0c452b5aa9a3b96dff73eb3bc6f5add1801d6817fb33d == NG6 p0_census_verdict.json declared sha; 12268 rows; 1979-12-26..2026-09-16 — full re-hash validation"
+    },
+    {
+      "command": "git show orca/forex-ng5-integration:research/control/forex_ng5_run/d2/td_spot_restored/{GBPUSD,USDCAD,AUDUSD,NZDUSD}.json | shasum -a 256",
+      "exit_code": 0,
+      "result": "all 4 == td_digest_pin.json declared shas (e3e4c519/4b988c44/097cfe59/7dff3299) — TD 4-pair legs sha-exact"
+    },
+    {
+      "command": "shasum -a 256 of 4 P-13 tarballs (forex-v9_cpi_spot, forex-v8_staged_vintaged, forex-free-v3r_full, forex-ng7_integration)",
+      "exit_code": 0,
+      "result": "all match their committed SHA256SUMS lines (be11bcf4…/0c0d4768…/98385515…/2b5eab64…); contents enumerated via tar -tzf, not extracted (P-13 restore rule)"
+    },
+    {
+      "command": "shasum -a 256 ERP1 cohort-1 m1_manifest_AUDUSD.json / m1_manifest_USDCAD.json",
+      "exit_code": 0,
+      "result": "f869cfa3… / 0f9a7df7… pinned; zero sealed corpus content opened (F8 compliant); day-file names only (2007 BID + 2007 ASK per pair, 2021-01-01..2026-06-30)"
+    },
+    {
+      "command": "python validation of inventory_rows.jsonl (parse + 12 required §5 fields per row)",
+      "exit_code": 0,
+      "result": "23 rows, all schema fields present, statuses from enum only"
+    },
+    {
+      "command": "git -C <worktree> rev-parse HEAD / branch --show-current / status --porcelain",
+      "exit_code": 0,
+      "result": "branch orca/dfv1-lane-fx; start HEAD == dispatch_sha; tree clean before and after commits"
+    }
+  ],
+  "authority_claims": [
+    "5 Dukascopy M1 BID/ASK corpora AVAILABLE_VALIDATED (SAMPLED n=5 per corpus, file counts exact, bytes recorded; spread census pointers measured: EURUSD p50 0.3 pips sessions / 0.9 rollover; GBPUSD rollover 2.3; USDJPY 1.6)",
+    "rangeexp EURUSD corpus is a byte-identical duplicate of eosv2 (m1_manifest sha equal, measured) — consolidation candidate",
+    "td_xauusd_1day AVAILABLE_VALIDATED by full re-hash (12268 rows, 1979-2026-09-16); standing F4 ruling carried: TD OHLC-only, NO cost authority (NG6 P0 measured all 7 cost components measurable_from_td=false)",
+    "td_spot_daily_4pairs_v9 AVAILABLE_VALIDATED: 4/4 committed files re-hashed exact vs NG5 td_digest_pin; physical bytes in sha-verified v9 archive; TD NO-cost-authority ruling carried",
+    "macro/event archives located at archive level (shas re-measured match): v9 CPI archives (US/GB/CA/AU) + FRED vintaged OECD CPI; v8 FRED rates vintages; v3r 8-region macro events; NG7 5-pair TD spot legs in P-13 tarball",
+    "BIS WS_CBPOL / ECB SDMX: never bulk-acquired — only adapter test fixtures inside v3r archive; any policy-rate/HICP work needs a fresh entitled pull (gap G3)",
+    "CFTC CoT: censuses/mapping/terminal verdicts committed on orca/forex-ng5-integration (coverage 1986-01-15..2026-09-08); raw report pulls absent locally (worktree removed, no tarball)",
+    "forex_intra_bidask_canary + fx_futures_frontier_canary BLOCKED_TRANSPORT per standing SNI-filter rulings (FIBV1 committed A7 audit read: 36/36 ConnectionResetError, SNI-keyed mechanism proven); F9 mapping note attached (BLOCKED_TRANSPORT ≡ BLOCKED cause=transport)",
+    "ERP1 AUDUSD/USDCAD corpora (incl. sealed 2026-H1 holdout windows): metadata + manifest-file pins only, zero content read (plan §14 F8)",
+    "FX-RANGEFADE-2M-SHADOW-V1 live data censused metadata-only, manifest_verify INHERITED_NOT_REHASHED_LIVE_OWNER (F5); 4184 bi5 + manifest present by name, 47M",
+    "forex_mt5_cost_probe: collector A7-audited PASS_ZERO_FORBIDDEN_CALLS, never run — zero account-bound bytes program-wide; unblocking action = OWNER runs OWNER_RUN.md (feeds gaps G1/G5)"
+  ],
+  "known_limitations": [
+    "Archive-level validation only for the 5 P-13 tarball datasets (per-file contents not extracted; restore rule respected) — their rows say AVAILABLE_UNVALIDATED with exactly that scope",
+    "ERP1 AUDUSD/USDCAD coverage bounds read from day-file NAMES not content (F8); cohort-2 derived artifacts listed by name only",
+    "FX-RANGEFADE row is names/size only (F5, live owner); its manifest was never opened",
+    "Packet claim 'EURUSD 2021–2025 +2026-H1 in eosv1/-v2/rangeexp' corrected by measurement: eosv1 ends 2025-12-31; 2026-H1 extension is eosv2/rangeexp (to 2026-06-30); FX majors run to 2026-09-23. FOREX-NG5 measured as the CFTC CoT cycle, not a majors spot corpus",
+    "FOREX-SEARCH-V1 does not appear in the cycle-list read this session while its run artifacts exist on disk — flagged for A1 reconciliation",
+    "Spread census numbers are Dukascopy indicative quotes, not tradable broker quotes (gap G2); FOREX-SEARCH-V1 cost constants (1.5/1.7 bps) are STATED-CONSERVATIVE, not measured (gaps G1/G5)",
+    "Two-commit discipline: deliverables committed first (35e749d4, the commit_sha recorded here), this handoff committed separately afterward — required because a file cannot contain its own commit's sha; follows the in-repo NG5 handoff precedent; tree clean at handoff",
+    "Committer identity auto-configured by git (host-based); same as machine default, not overridden (no history ops allowed)"
+  ],
+  "incidents": [],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-fx/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/fx/inventory_rows.jsonl",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-fx/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/fx/LANE_REPORT.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/data-foundation-v1/lane-fx/research/control/DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1/fx/HANDOFF_L-FX.json"
+  ]
+}
