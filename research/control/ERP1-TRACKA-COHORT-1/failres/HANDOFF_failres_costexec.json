@@ -1,0 +1,91 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "erp1-ta1-failres-costexec",
+ "cycle_id": "ERP1-TRACKA-COHORT-1",
+ "role": "cost-execution-lane",
+ "lane": "failres-cost",
+ "dispatch_sha": "3b1c29fa5401daf9214ed32dff384421581dda48",
+ "actual_start_sha": "3b1c29fa5401daf9214ed32dff384421581dda48",
+ "commit_sha": "7bf55f34ea27c09558ccdad777b3a31d60980459",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/erp1-tracka-cohort-1/failres-cost",
+ "branch": "orca/erp1-ta1-failres-cost",
+ "changed_paths": [
+  "research/control/ERP1-TRACKA-COHORT-1/failres/COSTEXEC_failres_REPORT.md",
+  "research/control/ERP1-TRACKA-COHORT-1/failres/failres_costexec_agg.json",
+  "research/control/ERP1-TRACKA-COHORT-1/failres/failres_costexec_PROVENANCE.json",
+  "research/control/ERP1-TRACKA-COHORT-1/failres/scripts/failres_costexec_run.py",
+  "research/control/ERP1-TRACKA-COHORT-1/failres/tests/test_failres_costexec.py"
+ ],
+ "tests": [
+  {
+   "file": "research/control/ERP1-TRACKA-COHORT-1/failres/tests/test_failres_costexec.py",
+   "runner": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest (pytest 9.1.1, python 3.12.14)",
+   "result": "6 passed in 1.00s",
+   "covers": [
+    "fold-table summation identities both pairs: net == gross + cost (tol 0.05 pips); rows-fold net == attribution agg k_decay k=1.0 == reconciliation per_fold_net; RT counts == reconciliation per_fold_rt; folded + 2026 tail == full-panel net/RT",
+    "losing-fold verdict arithmetic: shares sum to 1 and the mechanical COST_DOMINATED/GROSS_NEGATIVE/MIXED label follows the >50% rule for EURUSD F1/F2/F5 and GBPUSD F3/F5/F6",
+    "50-trades-per-pair sample verification (seed 20260926) recomputed from the parquet + committed engine charging law (SignalPlane semantics): max abs deviation ~3e-12 pips <= 0.01 tolerance, verdict PASS"
+   ]
+  }
+ ],
+ "authority_claims": [
+  "Base 3b1c29fa = failres-attrib final commit; its trades/agg/daily JSONs and census JSONs are read-only inputs; nothing outside this worktree was written",
+  "Folds imported from committed scripts/falsifier_run.py FOLD_TABLE (never redefined); fold keyed by ENTRY ts as in the attribution lane",
+  "Cost decomposition reuses the attribution lane's SAME-book k=0 convention: gross := net(k=0), cost := net(k=1)-net(k=0); k=1.0 primary, k=1.5/2.0 decay restated from the attribution agg (B.10) and verified by summation",
+  "Charging law honored exactly: engine.run_strategy fills (entry b_o+k*s_o / a_o-k*s_o; non-day-close exits at bar-open effective prices; force-flat settles at the CLOSE of the day-close bar) on tracka_lib.SignalPlane semantics (s_open:=a_o-b_o, s_close:=a_c-b_c recomputed from quote columns; day-close = last TRADABLE bar, hour<=19); taker PAYS the spread (program wording law observed throughout)",
+  "bars1h_ANC_{EURUSD,GBPUSD}.parquet byte copies (gitignored data) sha256-match failres_attrib_PROVENANCE.parquet_sha256 exactly (2e175b06.../5aad8415...)",
+  "Ceiling arithmetic uses the committed census conditional session p50s (spread_pips.by_session_open), never the global p50, per program law; non-fragility line = viability council's frozen ~2x stressed RT (VIABILITY_cohort3_REPORT.md section A; AUDUSD/USDCAD stressed RT 3.6/4.4 pips cited as program floor context only, not re-measured here)",
+  "Sample verification of 50 R-DAEMON RT per pair (seed 20260926): attribution tables reconcile EXACTLY with an independent recompute (max dev ~3e-12 pips, tolerance 0.01) - no finding against the attribution lane",
+  "Heavy lock FREE_PROVEN immediately before and after compute (verdicts in failres_costexec_PROVENANCE.json)"
+ ],
+ "known_limitations": [
+  "DIAGNOSTIC_OUTCOME_EXPOSED: folds are the RANGEEXP family's own dev surfaces; nothing here is promotable evidence regardless of sign; no strategy proposed, no parameter tuned, one pass over frozen inputs",
+  "FILL_QUALITY_UNMEASURABLE_ON_M1_BIDASK / PAPER_TIER: spread-based paper costs only; per-fill spread state inside the bar is unmeasured; commission and slippage-beyond-spread DECLARED_UNMEASURED, stress-covered (k x2.0)",
+  "SINGLE_SOURCE_PANEL: one Dukascopy M1 corpus per pair",
+  "Ceiling numbers are p50-conditional OPTIMISTIC bounds: the executor charges the fill bar's own spread unconditionally, so selecting tight minutes does not lower the charged book (F-5 law)",
+  "EURUSD F1 verdict is a borderline 50.2/49.8 gross/cost split of the loss (mechanical label GROSS_NEGATIVE, MIXED-equivalent within row-rounding noise) - flagged in report and agg",
+  "GBPUSD F1 (COST_DOMINATED, the only zero-cost sign flip) is outside the dispatch's designated losing-fold list and is reported as context",
+  "Correlation with any fold/hour/exit-type factor is NOT causation; no event overlay performed in this lane",
+  "REVERSAL exit pools are empty for R-DAEMON in every fold (0 RT both pairs), so the exit-type comparison is FORCE_FLAT vs TARGET_EXIT only"
+ ],
+ "incidents": [
+  "Lane-internal, corrected before commit (INC_COSTEXEC_RECOMPUTE_PLANESPEC_2026-09-26): first sample recompute reported DEVIATION up to 17.9/14.5 pips because this lane's recompute read the parquet's stored s_open/s_close columns and used the calendar-last bar as day-close, whereas the committed SignalPlane recomputes spreads as a-b and marks the last TRADABLE bar (hour<=19) as day-close; after matching SignalPlane semantics the deviation collapsed to float noise (PASS). No attribution-lane artifact was edited; discrepancies became findings, not edits - here the discrepancy was this lane's own recompute spec, disclosed in report section 3 and the provenance"
+ ],
+ "tree_status": "clean at handoff; work commit 7bf55f34 on orca/erp1-ta1-failres-cost, parent 3b1c29fa (dispatch/base sha); no push/merge/rebase; no registry/ledger/shadow/dashboard writes; no writes outside this worktree",
+ "workers": 0,
+ "verdicts": {
+  "per_losing_fold": {
+   "EURUSD_F1": "GROSS_NEGATIVE (borderline): net -188.8 = gross -94.8 + cost -94.0; gross share 0.5021 vs cost share 0.4979 - a 50.2/49.8 split, MIXED-equivalent within rounding",
+   "EURUSD_F2": "GROSS_NEGATIVE: net -884.4 = gross -769.1 + cost -115.3; gross share 0.870, cost share 0.130",
+   "EURUSD_F5": "GROSS_NEGATIVE: net -191.5 = gross -113.0 + cost -78.5; gross share 0.590, cost share 0.410",
+   "GBPUSD_F3": "GROSS_NEGATIVE: net -1272.7 = gross -921.1 + cost -351.6; gross share 0.724, cost share 0.276",
+   "GBPUSD_F5": "COST_DOMINATED: net -407.1 = gross -157.1 + cost -250.0; cost share 0.614, gross share 0.386",
+   "GBPUSD_F6": "GROSS_NEGATIVE: net -728.8 = gross -502.7 + cost -226.1; gross share 0.690, cost share 0.310",
+   "context_GBPUSD_F1": "COST_DOMINATED (outside designated losing list): net -121.5 = gross +106.5 + cost -228.0; cost 187.7% of the loss; the only fold whose net sign flips at zero cost"
+  },
+  "spread_at_fill": "NO adverse timing: median ratio of entry-bar spread to same-day p50 is 0.95-1.00 in all 12 pair-folds; EURUSD F2 (war/energy) p25/p50/p75/p99 = 0.2/0.3/0.4/0.77 with panel p50 0.3 and only 26.5% of fills above day p50; GBPUSD losing folds F5/F6 filled NARROWER than panel (p50 0.7 vs 0.8) and F3's wider 1.05 is a whole-day book condition (ratio 0.95), not fill timing",
+  "sample_verification": "PASS (EURUSD max abs dev 3.0e-12 pips, GBPUSD 2.3e-12 pips, tolerance 0.01, n=50 per pair, seed 20260926)",
+  "ceiling_arithmetic_eurusd": {
+   "basis": "census by_session_open conditional p50s; RT = 2 crossings; stress = x2.0; non-fragile line = 2x stressed RT (frozen council line)",
+   "regular_session_rt": {"base_k1_pips": 0.6, "stress_k2_pips": 1.2, "nonfragile_line_2x_stress_pips": 2.4},
+   "cohort_law_mixed_rt": {"definition": "session entry p50 + day-close ny_late_16_21 exit p50", "base_k1_pips": 0.6, "stress_k2_pips": 1.2, "nonfragile_line_2x_stress_pips": 2.4},
+   "break_buckets_rt": {
+    "rollover_21_22": {"base": 1.8, "stress": 3.6, "line": 7.2},
+    "late_22_24": {"base": 1.2, "stress": 2.4, "line": 4.8},
+    "friday_20_23_open": {"base": 0.8, "stress": 1.6, "line": 3.2},
+    "sunday_open_21_22": {"base": 6.0, "stress": 12.0, "line": 24.0}
+   },
+   "gbpusd_context": {"regular_session_rt": {"base": 1.6, "stress": 3.2, "line": 6.4}, "rollover_rt": {"base": 4.2, "stress": 8.4, "line": 16.8}, "sunday_open_rt": {"base": 14.2, "stress": 28.4, "line": 56.8}},
+   "cross_pair_placement": "EURUSD stressed in-session RT 1.2 pips sits ~3x BELOW the council floor pairs AUDUSD/USDCAD (3.6/4.4 stressed RT, ~7-9 pip intraday non-fragility line); EURUSD's 0.3-pip book gives the lowest measured non-fragility line in the program set (2.4 pips/RT); GBPUSD (3.2) sits at AUDUSD's level",
+   "realized_check": "R-DAEMON realized mean cost/RT over fold rows: EURUSD 0.6503 (gross +1025.1, cost -634.7, net +390.4 on 976 RT), GBPUSD 1.6673 (gross -6.8, cost -1622.3, net -1629.1 on 973 RT) - the book pays ~ the conditional p50 mixed RT"
+  },
+  "reading": "EURUSD losing folds F1/F2/F5 are negative BEFORE cost (k=0 gross -94.8/-769.1/-113.0; no EURUSD fold flips sign at zero cost or anywhere on the k grid) - the EURUSD failure is a thin-premium problem (mean gross ~+1.05 pips/RT vs 0.6 base toll and 2.4 non-fragile line), not a cost or spread-timing problem; GBPUSD gross is ~zero over the folds, so its aggregate loss is essentially all cost"
+ },
+ "outputs": [
+  "research/control/ERP1-TRACKA-COHORT-1/failres/COSTEXEC_failres_REPORT.md",
+  "research/control/ERP1-TRACKA-COHORT-1/failres/failres_costexec_agg.json",
+  "research/control/ERP1-TRACKA-COHORT-1/failres/failres_costexec_PROVENANCE.json",
+  "research/control/ERP1-TRACKA-COHORT-1/failres/scripts/failres_costexec_run.py",
+  "research/control/ERP1-TRACKA-COHORT-1/failres/tests/test_failres_costexec.py"
+ ]
+}
