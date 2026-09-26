@@ -6,6 +6,14 @@
 
 ## 0. GO RECORD
 
+- **GO-2 SRLV-CX-C1 — CONSUMED.** Owner gõ đúng nguyên văn
+  `GO SRLV CX C1 SCORED EXECUTION` (2026-09-26, ngay sau GO-1 complete:
+  freeze M1 SETTLE-RESOLVE 6 cells, sha-pinned, 0 PnL). Phạm vi: A7
+  prelaunch → triển khai engine + fixtures (F1–F7 + per-mech) → exact-arm
+  dry-run → scored walk-forward 6 cells × 2 pairs (BTCUSDT/ETHUSDT) dưới
+  heavy lock, gates G1–G8 + margins, dual cost book, DSR/PBO accounting,
+  trial ledger + outcomes. KHÔNG gồm: GO-3 sealed/prospective OOS, mở S1,
+  shadow promotion, bất kỳ hành động FX.
 - **GO-1 SRLV-CX-C1 — CONSUMED.** Owner gõ đúng nguyên văn
   `GO SRLV CX C1 COUNCIL AND FREEZE` (phản hồi trực tiếp trong phiên Lead
   2026-09-26, ngay sau A7 audit PASS_WITH_FINDINGS và revision theo chỉ thị
