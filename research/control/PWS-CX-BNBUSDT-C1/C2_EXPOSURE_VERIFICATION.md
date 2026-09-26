@@ -111,8 +111,8 @@ power may narrow usage but the windows are frozen:
 
 | Artifact | sha256 |
 |---|---|
-| `C1_machine_KLINE_CENSUS_BNBUSDT.json` | see §6 of `C1_data_gate_REPORT.md` (pinned after final write) |
-| `C1_machine_FUNDING_STATS_BNBUSDT.json` | see §6 of `C1_data_gate_REPORT.md` |
+| `C1_machine_KLINE_CENSUS_BNBUSDT.json` | see §7 of `C1_data_gate_REPORT.md` (pinned after final write) |
+| `C1_machine_FUNDING_STATS_BNBUSDT.json` | see §7 of `C1_data_gate_REPORT.md` |
 | `data_local/vision/klines_um_BNBUSDT_1h_MANIFEST.json` | pinned in `data_local/INVENTORY.md` build |
 | `data_local/funding/fapi_scan_BNBUSDT_2026-09-26.json` | `464da8832d53bf0454f286d8ef3566a357a69d93336de5aa5d2835876c0dc893` |
 | licenses | Binance Vision ToU pdf **cited, not copied**: sha `94d6f61a39b5f821ef1d38f968aea1f2aa136e374f2061a2131db9a6af96bc3b` at the SOLUSDT child path (same keyless endpoints) |
