@@ -1,3 +1,38 @@
+## Sprint state (synced at the DTP-FX-MECHCOURT-V1 terminal, 2026-09-27)
+
+- **DTP-FX-MECHCOURT-V1 CLOSED → `DTP_FX_V1_BLOCKED_DATA_OR_COST`**
+  (owner instruction 2026-09-27 named three FX day-trading mechanisms;
+  branch `orca/dtp-fx-mechcourt-v1-integration` terminal `c0193b8e`
+  (base main `051aaae0`); **0/0 scored cells, 0 PnL, 0 holdout looks,
+  sealed AUDUSD/USDCAD 2026-H1 UNREAD, S1 SEALED, GO phrase
+  REGISTERED_NOT_CONSUMED → extinguished unconsumed** — no gate ever opened;
+  no orders, no shadow/broker/dashboard touched; A7 terminal
+  `CONFIRM_WITH_FINDINGS` 0C/0H/2L/3I — census recompute delta 0, anti-variant
+  independently agreed 0/3 axes):
+  - **A `DTPFX-A1` month-end London fix rebalancing → `F0_KILLED
+    VETO_VARIANT_SAME_FAMILY`** vs `TRACKA2-P4A-FIXCERT-01` — month-end
+    day-subset is a re-gate and public-MTD direction a rename of the fix
+    pressure-sign; strip test leaves the dead FIXCERT decision law; RC bars
+    parameter re-tunes. FAMILY_FAILURES `DTPFX1-A1-MEFIX-VARIANT`.
+  - **B `DTPFX-B1` news→observed-rate-reaction→FX → `BLOCKED_DATA`** — the
+    rate-reaction leg cannot be witnessed at entry: intraday rates = 0 bytes
+    program-wide (OFR/NYFed daily-only; CME transport-blocked; futures
+    0-byte stubs); PIT release ledger 10/131 FETCHED-verified, no consensus/
+    revision vintages, self-labeled EVENTS_OVERLAY_ONLY_NOT_CAUSAL_EVIDENCE.
+  - **C `DTPFX-C1` cross-venue synchronous quote discrepancy →
+    `BLOCKED_DATA`** — one two-sided feed exists; second venue 0 bytes on
+    every measured path (IBKR probe 0/357 obs/pair + minTick 0.5 pip;
+    Dukascopy re-download SNI-blocked; EDQ1 owner-gated).
+  - **New measured frontier asset: first full fix-window spread census**
+    (EURUSD/GBPUSD/USDJPY, London-hours 13–17 × ME1/ME2/MID; 34,715
+    non-vacuous obs, DST-verified, A7 delta 0): fix-window p50
+    0.3/0.7–0.8/0.5 pip ≈ mid-month ±0.1 — the fix window is NOT an
+    expensive bucket; only rollover 21–22UTC widens (p99 7.8–16 pips). The
+    fix-family barrier is premium-evidence + venue, not spread.
+  - Owner unblock packet (exact sources/access/data per mechanism):
+    `research/control/DTP-FX-MECHCOURT-V1/OWNER_PACKET.md`. Denominators
+    UNCHANGED (+0/+0; 3 ADJUDICATION_NOT_SCORED rows; P-9).
+
 ## Sprint state (synced at the DTP-CX-SOLUSDT-C1 terminal, 2026-09-27)
 
 - **DAYTRADE-PLAYBOOKS-PROGRAM-V1 opened (charter GO-1 packet commit `9ba72e6c`;
