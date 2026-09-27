@@ -1,0 +1,58 @@
+{
+  "schema": "DTP_CX_SOLUSDT_C1_ceiling_power_grid@1",
+  "purpose": "P-29 one-line kill pattern (ceiling x power grid): every frozen identity MUST complete this grid pre-PnL. Machine-fillable by the scorer; ceiling negative => VETO (K-COST) mechanically.",
+  "authority": "plans/PLAN_dtp_cx_solusdt_c1.md §3 I002 + §4 F-5; plans/PLAN_daytrade_playbooks_program_v1.md §6.4 K-COST, §6.5 power floors, §7 cost law",
+  "inputs_required_per_identity": {
+    "theta_gross_bps_per_RT": "expected GROSS move capture per round trip, in bps — declared by the identity's definer BEFORE PnL, sha-pinned at freeze",
+    "rt_cost_bps": "round-trip cost from cost_book@draft ladder; in-window fills -> rt_1x/1_5x/2x measured ladder; out-window fills -> declared ladder; label FILL_QUALITY_CLASS_<measured|declared> on every row",
+    "K_trades_planned": "closed RT count the window can actually deliver (occupancy-based, not aspirational)"
+  },
+  "grid_definition": {
+    "theta_axis_bps": [5, 10, 15, 20, 25, 30, 40, 60],
+    "K_axis_trades": [100, 236],
+    "multiplier_axis": [1.0, 1.5, 2.0],
+    "rt_cost_reference_bps": {
+      "in_window_measured_1x": 11.92,
+      "in_window_measured_1_5x": 17.88,
+      "in_window_measured_2x": 23.84,
+      "out_window_declared_1x": 12.0,
+      "out_window_declared_1_5x": 18.0,
+      "out_window_declared_2x": 24.0,
+      "source": "cost_book@draft.json rt_cost_ladder_taker_1m (fee 10 + 2x spread + 2x declared tick 0.5; funding add-on ~1e-4 bps expected, tail book separate)"
+    }
+  },
+  "arithmetic": {
+    "net_bps_per_RT(mult)": "theta_gross_bps_per_RT - rt_cost_bps(mult)",
+    "expected_total_net_bps(K, mult)": "K * (theta - rt_cost_bps(mult))",
+    "breakeven_theta_bps(mult)": "rt_cost_bps(mult)",
+    "veto_rule_K_COST": "VETO pre-PnL if net_bps_per_RT <= 0 at ANY multiplier (strict form, plan I002: 'diffusion capture 1m phai >= ceiling o ca theta grid'); the minimal form (net_1x <= 0) is implied",
+    "power_rule": "K < 100 closed RT => below power floor => INCONCLUSIVE, never PASS; child freeze pins its own n (>=100 floor; PF~1.3 reference n~236 per master §6.5); >=2 vol regimes occupancy floors (TWO-REGIME precedent 20/3/100)"
+  },
+  "example_row_I002_EXAMPLE_NOT_FROZEN": {
+    "identity": "DTP-CX-SOLUSDT-I002 (INTRADAY BTC->SOL LEAD-LAG DIFFUSION)",
+    "label": "EXAMPLE-NOT-FROZEN — demonstrates the arithmetic only; theta is NOT frozen and this row carries no veto authority",
+    "rt_cost_basis": "declared RT 12.0 bps (mid of plan's 11-13 declared band; out-window declared ladder)",
+    "theta_gross_bps_per_RT": 15.0,
+    "K_trades_planned": 236,
+    "cells": [
+      {"mult": 1.0, "rt_bps": 12.0, "net_bps_per_RT": 3.0, "expected_total_net_bps": 708.0, "veto": false},
+      {"mult": 1.5, "rt_bps": 18.0, "net_bps_per_RT": -3.0, "expected_total_net_bps": -708.0, "veto": true},
+      {"mult": 2.0, "rt_bps": 24.0, "net_bps_per_RT": -9.0, "expected_total_net_bps": -2124.0, "veto": true}
+    ],
+    "grid_verdict": "VETO_K_COST_STRICT (ceiling negative at 1.5x and 2.0x) — under the strict rule this theta dies pre-PnL; only theta >= 25 bps survives all three multipliers at this RT basis",
+    "theta_candidates_evaluation": [
+      {"theta": 10, "net_1x": -2.0, "verdict": "VETO (even 1x)"},
+      {"theta": 15, "net_1x": 3.0, "net_1_5x": -3.0, "net_2x": -9.0, "verdict": "VETO strict / SURVIVES 1x-only"},
+      {"theta": 20, "net_1x": 8.0, "net_1_5x": 2.0, "net_2x": -4.0, "verdict": "VETO strict / SURVIVES 1x+1.5x"},
+      {"theta": 25, "net_1x": 13.0, "net_1_5x": 7.0, "net_2x": 1.0, "verdict": "PASSES strict grid"},
+      {"theta": 30, "net_1x": 18.0, "net_1_5x": 12.0, "net_2x": 6.0, "verdict": "PASSES strict grid with margin"}
+    ]
+  },
+  "fill_instructions_for_scorer": [
+    "1. Take theta_gross_bps_per_RT + K_trades_planned from the identity's frozen freeze artifact (sha-pinned).",
+    "2. Take rt_cost_bps from cost_book@draft.json ladder; choose in-window vs out-window per the fill timestamps actually simulated; stamp FILL_QUALITY_CLASS accordingly.",
+    "3. Evaluate net_bps_per_RT at mult in {1.0, 1.5, 2.0}; any net <= 0 => VETO_K_COST (terminal, pre-PnL).",
+    "4. Check K >= 100 (else INCONCLUSIVE) and occupancy/vol-regime floors; record both checks in the falsifier battery row (F-5).",
+    "5. Write the completed grid into the identity's falsifier battery artifact with the cost book sha256 pinned."
+  ]
+}

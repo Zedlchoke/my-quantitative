@@ -1,0 +1,228 @@
+{
+ "schema": "dtp/dg_data_gate_verdict@1",
+ "cycle_id": "DTP-CX-SOLUSDT-C1",
+ "role": "pit-data-auditor",
+ "lane": "dg",
+ "task_id": "dtp-cx-solusdt-c1-dg",
+ "generated_utc": "2026-09-27T05:55:22Z",
+ "dispatch_sha": "9ba72e6cd2b28a039791cc6a6f75e8ac10ef1cb2",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/dtp-cx-solusdt-c1/integration",
+ "branch": "orca/dtp-cx-solusdt-c1-integration",
+ "head_at_audit": "9ba72e6cd2b28a039791cc6a6f75e8ac10ef1cb2",
+ "commit_made": false,
+ "scope": "child plan PLAN_dtp_cx_solusdt_c1.md §2 data gate items 1-4 (master plan PLAN_daytrade_playbooks_program_v1.md §3.3/§3.4/§7 binding)",
+ "disk": {
+  "free_before_staging_bytes": 6474702848,
+  "free_before_staging_gib": 6.03,
+  "floor_bytes": 5368709120,
+  "floor_gib": 5.0,
+  "staging_budget_bytes": 500000000,
+  "staged_new_bytes": 269262795,
+  "free_after_staging_bytes": 6026899456,
+  "free_after_staging_gib": 5.61,
+  "blocked_storage_triggered": false
+ },
+ "items": {
+  "1_inherit_verify_pws_corpus": {
+   "verdict": "PASS",
+   "summary": "Streaming sha256 re-verified against PWS-CX-SOLUSDT-C1 data_local/INVENTORY.md: 72/72 klines_um_SOLUSDT_1h zips MATCH, 4/4 funding JSONs MATCH, 6/6 bookTicker monthly zips MATCH (+2 aux: 1h MANIFEST + Binance Vision ToU license PDF MATCH). 84/84 bytes-exact, 0 MISMATCH, 0 MISSING. 12 GB hashed in 21s, no copy made.",
+   "evidence": [
+    "research/control/DTP-CX-SOLUSDT-C1/data_gate/C1_machine_INHERIT_VERIFY_SOLUSDT.json",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/pws-cx-solusdt-c1/integration/research/control/PWS-CX-SOLUSDT-C1/data_local/INVENTORY.md"
+   ],
+   "inherited_plane_facts": {
+    "klines_1h": "2020-09-14T07:00Z..2026-08-31T23:00Z, 52,145 bars, 120 missing bars = venue maintenance 2022-02-26..28 + 2022-04-01..02 (PWS census, sha-pinned, re-cross-verified by this audit via 1m aggregation 2024-06)",
+    "funding": "6,580 settlements, H1+H2 merged, 101 non-8h spacings confined to FTX week 2022-11-09..18 (PWS census, sha-pinned)"
+   }
+  },
+  "2_stage_new_vision": {
+   "verdict": "PASS",
+   "summary": "All 4 planned datasets staged from Binance Vision keyless monthly archives, 288/288 zips HTTP 200, companion .CHECKSUM fetched and verified 288/288 MATCH, own sha256 manifests written per directory. markPriceKlines and indexPriceKlines BOTH fit budget (no skip needed): staged 269,262,795 bytes (269.3 MB) <= 0.5 GB budget; free disk stayed >= 5.7 GiB (floor 5.0). aggTrades NOT downloaded per dispatch (too large); HEAD probes only.",
+   "evidence": [
+    "research/control/DTP-CX-SOLUSDT-C1/data_local/vision/MANIFEST_sha256_klines_1m.json",
+    "research/control/DTP-CX-SOLUSDT-C1/data_local/vision/MANIFEST_sha256_klines_15m.json",
+    "research/control/DTP-CX-SOLUSDT-C1/data_local/vision/MANIFEST_sha256_markPriceKlines_1m.json",
+    "research/control/DTP-CX-SOLUSDT-C1/data_local/vision/MANIFEST_sha256_indexPriceKlines_1m.json",
+    "research/control/DTP-CX-SOLUSDT-C1/data_local/vision/_stage_state.jsonl",
+    "research/control/DTP-CX-SOLUSDT-C1/data_gate/C1_machine_VISION_PROBE_SOLUSDT.json"
+   ],
+   "datasets": {
+    "klines_1m": {
+     "dir": "data_local/vision/klines_um_SOLUSDT_1m",
+     "months": "2020-09..2026-08",
+     "n_files": 72,
+     "bytes": 113812958,
+     "checksum_match": 72
+    },
+    "klines_15m": {
+     "dir": "data_local/vision/klines_um_SOLUSDT_15m",
+     "months": "2020-09..2026-08",
+     "n_files": 72,
+     "bytes": 8859502,
+     "checksum_match": 72
+    },
+    "markPriceKlines_1m": {
+     "dir": "data_local/vision/markPriceKlines_um_SOLUSDT_1m",
+     "months": "2020-09..2026-08",
+     "n_files": 72,
+     "bytes": 66980878,
+     "checksum_match": 72
+    },
+    "indexPriceKlines_1m": {
+     "dir": "data_local/vision/indexPriceKlines_um_SOLUSDT_1m",
+     "months": "2020-09..2026-08",
+     "n_files": 72,
+     "bytes": 79609457,
+     "checksum_match": 72
+    }
+   },
+   "naming_note": "Vision serves mark/index archives under the same filename pattern SOLUSDT-<interval>-<month>.zip as klines; directories disambiguate; manifest rows carry the exact source URL.",
+   "aggtrades_head_probes": {
+    "2024-01": {
+     "http": 200,
+     "bytes": 528597302
+    },
+    "2025-06": {
+     "http": 200,
+     "bytes": 173764124
+    },
+    "2026-06": {
+     "http": 200,
+     "bytes": 129853235
+    },
+    "note": "exact Content-Length from C1_machine_VISION_PROBE_SOLUSDT.json; 2024-01 alone (528,597,302 B = 528.6 MB) exceeds the whole 0.5 GB staging budget; naive full-span estimate ~20.0 GB"
+   }
+  },
+  "3_census_pit_seam": {
+   "verdict": "PASS",
+   "summary": "Full census of 288 staged files (9,609,023 rows): row counts, first/last stamps, grid endpoints, gap census, duplicate keys, timestamp-scale guard, cross-granularity consistency. No PIT seam defect found.",
+   "evidence": [
+    "research/control/DTP-CX-SOLUSDT-C1/data_gate/C1_machine_STAGED_CENSUS_SOLUSDT.json",
+    "research/control/DTP-CX-SOLUSDT-C1/data_local/scripts/dg_census_pit.py"
+   ],
+   "findings": {
+    "klines_1m": {
+     "rows": 3128700,
+     "first": "2020-09-14T07:00:00Z",
+     "last": "2026-08-31T23:59:00Z",
+     "missing_minutes": 7200,
+     "gap_events": 2,
+     "duplicates": 0,
+     "endpoint_within_one_bar": true
+    },
+    "klines_15m": {
+     "rows": 208580,
+     "first": "2020-09-14T07:00:00Z",
+     "last": "2026-08-31T23:45:00Z",
+     "missing_15m_slots": 480,
+     "gap_events": 2,
+     "duplicates": 0,
+     "endpoint_within_one_bar": true
+    },
+    "markPriceKlines_1m": {
+     "rows": 3125490,
+     "first": "2020-09-13T11:58:00Z",
+     "last": "2026-08-31T23:59:00Z",
+     "missing_minutes": 11552,
+     "gap_events": 8,
+     "duplicates": 0,
+     "endpoint_within_one_bar": true
+    },
+    "indexPriceKlines_1m": {
+     "rows": 3149253,
+     "first": "2020-09-01T00:00:00Z",
+     "last": "2026-08-31T23:59:00Z",
+     "missing_minutes": 5787,
+     "gap_events": 7,
+     "duplicates": 0,
+     "endpoint_within_one_bar": true
+    }
+   },
+   "timestamp_scale_guard_L_TRACKB1_1": {
+    "method": "per-row detection (epoch >= 1e14 => us) over every row of all 288 staged files; per-file and mid-span migration boundary recorded; all grids normalized to ms (normalized grid == raw ms in this corpus)",
+    "result": "ALL_ROWS_MS: um-futures klines family (klines/mark/index) in this span carries millisecond open_time throughout; no us migration observed in this product/span; guard armed for any future re-stage",
+    "raw_and_normalized_grid_identical": true
+   },
+   "gap_interpretation": "klines 1m/15m gaps are EXACTLY the two known venue maintenance windows (2022-02-25T23:59->2022-03-01T00:00 = 4320 min; 2022-03-31T23:59->2022-04-03T00:00 = 2880 min) matching the inherited 1h census (120 bars); mark/index publication gaps are larger and venue-owned (largest 5760 min 2021-07-23..28) — expected venue outages, disclosed not repaired.",
+   "utc_day_boundary": "UTC has no DST; continuity asserted via 1-bar gap census; no calendar anomaly outside listed gap events.",
+   "cross_granularity_2024_06": {
+    "15m_vs_1m": {
+     "checked": 2880,
+     "mismatched": 0
+    },
+    "1h_inherited_vs_1m": {
+     "checked": 720,
+     "mismatched": 0
+    },
+    "tolerance": "abs 1e-6 / rel 1e-9 per field (OHLC, volume, quote_volume)",
+    "verdict": "CONSISTENT"
+   }
+  },
+  "4_coverage_verdicts": {
+   "quote_bookTicker": {
+    "verdict": "PASS",
+    "measured_window_months": [
+     "2023-05",
+     "2023-07",
+     "2023-09",
+     "2023-11",
+     "2024-01",
+     "2024-03"
+    ],
+    "measured_window_sha_verified": true,
+    "classification": "MEASURED_WINDOW = the 6 listed months ONLY (PWS bookTicker corpus, sha256 re-verified in item 1; spread census p50 0.469 bps per PWS C1_machine_SPREAD_CENSUS_SOLUSDT.json). DECLARED_BAND = every other month of 2020-09..2026-08 — fills outside the census window cost at declared band x1.5/x2.0 with labels FILL_QUALITY_CLASS_declared + coverage label, never backfilled as measured.",
+    "evidence": [
+     "/Users/hoangminhlong/my-quantitative/.worktrees/pws-cx-solusdt-c1/integration/research/control/PWS-CX-SOLUSDT-C1/data_local/vision/bookTicker_um_SOLUSDT/",
+     "/Users/hoangminhlong/my-quantitative/.worktrees/pws-cx-solusdt-c1/integration/research/control/PWS-CX-SOLUSDT-C1/C1_machine_SPREAD_CENSUS_SOLUSDT.json"
+    ]
+   },
+   "trade_aggTrades": {
+    "verdict": "NOT_RUN",
+    "reason": "NOT_RUN_STAGE_BUDGET: archive exists upstream (keyless, HTTP 200 on all 3 probe months) but 2024-01 alone is 528.6 MB > entire 0.5 GB cycle staging budget; naive full-span ~20.0 GB vs 6.0 GiB free disk. No aggTrades byte staged. Per master §3.3 any identity whose measured surface needs the trade tape (e.g. I002 lead-lag 'not-yet-adjusted' latency measurement) enters F-0 with BLOCKED_DATA unless the owner widens the budget in a separate authorization; no proxy substitution.",
+    "bytes_needed_single_month": {
+     "2024-01": 528597302,
+     "2025-06": 173764124,
+     "2026-06": 129853235
+    },
+    "evidence": [
+     "research/control/DTP-CX-SOLUSDT-C1/data_gate/C1_machine_VISION_PROBE_SOLUSDT.json"
+    ]
+   },
+   "mark_price": {
+    "verdict": "PASS",
+    "classification": "MEASURED_WINDOW = full declared span 2020-09..2026-08 staged and checksum-verified; publication gaps disclosed (11,552 missing minutes over 8 venue-owned outage windows; largest 2021-07-23T23:59Z->2021-07-28T00:00Z = 5,760 min); consumers must treat gap windows as DECLARED_BAND, no interpolation as measured.",
+    "evidence": [
+     "research/control/DTP-CX-SOLUSDT-C1/data_local/vision/MANIFEST_sha256_markPriceKlines_1m.json",
+     "research/control/DTP-CX-SOLUSDT-C1/data_gate/C1_machine_STAGED_CENSUS_SOLUSDT.json"
+    ]
+   },
+   "index_price": {
+    "verdict": "PASS",
+    "classification": "MEASURED_WINDOW = full declared span staged (index series starts 2020-09-01T00:00Z, pre-dating futures listing 2020-09-14); gaps disclosed (5,787 missing minutes over 7 outage windows); same DECLARED_BAND rule inside gaps.",
+    "evidence": [
+     "research/control/DTP-CX-SOLUSDT-C1/data_local/vision/MANIFEST_sha256_indexPriceKlines_1m.json",
+     "research/control/DTP-CX-SOLUSDT-C1/data_gate/C1_machine_STAGED_CENSUS_SOLUSDT.json"
+    ]
+   }
+  }
+ },
+ "gates_summary": {
+  "PASS": [
+   "1_inherit_verify_pws_corpus",
+   "2_stage_new_vision",
+   "3_census_pit_seam",
+   "4_coverage.quote_bookTicker(measured-window-only)",
+   "4_coverage.mark_price",
+   "4_coverage.index_price"
+  ],
+  "FAIL": [],
+  "NOT_RUN": [
+   "4_coverage.trade_aggTrades (NOT_RUN_STAGE_BUDGET, HEAD-probe evidence + bytes-needed recorded)"
+  ],
+  "BLOCKED": []
+ },
+ "overall_verdict": "PASS_WITH_DISCLOSURES",
+ "overall_verdict_note": "Data gate items 1-3 PASS with byte evidence. Item 4: quote = 6-month MEASURED window (rest declared band), mark/index = full-span MEASURED with disclosed outage gaps, trade tape NOT staged within budget (bytes-needed recorded; identities requiring it => F-0 BLOCKED_DATA per master §3.3). No FAIL, no BLOCKED_STORAGE. License posture: Binance Vision keyless public archives; ToU PDF sha-pinned in PWS licenses/ (94d6f61a...); per-source license text capture beyond ToU remains a disclosed posture note for the cost lane.",
+ "sealed_data_touched": false,
+ "pnl_or_outcome_seen": false
+}
