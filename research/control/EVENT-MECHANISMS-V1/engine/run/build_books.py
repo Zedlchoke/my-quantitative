@@ -54,7 +54,9 @@ def main() -> None:
     ev["panel_names_loaded"] = len(panel.names)
     print(f"[panel] {len(panel.names)} names, counters={counters}", f"{time.time()-t0:.0f}s")
 
-    corp_actions = load_corp_actions()
+    ca_census: dict = {}
+    corp_actions = load_corp_actions(ca_census)
+    ev["corp_action_loader_census"] = ca_census
 
     # ---------------- E2: A1 book ----------------
     a1_events, a1_stats = load_a1_events()
@@ -144,8 +146,11 @@ _PIPELINE_ORDER = (
     "NO_PANEL_FOR_TICKER", "NO_SESSION_AFTER_ACCEPTANCE", "NO_ENTRY_SESSION",
     "ZERO_DIRECTION_SESSION_MOVE", "FOLD_BOUNDARY_NO_WINDOW",
     "CORP_ACTION_IN_WINDOW", "ENTRY_BAR_UNFILLABLE_B1B2",
-    "EXIT_BAR_UNFILLABLE_B1B2", "BELOW_DV_FLOOR_AT_DECISION",
+    "BELOW_DV_FLOOR_AT_DECISION",
 )
+# r3 note: EXIT_BAR_UNFILLABLE_B1B2 left the pipeline — r3 AMB-7 rolls the
+# exit forward (exhaustion books at the last permissible bar flagged
+# delisting_exit), so it is no longer an exclusion reason.
 
 
 def unique_event_exclusion_census(records, exclusions, base_key) -> dict:

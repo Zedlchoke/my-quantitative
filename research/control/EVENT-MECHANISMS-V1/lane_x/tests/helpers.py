@@ -24,6 +24,20 @@ def load_s7_fixture(name: str) -> dict:
         return json.load(fh)
 
 
+def weekday_sessions(d0: str, d1: str) -> list[str]:
+    """Weekday session-date grid [d0 .. d1] — long enough that the DVmed60
+    eligibility floor (>= 30 trailing sessions) passes for mid-grid events."""
+    import datetime as _dt
+    out = []
+    d = _dt.date.fromisoformat(d0)
+    end = _dt.date.fromisoformat(d1)
+    while d <= end:
+        if d.weekday() < 5:
+            out.append(d.isoformat())
+        d += _dt.timedelta(days=1)
+    return out
+
+
 def make_panel(ticker: str, bars: list[tuple[str, float, float, float]],
                volumes: list[float] | None = None) -> NamePanel:
     """bars: (date, open, close) pairs; volume defaults to 1_000_000."""

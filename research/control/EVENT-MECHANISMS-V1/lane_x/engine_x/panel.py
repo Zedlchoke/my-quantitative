@@ -9,11 +9,25 @@ from __future__ import annotations
 
 import gzip
 import json
+import math
 import os
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 
+import numpy as np
+
 from .tzlaw import session_close_instant, session_open_instant
+
+# Frozen cost contract (STOCKS-AMIHUD-RETEST-V1, G3 shared control 5) — the
+# DVmed60 eligibility floor lives at the book stage (entry/exit fill
+# feasibility, X1/X2); only the 15%-notional CAP is an execution-stage law
+# (r3 AMB-14) and is deliberately absent here.
+DV_FLOOR = 2_000_000.0
+DV_WINDOW = 60
+DV_MIN_PRESENT = 30
+COST_BANDS = ((50_000_000.0, 10.0), (10_000_000.0, 15.0), (2_000_000.0, 25.0))
+OPEN_BAND_MULT = 3.35   # Q-2 conditional law: entries fill at the open band
+MIDDAY_BAND_MULT = 1.0  # exits fill at the close (~midday basis)
 
 
 @dataclass(frozen=True)
@@ -26,15 +40,41 @@ class BarLaws:
 
 
 class NamePanel:
-    """Sorted per-name session grid built from raw OHLCV bars."""
+    """Sorted per-name session grid built from raw OHLCV bars.
+
+    r3-delta: panels apply the same ingestion guards as the lane I engine
+    (duplicate dates: first occurrence wins, marked before validity; bars
+    with non-finite or non-positive open/close skipped) so both engines see
+    byte-identical session grids — the pre-r3 panel-guard DATA_VARIANT
+    class is closed by construction.
+    """
 
     def __init__(self, ticker: str, bars: list[dict]):
         bars = sorted(bars, key=lambda b: b["date"])
         self.ticker = ticker
-        self.dates: list[str] = [b["date"] for b in bars]
-        self.open = [float(b["open"]) for b in bars]
-        self.close = [float(b["close"]) for b in bars]
-        self.volume = [float(b["volume"]) for b in bars]
+        self.dates: list[str] = []
+        self.open: list[float] = []
+        self.close: list[float] = []
+        self.volume: list[float] = []
+        self.dv: list[float] = []          # dollar volume = close * volume (raw)
+        seen: set[str] = set()
+        for b in bars:
+            d = b["date"]
+            if d in seen:
+                continue                    # duplicate date: first wins
+            seen.add(d)                     # marked BEFORE validity (lane I parity)
+            try:
+                o = float(b["open"]); c = float(b["close"])
+            except (TypeError, ValueError):
+                continue
+            if not (math.isfinite(o) and math.isfinite(c)) or o <= 0 or c <= 0:
+                continue
+            self.dates.append(d)
+            self.open.append(o)
+            self.close.append(c)
+            v = float(b["volume"])
+            self.volume.append(v)
+            self.dv.append(c * v)
         self.index: dict[str, int] = {d: i for i, d in enumerate(self.dates)}
         self._close_epoch = [int(session_close_instant(s).timestamp()) for s in self.dates]
         self._open_epoch = [int(session_open_instant(s).timestamp()) for s in self.dates]
@@ -92,6 +132,32 @@ class NamePanel:
         laws = self.bar_laws(date_str)
         return (not laws.extreme_print) and (not laws.zero_volume)
 
+    # -- DVmed60 eligibility floor (frozen cost contract, book stage) ------
+
+    def dvmed60(self, entry_idx: int) -> float | None:
+        """Trailing 60-session median dollar volume ending at the LAST
+        CLOSED session before entry (entry_idx - 1, inclusive); None when
+        fewer than 30 of the trailing 60 sessions exist (fail-closed).
+        Identical arithmetic to the lane I engine (np.median over the same
+        raw close*volume floats)."""
+        i = entry_idx - 1
+        if i < 0:
+            return None
+        lo = max(0, i - DV_WINDOW + 1)
+        window = self.dv[lo:i + 1]
+        if len(window) < DV_MIN_PRESENT:
+            return None
+        return float(np.median(window))
+
+    def band_class_bps(self, dvmed: float | None) -> tuple[str, float]:
+        """Frozen band schedule; fails closed below the $2M floor."""
+        if dvmed is None or dvmed < DV_FLOOR:
+            return "BELOW_FLOOR", 25.0
+        for floor, bps in COST_BANDS:
+            if dvmed >= floor:
+                return ("A" if bps == 10.0 else "B" if bps == 15.0 else "C"), bps
+        return "C", 25.0
+
 
 class PanelStore:
     """Lazy loader over the restored NG6 raw panel directory."""
@@ -111,10 +177,5 @@ class PanelStore:
                   "volume": r["volume"]} for r in raw],
             )
         return self._cache[ticker]
-
-    def raw_close_on_or_before(self, ticker: str, date_str: str) -> float | None:
-        p = self.get(ticker)
-        i = bisect_right(p.dates, date_str) - 1
-        if i < 0:
-            return None
-        return p.close[i]
+    # (no price-fallback helper: r3 AMB-6 — unpriced A2 rows are dropped,
+    # never imputed from the panel)

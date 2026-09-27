@@ -321,3 +321,79 @@ outputs, determinism).
 - Dry-run: `engine/dryrun/` (manifest + placeholder ledger).
 - One clean commit on `orca/event-mechanisms-v1-integration` (pathspec-
   staged; nothing else touched).
+
+---
+
+# DELTA r3 — 2026-09-27 (task delta-r3, remediation + re-run lane; append-only)
+
+Binding authority: `G3_FREEZE_ADDENDUM_r3.md` (A1 court adjudication of the
+pre-r3 G5 comparison). Both implementations rebuilt to the r3 canonical
+reading; re-comparison record-only (R2-6 held; zero PnL at any depth).
+
+## Delta changes (this engine)
+
+1. **D-1 (r3 defect)**: A2 entry = FIRST session whose 09:30 ET open is
+   strictly after the acceptance instant (`resolve_entry_open_anchored`);
+   A2 records carry `direction_session = null`. The pre-delta A2 path
+   reused the A1 close-anchored sequencing — non-spec for ~55% of A2
+   acceptances (S1/S4).
+2. **D-2 (r3 defect)**: `load_corp_actions` resolves div/split stems
+   CASE-INSENSITIVELY (the 79 case-differing files are now matched);
+   collisions deterministic + counted; loader census: 4,336 files, 0
+   collisions. CA window is now a CALENDAR-interval compare (r3 AMB-15;
+   ex-dates on non-session days inside [entry..exit] contaminate), checked
+   on the FINAL window after the exit roll (r3 AMB-13).
+3. **AMB-1**: weekend acceptances are anchor members, stratum label `WKND`
+   (S1∪S3∪S4∪WKND). Production weekend candidates: 0 (measured, unchanged).
+4. **AMB-7**: unfillable EXIT bars ROLL FORWARD to the next clean bar
+   (notes `EXIT_ROLLED_B1X1`); exhaustion = last permissible bar +
+   `delisting_exit` + `EXIT_ROLL_EXHAUSTED_AT_LAST_BAR`. The
+   `EXIT_BAR_UNFILLABLE_B1B2` exclusion is retired (412 pre-delta
+   exclusion rows leave the census; the roll may extend or exhaust).
+5. **AMB-9**: fold assignment by ET-LOCAL acceptance date
+   (`clock.fold_of_et`); fold labels move for post-midnight-UTC
+   acceptances (bookkeeping only).
+6. `parse_acceptance_utc` accepts ISO-offset stamps too (control machinery
+   shadow/placebo records feed ET-offset instants; production stamps
+   unchanged). AMB-10/11/14/16 and AMB-2/3/4/5/6/8/12 were already
+   canonical here — now pinned by regression tests.
+
+## Populations (r3-canonical rebuild; floors unchanged)
+
+| arm | F1 | F2 | F3 | F4 | total |
+|---|---|---|---|---|---|
+| A1-ANCHOR | 3,679 | 4,013 | 2,553 | 3,851 | **14,096** |
+| A1-N1 | 3,392 | 3,665 | 2,319 | 3,407 | 12,783 |
+| A1-N2 | 4,873 | 4,778 | 2,633 | 2,281 | 14,565 |
+| A2-ANCHOR | 0 | 1,606 | 664 | 633 | **2,903** |
+
+Floors: A1-ANCHOR ≥100/fold PASS, ≥400 total PASS (A1-N2 also PASS).
+A2 F1 = 0 (substrate fact) → **NOT_RUN_THIN stands** per F-ADJ-1; the
+frozen floor is not relaxed.
+
+A1 exclusion census deltas vs pre-delta: CORP_ACTION_IN_WINDOW 4,935 →
+5,049 (D-2 case-fix + AMB-15 interval); EXIT_BAR_UNFILLABLE 412 → 0
+(AMB-7 roll); ENTRY fill 498 → 602 (entry laws now precede window
+clamping — reason precedence only). Contamination: no fold >40%
+(max 9.81% F4) → CONTAMINATION_HIGH none.
+
+## Re-run proofs (this engine)
+
+- pytest: **35/35 PASS** (`evidence/pytest_run.txt`; 13 new r3-delta tests
+  in `tests/test_r3_delta.py`).
+- Truncation replay (seed 7; 300-event sample + 18 fold-boundary): **318/
+  318** V1 prefix + **318/318** V2 full-record byte-identical
+  (`evidence/truncation_replay.json`).
+- Full-chain determinism double-run: **10/10 files byte-identical**
+  (`evidence/determinism_full_run.json`).
+- Dry-run proofs: pairwise-distinct IDs TRUE; recursive no-PnL scan CLEAN.
+
+## Re-comparison outcome (records only)
+
+See `../G5_VERDICT.md` and `../reconciliation/comparison_results.json`.
+A1-N2 key sets IDENTICAL (14,565 = 14,565); A1 anchor 4 key diffs /
+3 field diffs, all the fold force-flat convention (unruled at r3); A2
+field diffs 14 on the 2,271 secondary-matched instants, all force-flat.
+**Zero DEFECT, zero unattributed** after 1 fix iteration (lane X
+exhaustion-exit semantics). Final G5 verdict:
+**G5_PASS_RESIDUALS_CLASSIFIED**.

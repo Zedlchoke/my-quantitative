@@ -2,16 +2,15 @@
 
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from helpers import NO_CA, TempExDates, make_panel  # noqa: E402
+from helpers import NO_CA, TempExDates, make_panel, weekday_sessions  # noqa: E402
 
 from engine_x.sequencing import build_event_record  # noqa: E402
 from engine_x.tzlaw import clock_facts  # noqa: E402
 
-# Synthetic name: 10 sessions 2024-01-02 .. 2024-01-15 (Mon-Fri grid),
+# Synthetic name: long weekday grid 2023-11-01 .. 2024-01-31 so the
+# DVmed60 floor (>=30 trailing sessions) passes for January events,
 # open=100, close=101 everywhere (up bars) unless overridden.
-SESSIONS = ["2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05",
-            "2024-01-08", "2024-01-09", "2024-01-10", "2024-01-11",
-            "2024-01-12", "2024-01-15"]
+SESSIONS = weekday_sessions("2023-11-01", "2024-01-31")
 
 
 def base_panel(**overrides):
@@ -47,22 +46,24 @@ def test_after_close_acceptance_shifts_direction_to_next_day():
 
 
 def test_direction_down_and_flat():
-    bars = [(d, o, c) for d, (o, c) in
-            zip(SESSIONS, [(100.0, 99.0)] * 4 + [(100.0, 100.0)] + [(100.0, 101.0)] * 5)]
+    # direction session for a 01-02 12:00 ET acceptance is 01-02 itself
+    bars = [(d, 100.0, 99.0 if d == "2024-01-02" else 101.0) for d in SESSIONS]
     p = make_panel("TEST", bars)
     res = build_event_record(p, NO_CA, "2024-01-02T17:00:00.000Z",
                              hold=5, direction_rule="a1")
     assert res.direction == -1
-    bars_flat = [(d, o, c) for d, (o, c) in
-                 zip(SESSIONS, [(100.0, 100.0)] * len(SESSIONS))]
+    bars_flat = [(d, 100.0, 100.0 if d == "2024-01-02" else 101.0) for d in SESSIONS]
     res2 = build_event_record(make_panel("TEST", bars_flat), NO_CA,
                               "2024-01-02T17:00:00.000Z", hold=5, direction_rule="a1")
-    assert res2.direction == 0
+    # r3 AMB-11 CANONICAL: tie -> EXCLUDED + counted, never recorded as 0
+    assert res2.status == "EXCLUDED"
+    assert res2.reason == "ZERO_DIRECTION_SESSION_MOVE"
 
 
 def test_delisting_exit_truncates_to_last_bar():
     # name ends 2024-01-08; entry 01-03, hold 5 needs 01-09 but panel ends -> exit 01-08
-    p = make_panel("TEST", [(d, 100.0, 101.0) for d in SESSIONS[:5]])
+    grid = [d for d in SESSIONS if d <= "2024-01-08"]
+    p = make_panel("TEST", [(d, 100.0, 101.0) for d in grid])
     res = build_event_record(p, NO_CA, "2024-01-02T17:00:00.000Z",
                              hold=5, direction_rule="a1")
     assert res.status == "BOOKED"
@@ -72,7 +73,7 @@ def test_delisting_exit_truncates_to_last_bar():
 
 
 def test_no_sessions_after_acceptance_dropped():
-    p = make_panel("TEST", [(d, 100.0, 101.0) for d in SESSIONS[:2]])
+    p = make_panel("TEST", [(d, 100.0, 101.0) for d in SESSIONS[:31]])
     res = build_event_record(p, NO_CA, "2024-01-08T17:00:00.000Z",
                              hold=5, direction_rule="a1")
     assert res.status == "DROPPED"
@@ -115,8 +116,7 @@ def test_ca_exclusion_boundary_dates_inclusive():
 
 def test_b1_entry_extreme_print_excludes():
     # entry bar 01-04: prior close 101 -> 1100 is 10.9x, ratio-1 = 9.89 >= 9
-    bars = [(d, 100.0, 101.0) for d in SESSIONS]
-    bars[2] = ("2024-01-04", 100.0, 1100.0)
+    bars = [(d, 100.0, 1100.0 if d == "2024-01-04" else 101.0) for d in SESSIONS]
     res = build_event_record(make_panel("TEST", bars), NO_CA,
                              "2024-01-03T17:00:00.000Z", hold=5, direction_rule="a1")
     assert res.status == "EXCLUDED"
@@ -127,8 +127,7 @@ def test_b1_both_directions_down():
     # symmetric law (AMB-16): prior close 101 -> 5 is a 20.2x down-print,
     # prev/cur - 1 = 19.2 >= 9 -> extreme (the literal |cur/prev - 1| formula
     # could never fire downward with positive prices; R2-2 says both directions)
-    bars = [(d, 100.0, 101.0) for d in SESSIONS]
-    bars[2] = ("2024-01-04", 100.0, 5.0)
+    bars = [(d, 100.0, 5.0 if d == "2024-01-04" else 101.0) for d in SESSIONS]
     res = build_event_record(make_panel("TEST", bars), NO_CA,
                              "2024-01-03T17:00:00.000Z", hold=5, direction_rule="a1")
     assert res.status == "EXCLUDED"
@@ -137,16 +136,14 @@ def test_b1_both_directions_down():
 
 def test_b1_not_fired_on_moderate_moves():
     # 101 -> 900 is 8.91x, ratio-1 = 8.91-1 = 7.91 < 9 -> NOT extreme
-    bars = [(d, 100.0, 101.0) for d in SESSIONS]
-    bars[2] = ("2024-01-04", 100.0, 900.0)
+    bars = [(d, 100.0, 900.0 if d == "2024-01-04" else 101.0) for d in SESSIONS]
     res = build_event_record(make_panel("TEST", bars), NO_CA,
                              "2024-01-03T17:00:00.000Z", hold=5, direction_rule="a1")
     assert res.status == "BOOKED"
 
 
 def test_x1_entry_zero_volume_excludes():
-    vols = [1_000_000.0] * len(SESSIONS)
-    vols[2] = 0.0
+    vols = [0.0 if d == "2024-01-04" else 1_000_000.0 for d in SESSIONS]
     res = build_event_record(base_panel(volumes=vols), NO_CA,
                              "2024-01-03T17:00:00.000Z", hold=5, direction_rule="a1")
     assert res.status == "EXCLUDED"
@@ -154,9 +151,9 @@ def test_x1_entry_zero_volume_excludes():
 
 
 def test_exit_zero_volume_rolls_forward():
-    # exit would be 01-10 (index 6); make 01-10 volume 0 -> exit rolls to 01-11
-    vols = [1_000_000.0] * len(SESSIONS)
-    vols[6] = 0.0
+    # exit = 5th session from entry 01-04 = 01-10; make 01-10 volume 0 ->
+    # exit rolls forward to 01-11 (r3 AMB-7)
+    vols = [0.0 if d == "2024-01-10" else 1_000_000.0 for d in SESSIONS]
     res = build_event_record(base_panel(volumes=vols), NO_CA,
                              "2024-01-03T17:00:00.000Z", hold=5, direction_rule="a1")
     assert res.status == "BOOKED"
@@ -180,3 +177,15 @@ def test_exdate_index_case_insensitive_lookup():
     assert ex.contamination("ABT", "2024-01-02", "2024-03-01")["contaminated"] is True
     d2, s2 = ex.ex_dates("EV_OLD2")
     assert len(d2) > 0 and len(s2) > 0
+
+
+def test_exit_roll_exhaustion_moves_to_last_bar():
+    """r3 AMB-7 CANONICAL: exhaustion = LAST bar + delisting flag (the exit
+    itself moves to the last bar, not just the flag)."""
+    vols = [0.0 if d >= "2024-01-09" else 1_000_000.0 for d in SESSIONS]
+    res = build_event_record(base_panel(volumes=vols), NO_CA,
+                             "2024-01-03T17:00:00.000Z", hold=5, direction_rule="a1")
+    assert res.status == "BOOKED"
+    assert res.exit_session == SESSIONS[-1]
+    assert res.delisting_exit is True
+    assert res.notes == ["EXIT_ROLL_EXHAUSTED_AT_LAST_BAR"]

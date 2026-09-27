@@ -15,8 +15,20 @@ ET = ZoneInfo(C.ET_TZ)
 
 
 def parse_acceptance_utc(s: str) -> datetime:
-    """'2019-07-27T01:30:16.000Z' -> aware UTC datetime."""
-    return datetime.strptime(s, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=ZoneInfo("UTC"))
+    """Parse a staged acceptance instant.
+
+    Staged stamps are '2019-07-27T01:30:16.000Z' (UTC, Z-suffixed). Control
+    machinery (clock-shadow / placebo) also feeds ET-offset ISO stamps like
+    '2019-01-03T09:00:00-05:00' — both are ISO-8601 and both parse here, so
+    fold assignment (fold_of_et) works for control records too.
+    """
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        dt = datetime.strptime(s, "%Y-%m-%dT%H:%M:%S.%fZ")
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+    return dt
 
 
 def to_et(utc_dt: datetime) -> Tuple[datetime, float]:
@@ -50,8 +62,11 @@ def date_of(s: str) -> date:
     return date.fromisoformat(s)
 
 
-def fold_of(acceptance_utc: str) -> str:
-    d = acceptance_utc[:10]
+def fold_of_et(acceptance_utc: str) -> str:
+    """Fold by the ET-LOCAL calendar date of the acceptance instant
+    (r3 canonical ruling AMB-9: bookkeeping label only)."""
+    et, _ = to_et(parse_acceptance_utc(acceptance_utc))
+    d = et.date().isoformat()
     for name, lo, hi in C.FOLDS:
         if lo <= d < hi:
             return name

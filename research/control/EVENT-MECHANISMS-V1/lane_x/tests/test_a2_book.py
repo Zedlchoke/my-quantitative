@@ -1,20 +1,20 @@
 """A2 event set + anchor book: value floor, amendment drop, officer/director
-gate, XML price fallback, open-anchored sequencing, hold 10."""
+gate, unpriced-row drop (r3 AMB-6), open-anchored sequencing (r3 D-1), hold 10."""
 
 import sys, os, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from helpers import NO_CA, FakeStore, TempExDates, make_panel, write_xml  # noqa: E402
+from helpers import NO_CA, FakeStore, TempExDates, make_panel, write_xml, weekday_sessions  # noqa: E402
 
 from engine_x.a2_books import build_a2_book  # noqa: E402
 
-SESSIONS = ["2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05",
-            "2024-01-08", "2024-01-09", "2024-01-10", "2024-01-11",
-            "2024-01-12", "2024-01-15", "2024-01-16", "2024-01-17",
-            "2024-01-18", "2024-01-19", "2024-01-22", "2024-01-23"]
+# Long grid so the DVmed60 floor (>=30 trailing sessions) passes for
+# January 2024 events.
+SESSIONS = weekday_sessions("2023-11-01", "2024-02-15")
 
 
-def _panel():
-    return make_panel("TEST", [(d, 100.0, 101.0) for d in SESSIONS])
+def _panel(volumes=None):
+    return make_panel("TEST", [(d, 100.0, 101.0) for d in SESSIONS],
+                      volumes=volumes)
 
 
 def _n4(tmp_path):
@@ -58,7 +58,7 @@ def test_value_floor_and_sequencing(tmp_path):
     assert r["event_id"] == "EMV1-A2:CIK0000000001:2024-01-02"
     assert r["entry_session"] == "2024-01-03"          # first open after instant
     assert r["exit_session"] == "2024-01-16"           # +9 sessions
-    assert r["hold_sessions"] == 10 and r["direction"] == 1
+    assert r["hold_sessions"] == 10 and r["direction"] == "LONG"
     assert r["buy_value"] == 105000.0
 
 
@@ -106,16 +106,32 @@ def test_non_officer_director_filing_dropped(tmp_path):
     assert census["event_set"]["events_above_floor"] == 0
 
 
-def test_missing_xml_price_falls_back_to_panel_close(tmp_path):
-    # price 0 in XML; panel close on/before 2024-01-02 = 101 -> 5000*101 = 505k
+def test_unpriced_xml_row_dropped_not_imputed(tmp_path):
+    """r3 AMB-6 CANONICAL: an unpriced XML row drops + counts — the
+    pre-r3 panel-close fallback is removed (no imputation)."""
     x = write_xml(str(tmp_path), "CIK0000000001", "ACC1", "4",
                   [OD_OWNER], [{"code": "P", "date": "2024-01-02",
                                 "shares": "5000", "price": "0"}])
     s = _stream(tmp_path, [_row("ACC1", "2024-01-02T23:30:00.000Z", "2024-01-02")])
-    records, census, *_ = build_a2_book(
+    records, census, excluded, drops = build_a2_book(
         s, str(tmp_path), _n4(tmp_path), FakeStore({"TEST": _panel()}), NO_CA)
     assert census["event_set"]["rows_no_price"] == 1
-    assert records and records[0]["buy_value"] == 505000.0
+    assert census["event_set"]["events_above_floor"] == 0
+    assert records == []
+    assert any(d["reason"] == "A2_ROW_UNPRICED" for d in drops)
+
+
+def test_dv_floor_excludes_at_book_stage(tmp_path):
+    # dv = 101 * 100 = $10,100 << $2M -> BELOW_DV_FLOOR_AT_DECISION
+    vols = [100.0] * len(SESSIONS)
+    x = write_xml(str(tmp_path), "CIK0000000001", "ACC1", "4",
+                  [OD_OWNER], [{"code": "P", "date": "2024-01-02",
+                                "shares": "5000", "price": "21.0"}])
+    s = _stream(tmp_path, [_row("ACC1", "2024-01-02T23:30:00.000Z", "2024-01-02")])
+    records, census, excluded, *_ = build_a2_book(
+        s, str(tmp_path), _n4(tmp_path), FakeStore({"TEST": _panel(volumes=vols)}), NO_CA)
+    assert records == []
+    assert census["excluded_by_reason"].get("BELOW_DV_FLOOR_AT_DECISION") == 1
 
 
 def test_issuer_day_aggregates_two_filings_and_earliest_acceptance(tmp_path):

@@ -5,6 +5,13 @@ Event definition (G3 + R2-3): issuer-days with net open-market BUY value
 only.  The stream is the index; the XML estate supplies document type,
 roles and per-share price (see xml4.py + ambiguities.md AMB-02..AMB-06).
 
+r3-delta (G3_FREEZE_ADDENDUM_r3): unpriced XML rows DROP + count (AMB-6) —
+the pre-r3 panel-close price fallback is removed; A2 value = XML shares x
+XML per-share price only (AMB-2).  The issuer-day basis remains the
+transaction date on this lane (unruled at r3; recorded as a residual
+reading difference in the reconciliation — lane I keys issuer-days by UTC
+acceptance date).
+
 Substrate coverage measured 2018-01-02 .. 2025-05-23 -> F1 population 0
 (the known F1=0 substrate fact; census disclosed, nothing inferred).
 """
@@ -12,6 +19,7 @@ Substrate coverage measured 2018-01-02 .. 2025-05-23 -> F1 population 0
 from __future__ import annotations
 
 import json
+import xml.etree.ElementTree as ET
 from collections import defaultdict
 
 from .divsplits import ExDateIndex
@@ -33,8 +41,8 @@ def _to_float(s: str | None) -> float | None:
         return None
 
 
-def build_a2_events(stream_path: str, xml_root: str, cik_to_ticker: dict[str, str],
-                    panels: PanelStore) -> tuple[dict[tuple[str, str], dict], dict, list[dict]]:
+def build_a2_events(stream_path: str, xml_root: str,
+                    cik_to_ticker: dict[str, str]) -> tuple[dict[tuple[str, str], dict], dict, list[dict]]:
     """Collapse qualifying stream+XML rows into issuer-day events.
 
     Returns (events keyed (cik, day), census, drop_log).
@@ -42,7 +50,7 @@ def build_a2_events(stream_path: str, xml_root: str, cik_to_ticker: dict[str, st
     census = {"stream_rows": 0, "p_rows": 0, "accessions_joined": 0,
               "amendment_accessions": 0, "non_od_accessions": 0,
               "xml_missing": 0, "xml_unparseable": 0,
-              "rows_no_price": 0, "rows_no_bar_for_price_fallback": 0,
+              "rows_no_price": 0,
               "issuer_days": 0, "events_above_floor": 0}
     drop_log: list[dict] = []
 
@@ -92,20 +100,14 @@ def build_a2_events(stream_path: str, xml_root: str, cik_to_ticker: dict[str, st
             shares = _to_float(tx["shares"])
             if shares is None:
                 continue
-            xml_price = _to_float(tx["price"])
-            if xml_price is None or xml_price <= 0:
-                # fallback: raw close of last session on-or-before the
-                # transaction date (AMB-06)
+            price = _to_float(tx["price"])
+            if price is None or price <= 0:
+                # r3 AMB-6 CANONICAL: unpriced rows DROP + count — no
+                # panel-close imputation (the pre-r3 fallback is removed).
                 census["rows_no_price"] += 1
-                ticker = cik_to_ticker.get(cik)
-                price = panels.raw_close_on_or_before(ticker, day) if ticker else None
-                if price is None:
-                    census["rows_no_bar_for_price_fallback"] += 1
-                    drop_log.append({"cik": cik, "accession": accession,
-                                     "reason": "A2_NO_PRICE_FALLBACK_BAR", "day": day})
-                    continue
-            else:
-                price = xml_price
+                drop_log.append({"cik": cik, "accession": accession,
+                                 "reason": "A2_ROW_UNPRICED", "day": day})
+                continue
             key = (cik, day)
             agg = day_rows.get(key)
             if agg is None:
@@ -136,15 +138,18 @@ def build_a2_events(stream_path: str, xml_root: str, cik_to_ticker: dict[str, st
 def build_a2_book(stream_path: str, xml_root: str, n4_path: str,
                   panels: PanelStore, exdates: ExDateIndex) -> tuple[dict, dict, list[dict], list[dict]]:
     cik_to_ticker: dict[str, str] = {}
+    reuse_risk_ciks: set[str] = set()
     for line in open(n4_path):
         r = json.loads(line)
         cik_to_ticker[r["cik"]] = r["ticker"]
+        if r.get("ticker_reuse_risk"):
+            reuse_risk_ciks.add(r["cik"])
 
-    events, census, drop_log = build_a2_events(stream_path, xml_root, cik_to_ticker, panels)
+    events, census, drop_log = build_a2_events(stream_path, xml_root, cik_to_ticker)
 
     records, excluded = [], []
     arm_census = {"candidates": 0, "booked": 0, "excluded": 0, "dropped": 0,
-                  "excluded_by_reason": {}, "delisting_exits": 0,
+                  "excluded_by_reason": {}, "delisting_exits": 0, "exit_rolled": 0,
                   "booked_by_fold": {}, "booked_by_stratum": {},
                   "excluded_by_fold": {}, "weekend_bucket_candidates": 0}
 
@@ -180,6 +185,8 @@ def build_a2_book(stream_path: str, xml_root: str, n4_path: str,
         _bump(arm_census["booked_by_stratum"], facts.stratum)
         if res.delisting_exit:
             arm_census["delisting_exits"] += 1
+        if "EXIT_ROLLED_B1X1" in res.notes:
+            arm_census["exit_rolled"] += 1
         records.append({
             "event_id": f"EMV1-A2:{cik}:{day}",
             "cik": cik,
@@ -188,7 +195,7 @@ def build_a2_book(stream_path: str, xml_root: str, n4_path: str,
             "acceptance_utc": ev["acceptance_utc"],
             "stratum": facts.stratum,
             "direction_session": res.direction_session,
-            "direction": res.direction,
+            "direction": "LONG",
             "entry_session": res.entry_session,
             "entry_price": res.entry_price,
             "exit_session": res.exit_session,
@@ -200,6 +207,11 @@ def build_a2_book(stream_path: str, xml_root: str, n4_path: str,
             "fold": fold,
             "weekend_bucket": facts.weekend_bucket,
             "et_offset_hours": facts.et_offset_hours,
+            "dv_band_class": res.dv_band_class,
+            "dvmed60_decision": res.dvmed60_decision,
+            "cost_entry_bps_x1": res.cost_entry_bps_x1,
+            "cost_exit_bps_x1": res.cost_exit_bps_x1,
+            "ticker_reuse_risk": cik in reuse_risk_ciks,
             "transaction_date": day,
             "buy_value": round(ev["buy_value"], 2),
             "cluster_size": ev["cluster_size"],

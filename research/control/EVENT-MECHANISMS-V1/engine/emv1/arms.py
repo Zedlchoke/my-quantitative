@@ -33,9 +33,14 @@ ARM_DEFS = {
 
 
 def a1_bucket(stratum: str, is_weekend: bool) -> Optional[str]:
-    """Anchor membership bucket, or None if not in the unmonitored set."""
+    """Anchor membership bucket, or None if not in the unmonitored set.
+
+    r3 AMB-1 CANONICAL: weekend acceptances ARE anchor members of the
+    unmonitored set S1∪S3∪S4∪WKND — stratum label `WKND` ("separate
+    bucket" is a recording label, not an exclusion).
+    """
     if is_weekend:
-        return f"WEEKEND+{stratum}"
+        return "WKND"
     if stratum in ("S1", "S3", "S4"):
         return stratum
     return None
@@ -66,6 +71,8 @@ def build_a1_arms(
             if membership == "monitored_s2" and (is_weekend or stratum != "S2"):
                 continue
             arm_bucket = bucket if membership == "unmonitored" else "S2"
+            # r3 AMB-1: weekend members carry stratum label WKND
+            rec_stratum = "WKND" if is_weekend else stratum
             rec, exc = build_decision(
                 event_id=f"{arm_id}:{ev['cik']}:{ev['acceptance_utc']}:{ev['accession']}",
                 family_id=family, arm_id=arm_id,
@@ -73,7 +80,7 @@ def build_a1_arms(
                 acceptance_utc=ev["acceptance_utc"],
                 instant_et=et, hold_sessions=hold,
                 panel=panel, corp_actions=corp_actions,
-                stratum=stratum, bucket=arm_bucket, is_weekend=is_weekend,
+                stratum=rec_stratum, bucket=arm_bucket, is_weekend=is_weekend,
                 control_variant=control_variant,
                 ticker_reuse_risk=any(tickers.values()) if tickers else False,
             )
@@ -99,7 +106,8 @@ def build_a1_arms(
                     acceptance_utc=ev["acceptance_utc"],
                     instant_et=et, hold_sessions=C.A1_HOLD_ANCHOR,
                     panel=panel, corp_actions=corp_actions,
-                    stratum=stratum, bucket=bucket, is_weekend=is_weekend,
+                    stratum="WKND" if is_weekend else stratum, bucket=bucket,
+                    is_weekend=is_weekend,
                     control_variant="PERMUTED_ACCEPTANCE", draw=draw,
                 )
                 if rec:
@@ -125,7 +133,7 @@ def build_a2_arms(
         if ticker is None:
             for arm_id in ("A2-ANCHOR", "A2-N1", "A2-N2"):
                 exclusions.append({"event_id": f"{arm_id}:{cik}:{ev['day']}",
-                                   "reason": "NO_TICKER_FOR_CIK", "fold": clock.fold_of(ev["earliest_acceptance"]),
+                                   "reason": "NO_TICKER_FOR_CIK", "fold": clock.fold_of_et(ev["earliest_acceptance"]),
                                    "ticker": None, "cik": cik, "arm_id": arm_id})
             continue
         instant_utc = clock.parse_acceptance_utc(ev["earliest_acceptance"])
@@ -274,8 +282,8 @@ def clock_only_shadow_a1(
     records, exclusions = [], []
     seq = 0
     for bucket, n in sorted(bucket_counts.items()):
-        stratum = bucket.split("+")[-1]
-        is_weekend = bucket.startswith("WEEKEND")
+        stratum = "WKND" if bucket == "WKND" else bucket.split("+")[-1]
+        is_weekend = bucket == "WKND"
         made = 0
         while made < n:
             seq += 1

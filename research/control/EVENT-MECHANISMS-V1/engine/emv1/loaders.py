@@ -162,17 +162,37 @@ def load_n4_map() -> Dict[str, dict]:
     return {r["cik"]: r for r in iter_jsonl(C.N4_MAP_PATH)}
 
 
-def load_corp_actions() -> Dict[str, dict]:
-    """div/splits ex-dates per ticker: {ticker: {'div': [dates], 'split': [dates]}}."""
+def load_corp_actions(census: Optional[dict] = None) -> Dict[str, dict]:
+    """div/splits ex-dates per ticker: {ticker_lower: {'div': [dates], 'split': [dates]}}.
+
+    D-2 (r3 canonical): stems are matched CASE-INSENSITIVELY over the
+    restored tables — the estate carries 79 files whose stem differs from
+    the panel ticker only by letter case; an exact-case lookup silently
+    missed them (47 records booked despite R2-2 in the pre-r3 build).
+    Keys are stored lowercased; lookups casefold. Collisions (two files
+    whose stems casefold alike) resolve deterministically to the
+    lexicographically smallest filename and are counted, never silent.
+    """
     out: Dict[str, dict] = {}
+    if census is not None:
+        census.update({"files": 0, "stems_casefold_collisions": 0,
+                       "case_only_redundant_files": 0})
     for kind, d in (("div", C.DIV_DIR), ("split", C.SPLIT_DIR)):
-        for fn in os.listdir(d):
-            if not fn.endswith(".json"):
-                continue
-            ticker = fn[:-5]
-            with open(os.path.join(d, fn)) as f:
+        files = sorted(f for f in os.listdir(d) if f.endswith(".json"))
+        stems: Dict[str, List[str]] = {}
+        for fn in files:
+            if census is not None:
+                census["files"] += 1
+            stems.setdefault(fn[:-5].lower(), []).append(fn)
+        for stem_l, fns in sorted(stems.items()):
+            if len(fns) > 1 and census is not None:
+                # same casefolded stem from >1 file: deterministic pick,
+                # counted (never a silent choice)
+                census["stems_casefold_collisions"] += 1
+                census["case_only_redundant_files"] += len(fns) - 1
+            with open(os.path.join(d, fns[0])) as f:
                 rows = json.load(f)
-            out.setdefault(ticker, {"div": [], "split": []})[kind] = sorted(
+            out.setdefault(stem_l, {"div": [], "split": []})[kind] = sorted(
                 r["date"] for r in rows if r.get("date")
             )
     return out

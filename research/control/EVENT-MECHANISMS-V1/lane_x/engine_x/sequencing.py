@@ -1,21 +1,24 @@
 """R2-3 sequencing + R2-2 bar-law book construction, shared by A1 / A2.
 
-A1 (per G3 anchor + R2-3):
+r3-canonical (G3_FREEZE_ADDENDUM_r3), both implementations rebuilt to it.
+
+A1 (per G3 anchor + R2-3 + r3 AMB-11):
     direction_session = first session whose 16:00 ET close occurs STRICTLY
     after the acceptance instant (per name);
+    direction = sign(raw close - raw open); a tie (0) EXCLUDES + counts;
     entry  = open of the NEXT session after the direction session;
     exit   = close of session entry+H-1 (H raw sessions);
     insufficient sessions -> exit at last bar, DELISTING_EXIT.
 
-A2 (per G3 anchor + R2-3):
+A2 (per G3 anchor + R2-3 + r3 D-1):
     entry  = first session whose 09:30 ET open occurs STRICTLY after the
     acceptance instant; hold/exit same convention.
 
-R2-2: any div/split ex-date inside [entry .. exit] -> event excluded.
-B1 (raw-close ratio >= 9, both directions) and X1 (volume 0) make a bar
-unfillable: at ENTRY the event is excluded+counted; at EXIT the exit rolls
-forward to the next fillable bar (my pre-registered reading, see
-ambiguities.md AMB-07), exhausting to the last bar if none remains.
+Book-stage gates, in order (r3 AMB-13 ordering): entry-bar B1/X1 laws
+(exclude+count) -> nominal exit -> exit fillability ROLL-FORWARD (r3
+AMB-7; exhaustion = last bar + delisting flag) -> R2-2 CA exclusion on the
+FINAL calendar window (r3 AMB-15) -> DVmed60 floor at book stage (frozen
+cost contract; r3 AMB-14 leaves only the 15% cap to execution).
 """
 
 from __future__ import annotations
@@ -23,7 +26,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .divsplits import ExDateIndex
-from .panel import NamePanel, PanelStore
+from .panel import DV_FLOOR, MIDDAY_BAND_MULT, OPEN_BAND_MULT, NamePanel, PanelStore
 from .tzlaw import parse_acceptance
 
 
@@ -41,6 +44,10 @@ class SequencingResult:
     exit_rolled: bool = False
     ca_detail: dict = field(default_factory=dict)
     notes: list[str] = field(default_factory=list)
+    dvmed60_decision: float | None = None
+    dv_band_class: str | None = None
+    cost_entry_bps_x1: float | None = None
+    cost_exit_bps_x1: float | None = None
 
 
 def _hold_exit_index(entry_idx: int, hold: int, n_sessions: int) -> tuple[int, bool]:
@@ -88,7 +95,12 @@ def build_event_record(
         entry = panel.next_session_after(d_session)
         if entry is None:
             return SequencingResult(status="DROPPED", reason="NO_ENTRY_SESSION")
-        direction = _sign(panel.close[panel.index[d_session]] - panel.open[panel.index[d_session]])
+        diff = panel.close[panel.index[d_session]] - panel.open[panel.index[d_session]]
+        direction = _sign(diff)
+        if direction == 0:
+            # r3 AMB-11 CANONICAL: direction tie 0 -> EXCLUDED, counted
+            return SequencingResult(status="EXCLUDED",
+                                    reason="ZERO_DIRECTION_SESSION_MOVE")
     else:
         entry = panel.first_session_with_open_after(epoch)
         if entry is None:
@@ -115,6 +127,10 @@ def build_event_record(
             exit_rolled = True
             notes.append("EXIT_ROLLED_B1X1")
         elif not rolled_ok:
+            # r3 AMB-7 CANONICAL: exhaustion = LAST bar + delisting flag —
+            # the exit moves to the last bar (delta r3 fix; the pre-r3
+            # reading kept the exit at the failing bar).
+            exit_idx = rolled_idx
             delisting = True
             notes.append("EXIT_ROLL_EXHAUSTED_AT_LAST_BAR")
 
@@ -125,6 +141,20 @@ def build_event_record(
                                 entry_session=panel.dates[entry_idx],
                                 exit_session=panel.dates[exit_idx],
                                 delisting_exit=delisting, ca_detail=ca)
+
+    # ---- DVmed60 eligibility floor at book stage (r3-delta) --------------
+    # Frozen cost contract X1/X2 fill-feasibility: below the $2M DVmed60
+    # floor the entry cannot be filled -> excluded + counted. (Only the
+    # 15%-notional CAP is an execution-stage law — r3 AMB-14.)
+    dvmed = panel.dvmed60(entry_idx)
+    band_class, base_bps = panel.band_class_bps(dvmed)
+    if dvmed is None or dvmed < DV_FLOOR:
+        return SequencingResult(status="EXCLUDED", reason="BELOW_DV_FLOOR_AT_DECISION",
+                                direction_session=d_session,
+                                entry_session=panel.dates[entry_idx],
+                                exit_session=panel.dates[exit_idx],
+                                delisting_exit=delisting, ca_detail=ca,
+                                dvmed60_decision=dvmed, dv_band_class=band_class)
 
     return SequencingResult(
         status="BOOKED",
@@ -138,6 +168,10 @@ def build_event_record(
         exit_rolled=exit_rolled,
         ca_detail=ca,
         notes=notes,
+        dvmed60_decision=dvmed,
+        dv_band_class=band_class,
+        cost_entry_bps_x1=base_bps * OPEN_BAND_MULT,
+        cost_exit_bps_x1=base_bps * MIDDAY_BAND_MULT,
     )
 
 

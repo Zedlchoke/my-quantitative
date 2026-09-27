@@ -43,6 +43,17 @@ def sha256_file(path: str) -> str:
     return h.hexdigest()
 
 
+def _load_reuse_risk_ciks(n4_path: str) -> set[str]:
+    """CIKs flagged ticker_reuse_risk in the N4 map (record field parity
+    with the lane I engine)."""
+    out = set()
+    for line in open(n4_path):
+        r = json.loads(line)
+        if r.get("ticker_reuse_risk"):
+            out.add(r["cik"])
+    return out
+
+
 def verify_pins() -> dict:
     """Fail-closed digest check of the pinned staged artifacts (P-13 pattern)."""
     pins = {}
@@ -89,10 +100,13 @@ def main(argv=None) -> int:
 
     panels = PanelStore(PANEL_DIR)
     exdates = ExDateIndex(DIV_DIR, SPLITS_DIR)
+    reuse_risk = _load_reuse_risk_ciks(N4_MAP)
 
     # ---------------- A1 ----------------
-    a1_anchor = build_a1_book(A1_EVENTS, panels, exdates, "anchor")
-    a1_n2 = build_a1_book(A1_EVENTS, panels, exdates, "n2")
+    a1_anchor = build_a1_book(A1_EVENTS, panels, exdates, "anchor",
+                              reuse_risk_ciks=reuse_risk)
+    a1_n2 = build_a1_book(A1_EVENTS, panels, exdates, "n2",
+                          reuse_risk_ciks=reuse_risk)
 
     # ---------------- A2 ----------------
     a2_records, a2_census, a2_excluded, a2_droplog = build_a2_book(
@@ -152,13 +166,16 @@ def main(argv=None) -> int:
         "input_pins": pins,
         "panel_dir": PANEL_DIR,
         "params": {
-            "A1_hold": 5, "A1_anchor_strata": ["S1", "S3", "S4"],
+            "A1_hold": 5, "A1_anchor_strata": ["S1", "S3", "S4", "WKND"],
             "A1_N2_strata": ["S2"], "A2_hold": 10,
             "A2_buy_value_floor_usd": 100000.0,
-            "direction_rule_A1": "first session close strictly after acceptance; entry next session open",
-            "direction_rule_A2": "first session open strictly after acceptance",
+            "direction_rule_A1": "first session close strictly after acceptance; entry next session open; direction tie 0 excluded+counted (r3 AMB-11)",
+            "direction_rule_A2": "first session open strictly after acceptance (r3 D-1)",
+            "weekend_law": "weekend acceptances are anchor members, stratum WKND (r3 AMB-1)",
             "CA_window": "inclusive [entry..exit], calendar-interval ex-date compare",
-            "bar_laws": "B1 raw-close ratio >= 9 both directions; X1 volume 0; exit rolls forward",
+            "bar_laws": "B1 raw-close ratio >= 9 both directions; X1 volume 0; entry failure excludes, exit rolls forward (r3 AMB-7)",
+            "dv_floor": "DVmed60 >= $2M at book stage (frozen cost contract); 15% cap stays execution-stage (r3 AMB-14)",
+            "unpriced_A2": "unpriced XML rows drop+count, no imputation (r3 AMB-6)",
         },
         "outputs": outputs,
         "r2_6_note": "no aggregate of trade returns computed; decision/fill records + population counts only",
