@@ -32,6 +32,22 @@
   `GO DTP CX SOLUSDT C1 SCORED EXECUTION` chỉ có hiệu lực khi được owner gõ
   tại gate của nó SAU A7 prelaunch.
 
+## Phạm vi freeze GO-1 hoàn tất (owner "tiếp tục" 2026-09-27; A1 ~08:05Z)
+
+- Corpus I001 build xong theo protocol đóng băng + addendum r2 (constants +
+  supplementary round): **12 entries admissible / 6 authors, floor PASS,
+  37/50 fetches**, mù outcome tuyệt đối (không panel, không outcome, 0
+  ex-post recap).
+- **Tòa skeptic R2: 11/11 codified rules F0_KILLED** — death ledger có 38
+  family_id dẫn chứng (RANGE_FADE, BREAKOUT_CONTINUATION, TREND_PULLBACK,
+  PATTERN_REVERSAL_LEVEL, NEWS_FADE); measured 100% vs kỳ vọng pre-registered
+  ≥80%; K-COST không phải luật chết nào (chết hết ở skeleton/payer/information).
+- **FREEZE R2 EMPTY. 0/18 cells, 0 PnL. GO-2 MOOT — phrase chưa tiêu.**
+- Khuyến nghị verdict: `NO_ELIGIBLE_PROPOSAL` kèm câu scope giới hạn bắt
+  buộc (FREEZE_R2.json); chờ owner mở A7 terminal + two-half close.
+- Child terminal-of-scope HEAD `03d685ef` (branch
+  `orca/dtp-cx-solusdt-c1-integration`).
+
 ## Kết cục GO-1 (A1 tích hợp 2026-09-27 ~06:40Z — dừng đúng phạm vi)
 
 - Cycle đăng ký ACTIVE_LIGHT 0/18 (registry_sha `14b654b7…` lúc register);
