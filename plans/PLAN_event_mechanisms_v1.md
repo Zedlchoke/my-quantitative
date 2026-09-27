@@ -72,10 +72,10 @@ re-runs cheaply (paper court).
 | D2 | **Form 4 insider event flow** on acceptance clock (role/value conditioning; NOT 10b5-1 plan-cadence re-label) | stocks | owner instruction 2026-09-27 verbatim ("Form 4"); frontier F1 |
 | D3 | **Corporate-action PIT rebuild** → honestly-adjusted state + ex-date event book (fixes L-SAMV1-1; dated identity joins N4) | stocks | owner instruction 2026-09-27 verbatim ("corporate-action PIT"); DFV1 gaps N3/N4 |
 | D4 | **FTD (fails-to-deliver) × price** cross | stocks | DFV1 frontier F1 (stocks filing-flow family); control-plane precedent DEU Lane S |
-| D5 | Crypto **funding settlement / forecast-funding surprise** events | crypto | plan_at.md §3C (owner-reviewed 2026-09-25); DFV1 N8 |
-| D6 | Crypto **liquidation / forced-flow cascade** events | crypto | plan_at.md §3C; DFV1 O2 |
-| D7 | Crypto **delta-neutral basis/carry convergence** events | crypto | plan_at.md §3B; ERP1-TRACKB ancestry |
-| D8 | FX **after-cost event families** (macro-release clock, session/liquidity events) | fx | plan_at.md §3A; DFV1 F3 (BLOCKED on R1) |
+| D5 | Crypto **funding settlement / forecast-funding surprise** events | crypto | plan_at.md §3C — **DRAFT, owner approval UNVERIFIED** (erratum E-P1; only D1/D2/D3 are owner-verbatim today) |
+| D6 | Crypto **liquidation / forced-flow cascade** events | crypto | plan_at.md §3C — DRAFT, approval UNVERIFIED (E-P1); DFV1 O2 |
+| D7 | Crypto **delta-neutral basis/carry convergence** events | crypto | plan_at.md §3B — DRAFT, approval UNVERIFIED (E-P1); ERP1-TRACKB ancestry |
+| D8 | FX **after-cost event families** (macro-release clock, session/liquidity events) | fx | plan_at.md §3A (DRAFT, approval UNVERIFIED — E-P1; §3A is liquidity provision, partial label mismatch) + DFV1 F3 (BLOCKED on R1) |
 
 Screening law (per direction, owner's eight required fields): payer; why
 they must pay; PIT observable at decision time; when the edge expires; cost

@@ -208,24 +208,59 @@ needs R2 replication source. Neither is this cycle.**
 
 ---
 
-## Skeleton-merge (court, after skeptic report — see SKEPTIC_REPORT)
+## Skeleton-merge + COURT RULING (G1 final, 2026-09-27 — skeptic report applied)
 
-To be completed with the skeptic's verdicts. A1's proposal: D1 and D2 share
-the acceptance-clock information layer but have different event content and
-payers (issuer filing flow vs insider transaction flow) — they remain two
-identities only if their F-0 skeletons differ; otherwise merge into ONE
-"acceptance-clock event book" identity with two event-source arms. D3's
-event book merges into the same skeleton family if its falsifier (D1-clock
-WITHOUT action content) is not distinct; its N3/N4 data-plane repair
-survives regardless as G2 work.
+Skeptic report: `SKEPTIC_REPORT.md` (fresh-context subagent, VETO power,
+independent reads incl. substrate re-measurement). Court = A1 applying the
+skeptic's rulings. Three material corrections to the A1's draft:
 
-## A1 recommendation to the court (not final)
+1. **D3's ex-date event book VETOED** (skeptic): the payer story is
+   mechanically false — index weights are split-invariant, so index funds
+   do not trade at split ex-dates; no forced flow exists for the named
+   classes; the residual pattern collapses into measured-dead reversal
+   classes (SAMV1-C-REVERSAL5, SFV3-A5-IDIO-SHOCK-REVERSAL, NG6 reversal_5d
+   ec 0.201) and the anomaly is Q-6-published. The **N3/N4 data-plane
+   repair survives as G2 authority work** (it fixes L-SAMV1-1 for FUTURE
+   families) but carries no scored identity this cycle.
+2. **D2's amendment-lag (4/A) arm DROPPED at freeze** (skeptic): SFNG2-A4-
+   P1/P2 died fail-closed on exactly that form (v11 cadence-latency
+   UNMEASURABLE — zero panel entities with >460d gaps; Q-6 = 0 bookable
+   2025 decisions), the 4/A corpus is frozen at 3,062 accessions, and
+   www.sec.gov is now 403 — no lawful widening. D2 keeps ONLY the
+   original-filing acceptance-clock flow.
+3. **D1 KEEP is CONDITIONAL**: reachability (measured 200) ≠ sufficiency —
+   the 1000-recent cap + paged `filings.files` history depth over the
+   death-inclusive issuer cohort is UNMEASURED; a staged G2 probe must
+   measure acceptance-history depth before identity freeze becomes
+   operable. Stocks execution-cost components are 0/10 measured ⇒ all G6
+   ceilings are PROXY-PRIOR (labeled as such; measured-beats-stated Q-8
+   applies).
 
-- KEEP: D1 (priority 1), D2 (priority 2), D3 data-plane + conditional event
-  book (priority 3) — all stocks, matching the owner's stated priority.
-- VETO-RECOMMEND: D5, D7 (ancestry identity, measured rho law).
-- BLOCKED_DATA: D6 (no PIT observable; owner action R4/O2).
-- CONTROL-PLANE-ONLY: D4 (posting-bound law).
-- NOT SCORED: D8 (dead class + cost-blocked; owner actions R1/R2 recorded).
-- Identities surviving to G3: ≤3, exactly the stocks set unless the
-  skeptic's veto or G2 data authority changes the picture.
+**Skeleton-merge ruling:** D1 and D2 share ONE information layer (EDGAR
+acceptance clock) and one F-0 skeleton (EDGAR filing event → next-open →
+multi-day drift book) but differ on payer + information payload (2 of 3
+axes) with different ancestry fences (NG6 event-forms vs SFNG1
+plan-cadence) ⇒ **two distinct identities, one shared control battery**
+(date-only baseline; permuted-acceptance placebo; clock-only shadow per
+Q-7/Q-11). Preregistered merge condition: if D2's drift is
+indistinguishable from generic filing-flow drift (representation-rho > 0.20
+vs D1 signal), D2 collapses into D1 as a neighbour arm at the G3 court.
+
+| Direction | A1 verdict | Skeptic verdict | COURT FINAL | One-line reason |
+|---|---|---|---|---|
+| D1 | KEEP (prio 1) | KEEP (conditions) | **KEEP → G2/G3 conditional on depth probe** | acceptance-minute clock = the untested N2 information layer; NG6 events verified date-based, no skeleton collision |
+| D2 | KEEP (prio 2) | KEEP (fenced) | **KEEP → G3 WITHOUT amendment arm** | payer/payload distinct from D1 (≥2/3 axes); SFNG1 boundary = plan-cadence observable, not insider-flow |
+| D3 | KEEP (prio 3, data-plane + event book) | SPLIT: data-plane KEEP, event book VETO | **data-plane G2 work only; event book VETOED** | payer story mechanically false; residual = dead reversal classes |
+| D4 | control-plane-only | concur | **CONTROL-PLANE-ONLY** | P-26 ≥17d posting bound kills every PIT flow form (DFV1 Lane S law) |
+| D5 | veto-recommend | VETO | **VETOED** (ancestry identity) | TRACKB1 rho 1.0000; FUNDJUMP 0.2439; SRLV both directions; P-27/P-29 |
+| D6 | BLOCKED_DATA | concur (verified no keyless PIT source exists) | **BLOCKED_DATA** | no PIT liquidation tape in authority; O2 owner-gated; candle-inference forbidden |
+| D7 | veto-recommend | VETO | **VETOED** (plane closed) | TRACKB1 reopening conditions unmet (needs non-funding PIT axis = D6, itself blocked) |
+| D8 | not-scored | concur | **NOT SCORED** (dead class + cost-blocked) | release-clock dead two tracks; ERP1 floor; owner verbatim FX ban |
+
+**Identities to G3: exactly 2 (EMV1-A1 filing-flow acceptance-clock,
+EMV1-A2 insider-flow acceptance-clock), both stocks** — under the ≤3 cap,
+honoring the owner's stocks priority. NO_ELIGIBLE_PROPOSAL remains the
+lawful terminal if G2 kills a survivor. Skeptic substrate re-measurement
+recorded: v13 archive present (345,150 Form-4 XMLs + 2,168+2,168 div/splits
+files), NG6 panel archive present, eod_cache 111,323 files on disk but
+sha-unpinned (N9 defect carried).
