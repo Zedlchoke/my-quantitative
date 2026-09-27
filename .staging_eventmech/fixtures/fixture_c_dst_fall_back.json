@@ -1,0 +1,26 @@
+{
+  "fixture_id": "EMV1-S7-c",
+  "cycle_id": "EVENT-MECHANISMS-V1",
+  "law": "G3_FREEZE EMV1-A1 strata + G3_FREEZE_ADDENDUM_r2 R2-4 (zoneinfo America/New_York, DST fixtures mandatory)",
+  "description": "DST fall-back date (2025-11-02, first Sunday of November, clocks 02:00 EDT -> 01:00 EST). Acceptance stamped 22:30Z. Correct zoneinfo reading: 17:30 ET (EST, UTC-5). The 21:30Z stamp would be the WRONG reading of '17:30 ET' (fixed UTC-4 offset applied after fall-back).",
+  "acceptance_utc": "2025-11-02T22:30:00.000Z",
+  "expected": {
+    "et_local": "2025-11-02T17:30:00-05:00",
+    "et_offset_hours": -5,
+    "dst_awareness_check": {
+      "correct_reading_utc_offset": "-05:00 (EST in effect after fall-back)",
+      "misread_if_fixed_utc_minus_4": "2025-11-02T16:30:00-04:00 from 21:30Z — rejected; zoneinfo must yield -05:00 for 22:30Z on this date",
+      "note": "both 21:30Z (16:30 ET) and 22:30Z (17:30 ET) fall inside [16:00,20:00) on this date, but ONLY 22:30Z is the correct reading of a '17:30 ET' acceptance; the fixture pins the offset, not just the bucket"
+    },
+    "is_weekend": true,
+    "weekend_bucket": true,
+    "weekday_of_acceptance": "Sunday",
+    "stratum": "S3",
+    "stratum_note": "clock stratum S3 [16:00,20:00) ET; G3 law buckets weekend acceptances SEPARATELY, so the effective analysis bucket = weekend+S3 (both flags recorded; engine must not collapse weekend into a weekday stratum)",
+    "direction_session": "next_session_after_acceptance",
+    "direction_session_expected_date": "2025-11-03",
+    "entry_session_expected_date": "2025-11-04",
+    "hold_sessions": 5
+  },
+  "notes": "Fall-back dates are always Sundays (02:00 local). Spring-forward dates are always Sundays as well; engine fixtures must cover both. 2025-11-03 is a Monday session day; 2025-11-04 Tuesday."
+}
