@@ -1,5 +1,20 @@
 # GO RECORD — DTP-CX-SOLUSDT-C1 (program DAYTRADE-PLAYBOOKS-PROGRAM-V1)
 
+## TERMINAL (two-half close 2026-09-27, đo 08:15Z–08:4xZ)
+
+- Verdict **`NO_ELIGIBLE_PROPOSAL`** theo owner directive (A7 xác nhận toàn
+  bộ bằng chứng): A7 terminal `CONFIRM_WITH_FINDINGS` (0 blocker; 18/18
+  recompute exact) → ERRATA E1–E4 → A7 re-review `CONFIRM_CLOSE`. Registry
+  flip TERMINAL qua researchctl; child terminal commit `f85cb6b9`; root close
+  commit (MAP bullet + LESSONS P-30 + FAMILY_FAILURES 2 rows:
+  `DTPCX1-I002-LEAD-LAG-DIFFUSION`, `DTPCX1-I001-PLAYBOOK-CORPUS`).
+- Ghi đúng luật: **0 scored cells (0/18), 0 PnL, S1 SEALED, GO-2
+  REGISTERED_NOT_CONSUMED** (moot — freeze rỗng). Câu giới hạn phạm vi
+  canonical nằm trong CYCLE_VERDICT.md.
+- Chương trình: viability review BTCUSDT (owner-directed, read-only) kết luận
+  **`PARK_DTP_NO_NEW_FRONTIER`** + RC-1..RC-4 — KHÔNG đăng ký
+  DTP-CX-BTCUSDT-C1. Xem `VIABILITY_REVIEW_BTCUSDT.md`.
+
 ## GO-1 — consumed verbatim
 
 - **Phrase (verbatim, owner-typed):** `GO DTP CX SOLUSDT C1 COUNCIL AND FREEZE`

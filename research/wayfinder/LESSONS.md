@@ -1073,3 +1073,26 @@ terminal with the named single owner action — no lane burn, no audit arc.
   quả lặp lại. Tiêu 1/100 slot registry cho mỗi lần thử lại gọi là tiến
   bộ chỉ khi có trục mới (payer/information/risk) — chi phí cơ hội của
   slot là phần đo được của multiple-testing.
+
+## P-30 — DTP-CX-SOLUSDT-C1 (2026-09-27): đo death rate của folklore playbook bằng corpus mù outcome + tòa F-0 — và stamp trong artifact phải ĐO, không ước lượng
+
+- **Corpus route là nhạc cụ pre-PnL hợp lệ và rẻ**: 12 entries dated / 6
+  authors + tòa F-0 cho death ledger 11/11 (100% vs ≥80% pre-registered),
+  toàn bộ ở 0 scored cell. Điều kiện hiệu lực: protocol đóng băng trước
+  (nguồn dated, truncation tại publication timestamp, cấm recap/outcome),
+  floor đủ (≥12 entries/≥5 authors) trước khi xếp hạng, và khi thiếu floor →
+  cấp bổ sung CÓ GIỚI HẠN được pin công khai TRƯỚC khi chạy (addendum r2,
+  ≤20 fetch) — không nới floor, không chạy tiếp ngầm.
+- **A7 terminal F-1 (MEDIUM) bắt lỗi ghi stamp ước lượng**: artifact khai
+  "06:40Z/08:05Z/09:30Z" trong khi commit thật 06:34:25Z/07:41:01Z. Toàn vẹn
+  nội dung không ảnh hưởng (sha cross-pins chứng minh thứ tự độc lập), nhưng
+  luật rút ra: **mọi timestamp viết vào artifact phải là số đo `date -u` tại
+  lúc ghi** — chính session này còn tái phạm một lần khi ghi FAMILY_FAILURES
+  (tự bắt và sửa bằng số đo trước commit). Ước lượng thời gian là một dạng
+  "stated beats measured" đảo ngược của Q-8.
+- **"Trục dữ liệu chưa test" ≠ "cơ chế mới"** (viability review BTC): V16 ghi
+  "aggTrades sub-daily chưa test" — đúng theo dữ liệu, nhưng mọi skeleton gọi
+  tên được trên trục đó đã chết đo (absorption hai chiều, run-persistence
+  daily, momentum mọi cadence); F-0 bỏ observable còn lại shape ⇒ same
+  family. Bằng chứng mới phải là payer/information/risk shape, không phải
+  granularity.

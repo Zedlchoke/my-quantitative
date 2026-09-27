@@ -1,3 +1,50 @@
+## Sprint state (synced at the DTP-CX-SOLUSDT-C1 terminal, 2026-09-27)
+
+- **DAYTRADE-PLAYBOOKS-PROGRAM-V1 opened (charter GO-1 packet commit `9ba72e6c`;
+  A7 plan review r1 AUTHORIZED_WITH_FINDINGS, F1–F11 remediated pre-commit) and
+  its FIRST pair-child DTP-CX-SOLUSDT-C1 CLOSED → `NO_ELIGIBLE_PROPOSAL`**
+  (2026-09-27; branch `orca/dtp-cx-solusdt-c1-integration` terminal `f85cb6b9`;
+  budget **0/18 scored cells, 0 PnL anywhere, trial_ledger header-only, S1
+  SEALED_UNTOUCHED, GO-2 phrase REGISTERED_NOT_CONSUMED (moot — freeze empty);
+  no orders, no shadow/worker touched**; A7 terminal `CONFIRM_WITH_FINDINGS`
+  (18/18 decisive recompute exact; 38 distinct family citations verified) →
+  ERRATA E1–E4 (clock-note: artifact stamps must be MEASURED, not estimated) →
+  A7 re-review `CONFIRM_CLOSE`): the owner-directed day-trading-playbook
+  program (independent of running shadows; taxonomy-first with 11/13 classic
+  playbook rows measured-dead pre-registration; FX track DORMANT pending
+  reopener R1/R2/R3/R5; crypto no-candle→order-flow law enforced).
+  - **I002 BTC→SOL 1m lead-lag (the only taxonomy OPEN-KILLRISK row) killed
+    pre-PnL by 3 independent laws WITH power in hand**: SOL reprices within
+    the signal minute (median 17.8–62.8 bps vs next-minute −0.245..0.000);
+    ceiling×power grid jointly EMPTY (net −9.97..−11.47 bps/RT @1.0× vs
+    measured RT ladder 11.92/17.88/23.84); representation rho 0.2341–0.5085
+    (>0.20 at ALL θ). aggTrades budget-widening does NOT revive. FAMILY_FAILURES
+    `DTPCX1-I002-LEAD-LAG-DIFFUSION`.
+  - **I001 outcome-blind annotated playbook corpus (generator route): death
+    rate measured 100%** — 12 admissible dated entries / 6 authors (floor PASS
+    after a pre-declared bounded supplement, addendum r2, 37/50 fetches;
+    Reddit/TradingView walls logged, not breached; no price panel ever
+    loaded); skeptic court R2 killed 11/11 codified rules by skeleton
+    collision (range-fade / breakout-continuation / trend-pullback /
+    H&S-with-break = breakdown-continuation rename / news-fade; 38 distinct
+    family_ids; K-COST fired on none). Scope-bounded close (mandatory sentence
+    in CYCLE_VERDICT — NOT a claim that "day trading is dead"). FAMILY_FAILURES
+    `DTPCX1-I001-PLAYBOOK-CORPUS`.
+  - Durable assets: staged SOL 1m/15m/mark/index + BTC 1m corpora (404.6MB,
+    sha-pinned, all-ms PIT-verified); RT cost ladder + ceiling×power grid
+    template; frozen annotation protocol + corpus method; court scripts
+    (A7-verified reproducible).
+  - **Program decision (viability review, owner-directed): BTC next-pair
+    request → `PARK_DTP_NO_NEW_FRONTIER`** — no BTC candidate differs on ≥2/3
+    anti-variant axes with PIT+cost authority (V16's "sub-daily aggTrades" is
+    a data axis, not a mechanism: every nameable skeleton on it is
+    measured-dead; BTC spread census NOT_RUN = weaker cost authority than
+    SOL's). Reopen via RC-1 new PIT information layer / RC-2 owner plan naming
+    a mechanism / RC-3 FX reopener (DTP-FX AUDUSD is the program's lawful next
+    surface) / RC-4 program-level NO_CANDIDATE close. Evidence:
+  `research/control/DAYTRADE-PLAYBOOKS-PROGRAM-V1/VIABILITY_REVIEW_BTCUSDT.md`.
+  - Denominators UNCHANGED (0 scored cells; P-9).
+
 ## Sprint state (synced at the DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1 terminal, 2026-09-26)
 
 - **DATA-FOUNDATION-FX-CRYPTO-STOCKS-V1 CLOSED → `DATA_FOUNDATION_V1_FOUNDATION_READY_FOR_NARROW_RESEARCH__BLOCKED_WITH_ACQUISITION_RUNBOOK`**
