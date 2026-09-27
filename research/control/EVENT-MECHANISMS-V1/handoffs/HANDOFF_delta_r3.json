@@ -1,0 +1,70 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "delta-r3",
+ "cycle_id": "EVENT-MECHANISMS-V1",
+ "role": "remediation_and_rerun_g5",
+ "lane": "integration (lane I engine + lane X engine_x)",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/event-mechanisms-v1/integration",
+ "branch": "orca/event-mechanisms-v1-integration",
+ "dispatch_sha": "33467159149da8451d43ec4a820c099df16ff424",
+ "actual_start_sha": "33467159149da8451d43ec4a820c099df16ff424",
+ "commit_sha": "f32951a33b62680e53a7c181c61ff8a8705a358a",
+ "final_commit_note": "f32951a3 = the single substantive delta commit (46 files). The handoff JSON itself lands in a small follow-up commit per the established lane I/lane X pattern; nothing else is or will be committed by this lane.",
+ "objective_summary": "Remediation + re-run to the r3 canonical reading (G3_FREEZE_ADDENDUM_r3, the binding adjudication). Lane I engine: D-1 fixed (A2 entry = first session open strictly after the acceptance instant, R2-3 verbatim; A2 direction_session null), D-2 fixed (div/split stems resolve case-insensitively, collision-counted; loader census 4,336 files / 0 collisions), AMB-1 (weekend acceptances are anchor members, stratum WKND), AMB-7 (exit rolls forward on B1/X1 failure; exhaustion = last permissible bar + delisting_exit; EXIT_BAR exclusion retired), AMB-9 (fold by ET-local acceptance date), AMB-13/15 (CA on the final window as a calendar-interval compare), parser accepts ISO-offset stamps for control records; AMB-10/11/14/16 + 2/3/4/5/6/8/12 verified already-canonical and pinned by 13 new regression tests. Lane X: AMB-1 WKND inclusion (N2 still S2-only), AMB-6 unpriced A2 rows drop+count (imputation removed), AMB-11 direction ties excluded+counted, DVmed60 floor applied at book stage with frozen band fields carried on records (closes the 13,100-record DV divergence), panel ingestion guards aligned to lane I (closes the panel-guard DATA_VARIANT class), direction recorded LONG/SHORT, and fix iteration 1: roll EXHAUSTION moves the exit to the LAST bar + delisting flag (r3 AMB-7 verbatim) — found at re-comparison, fixed, rebuilt. Rebuilds: lane I 41,444 A1 + 6,028 A2 records; lane X 14,098/14,565/2,837. Re-comparison (reconciliation/compare_r3.py, records only): A1-N2 key sets IDENTICAL (14,565=14,565); A1 anchor 4 key diffs / 3 field diffs; A2 secondary match 2,271 with 14 field diffs; ALL 789 residuals classified (27 fold force-flat convention + 599 A2 issuer-day basis + 163 A2 value-aggregation/unpriced-drop semantics — all unruled at r3), 0 DEFECT, 0 unattributed, 0 DATA_VARIANT. Final verdict G5_PASS_RESIDUALS_CLASSIFIED (G5_VERDICT.md). R2-6 held: no PnL/aggregate at any depth.",
+ "changed_paths": [
+  "research/control/EVENT-MECHANISMS-V1/G3_FREEZE_ADDENDUM_r3.md (copied verbatim from root adjudication, sha 53c3cf16…)",
+  "research/control/EVENT-MECHANISMS-V1/G5_VERDICT.md",
+  "research/control/EVENT-MECHANISMS-V1/reconciliation/compare_r3.py",
+  "research/control/EVENT-MECHANISMS-V1/reconciliation/comparison_results.json",
+  "research/control/EVENT-MECHANISMS-V1/engine/emv1/{clock,loaders,book,arms}.py",
+  "research/control/EVENT-MECHANISMS-V1/engine/run/build_books.py",
+  "research/control/EVENT-MECHANISMS-V1/engine/tests/test_r3_delta.py (13 new r3 tests)",
+  "research/control/EVENT-MECHANISMS-V1/engine/evidence/ (books+controls+rho+costs+truncation rebuilt; determinism_full_run.json, pytest_run.txt)",
+  "research/control/EVENT-MECHANISMS-V1/engine/dryrun/ (manifest + placeholder ledger rebuilt)",
+  "research/control/EVENT-MECHANISMS-V1/engine/REPORT.md (dated delta section APPENDED; history untouched)",
+  "research/control/EVENT-MECHANISMS-V1/lane_x/engine_x/{panel,sequencing,a1_books,a2_books,run_books}.py",
+  "research/control/EVENT-MECHANISMS-V1/lane_x/tests/{helpers,test_a1_book,test_a2_book,test_sequencing}.py",
+  "research/control/EVENT-MECHANISMS-V1/lane_x/output/ (6 artifacts rebuilt; double-run byte-identical)",
+  "research/control/EVENT-MECHANISMS-V1/lane_x/evidence/{determinism.txt,pytest_run.txt}"
+ ],
+ "tests": [
+  {"cmd": "lane I: pytest engine/tests/ (root .venv)", "result": "PASS 35/35 (22 pre-delta + 13 new r3-delta tests: D-1 open-anchored entries incl. boundary strictness, D-2 case-insensitive CA resolution, AMB-1 WKND membership, AMB-7 roll + exhaustion + fold-cap interaction, AMB-9 ET-local folds, AMB-11 tie, AMB-15 non-session ex-dates, AMB-6 unpriced drop)"},
+  {"cmd": "lane X: pytest lane_x/tests/ (root .venv)", "result": "PASS 42/42 (37 pre-delta updated to r3 + 5 new: WKND booking, tie exclusion, DV floor, unpriced drop, exhaustion-to-last-bar)"},
+  {"cmd": "lane I truncation replay (E6d)", "result": "PASS: seed 7, 300-event sample + 18 fold-boundary events = 318/318 V1 entry-prefix and 318/318 V2 full-record byte-identical on the REBUILT books"},
+  {"cmd": "lane I full-chain determinism double-run", "result": "PASS: 10/10 output files byte-identical across two full chains (build_books, run_controls, run_rho, run_costs, run_truncation)"},
+  {"cmd": "lane X determinism double-run", "result": "PASS: 6/6 outputs byte-identical (evidence/determinism.txt)"},
+  {"cmd": "lane I dry-run proofs (E8)", "result": "PASS: pairwise-distinct record IDs TRUE (15 pairs); recursive no-PnL scan CLEAN over 16 output files"},
+  {"cmd": "r3 re-comparison (reconciliation/compare_r3.py)", "result": "A1_anchor I=14,096 X=14,098 inter=14,095 field-identical 14,092/14,095 (99.979%); A1_N2 I=14,565 X=14,565 inter=14,565 key sets IDENTICAL, field-identical 14,561/14,565 (99.973%); A2_anchor I=2,903 X=2,837 inter=2,271 (structural day-basis), secondary match on (cik, acceptance_utc) 2,271 matched, field-identical 2,257/2,271 (99.383%); residual classes: force-flat 27, A2 issuer-day basis 599, A2 value-aggregation/unpriced-drop 163; DEFECT 0; UNATTRIBUTED 0; DATA_VARIANT 0"},
+  {"cmd": "staged digest pins", "result": "PASS fail-closed on both lanes (a1_events a6a5bb6e…/54,941 rows; form4_stream 6ac2cd5b…/546,039 rows; n4_map 537cd5af…/2,178; NG6 panel manifest 2,169 files; div/split substrate manifests)"}
+ ],
+ "authority_claims": [
+  "G3_FREEZE_ADDENDUM_r3.md is the binding adjudication for this delta; every one of the 16 AMB rulings + D-1/D-2 dispositions is applied in BOTH engines; byte-identity reached on everything the 16 rulings govern",
+  "The DV-floor-at-book-stage alignment of lane X rests on G3_FREEZE shared control 5 (frozen cost contract X1/X2 fill-feasibility 'applied unmodified'; the $2M DVmed60 floor is part of that contract) as narrowed by r3 AMB-14 (only the 15% notional cap is execution-stage); not an agent-invented constant",
+  "Residual classes (fold force-flat at book stage; A2 issuer-day basis; A2 unpriced-drop granularity) were NOT ruled by r3 and are returned to A1 with mechanical evidence — no canonical reading was invented by this lane",
+  "Fix loop discipline: exactly 1 fix iteration used of max 2 (lane X exhaustion-exit semantics), found and fixed before any verdict was issued",
+  "R2-6 held: both rebuilds and the re-comparison produce decision/fill records, exclusion censuses and population counts only; zero return/expectancy/PnL aggregates at any depth (machine-scanned)",
+  "Worktree/branch discipline: all work on orca/event-mechanisms-v1-integration between dispatch HEAD 33467159 and f32951a3; pathspec staging only (raw uncompressed .jsonl record tables left untracked per convention); no push/merge; ledgers/registries/root checkout untouched; heavy A2 joins run after researchctl locks inspect returned FREE_PROVEN"
+ ],
+ "known_limitations": [
+  "Fold force-flat at book stage remains a lane I convention (27 residual records incl. 2 A2 keys): lane I never lets a hold window cross its fold end; lane X applies raw H-session windows. Whether fold isolation lives in decision records or in G4 evaluation is unruled at r3 — returned to A1",
+  "A2 issuer-day basis remains divergent (lane I: (cik, UTC acceptance date); lane X: (cik, transaction_date)) — unruled at r3; additionally the unpriced-drop granularity differs (row-level vs transaction-level, 163 residual records); both are moot for scoring this cycle because A2 is NOT_RUN_THIN per F-ADJ-1",
+  "A2 anchor populations: lane I 2,903 / lane X 2,837 with F1 = 0 on both (substrate form4_stream spans 2018-01..2025-05; pre-2018 XML re-fetch is www.sec.gov 403-blocked BLOCKED_DATA). Immutable floor >=100/fold FAILS on F1 -> A2 identity = NOT_RUN_THIN; doors remain owner-only (GA-1 unblock or substrate-honest re-freeze)",
+  "Weekend-bucket A1 candidates are 0 in the staged event set (SEC does not accept 10-Q/10-K on weekends) — the WKND law is fixture-tested on both lanes but not exercised by production data",
+  "lane X books lack lane I's control-variant/draw/forced_flat fields and vice versa (schema extras are record-shape variance, not decision-content variance); shared decision fields were compared byte-identically"
+ ],
+ "incidents": [
+  {"id": "R3-I1", "note": "first lane X rebuild silently ran from the wrong cwd (engine_x.run_books chdirs to --worktree, so a relative --out landed at <root>/output/) and the earlier stderr-suppressed invocation masked a ModuleNotFoundError — census read stale; detected by contradicting evidence (fresh build print vs stale census.json), stray dir removed, rebuilt with absolute --out and a fresh double-run determinism proof"},
+  {"id": "R3-I2", "note": "re-comparison found one genuine post-r3 lane X divergence: roll EXHAUSTION kept the exit at the failing bar instead of the r3 AMB-7 'last bar + DELISTING_EXIT' reading (PDCE dead-ticker zero-volume tail exposed it); fixed in fix iteration 1, regression test added, books rebuilt"},
+  {"id": "R3-I3", "note": "run_controls initially crashed because fold assignment now parses the acceptance stamp and control shadow/placebo records carry ET-offset ISO stamps (the old fold used raw string slices); parse_acceptance_utc made ISO-tolerant — production stamps parse identically"}
+ ],
+ "tree_status": "clean after the handoff commit (raw uncompressed .jsonl record tables intentionally left untracked per convention); HEAD f32951a3 (+ handoff commit) on orca/event-mechanisms-v1-integration; nothing outside research/control/EVENT-MECHANISMS-V1/ touched",
+ "workers": 0,
+ "outputs": {
+  "verdict": "research/control/EVENT-MECHANISMS-V1/G5_VERDICT.md (G5_PASS_RESIDUALS_CLASSIFIED)",
+  "comparison": "research/control/EVENT-MECHANISMS-V1/reconciliation/comparison_results.json (+ compare_r3.py)",
+  "lane_i_books": "research/control/EVENT-MECHANISMS-V1/engine/evidence/ (a1_decisions 41,444; a2_decisions 6,028 PRIMARY+controls; books committed gzip; populations in build_evidence.json)",
+  "lane_x_books": "research/control/EVENT-MECHANISMS-V1/lane_x/output/ (A1_anchor 14,098; A1_N2 14,565; A2_anchor 2,837; census.json; run_manifest.json)",
+  "lane_i_report_delta": "research/control/EVENT-MECHANISMS-V1/engine/REPORT.md (DELTA r3 section, appended)",
+  "population_census": "G5_VERDICT.md population table: A1-ANCHOR F1 3,679 / F2 4,013 / F3 2,553 / F4 3,851 = 14,096 floors PASS; A1-N2 14,565 PASS; A2-ANCHOR F1 0 -> NOT_RUN_THIN (F-ADJ-1) on both lanes"
+ }
+}
