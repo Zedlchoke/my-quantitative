@@ -1,0 +1,67 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "dtp-fx-mechcourt-datapit",
+  "cycle_id": "DTP-FX-MECHCOURT-V1",
+  "role": "data-pit-cost-census",
+  "lane": "datapit-census",
+  "dispatch_sha": "051aaae002615a68a0ee1af0d50e97325c69a930",
+  "actual_start_sha": "051aaae002615a68a0ee1af0d50e97325c69a930",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/DTP-FX-MECHCOURT-V1/fixwindow_census.py",
+    "research/control/DTP-FX-MECHCOURT-V1/fixwindow_spread_census.json",
+    "research/control/DTP-FX-MECHCOURT-V1/DATAPIT_census_REPORT.md",
+    "research/control/DTP-FX-MECHCOURT-V1/HANDOFF_D.json"
+  ],
+  "tests": [
+    {
+      "command": "shasum -a 256 on 3 bars15.parquet inputs (EURUSD shadow worktree; GBPUSD/USDJPY fx-majors worktree) + stat sizes + pyarrow footer schema/rows/first-last-ts read",
+      "result": "PASS — EURUSD 4,827,229 B sha256 9fe9e4b1...c9f2bd rows=136,485 span 2021-01-03T22:15Z..2026-09-23T23:45Z; GBPUSD 5,081,111 B sha256 fe90677e...c11a978 rows=137,135; USDJPY 4,954,026 B sha256 99e276df...da9de7c rows=137,376, both 2021-01-03T22:00Z..2026-09-23T23:45Z; schema ts(ms,UTC)+8 OHLC+s_open+s_close identical all three; raw M1/BID+M1/ASK = 2092 bi5 per side per pair"
+    },
+    {
+      "command": "find AUDUSD/USDCAD dirs and *.bi5 under .worktrees and ~/.my-quantitative-data; ls erp1-tracka-cohort-1/repro_twin data_local; pyarrow FOOTER-METADATA-ONLY read of bars1h_ANC_*.parquet",
+      "result": "PASS — 0 AUDUSD/USDCAD bi5 anywhere; data_local = 2 ANC 1H parquets + 2 census + 2 probe + 2 plane_diff + 2 m1_manifest + gitignores; ANC AUDUSD rows=30,420 max_ts 2026-06-30T20:00Z, USDCAD rows=30,386 max_ts 2026-06-30T23:00Z (sealed H1 rows NOT opened beyond footer stats)"
+    },
+    {
+      "command": "ls + tail of ~/.my-quantitative-data/free-data-frontier-v1/raw/nyfed_markets/ and free-data-frontier-v1r1/raw/ofr_stfm/; find fx-futures-frontier-v1/raw; count *.bi5/*.parquet/*.csv across all fx_futures_frontier_v1 control dirs",
+      "result": "PASS — rates daily-only: 5 NY Fed jsons + 5 FNYR daily series, last obs 2026-09-14, \"frequency\": \"Daily\"; futures raw = 5 product_page.html each 0 bytes (market bytes 0); 0 bi5/parquet/csv in any fx_futures control dir"
+    },
+    {
+      "command": "ls broker_cost_probe_FX_majors_2026-09(+data_local); read sanitized_result_20260926T055513Z.json; scan raw_ticks jsonl fields",
+      "result": "PASS — 5 pairs minTick 5e-05 (0.5 pip), stream 360s, cells_with_obs=0, n_valid=0/n_invalid=357 per pair, all spread percentiles null; VERDICT_session2.md documents wire BID=-1/ASK=-1 UNSET x5 pairs; stored jsonl normalizes sentinel to null (1785/1785 rows bid:null,valid:false); raw sha256 18422a56...4166b0 re-verified"
+    },
+    {
+      "command": "parse failres_events_PROVENANCE.json + failres_events_timeline.jsonl (131 events): counts, span, fetch_status, time_precision, consensus/revision scan",
+      "result": "PASS — 131 events, span 2021-01-13T13:30Z..2025-12-18T13:15Z; minute-exact page-verified ceiling = 10/131 (fetch_status=FETCHED, all time_precision EXACT; 84 NOT_FETCHED_CANONICAL); structured consensus vintages ABSENT, revision vintages ABSENT (caveat: 92 events mention consensus retrospectively in free-text expected_vs_actual only); labels DIAGNOSTIC_OUTCOME_EXPOSED etc."
+    },
+    {
+      "command": "shasum + parse session_spread_curve.json and census_AUDUSD.json / census_USDCAD.json headline session p50s",
+      "result": "PASS — session_spread_curve.json sha256 de02abf1...e3d74 PINNED 2026-09-25, EURUSD 0.3/0.3/0.3/0.3/rollover 0.9, GBPUSD 0.9/0.8/0.8/0.8/rollover 2.3 (Asia/London/Overlap/NY/Rollover); census_AUDUSD sha256 d337ff2c...33473 rollover p50 2.0 p99 12.304 sunday 4.6; census_USDCAD sha256 27958f5a...35758 rollover p50 2.3 p99 16.7 sunday 6.8 — reconcile exactly with INTAKE pinned numbers"
+    },
+    {
+      "command": ".venv/bin/python research/control/DTP-FX-MECHCOURT-V1/fixwindow_census.py (preregistered plan §6 census, run verbatim: 3 pairs x London hours 13-17 x {ME1,ME2,MID} + rollover 21-22UTC + fixcert composite; stats n/p25/p50/p75/p90/p99/n_nonpos only; zoneinfo Europe/London DST)",
+      "result": "PASS — wrote fixwindow_spread_census.json (schema dtpfx1/fixwindow_spread_census@1, sha256 15efee6a...cf38e0); every published bucket n>0, n_nonpos=0 everywhere; DST spot-checks correct (2026-03-29T01:00Z->London h2 BST, 2026-10-25T01:00Z->h1 GMT)"
+    },
+    {
+      "command": "independent recomputation of 5 census buckets per pair via second code path (pure-stdlib zoneinfo astimezone + own linear-interpolation percentile) and compare to JSON",
+      "result": "PASS — EURUSD h16L/ME1, h15L/ME2, h14L/MID; GBPUSD rollover + h14L/ME2; USDJPY rollover + h14L/ME2: all n/p50/p90 MATCH exactly"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Census quantities are ONLY bar-open spread s_open on a single-source Dukascopy paper-tier panel (SINGLE_SOURCE_PANEL, PAPER_TIER); fill quality (queue, pick-off, fix-auction participation) is UNMEASURABLE on M1 bid/ask (FILL_QUALITY_UNMEASURABLE_ON_M1_BIDASK); commission/slippage remain DECLARED_UNMEASURED.",
+    "ME1/ME2 day-sets are per-pair per-corpus by definition (last calendar day(s) with any bar in month, corpus ends 2026-09-23, so Sep-2026 month-end uses 2026-09-22/23 as its last trading days); MID = calendar days 13-16 regardless of bar presence.",
+    "Percentile convention is linear interpolation on the sorted sample (numpy 'linear'), pinned in the JSON notes for exact recomputation; pips rounded to 4 decimals.",
+    "PIT ledger usable minute-exact floor is 10/131 page-verified events; 84 events are canonical-schedule derived (NOT_FETCHED); consensus mentions in free text are retrospective annotations, not PIT vintages.",
+    "Rates leg is daily-only through 2026-09-14 and futures/venue-2 bytes are zero — mechanism B and C data legs remain ABSENT; this census measures cost buckets, it does not open any scored surface (no reopener bytes exist).",
+    "Lane wrote only its 4 artifacts in the integration worktree; no commit (Lead commits); shadow/fx-majors worktrees touched read-only; AUDUSD/USDCAD ANC parquets opened at footer-metadata level only (sealed 2026-H1 rows untouched)."
+  ],
+  "incidents": [],
+  "tree_status": "integration-worktree-clean-except-4-lane-artifacts (research/control/DTP-FX-MECHCOURT-V1/ only; no tracked file modified, no commit)",
+  "workers": 0,
+  "outputs": [
+    "research/control/DTP-FX-MECHCOURT-V1/DATAPIT_census_REPORT.md",
+    "research/control/DTP-FX-MECHCOURT-V1/fixwindow_spread_census.json",
+    "research/control/DTP-FX-MECHCOURT-V1/fixwindow_census.py"
+  ]
+}
