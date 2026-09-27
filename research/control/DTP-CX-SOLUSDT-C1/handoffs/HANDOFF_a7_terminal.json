@@ -1,0 +1,61 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "dtp-cx-solusdt-c1-a7-terminal",
+ "cycle_id": "DTP-CX-SOLUSDT-C1",
+ "role": "independent-reproducer",
+ "lane": "a7-terminal",
+ "dispatch_sha": "03d685efedc111b38e1a2fd442665697dd2b58d5",
+ "actual_start_sha": "03d685efedc111b38e1a2fd442665697dd2b58d5",
+ "commit_sha": null,
+ "changed_paths": [
+  "research/control/DTP-CX-SOLUSDT-C1/audits_a7/A7_TERMINAL_REPORT.md",
+  "research/control/DTP-CX-SOLUSDT-C1/audits_a7/a7_terminal_machine@1.json",
+  "research/control/DTP-CX-SOLUSDT-C1/audits_a7/a7_court_r1_recompute_machine@1.json",
+  "research/control/DTP-CX-SOLUSDT-C1/audits_a7/a7_datagate_spot_machine@1.json",
+  "research/control/DTP-CX-SOLUSDT-C1/audits_a7/a7_recompute_court_r1.py",
+  "research/control/DTP-CX-SOLUSDT-C1/audits_a7/a7_recompute_datagate.py",
+  "research/control/DTP-CX-SOLUSDT-C1/handoffs/HANDOFF_a7_terminal.json"
+ ],
+ "tests": [
+  {
+   "command": "git -C /Users/hoangminhlong/my-quantitative/.worktrees/dtp-cx-solusdt-c1/integration rev-parse HEAD && git ... branch --show-current && git ... status --porcelain | grep -vc data_local",
+   "result": "PASS — HEAD 03d685efedc111b38e1a2fd442665697dd2b58d5 == dispatch; branch orca/dtp-cx-solusdt-c1-integration; tree clean except untracked data_local zips (untracked-by-law, manifests committed) and this audit's own outputs"
+  },
+  {
+   "command": ".venv/bin/python research/researchctl.py cycle list | grep -A1 DTP  # + plans/CYCLE_REGISTRY.json row",
+   "result": "PASS — ACTIVE_LIGHT 0/18 head 03d685e; s1=SEALED_UNTOUCHED; go_phrase 'GO DTP CX SOLUSDT C1 SCORED EXECUTION' = REGISTERED_NOT_CONSUMED; workers 0"
+  },
+  {
+   "command": "shasum -a 256 <3 inherited PWS files: klines_um_SOLUSDT_1h/2024-06.zip, funding/SOLUSDT_funding.json, bookTicker_um_SOLUSDT/SOLUSDT-bookTicker-2023-05.zip; + 3 staged files: klines_um_SOLUSDT_1m/SOLUSDT-1m-2021-05.zip, markPriceKlines_um_SOLUSDT_1m/SOLUSDT-1m-2021-05.zip, klines_um_BTCUSDT_1m/BTCUSDT-1m-2021-05.zip>",
+   "result": "PASS — 6/6 MATCH vs committed INVENTORY.md / MANIFEST_sha256_*.json rows (shas in audits_a7/a7_terminal_machine@1.json section B)"
+  },
+  {
+   "command": ".venv/bin/python research/control/DTP-CX-SOLUSDT-C1/audits_a7/a7_recompute_datagate.py",
+   "result": "PASS — L-TRACKB1-1 CONFIRMED (2020-09/2023-07/2026-08 all-ms, endpoints == census, 0 gaps 0 dups); 2024-06 day 2024-06-15 cross-granularity CONSISTENT (15m 96/96, 1h 24/24 vs staged 15m + inherited PWS 1h, tol 1e-6/1e-9)"
+  },
+  {
+   "command": ".venv/bin/python research/control/DTP-CX-SOLUSDT-C1/audits_a7/a7_recompute_court_r1.py",
+   "result": "PASS — 18/18 MATCH_EXACT vs council/skeptic/court_machine@1.json incl. theta25 oneshot 47083, theta25 same-min median 36.13582929771985 bps, theta25 next-cc median 0.0, theta10 oneshot 315579 / same-min median 17.797816801139454 / next-cc -0.0, btc rows 3155040, all evaluable/excluded/bookTicker-window counts (21.4s wall, streaming)"
+  },
+  {
+   "command": "shasum -a 256 /Users/hoangminhlong/my-quantitative/research/wayfinder/FAMILY_FAILURES.jsonl + per-id presence loop over all family_id lists in court_r2/court_r2_machine@1.json",
+   "result": "PASS — ledger 137 rows, sha 195671d4df3185115743fa461db999a427619fd8136ef34d2e414de695004777 == court pin; 38/38 distinct cited family_ids present exactly once"
+  },
+  {
+   "command": "shasum -a 256 <9 provenance pins of court_r2_machine@1.json: RULE_CANDIDATES.md, CORPUS_MANIFEST.jsonl, FETCH_LOG.md, PLAYBOOK_TAXONOMY.md, SKEPTIC_COURT_REPORT.md(R1), court_machine@1.json(R1), FREEZE_R1.json, PLAN_daytrade_playbooks_program_v1.md, MAP.md(root)>",
+   "result": "PASS — 9/9 byte-exact MATCH"
+  },
+  {
+   "command": "grep -rn 'SCORED EXECUTION' root+worktree control dirs; wc -l trial_ledger.jsonl; find cycle dir -iname '*pnl*' -o -iname '*scored*'",
+   "result": "PASS — GO-2 phrase never consumed (only registration/moot statements); trial_ledger header-only (0 data rows); no scored/PnL artifact exists"
+  },
+  {
+   "command": ".venv/bin/python -c \"json.load(FREEZE_R2.json) vs json.load(court_r2_machine) scope-sentence compare\" + CORPUS_MANIFEST reconciliation + IDENTITY_REGISTRY rows",
+   "result": "PASS_WITH_FINDINGS — scope sentence present, identical except 1 glyph (em-dash vs hyphen, F-2 LOW); manifest = 1 meta + 12 admissible + 13 uncodifiable, 6 authors, K=5 respected; IDENTITY_REGISTRY I001 FREEZE_ELIGIBLE + I002 F0_KILLED + append-only R2 comment"
+  }
+ ],
+ "verdict": "CONFIRM_WITH_FINDINGS — the GO-1 arc reconciles from bytes end-to-end and the recommended cycle verdict NO_ELIGIBLE_PROPOSAL STANDS. Section verdicts: A PASS; B PASS (6/6 re-hashes MATCH, L-TRACKB1-1 CONFIRMED, cross-granularity CONSISTENT); C MATCH_ALL (court R1 I002 kill reproduces bit-exactly: theta=25 oneshot 47083, same-min conditional median 36.1358 bps, next-minute cc median 0.0, plus 15 corroborators incl. theta=10 315579/17.7978/-0.0 — the three kill laws K-F0/K-COST/K-ANC rest on verified numbers, kill WITH power in hand, no INCONCLUSIVE escape); D PASS (38/38 distinct cited family_ids present exactly once in the 137-row root FAMILY_FAILURES.jsonl, ledger sha == court pin, 9/9 provenance pins MATCH, skeleton mappings independently judged CORRECT incl. the E12 H&S correction: with-break short = breakdown-continuation PSV1-BTC_H1-DOWNTREND-BREAKDOWN_CONT, SRLVCX1-M1 absorption branch correctly demoted to the re-label fork, both branches measured-dead); E PASS (FETCH_LOG 37/50 reconciles, manifest 12 admissible + 13 uncodifiable from 6 authors, floor PASS, K=5 respected, every admissible entry platform-dated, 0 ex-post recaps, no panel ever loaded per artifacts); F PASS_WITH_FINDINGS (freeze chain coherent, mandatory bounded-scope sentence present substantively verbatim, 0/18 cells, 0 ledger rows, GO-2 moot-unconsumed); G PASS_WITH_FINDINGS (tree clean at HEAD, no S1 touched, lock FREE_PROVEN, branch isolation held). FINDINGS: F-1 MEDIUM — declared UTC stamps in FREEZE_R1 (06:40Z vs commit 06:34:25Z), FREEZE_R2 (08:05Z vs commit 07:41:01Z) and court_r2_machine (09:30Z vs its own handoff 07:38:37Z + commit 07:41:01Z) do not reconcile with git (skew -6..+109 min); content integrity unaffected (all sha pins verify, cross-pins prove existence ordering, single clean terminal commit) — record a clock-note erratum at the two-half close. F-2 LOW — scope-sentence em-dash vs hyphen (1 glyph). F-3 LOW — '45 distinct family_id citations' wording in court_r2_machine notes/HANDOFF_skp_r2; true distinct union is 38 (45 = class_verdict citation instances); substantive claim verified true.",
+ "blockers": [],
+ "notes": "Fresh-context audit from bytes; implementer verdicts never inherited. No strategy PnL exists and none was computed (recomputes are outcome-blind feasibility censuses only); no sealed/S1 content touched; no commit made (A7 writes audit artifacts only — changed_paths under audits_a7/ + this handoff). Recompute scorecard 18/18 MATCH_EXACT. The one MEDIUM finding (F-1 timestamp reconciliation) is documentation-level and does not block NO_ELIGIBLE_PROPOSAL; recommend it ride into the two-half close errata together with F-2/F-3. Owner decision points recorded in FREEZE_R2 next_steps (pair #2 marginal-value caveat; R5 revival conditions) remain owner-gated as written.",
+ "generated_utc": "2026-09-27T09:10:00Z"
+}
