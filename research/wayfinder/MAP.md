@@ -1477,3 +1477,6 @@ promise.
   — an ms-guard silently truncates grids; scale-normalize + verify grid
   endpoint against the declared window** (caught by the skeptic's
   independent epoch count, not by the author).
+
+## DAYTRADER-100-V1 (TERMINAL 2026-09-28)
+Owner-ordered rescore of 100 day-trader strategy brainstorm → census (55 ancestry-vetoed / 44 blocked / 1 runnable + owner-opened CARRY & BASISTERM) → 29 families / 87 cells scored under consumed GO + 12 owner-ordered remediation cells = 99 computations, REJECT_ALL, 0 survivors, repro ALL_MATCH. Ancestry-relaxed-by-owner disclosure on every row (non-independent trials). INC-DT100-1 spread-marking bug: caught, disclosed, remediated under owner order. Engine + keyless staging assets live in .worktrees/daytrader-100-v1/integration. Successor: REGIME-GATED-COMBO-V1 (conditional allocation over 6 dead legs, diagnostic-labeled). A7 terminal waived by owner verbatim.
