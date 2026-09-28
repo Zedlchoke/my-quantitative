@@ -138,7 +138,16 @@ G10 reproduction + terminal A7 + two-half close
 - `DAYTRADER_100_V1_THIN` — floors fire (NOT_RUN_THIN), no rescue.
 - Survivor (if any) = Stage-A candidate only; S1 unseal is a separate owner gate.
 
-## 7. Out of scope
+## 7. Out of scope (superseded by Amendment r1)
 
-Equity/CME/rates/options intraday and on-chain families (blocked, owner actions listed in
-the census matrix); any relaxation of the 0.20 bar; any scoring without both keys.
+~~Equity/CME/rates/options intraday and on-chain families; any relaxation of the 0.20 bar;
+any scoring without both keys.~~ — §1 scope and the ancestry relaxation are SUPERSEDED by
+`research/control/DAYTRADER-100-V1/AMENDMENT_r1_owner_rescore_order.md` (owner order
+2026-09-28 "Chạy toàn bộ ANCESTRY_VETOED và RUNNABLE_COHORT1"): rescore scope 56 families
+(27 runnable / 28 ordered-but-blocked), ancestry relaxed by owner explicit instruction with
+per-row disclosure, budget 3 → 81. Two-key launch (A7 prelaunch + GO phrase at gate) remains
+binding — the order is intent + scope authority, not key-2 (P-8, FOREX-FREE-V9 precedent).
+
+## 8. S1 boundary (unchanged)
+
+S1 stays SEALED_UNTOUCHED. Nothing in this plan or its amendments opens it.
