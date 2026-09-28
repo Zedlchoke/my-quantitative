@@ -102,7 +102,8 @@ def test_spread_marking_difference_math():
     df.loc[:, "o"] = vals
     df.loc[:, "c"] = vals
     pos = pd.Series(0.0, index=df.index)
-    pos.iloc[3] = 1.0   # decided close3 -> fill spread[4]=0.012
+    pos.iloc[3] = 1.0   # held close3..close5
+    pos.iloc[4] = 1.0
     pos.iloc[5] = 0.0   # flat decided close5 -> exit spread[6]=0.010
     st = run_arm(df, pos, FOLDS, "crypto", "BTCUSDT",
                  cost_multiplier=2.0, spread_marking=True)
