@@ -158,6 +158,8 @@ def main():
     ap.add_argument("--families", default="")
     ap.add_argument("--out", default=None)
     ap.add_argument("--stress", type=float, default=1.0)
+    ap.add_argument("--stress-all", action="store_true",
+                    help="scored mode: run x1.0/x1.5/x2.0 in one data pass")
     args = ap.parse_args()
     want = set(filter(None, args.families.split(",")))
     out = Path(args.out or (Path(config.WT) / "research/control/DAYTRADER-100-V1"
@@ -188,11 +190,11 @@ def main():
                 # CARRY and BASISTERM -> funding is INCOME on that leg (A7 HIGH-1)
                 fsign = -1.0 if fam["family"] in ("DT100-46-CARRY",
                                                   "DT100-95-BASISTERM") else 1.0
-                stats = run_arm(mark_df, pos, folds, fam["asset"], fam["symbol"],
-                                stress=args.stress, warmup_end=warmup,
-                                funding=funding, cost_multiplier=float(legs),
-                                funding_sign=fsign)
+                run_kwargs = dict(folds=folds, asset=fam["asset"], symbol=fam["symbol"],
+                                  warmup_end=warmup, funding=funding,
+                                  cost_multiplier=float(legs), funding_sign=fsign)
                 if args.mode == "dry":
+                    stats = run_arm(mark_df, pos, stress=args.stress, **run_kwargs)
                     per_fold_counts = {k: v.get("n", 0) for k, v in stats.get("per_fold", {}).items()}
                     cs = clock_shadow(pos, mark_df["ts"])
                     # parity invariant = FIRED-BAR count preserved (trade counts
@@ -210,9 +212,11 @@ def main():
                         "mode": "dry (NO PnL computed)",
                     })
                 else:
-                    rows.append({"record_id": rid, "family": fam["family"],
-                                 "arm": arm_name, "stress": args.stress,
-                                 "disclosure": config.DISCLOSURE, **stats})
+                    for s in ([1.0, 1.5, 2.0] if args.stress_all else [args.stress]):
+                        stats = run_arm(mark_df, pos, stress=s, **run_kwargs)
+                        rows.append({"record_id": rid, "family": fam["family"],
+                                     "arm": arm_name, "stress": s,
+                                     "disclosure": config.DISCLOSURE, **stats})
             except FileNotFoundError as e:
                 rows.append({"record_id": rid, "family": fam["family"], "arm": arm_name,
                              "verdict": "NOT_RUN_DATA_BLOCKED_UNDER_OWNER_ORDER",
