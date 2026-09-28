@@ -1,0 +1,19 @@
+{
+  "probe": "SIXSOURCE-L-RATES transport canary + daily-official liveness",
+  "fetched_at_window": "2026-09-28T02:0xZ (UTC)",
+  "etiquette": "sequential, >=1s spacing, <=10 light ops total, no retries hammering",
+  "transcript": [
+    {"op": "dns", "query": "www.cmegroup.com A", "result": "CNAME www.cmegroup.com.edgekey.net -> e5296.a.akamaiedge.net -> 23.210.101.168", "verdict": "DNS_RESOLUTION_OK"},
+    {"op": "https", "url": "https://www.cmegroup.com/", "http_version": "h2", "result": "curl(92) HTTP/2 stream 1 not closed cleanly: INTERNAL_ERROR, HTTP 000, 0 bytes, 0.31s", "verdict": "POST_TLS_STREAM_KILL"},
+    {"op": "https", "url": "https://www.cmegroup.com/", "http_version": "http/1.1", "result": "curl(28) timeout after 20.007s, 0 bytes received (handshake completed, response never served)", "verdict": "POST_TLS_SILENT_STALL"},
+    {"op": "dns", "query": "marketdata.cmegroup.com A", "result": "NXDOMAIN", "verdict": "HOST_ABSENT_PUBLIC_DNS"},
+    {"op": "tls_no_sni", "target": "23.210.101.168:443 (cmegroup akamai edge)", "result": "TLSv1.3 handshake OK in 0.07s, cert served (1401 bytes)", "verdict": "NO_SNI_HANDSHAKE_OK"},
+    {"op": "tls_no_sni", "target": "96.17.96.28:443 (nyfed control edge)", "result": "alert internal_error (Akamai edge requires SNI to select cert — expected, not evidence of filtering)", "verdict": "CONTROL_NO_SNI_FAIL_EXPECTED"},
+    {"op": "https", "url": "https://markets.newyorkfed.org/api/rates/unsecured/EFFR/search.json?startDate=2026-09-21&endDate=2026-09-26", "result": "HTTP 200 application/json 1149 bytes; EFFR effectiveDate 2026-09-24 percentRate 3.88, revisionIndicator served", "verdict": "REACHABLE_OFFICIAL_200"}
+  ],
+  "conclusion": {
+    "cme_transport": "BLOCKED_TRANSPORT re-confirmed on current network path (2026-09-28). Discrimination: same edge IP completes TLS when SNI absent; with SNI=www.cmegroup.com the post-handshake stream is killed (h2) or silently stalled (http/1.1). Filter is keyed to the SNI hostname class, consistent with L-FXFF-1 standing constraint. NOT bypassed; no further requests made to that estate.",
+    "nyfed_daily_official": "REACHABLE (HTTP 200, machine-served revisionIndicator). Daily reference rates (SOFR/EFFR family) are publication-day aggregates — they are NOT intraday quotes and cannot serve as an intraday leg.",
+    "rates_intraday": "remains 0 bytes system-wide: intraday rate futures/Treasury futures quotes need CME Globex market data (transport-blocked here + license) or a licensed broker-grade venue."
+  }
+}

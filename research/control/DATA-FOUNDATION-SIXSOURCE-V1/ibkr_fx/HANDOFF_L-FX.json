@@ -1,0 +1,50 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "sixsource-lane-fx",
+  "cycle_id": "DATA-FOUNDATION-SIXSOURCE-V1",
+  "role": "A3-data-lane",
+  "lane": "fx",
+  "dispatch_sha": null,
+  "actual_start_sha": "f98087f632552f11d68c5b6b66708d46545f750e",
+  "commit_sha": null,
+  "no_commit_disclosure": "no-commit session per controller decision (owner-dirty registry files preserved; artifacts left untracked for owner review)",
+  "changed_paths": [
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/ibkr_fx/collect_fx_ticks.py",
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/ibkr_fx/run_rollover_at.py",
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/ibkr_fx/sanitized_s0_verify_20260928T020329Z.json",
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/ibkr_fx/L-FX_REPORT.md",
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/ibkr_fx/HANDOFF_L-FX.json",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/broker_cost_probe_FX_majors_2026-09/ERRATUM_2026-09-28_sixsource.md"
+  ],
+  "tests": [
+    {"command": "nc -z 127.0.0.1 7497", "exit_code": 0, "result": "TWS paper API socket listening"},
+    {"command": "collect_fx_ticks.py --seconds 300 --tag s0_verify", "exit_code": 0, "result": "COMPLETE; mdt=1 all 5 pairs; 0 subscription errors; valid tbt obs per pair 1665/1982/1688/1373/1776; raw sha256 789e7e45318a86a2 (1990131 B)"},
+    {"command": "grep -c '\"ev\": \"tbt\"' raw ndjson", "exit_code": 0, "result": "8484 two-sided tick-by-tick events in ~303 s"},
+    {"command": "contractDetails minTick re-read", "exit_code": 0, "result": "secdef declares 5e-05 (4 pairs) / 0.005 (USDJPY); observed stream steps 1e-05 — declared != observable granularity, erratum E2"},
+    {"command": "order-function absence check", "exit_code": 0, "result": "grep placeOrder/cancelOrder/whatIf in collector -> 0 occurrences (absent by construction)"}
+  ],
+  "authority_claims": [
+    "IBKR paper IDEALPRO two-sided LIVE-flagged quotes: MEASURED streaming on 5 pairs (2026-09-28), evidence sha-pinned",
+    "spread distribution measured ONLY for 02:00-03:00 UTC bucket; 14-15Z and 20-21Z scheduled; all other windows NOT_RUN",
+    "Saturday NOT_SUBSCRIBED classification corrected by ERRATUM (weekend closure mis-attribution); P3-A verdict NOT reopened (no-rescue law)",
+    "commission/financing/min-size/rollover-clock/slippage: UNMEASURED pending owner statement; no trades created to sample"
+  ],
+  "known_limitations": [
+    "paper-session numbers only; live-book behavior can differ",
+    "tbt server stamp is second-granularity; sub-second event time approximated by receive-ns minus measured skew",
+    "s0 status field mislabeled DISCONNECTED_MID_STREAM due to cleanup trap bug (cosmetic, fixed post-hoc; full window streamed)",
+    "first s0 attempt crashed on Decimal serialization (partial 82 B raw kept as incident evidence, never used as data)"
+  ],
+  "incidents": [
+    "attempt-1 Decimal crash killed reader thread mid-session (engineering only; no data identity impact)",
+    "cleanup disconnect tripped own trap -> wrong status label (fixed)"
+  ],
+  "tree_status": "new untracked files only; owner dirty tree untouched",
+  "workers": 0,
+  "outputs": [
+    "sanitized_s0_verify_20260928T020329Z.json",
+    "L-FX_REPORT.md",
+    "ERRATUM_2026-09-28_sixsource.md (beside Saturday verdict)",
+    "scheduled: fix_window 14:50Z + rollover_window 20:50Z (self-writing sanitized + sessions_index)"
+  ]
+}

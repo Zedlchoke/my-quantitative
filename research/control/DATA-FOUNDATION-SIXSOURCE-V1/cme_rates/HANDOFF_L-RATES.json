@@ -1,0 +1,35 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "sixsource-lane-rates",
+  "cycle_id": "DATA-FOUNDATION-SIXSOURCE-V1",
+  "role": "A3-data-lane",
+  "lane": "cme_rates",
+  "dispatch_sha": null,
+  "actual_start_sha": "f98087f632552f11d68c5b6b66708d46545f750e",
+  "commit_sha": null,
+  "no_commit_disclosure": "no-commit session per controller decision (owner-dirty registry files preserved)",
+  "changed_paths": [
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cme_rates/probe_transport_transcript.json",
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cme_rates/L-RATES_REPORT.md",
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cme_rates/HANDOFF_L-RATES.json"
+  ],
+  "tests": [
+    {"command": "dig +short www.cmegroup.com A", "exit_code": 0, "result": "Akamai edge 23.210.101.168 — DNS fine"},
+    {"command": "curl https://www.cmegroup.com/ (h2 then http1.1)", "exit_code": 92, "result": "post-TLS stream kill (h2 INTERNAL_ERROR) / silent 20s stall (http1.1), 0 bytes both"},
+    {"command": "python ssl no-SNI handshake to 23.210.101.168:443", "exit_code": 0, "result": "TLS1.3 OK 0.07s -> filter is SNI-keyed"},
+    {"command": "curl NY Fed EFFR search.json window", "exit_code": 0, "result": "HTTP 200, 1149 B, EFFR 2026-09-24 3.88%, revisionIndicator served"}
+  ],
+  "authority_claims": [
+    "BLOCKED_TRANSPORT (SNI-keyed) re-confirmed for *.cmegroup.com on current path with recorded discrimination experiment (2026-09-28)",
+    "NY Fed daily reference rates reachable/official/200 with machine-served revision flag — daily granularity only, never an intraday leg",
+    "rates intraday remains 0 bytes program-wide; only paths are CME (blocked transport + license) or licensed broker-grade venue"
+  ],
+  "known_limitations": [
+    "single edge IP tested (DNS returned one A record); discrimination is at SNI-vs-noSNI level, not a full filter map",
+    "no CME bytes fetched beyond the 0-byte blocked attempts; license terms for CME data not re-screened (moot while transport blocked)"
+  ],
+  "incidents": [],
+  "tree_status": "new untracked files only",
+  "workers": 0,
+  "outputs": ["probe_transport_transcript.json", "L-RATES_REPORT.md"]
+}

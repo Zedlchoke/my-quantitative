@@ -1,0 +1,66 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "erp1-sleeve-recovery-delta",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "role": "quant-auditor",
+  "lane": "sleeve-recovery-delta",
+  "branch": "orca/prospective-shadow-v1-integration",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/integration",
+  "dispatch_sha": "f7f6705dc974b0d9c25be8241d174fdec65dbc05",
+  "actual_start_sha": "f7f6705dc974b0d9c25be8241d174fdec65dbc05",
+  "commit_sha": null,
+  "verdict": "AUTHORIZED_FOR_RESTART",
+  "summary": "A7 fresh-context delta audit of PSV1 sleeve-recovery fix (commit f7f6705d, parent 3cca6833, exactly 5 files, 1233 insertions / 0 deletions, 7 hunks all accounted). R1 PASS: live-path equivalence of the extracted _apply_fill_mutation proven at AST level against parent 3cca6833 — 12 leading statements of apply_fill (guards + econ computation) AST-identical, remaining 14 statements identical to the extracted core, if-econ-is-None dead on the live path, apply_funding untouched. R2 PASS: (a) counterfactual guard-ON replay (dispatch's original apply_fill suggestion) reproduced the implementer's falsification bit-for-bit — ILLIQ recorded XRP short refused (InsufficientCashError at stale marks), XSECT degenerates to cash 17033.132935328777 with 48 refusals — so recorded-economics replay without re-admission is necessary, with invalid-input validation and identity assertion retained; (b) lineage evidence verified byte-exact in the real XSECT ledger: row 5 2026-09-19 previous_weights {} cash 99947.2560345751 == 100000 - 40.0 fee - 12.743965424904808 slippage, row 11 2026-09-25 previous_weights {} cash 99948.37724941608 == 100000 - 40.0 - 11.62275058390965, both zero-funding 4-fill fresh books — TWO earlier wipes confirmed (damage window opened at the 09-24 08:21 worker start, earlier than the incident table states). R3 PASS: dry-run independently re-run read-only against the production ledgers — XSECT cash_after 99948.37724941608 + 4 positions with exactly 3 discontinuities (deltas -1542.735360583174 / +428.1533459807979 / -51.6227505839197 TRUTH_KEPT at 09-26, reseeded_verifies true both), ILLIQ RECOVERED_CLEAN 99936.78612475483 + 8/8 positions, BANDRIDGE 67-row and BASISLV clean no-ops, double-recovery idempotent on all four, per-row abs-diff<=0.01 law in code with fail-closed LedgerCorruptError, and all four production ledger sha256 verified unchanged before/after every audit action. R4 PASS: marker event_id deterministic (sha256 family|arm|RECOVERY-{first_row_ts}), no collision with frozen decision stamps (test asserts over the 2026-2031 stamp set), append_event idempotent with read-back verification and test-proven byte-identical double-build ledger, no marker for empty families, scheduled_decision_utc=oldest-anchor keeps every max() scan undistorted, valuation.rebuild_positions reads the marker as a no-op, all ledger-scan consumers enumerated marker-tolerant. R5 PASS: 7 required suites 102 passed from the worktree with the absolute venv python; the two reported pre-existing failing files verified to fail IDENTICALLY at parent 3cca6833 via a throwaway detached /tmp worktree (failure sets diffed equal; 8 failing test items across 2 files — registry-data drift and a foreign-worktree SPEC.md sha drift; production checkout never touched). R6 PASS: restart path verified in code — recovery before first run_due, exactly one marker to XSECT (anchor 2026-09-15) and ILLIQ (anchor 2026-09-21), none for BANDRIDGE/BASISLV; XSECT 2026-09-27T00:00Z retire-law decision (XSECT_RETIRE_AFTER_UTC=2026-09-25T05:45:00Z) closes the 4 restored positions with real fills and fires a second, faithful terminal row (09-26 vacuous row stays canonical per A7 F1; RETIRE_TERMINAL_CORRECTION is the sequenced follow-up); ILLIQ restored before its 2026-09-28T00:00Z weekly decision. 0 HIGH, 0 MED, 4 LOW findings (precision notes only, none blocking).",
+  "changed_paths": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/A7_sleeve_recovery_delta_REPORT.md",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/HANDOFF_a7_sleeve_recovery_delta.json"
+  ],
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_sleeve_recovery.py tests/test_bandridge_a2_pins.py tests/test_xsect_a3_retire.py tests/test_shv1_executor.py tests/test_shv1_accounting.py tests/test_shv1_families.py tests/test_funding_accounting.py -q",
+      "result": "102 passed in 14.77s (gate expectation met exactly; 11 new fixtures)"
+    },
+    {
+      "command": "throwaway detached worktree at 3cca6833 (/tmp, removed after) + same venv: pytest tests/test_family_failures.py tests/test_shv1_identity_recovery.py -q at parent AND at HEAD, failure sets diffed",
+      "result": "8 failed / 21 passed at BOTH commits with IDENTICAL failure sets — 7 in test_family_failures.py (test_real_registry_validates + 6 test_real_registry_uses_core_signatures[*] params) and 1 in test_shv1_identity_recovery.py (test_every_listed_file_exists_and_hashes_match, foreign-worktree SPEC.md sha drift); pre-existing environmental, untouched by this lane. Note: '2 pre-existing failures' in the implementer handoff counts FILES; the item count is 8."
+    }
+  ],
+  "known_limitations": [
+    "Cost-book replay limitation (implementer-disclosed, audited as acceptable): replay recomputes fill economics with CURRENT cost books; exact for every existing fill (per-fill economics re-verified 1e-9; no regime change occurred). A future cost-regime change with open positions needs regime-aware replay — owner-level follow-up.",
+    "Live admission guards are NOT re-run on replay (apply_recorded_fill). Independently falsification-tested: re-running them on stale replay marks refuses recorded fills (XSECT cash 17033.13, 48 refusals; ILLIQ loses its XRP short). Guards were enforced live pre-mutation with decision-time marks that the ledger does not carry.",
+    "funding_paid attribution and decision/order-intent counters restart at replay-derived values (informational only; verified nothing in sizing/caps/retire law reads them).",
+    "equity_after in the recovery summary is measured at the lineage's own fill-reference marks (per-row full-universe marks are not in the ledger); equals recorded cash to the cent for the current net-zero books and every live decision refreshes marks via update_marks before sizing.",
+    "CODE_FREEZE_SHA constant intentionally unchanged (A2/A3 precedent; owner-level re-pin decision) — the constant's 'audited engine bytes' claim is now historical.",
+    "A hypothetical non-flat-evidenced reset row (previous_weights != {}) would re-anchor cash but best-effort positions, disclosed via flat_evidenced:false — not triggered by any real row (both real reset rows are flat-evidenced)."
+  ],
+  "incidents": [
+    "INCIDENT_psv1_restart_wipes_sleeve_accounts_2026-09-26 (root repo, HIGH): the defect under audit. Engine fix verified sound; recommend a one-line incident ADDENDUM — ledger rows 2026-09-19 and 2026-09-25 prove wipes also fired before the incident's stated wipe #1 (first at/before the 09-24 08:21 worker-35779 start), so the incident trigger table understates the damage window; remediation unchanged.",
+    "No new incidents raised by this audit. Production ledgers byte-verified unchanged throughout (sha256 before==after on all four files); no process restarted; pid 65078 observed still running from this worktree at audit time."
+  ],
+  "tree_status": "audit-only: root checkout untouched except the 2 artifact files under research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/; worktree tree clean at f7f6705d at audit start and left untouched (throwaway parent-check worktree created detached in /tmp and removed; temp files cleaned); no ledger writes, no process restarts, no S1, no orders, no scored cells",
+  "workers": 0,
+  "outputs": {
+    "report": "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/A7_sleeve_recovery_delta_REPORT.md",
+    "verdict": "AUTHORIZED_FOR_RESTART",
+    "findings": {
+      "HIGH": [],
+      "MED": [],
+      "LOW": [
+        "L1: implementer handoff's '2 pre-existing failures' counts files; the precise count is 8 failing test items across the 2 files",
+        "L2: implementer handoff json exists only inside the worktree (self-committed), not at the repo-root checkout — dispatch path ambiguity only",
+        "L3: CODE_FREEZE_SHA staleness (behavior advanced without re-pin; consistent with A2/A3 precedent; owner-level note, already implementer-disclosed)",
+        "L4: incident addendum recommended for the earlier-than-stated first wipe (implementer already flagged; remediation unchanged)"
+      ]
+    },
+    "r1_r6_one_line": {
+      "R1": "PASS — exactly 5 files / 7 hunks; AST-proven live-path equivalence of apply_fill (guards, econ position, 14-stmt mutation core identical; if-econ-None dead on live path); apply_funding untouched",
+      "R2": "PASS — both deviations independently reproduced: guard-ON counterfactual falsification matches to the digit (XSECT 17033.132935328777, 48 refusals; ILLIQ XRP short refused); 09-19 and 09-25 rows verified previous_weights {} with fresh-cash arithmetic exact to 1e-9 (two earlier wipes, flat-evidenced)",
+      "R3": "PASS — dry-run re-run read-only: XSECT 99948.37724941608 + 4 positions, 3 discontinuities with matching deltas incl. -51.6227505839197 TRUTH_KEPT; ILLIQ 99936.78612475483 + 8 positions; idempotent; all four ledger sha256 unchanged",
+      "R4": "PASS — deterministic event_id, no collision with frozen decision stamps, append_event idempotent with test-proven byte-identical double-build ledger, no marker for empty families, all ledger-scan consumers marker-tolerant",
+      "R5": "PASS — 102/102 required suites; parent-failure spot-check via throwaway detached worktree: failure sets identical at 3cca6833 and f7f6705d (2 files / 8 items, environmental)",
+      "R6": "PASS with LOW disclosed risks — recovery before first run_due, markers only for XSECT+ILLIQ, retire law closes the 4 restored positions at 2026-09-27T00:00Z with real fills and a second faithful terminal row (09-26 row stays canonical; correction record sequenced), ILLIQ restored before its 09-28 weekly decision"
+    },
+    "restart_sequence_advisory": "Controller window only: SIGTERM pid 65078 (standard clean path), start the worker from this worktree at f7f6705d, then verify heartbeat + exactly one psv1_sleeve_recovery@1 marker row in each of XSECT and ILLIQ ledgers (none in BANDRIDGE/BASISLV); after the 2026-09-27T00:00Z XSECT decision, sequence RETIRE_TERMINAL_CORRECTION (append-only) and the valuation-worker ghost-mark reconcile under its own owner gate."
+  },
+  "recommended_next_action": "Verdict AUTHORIZED_FOR_RESTART stands. Proceed to the controller's e-worker restart window per OWNER_DELEGATED_DECISION_engine_fix_2026-09-26.json decision[1]; keep the two sequenced follow-ups (XSECT terminal correction after the 09-27 decision; valuation ghost-marks reconcile) out of this restart."
+}

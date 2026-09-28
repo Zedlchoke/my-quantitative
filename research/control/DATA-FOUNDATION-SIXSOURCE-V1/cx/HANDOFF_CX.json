@@ -1,0 +1,141 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "sixsource-lane-cx",
+  "cycle_id": "DATA-FOUNDATION-SIXSOURCE-V1",
+  "role": "A3-data-lane",
+  "lane": "cx",
+  "dispatch_sha": null,
+  "dispatch_sha_note": "null this session as instructed by the dispatch packet; packet read in full at research/control/DATA-FOUNDATION-SIXSOURCE-V1/dispatch/PACKET_lane_cx.md before any work",
+  "actual_start_sha": "f98087f632552f11d68c5b6b66708d46545f750e",
+  "commit_sha": null,
+  "commit_sha_note": "no-commit session per packet (NO branch, NO worktree, NO commit, NO push); changed paths disclosed below for owner review",
+  "changed_paths": [
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/collect_binance_l2.py",
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/sample_deribit_options.py",
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/probe_onchain.py",
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/L2_SESSION_REPORT.md",
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/OPTIONS_SAMPLE_REPORT.md",
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/ONCHAIN_PROBE_REPORT.md",
+    "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/HANDOFF_CX.json"
+  ],
+  "tests": [
+    {
+      "command": ".venv/bin/python -m py_compile research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/collect_binance_l2.py",
+      "exit_code": 0,
+      "result": "COMPILE_OK"
+    },
+    {
+      "command": ".venv/bin/python -m py_compile research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/sample_deribit_options.py research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/probe_onchain.py",
+      "exit_code": 0,
+      "result": "BOTH_COMPILE_OK"
+    },
+    {
+      "command": ".venv/bin/python collect_binance_l2.py --outdir /tmp/l2_smoke --window 25 (discarded calibration; fixed missing initial-snapshot call and spot pu-field handling)",
+      "exit_code": 0,
+      "result": "2 snapshots OK, 487 events, seq_gaps=0, first_event_sync_ok=true"
+    },
+    {
+      "command": ".venv/bin/python collect_binance_l2.py --outdir ~/.my-quantitative-data/sixsource-foundation-v1/crypto_l2 --window 600 (production window)",
+      "exit_code": 0,
+      "result": "WINDOW_COMPLETE; 11,981 events; 0 reconnects; 0 seq gaps; 2/30 REST; 14,109,556 bytes"
+    },
+    {
+      "command": ".venv/bin/python sample_deribit_options.py (production run after verbatim-name fix)",
+      "exit_code": 0,
+      "result": "11/11 HTTP 200 (1 census + 10 tickers); IV/greeks/bid-ask/timestamp 10/10"
+    },
+    {
+      "command": ".venv/bin/python probe_onchain.py",
+      "exit_code": 0,
+      "result": "6/8 RPC calls + 1 explorer call; publicnode 3/3 OK; cloudflare 3/3 app-level errors; blockscout 422 (route parametric)"
+    },
+    {
+      "command": "sha256 re-computation of all files vs crypto_l2/collector_manifest.json + options/options_manifest.json + onchain/onchain_manifest.json",
+      "exit_code": 0,
+      "result": "ALL_SHA_OK: True (7 files matched: 1 ndjson, 2 Deribit raw, 2 Deribit rows, 1 onchain probe; plus options manifest self-listing)"
+    },
+    {
+      "command": "git -C /Users/hoangminhlong/my-quantitative status --porcelain -- research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/",
+      "exit_code": 0,
+      "result": "?? research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/ (untracked, not staged — no-commit session)"
+    }
+  ],
+  "authority_claims": {
+    "crypto_l2_binance": {
+      "label": "PROSPECTIVE_FROM_2026-09-28",
+      "can_claim": "ONE bounded 600 s window (2026-09-28T02:16:50Z-02:26:49Z) of keyless Binance spot combined depth@100ms (BTCUSDT+ETHUSDT): 11,981 events with ZERO detected sequence gaps (U==prev_u+1 held throughout), 0 reconnects, snapshot-first sync rule satisfied (first_event_sync_ok both symbols), 25 stale pre-sync events dropped by rule; snapshot depth 1000x1000 levels keyless from data-api.binance.vision; E-based receive latency p50/p95 = 0 ms (ms-resolution), max 1,633 ms; schema finding: spot diff payloads carry NO pu field (0/11,981) — packet's U/u/pu chain reduces to the official spot U-chain rule.",
+      "cannot_claim": "any historical order-book or forced-flow state (no candle substitution anywhere); feed quality beyond one connection/one 10-minute window; true exchange-side latency; any cross-venue comparison."
+    },
+    "options_deribit": {
+      "label": "PROSPECTIVE_FROM_2026-09-28",
+      "can_claim": "as-of 2026-09-28T02:29Z keyless public Deribit API exposed 988 live BTC option instruments across 13 expiries; for the nearest expiry (2026-09-28T08:00Z, 58 instruments / 29 strikes) 10 sampled near-median-strike instruments (83000-85000 C/P) each carried two-sided bid/ask, mark/bid/ask IV, full greeks (delta/gamma/vega/theta/rho), underlying/index prices and exchange timestamps (10/10 coverage).",
+      "cannot_claim": "anything historical (label law); IV/greeks surface beyond the 10 sampled rows at one instant; redistribution beyond internal research — no explicit redistribution clause was located in the screened docs pages (disclosed limitation, not a permission)."
+    },
+    "onchain_ethereum": {
+      "label": "PROSPECTIVE_FROM_2026-09-28 (AS-OF-NOW state; anti-retroactive law embedded in raw artifact and report)",
+      "can_claim": "at 2026-09-28T02:31Z keyless PublicNode reported head 26,072,973 (block ts 02:30:59Z) and finalized 26,072,908 (02:17:59Z): finality lag 65 blocks / 780 s, consistent with ~2-epoch finality; the finalized tag is served truthfully on this provider.",
+      "cannot_claim": "any PIT/historical chain state; any wallet labeling or balance reconstruction (none performed); provider disagreement (NOT_RUN — Cloudflare returned keyless HTTP 200 shells with JSON-RPC errors -32046/-32603 on all 3 methods, functionally unavailable); Blockscout latest-block availability (single budgeted explorer call returned HTTP 422 route-validation — server alive, route now parametric)."
+    }
+  },
+  "known_limitations": [
+    "All three artifacts are single-window from-today samples labeled PROSPECTIVE_FROM_2026-09-28; none is historical or backtestable.",
+    "L2: spot payload has no pu field — packet's U/u/pu verification was adapted (U-chain verified 100%; pu checked when present: 0 opportunities); E-based latency is ms-resolution and includes local processing.",
+    "L2: one slow E-latency outlier of 1,633 ms observed; distribution beyond p50/p95/max not characterized.",
+    "Deribit: redistribution clause not located in screened terms pages (auth + API-usage-policy articles verified; site terms page JS-rendered, title only).",
+    "On-chain: single working RPC provider => provider disagreement NOT_RUN; Blockscout explorer call hit a parametric route (422) so indexer latest-block availability not demonstrated within the one-call rule.",
+    "LlamaRPC screened out (homepage HTTP 526, endpoint unreachable) — BLOCKED_LICENSE_VERIFY, not used.",
+    "Calibration runs (3 discarded /tmp L2 smoke runs, 1 failed Deribit attempt) disclosed in reports; all provider-side calls counted and far under caps (Binance REST 6 successful + <=4 failed transport attempts vs 30 cap; Deribit 13 vs 25 cap; on-chain 6/8 RPC + 1 explorer).",
+    "Raw bytes live outside git under ~/.my-quantitative-data/sixsource-foundation-v1/ (crypto_l2 14,110,006 B incl. manifest; options ~27.3 KB; onchain ~50.9 KB) with sha256 manifests, all verified."
+  ],
+  "incidents": [
+    "collect_binance_l2.py v1 missed the initial take_snapshots() call (only invoked on reconnect) — caught by /tmp smoke run, fixed before production; no production impact.",
+    "First Deribit run constructed instrument names as BTC-20260928-... and got HTTP 400 -32602 (Deribit uses DDMONYY tokens, e.g. BTC-28SEP26-83000-C); fixed by taking names verbatim from the census payload; failed attempt's raw file preserved as evidence in options/.",
+    "First smoke run's 4 snapshot attempts failed at transport level (rest_used 0) — transient; subsequent runs all succeeded on data-api.binance.vision; counted in session totals.",
+    "Cloudflare eth gateway application-level failures (-32046/-32603) on all 3 methods despite keyless HTTP 200 transport — recorded, provider not claimed.",
+    "Blockscout /api/v2/blocks/latest returns HTTP 422 (route expects block_hash_or_number param) — packet's example URL no longer matches current API; recorded per one-call rule.",
+    "No stop-condition breach: no auth demand, no paywall, no ToS conflict encountered on any used provider."
+  ],
+  "tree_status": {
+    "repo": "/Users/hoangminhlong/my-quantitative",
+    "branch": "main",
+    "head_at_handoff": "f98087f632552f11d68c5b6b66708d46545f750e",
+    "lane_paths_status": "?? research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/ (untracked, unstaged; nothing committed, nothing staged, no other lanes/registries touched)"
+  },
+  "workers": 0,
+  "outputs": [
+    {
+      "sub_task": "a_binance_l2",
+      "artifacts": [
+        "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/collect_binance_l2.py",
+        "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/L2_SESSION_REPORT.md",
+        "~/.my-quantitative-data/sixsource-foundation-v1/crypto_l2/l2_events_PROSPECTIVE_FROM_2026-09-28_20260928T021649Z.ndjson",
+        "~/.my-quantitative-data/sixsource-foundation-v1/crypto_l2/collector_manifest.json"
+      ],
+      "status": "AVAILABLE_VALIDATED",
+      "one_line": "600 s window, 11,981 events, 0 seq gaps, 0 reconnects, sha256 manifest verified"
+    },
+    {
+      "sub_task": "b_deribit_options",
+      "artifacts": [
+        "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/sample_deribit_options.py",
+        "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/OPTIONS_SAMPLE_REPORT.md",
+        "~/.my-quantitative-data/sixsource-foundation-v1/options/Deribit_sample_20260928T022945Z.json",
+        "~/.my-quantitative-data/sixsource-foundation-v1/options/Deribit_sample_20260928T022945Z_rows.json",
+        "~/.my-quantitative-data/sixsource-foundation-v1/options/options_manifest.json"
+      ],
+      "status": "AVAILABLE_VALIDATED",
+      "one_line": "988-instrument / 13-expiry BTC census; 10 tickers of 2026-09-28T08:00Z expiry with IV+greeks+bid/ask 10/10; 11/25 requests"
+    },
+    {
+      "sub_task": "c_onchain_probe",
+      "artifacts": [
+        "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/probe_onchain.py",
+        "research/control/DATA-FOUNDATION-SIXSOURCE-V1/cx/ONCHAIN_PROBE_REPORT.md",
+        "~/.my-quantitative-data/sixsource-foundation-v1/onchain/onchain_probe_20260928T023126Z.json",
+        "~/.my-quantitative-data/sixsource-foundation-v1/onchain/onchain_manifest.json"
+      ],
+      "status": "AVAILABLE_VALIDATED",
+      "one_line": "head 26,072,973 / finalized 26,072,908, lag 65 blocks / 780 s; provider disagreement NOT_RUN (cloudflare app-level down); anti-retroactive law embedded"
+    }
+  ]
+}

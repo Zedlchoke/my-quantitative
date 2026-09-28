@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Phorec 2 — Shared Portfolio 100K (PREVIEW)</title>
+<style>
+  :root {
+    --bg:#f4f5f7; --card:#fff; --ink:#1c1e21; --muted:#6b7280; --line:#e3e5e8;
+    --green:#1a7f37; --greenbg:#e6f4ea; --red:#c62828; --redbg:#fdecea;
+    --gray:#6b7280; --graybg:#f1f2f4; --yellow:#9a6700; --yellowbg:#fff3d6;
+    --blue:#1d4ed8; --bluebg:#e8effd; --purplebg:#f3e8ff; --purple:#6b21a8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:13px/1.45 -apple-system,"SF Pro Text","Helvetica Neue",sans-serif}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+         padding:10px 18px;background:#101828;color:#fff}
+  header img{height:48px;width:auto;border-radius:8px;display:block}
+  header h1{font-size:15px;margin:0;font-weight:600}
+  header .sub{color:#9fb0c9;font-size:11.5px}
+  .badge{padding:3px 10px;border-radius:999px;font-weight:700;font-size:12px}
+  .badge.live{background:#0f5132;color:#d1fae5}
+  .badge.off{background:#8e2323;color:#fdecea}
+  #lastupdate{margin-left:auto;color:#c3cedd;font-size:11.5px}
+  main{padding:14px 18px 30px;max-width:1440px;margin:0 auto}
+  .banner{border-radius:10px;padding:10px 14px;font-size:12.5px;margin:10px 0;
+          line-height:1.6}
+  .banner.epoch{background:var(--yellowbg);color:var(--yellow);font-weight:600}
+  .banner.old{background:var(--purplebg);color:var(--purple);font-weight:600}
+  .tabs{display:flex;gap:8px;margin:12px 0 2px}
+  .tab{padding:7px 16px;border-radius:999px;border:1px solid var(--line);
+       background:var(--card);cursor:pointer;font-weight:600;font-size:12.5px}
+  .tab.on{background:#101828;color:#fff;border-color:#101828}
+  .strip{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:10px}
+  .box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .lbl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  .val{font-size:19px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
+  .sml{font-size:11.5px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+  .pos{color:var(--green)}.neg{color:var(--red)}.neu{color:var(--gray)}
+  .wide{grid-column:1/-1;background:var(--card);border:1px solid var(--line);
+        border-radius:10px;padding:8px 12px;color:var(--muted);font-size:12px;
+        font-variant-numeric:tabular-nums;margin-top:10px}
+  .wide b{color:var(--ink)}
+  .grosswarn{background:var(--redbg);color:var(--red);border-radius:8px;
+             padding:5px 10px;font-size:11.5px;display:inline-block;margin-left:8px}
+  .sleeves{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+  .fam{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .fam h3{margin:0 0 2px;font-size:13.5px}
+  .chiprow{display:flex;align-items:center;gap:6px;margin:6px 0 8px;flex-wrap:wrap}
+  .chip{padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700}
+  .chip.ok{background:var(--greenbg);color:var(--green)}
+  .chip.flat{background:var(--graybg);color:var(--gray)}
+  .chip.warn{background:var(--yellowbg);color:var(--yellow)}
+  .chip.bad{background:var(--redbg);color:var(--red)}
+  .chip.info{background:var(--bluebg);color:var(--blue)}
+  .chip.diag{background:var(--purplebg);color:var(--purple)}
+  .fam table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  .fam td{padding:2.5px 0;vertical-align:top;font-size:12px}
+  .fam td:first-child{color:var(--muted);width:46%}
+  .fam td:last-child{text-align:right;font-weight:600}
+  .section{background:var(--card);border:1px solid var(--line);border-radius:10px;
+           margin-top:12px;padding:12px 14px}
+  .section h2{margin:0 0 8px;font-size:13.5px}
+  .note{font-size:11px;color:var(--muted)}
+  .hidden{display:none}
+  /* calendar */
+  #calhead{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+  #calhead button{border:1px solid var(--line);background:#fff;border-radius:8px;
+                  padding:4px 12px;cursor:pointer;font-size:12px}
+  #monthlabel{font-weight:700;font-size:14px}
+  table.cal{border-collapse:collapse;width:100%;table-layout:fixed}
+  table.cal th{font-size:10.5px;color:var(--muted);padding:4px 0;text-transform:uppercase}
+  table.cal td{border:1px solid var(--line);height:64px;vertical-align:top;
+               padding:4px 6px;cursor:pointer}
+  table.cal td:hover{outline:2px solid var(--blue);outline-offset:-2px}
+  table.cal td.empty{background:#fafafa;cursor:default;border-style:dashed}
+  .daynum{font-size:10.5px;color:var(--muted)}
+  .daypnl{font-weight:700;font-size:12.5px;font-variant-numeric:tabular-nums}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:4px;vertical-align:middle}
+  .dot.ok{background:var(--green)}.dot.notrade{background:#c8ccd2}
+  .dot.partial{background:var(--yellow)}.dot.reconfail{background:var(--red)}
+  .dot.out{background:transparent;border:1px dashed #c8ccd2}
+  .weekrow td{background:#f8f9fb;font-weight:700;font-size:11.5px;height:26px;cursor:default}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--muted)}
+  /* modal */
+  #overlay{display:none;position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:20;
+           align-items:center;justify-content:center}
+  #popup{background:#fff;border-radius:12px;max-width:860px;width:94%;max-height:86vh;
+         overflow:auto;padding:16px 18px}
+  #popup h3{margin:0 0 8px;font-size:14px}
+  #popup table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+  #popup th{text-align:left;color:var(--muted);font-size:11px;border-bottom:1px solid var(--line);padding:4px 6px}
+  #popup td{border-bottom:1px solid #f0f1f3;padding:4px 6px;vertical-align:top}
+  #popup td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  #popup .close{float:right;border:1px solid var(--line);background:#fff;border-radius:8px;
+                padding:3px 10px;cursor:pointer}
+  footer{color:var(--muted);font-size:11px;margin-top:12px;line-height:1.6}
+  table.grid{border-collapse:collapse;width:100%;font-size:12px;margin-top:6px}
+  table.grid th{text-align:left;color:var(--muted);font-size:11px;border-bottom:1px solid var(--line);padding:5px 8px}
+  table.grid td{border-bottom:1px solid #f0f1f3;padding:5px 8px}
+  table.grid td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  @media (max-width:1100px){.strip{grid-template-columns:repeat(2,1fr)}.sleeves{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <img src="/logo.jpg" alt="Phorec">
+  <div>
+    <h1>Phorec 2 — Shared Portfolio 100K</h1>
+    <div class="sub">BẢN REVIEW (PREVIEW) · MỘT portfolio shadow vốn gốc 100.000 USD-equivalent
+      cho TẤT CẢ sleeve · epoch 2 chưa activate · không thay dashboard 8766/8765 đang chạy ·
+      paper/shadow, không phải tài khoản broker thật</div>
+  </div>
+  <span id="badge" class="badge off">…</span>
+  <div id="lastupdate"></div>
+</header>
+
+<main>
+  <div class="banner epoch" id="epochBanner"></div>
+  <div class="tabs">
+    <button class="tab on" id="tabNew">Kỳ mới (từ ngày reset)</button>
+    <button class="tab" id="tabOld">Lịch sử cũ (epoch 1)</button>
+  </div>
+
+  <!-- ================= EPOCH 2 (kỳ mới) ================= -->
+  <div id="viewNew">
+    <div class="strip" id="newStrip"></div>
+    <div class="wide" id="newRU"></div>
+    <div class="sleeves" id="newSleeves"></div>
+    <div class="section">
+      <h2>Luật vốn chung (FROZEN trước khi thấy PnL) &amp; tín hiệu bị block</h2>
+      <div id="ruleBox" class="note"></div>
+      <div id="blockedBox" style="margin-top:8px"></div>
+    </div>
+    <div class="section">
+      <h2>Equity kỳ mới</h2>
+      <div class="note" id="newChartNote">Chưa có dữ liệu epoch-2 — NOT_ACTIVATED (không backfill,
+        không hiển thị đường giả). Sau activation, đường equity bắt đầu tại $100,000 với PnL $0.</div>
+      <svg id="newChart" viewBox="0 0 1000 220" preserveAspectRatio="none" style="width:100%;height:auto;display:block"></svg>
+    </div>
+  </div>
+
+  <!-- ================= EPOCH 1 (lịch sử cũ) ================= -->
+  <div id="viewOld" class="hidden">
+    <div class="banner old" id="oldBanner"></div>
+    <div class="section">
+      <h2>Lịch PnL theo ngày (lịch sử cũ, quy USD-eq) — bấm vào ngày để xem chi tiết</h2>
+      <div id="calhead">
+        <button id="prevM">◀ tháng trước</button>
+        <span id="monthlabel"></span>
+        <button id="nextM">tháng sau ▶</button>
+        <span class="note" id="monthTotals"></span>
+      </div>
+      <table class="cal" id="cal"></table>
+      <div class="legend">
+        <span><span class="dot ok"></span> có dữ liệu đầy đủ</span>
+        <span><span class="dot notrade"></span> NO_TRADE — có dữ liệu, không giao dịch</span>
+        <span><span class="dot partial"></span> PARTIAL — thiếu mark của ít nhất một sleeve (UNAVAILABLE, không phải $0)</span>
+        <span><span class="dot reconfail"></span> RECON_FAIL — decomposition không khớp Δequity (ẩn chi tiết, fail-closed)</span>
+        <span><span class="dot out"></span> ngoài phạm vi dữ liệu đã ghi</span>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Equity sách cũ theo sleeve (mô hình 100k riêng — chỉ hiển thị lịch sử)</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px" id="sleevePick"></div>
+      <svg id="oldChart" viewBox="0 0 1000 300" preserveAspectRatio="none" style="width:100%;height:auto;display:block"></svg>
+      <div class="note">Đường đứt = vốn gốc 100,000 của sách cũ. Khoảng trống = thiếu mark (fail-closed, không nội suy).</div>
+    </div>
+    <div class="section">
+      <h2>Bằng chứng epoch-1 (append-only, đã hash)</h2>
+      <div id="srcBox" class="note"></div>
+    </div>
+  </div>
+
+  <footer id="footer"></footer>
+</main>
+
+<div id="overlay"><div id="popup">
+  <button class="close" onclick="document.getElementById('overlay').style.display='none'">Đóng</button>
+  <h3 id="popTitle"></h3>
+  <div id="popBody"></div>
+</div></div>
+
+<script>
+"use strict";
+var $=function(id){return document.getElementById(id);};
+var S={portfolio:null,calendar:null,health:null,view:"new",month:null,chartSleeve:"XSECT-FUND-CARRY-7D"};
+
+function usd(x,dash){ if(x===null||x===undefined||!isFinite(x)) return (dash===undefined?"UNAVAILABLE":dash);
+  var s=x<0?"-":""; return s+"$"+Math.abs(x).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function cls(x){ return (x===null||x===undefined||!isFinite(x)||Math.abs(x)<1e-9)?"neu":(x>0?"pos":"neg"); }
+function esc(s){ return String(s===null||s===undefined?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function fmtVN(iso){ if(!iso) return "N/A"; var d=new Date(iso); if(isNaN(d)) return String(iso);
+  return new Intl.DateTimeFormat("vi-VN",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).format(d); }
+
+/* ---------- tabs ---------- */
+$("tabNew").onclick=function(){ S.view="new"; $("tabNew").classList.add("on"); $("tabOld").classList.remove("on");
+  $("viewNew").classList.remove("hidden"); $("viewOld").classList.add("hidden"); };
+$("tabOld").onclick=function(){ S.view="old"; $("tabOld").classList.add("on"); $("tabNew").classList.remove("on");
+  $("viewOld").classList.remove("hidden"); $("viewNew").classList.add("hidden"); renderOld(); };
+
+/* ---------- status ---------- */
+function renderStatus(){
+  var b=$("badge");
+  if(!S.health){ b.textContent="OFFLINE"; b.className="badge off"; return; }
+  if(!S.health.daemon_alive){ b.textContent="FX DAEMON OFFLINE"; b.className="badge off"; return; }
+  b.textContent="NGUỒN DỮ LIỆU SỐNG (paper)"; b.className="badge live";
+}
+
+var SLEEVE_META={
+ "FX-RANGEFADE-2M":{cls:"KEEP_PROSPECTIVE · NOT_PROMOTABLE",chip:"warn",
+   note:"EURUSD+GBPUSD 1.5 lot/cặp · chốt phẳng 20:00 UTC · PnL GROSS/HYPOTHETICAL (journal chưa có fee/slippage/funding — tuyệt đối không gọi là net)"},
+ "BTC4H-BANDRIDGE":{cls:"CONDITIONAL_KEEP · chờ A2 pins GO",chip:"warn",
+   note:"Donchian 30/15 + band gate, H4 · sizing B + fill law A chờ owner GO (draft A2)"},
+ "BASISLV-PREMFADE-28D":{cls:"OBSERVATION_ONLY",chip:"info",
+   note:"Chỉ quan sát, không promote từ mẫu mỏng; tách price-only basis khỏi funding carry"},
+ "ILLIQ-AMIHUD-28D-W":{cls:"DIAGNOSTIC_ONLY · gate D13",chip:"diag",
+   note:"Không promotion/rescue; time-stop sau 13 quyết định tuần hợp lệ; tham gia portfolio là quyết định owner (mặc định đề xuất: có, chỉ chẩn đoán)"},
+ "XSECT-FUND-CARRY-7D":{cls:"RETIRE_CURRENT_IDENTITY",chip:"bad",
+   note:"KHÔNG thuộc epoch-2 · chỉ còn là sách cũ chạy về flat theo amendment A3 khi được GO"}
+};
+var E2_SLEEVES=["FX-RANGEFADE-2M","BTC4H-BANDRIDGE","BASISLV-PREMFADE-28D","ILLIQ-AMIHUD-28D-W"];
+
+function renderNew(){
+  var p=S.portfolio; if(!p) return;
+  var a=p.epoch1, e2=p.epoch2;
+  $("epochBanner").innerHTML = "EPOCH 2 · <b>PREVIEW — CHƯA ACTIVATE</b> · vốn gốc khi activation: <b>$100,000 USD-eq</b> · PnL khởi điểm: <b>$0</b> · " +
+    "luật vị thế mở tại cutover: <b>" + esc(String(e2.open_position_law)) + "</b> · CUTOVER BLOCKED chờ GO của owner. " +
+    "Không kết quả cũ nào được chuyển vào kỳ mới; không backfill.";
+  var exp=p.exposure;
+  $("newStrip").innerHTML =
+    box("EQUITY KỲ MỚI (epoch 2)","NOT_ACTIVATED","neu","$100,000 tại activation — số thật chỉ có sau GO") +
+    box("PNL KỲ MỚI","NOT_ACTIVATED","neu","không backfill, không cộng lãi/lỗ cũ") +
+    box("GROSS EXPOSURE (sách hiện hữu, tham chiếu)", usd(exp.fx_gross_usd + exp.crypto_gross_included_usdt*1.0),"",
+      "FX "+usd(exp.fx_gross_usd)+" · crypto (3 sleeve epoch-2) "+usd(exp.crypto_gross_included_usdt)+" USDT-eq") +
+    box("VỐN KHẢ DỤNG (PREVIEW theo rule)","PREVIEW","neu","chỉ tính sau activation · caps "+ruleCapsText()) +
+    box("WORKER / DỮ LIỆU", workerShort(),"", workerDetail());
+  $("newRU").innerHTML = "TÁCH THÀNH PHẦN (sách cũ, tham chiếu): FX realized "+usd(a.sleeves["FX-RANGEFADE-2M"].epoch1_realized)+
+    " · crypto realized/unrealized/fee/funding hiển thị trong từng sleeve bên dưới" +
+    '<span class="grosswarn">FX = GROSS/HYPOTHETICAL — chưa có fee/slippage/funding trong journal; KHÔNG phải net PnL</span>';
+  var cards="";
+  E2_SLEEVES.concat(["XSECT-FUND-CARRY-7D"]).forEach(function(sid){
+    var m=SLEEVE_META[sid], sl=a.sleeves[sid]||{};
+    var isE2 = E2_SLEEVES.indexOf(sid)>=0;
+    var chip = '<span class="chip '+m.chip+'">'+m.cls+'</span>' + (isE2?'':'<span class="chip bad">NGOÀI epoch-2</span>');
+    var posRows=(sl.positions&&(Array.isArray(sl.positions)?sl.positions.length:Object.keys(sl.positions).length))?(
+      Array.isArray(sl.positions)?
+        sl.positions.map(function(pp){ /* crypto: symbol/qty/notional */
+          if(!pp) return "";
+          return "<tr><td>"+esc(pp.symbol)+"</td><td class='"+((pp.qty||0)>0?"pos":"neg")+"'>"+((pp.qty||0)>0?"LONG":"SHORT")+" "+esc(Number(pp.qty).toPrecision(6))+" · notional "+usd(pp.notional)+"</td></tr>";
+        }).join("")
+      : Object.keys(sl.positions).map(function(k){ /* FX: pair -> dir/lots/entry */
+          var pp=sl.positions[k];
+          return "<tr><td>"+esc(k)+" mở "+esc(String(pp.entry_ts||"").slice(0,16))+"</td><td class='"+((pp.dir||0)>0?"pos":"neg")+"'>"+((pp.dir||0)>0?"LONG":"SHORT")+" "+esc(String(pp.lots))+" lot @ "+esc(String(pp.entry_px))+"</td></tr>";
+        }).join("")
+    ):"";
+    cards += '<div class="fam"><h3>'+sid+'</h3><div class="chiprow">'+chip+'</div>'+
+      '<div class="note">'+esc(m.note)+'</div><table>'+
+      tr("Vai trò trong epoch-2", isE2?"Đóng góp vào TÀI KHOẢN CHUNG $100k (không phải tài khoản riêng 100k)":"Không tham gia — chỉ lịch sử") +
+      tr("Equity sách cũ (tham chiếu)", usd(sl.epoch1_equity)) +
+      tr("Realized / Unrealized (cũ)", usd(sl.epoch1_realized,"—")+" / "+usd(sl.epoch1_unrealized,"—")) +
+      (sl.fees!==undefined&&sl.fees!==null?tr("Fees / Funding (cũ)", usd(sl.fees)+" / "+usd(sl.funding!==undefined?sl.funding:null)):"")+
+      tr("Gross notional (cũ)", usd(sl.gross_notional)) +
+      tr("Trạng thái dữ liệu", esc(String(sl.status||"—")) + (sl.mark_ts?" · mark "+esc(String(sl.mark_ts).slice(11,19))+"Z":"")) +
+      (posRows?'<tr><td colspan="2"><table style="margin-top:4px">'+posRows+'</table></td></tr>':"") +
+      '</table></div>';
+  });
+  $("newSleeves").innerHTML=cards;
+  var cr=p.capital_rule||{}, caps=(cr.caps_proposal_from_sizing_audit||{});
+  $("ruleBox").innerHTML = "Thứ tự xử lý tín hiệu (cố định, KHÔNG phụ thuộc hiệu suất): <b>"+esc((cr.priority_order_performance_independent||[]).join(" → "))+"</b>."+
+    "<br>"+esc(((cr.laws)||[]).join(" · ")).replace(/R1 /,"<b>R1</b> ").replace(/R2 /,"<b>R2</b> ").replace(/R3 /,"<b>R3</b> ").replace(/R4 /,"<b>R4</b> ").replace(/R5 /,"<b>R5</b> ")+
+    "<br>Caps (đề xuất, chờ GO): tổng ≤ "+esc(String(caps.cap_total_gross_pct_equity))+"% equity · FX ≤ "+esc(String(caps.cap_fx_gross_pct_equity))+"% · crypto ≤ "+esc(String(caps.cap_crypto_gross_pct_equity))+"% · stress-loss tối đa "+esc(String(caps.max_aggregate_stress_loss_pct_equity))+"% equity.";
+  $("blockedBox").innerHTML='<span class="chip flat">CHƯA ACTIVATE — chưa có tín hiệu nào bị block bởi rule mới; rule đã freeze trong epoch_config.json (digest chờ đăng ký)</span>';
+  drawNewChart();
+}
+function ruleCapsText(){ var c=((S.portfolio||{}).capital_rule||{}).caps_proposal_from_sizing_audit||{};
+  return (c.cap_total_gross_pct_equity||"?")+"% tổng / "+(c.cap_fx_gross_pct_equity||"?")+"% FX / "+(c.cap_crypto_gross_pct_equity||"?")+"% crypto"; }
+function workerShort(){ var w=S.portfolio&&S.portfolio.worker_status||{};
+  var fx=w.fx_daemon&&S.health&&S.health.daemon_alive?"FX daemon: SỐNG":"FX daemon: OFFLINE";
+  var v=w.psv1_valuation&&w.psv1_valuation.pid?("valuation: pid "+w.psv1_valuation.pid):"valuation: —";
+  return (S.health&&S.health.daemon_alive?"OK":"MẤT")+" · "+v; }
+function workerDetail(){ var w=S.portfolio&&S.portfolio.worker_status||{};
+  return "FX heartbeat "+(S.health?esc(String(S.health.heartbeat_age_s))+"s":"—")+
+    " · valuation loop cuối "+esc(String((w.psv1_valuation||{}).last_loop_utc||"—")); }
+function tr(k,v){ return "<tr><td>"+k+"</td><td>"+v+"</td></tr>"; }
+function box(l,v,c,s){ return '<div class="box"><div class="lbl">'+l+'</div><div class="val '+(c||"")+'">'+v+'</div><div class="sml">'+(s||"")+'</div></div>'; }
+function drawNewChart(){
+  var svg=$("newChart"); var H=220,W=1000,base=H-40;
+  svg.innerHTML='<line x1="70" y1="'+base+'" x2="980" y2="'+base+'" stroke="#9aa2af" stroke-dasharray="6 5"/>'+
+    '<text x="976" y="'+(base-6)+'" text-anchor="end" font-size="11" fill="#6b7280">baseline $100,000 — chưa có điểm nào (NOT_ACTIVATED)</text>';
+}
+
+/* ---------- old history ---------- */
+function renderOld(){
+  var p=S.portfolio; if(!p) return;
+  $("oldBanner").innerHTML="LỊCH SỬ CŨ (epoch-1) — mô hình MỖI SLEEVE 100k, tổng ≈ <b>"+usd(p.epoch1.per_sleeve_100k_model_sum_usd_eq)+"</b>. "+
+    "Con số này là 5 sách cũ cộng lại — <b>KHÔNG phải</b> equity của portfolio mới và <b>KHÔNG được cộng</b> vào kỳ mới.";
+  $("srcBox").innerHTML=(p.source_manifest||[]).map(function(s){
+      return esc(s.path.split("/").slice(-2).join("/"))+" · sha256 <code>"+esc(String(s.sha256||"—").slice(0,16))+"…</code>";
+    }).join("<br>");
+  pickSleeve();
+  loadMonth(S.month);
+}
+function pickSleeve(){
+  var names=["FX-RANGEFADE-2M","XSECT-FUND-CARRY-7D","ILLIQ-AMIHUD-28D-W","BASISLV-PREMFADE-28D","BTC4H-BANDRIDGE"];
+  $("sleevePick").innerHTML=names.map(function(n){
+      return '<button class="tab '+(S.chartSleeve===n?"on":"")+'" onclick="S.chartSleeve=\''+n+'\';pickSleeve();drawOldChart()">'+n+'</button>';
+    }).join("");
+}
+function drawOldChart(){
+  var svg=$("oldChart");
+  var pts=[];
+  if(S.chartSleeve==="FX-RANGEFADE-2M"){
+    // FX: daily realized → cumulative from journal-derived history
+    var cum=100000, arr=(S.portfolio.epoch1.history_days);
+    arr.forEach(function(d){ var r=d.sleeves["FX-RANGEFADE-2M"].day_realized_usd||0; cum+=r; pts.push({t:d.day_utc,v:cum}); });
+    if(pts.length===1){ pts.unshift({t:"2026-09-23",v:100000}); }
+  } else {
+    var rows=(S.portfolio.epoch1.history_days);
+    var have=rows.filter(function(d){ return d.sleeves[S.chartSleeve] && d.sleeves[S.chartSleeve].equity_eod!==undefined && d.sleeves[S.chartSleeve].equity_eod!==null; });
+    if(!have.length){ svg.innerHTML='<text x="500" y="150" text-anchor="middle" fill="#6b7280" font-size="13">Chưa có điểm equity cho sleeve này trong phạm vi lịch sử</text>'; return; }
+    have.forEach(function(d){ pts.push({t:d.day_utc,v:d.sleeves[S.chartSleeve].equity_eod}); });
+  }
+  if(pts.length<2){ svg.innerHTML='<text x="500" y="150" text-anchor="middle" fill="#6b7280" font-size="13">Chưa đủ điểm để vẽ (NOT_RUN)</text>'; return; }
+  var W=1000,H=300,L=76,R=14,T=12,B=26;
+  var ymin=Infinity,ymax=-Infinity; pts.forEach(function(p){ymin=Math.min(ymin,p.v);ymax=Math.max(ymax,p.v);});
+  ymin=Math.min(ymin,100000);ymax=Math.max(ymax,100000);
+  var pad=(ymax-ymin)*0.08||1;ymin-=pad;ymax+=pad;
+  function X(i){return L+i/(pts.length-1)*(W-L-R);} function Y(v){return T+(1-(v-ymin)/(ymax-ymin))*(H-T-B);}
+  var out=[];
+  for(var i=0;i<=4;i++){var v=ymin+(ymax-ymin)*i/4,y=Y(v);
+    out.push('<line x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'" stroke="#eef0f3"/>');
+    out.push('<text x="'+(L-6)+'" y="'+(y+3.5)+'" text-anchor="end" font-size="10" fill="#6b7280">'+Math.round(v).toLocaleString("en-US")+'</text>');}
+  out.push('<line x1="'+L+'" y1="'+(H-B)+'" x2="'+(W-R)+'" y2="'+(H-B)+'" stroke="#c8ccd2"/>');
+  var by=Y(100000);
+  out.push('<line x1="'+L+'" y1="'+by+'" x2="'+(W-R)+'" y2="'+by+'" stroke="#9aa2af" stroke-dasharray="6 5" stroke-width="1.2"/>');
+  out.push('<text x="'+(W-R-4)+'" y="'+(by-4)+'" text-anchor="end" font-size="10" fill="#6b7280">100,000</text>');
+  out.push('<path fill="none" stroke="#1d4ed8" stroke-width="1.7" d="'+pts.map(function(p,i){return (i?"L":"M")+X(i).toFixed(1)+" "+Y(p.v).toFixed(1);}).join(" ")+'"/>');
+  svg.innerHTML=out.join("");
+}
+
+/* ---------- calendar ---------- */
+function loadMonth(m){
+  fetch("/calendar.json?month="+m,{cache:"no-store"}).then(function(r){return r.json();}).then(function(c){
+    S.calendar=c; drawCal();
+  });
+}
+function drawCal(){
+  var c=S.calendar; if(!c) return;
+  $("monthlabel").textContent="Tháng "+c.month+" (UTC) — "+c.label;
+  $("monthTotals").innerHTML="Tổng tháng: <b class='"+cls(c.month_total_usd_eq)+"'>"+usd(c.month_total_usd_eq)+"</b> (USD-eq, lịch sử cũ)";
+  var weeks=c.weeks.map(function(w){return "<span>Tuần "+esc(w.week)+": <b class='"+cls(w.pnl)+"'>"+usd(w.pnl)+"</b></span>";}).join(" · ");
+  var head=["T2","T3","T4","T5","T6","T7","CN"].map(function(d){return "<th>"+d+"</th>";}).join("");
+  var html="<tr>"+head+"</tr>", row="", cellIdx=0;
+  var first=new Date(c.days[0].day_utc+"T00:00:00Z");
+  var lead=(first.getUTCDay()+6)%7;
+  for(var i=0;i<lead;i++){ row+='<td class="empty"></td>'; cellIdx++; }
+  c.days.forEach(function(d){
+    var dot="ok", pnl="";
+    if(!d.in_covered_history){ dot="out"; pnl="—"; }
+    else{
+      var v=d.total_day_pnl_usd_eq;
+      pnl=(v===null||v===undefined)?"UNAVAILABLE":usd(v);
+      if(d.status==="PARTIAL") dot="partial";
+      else if(d.status==="RECON_FAIL") dot="reconfail";
+      else if(Math.abs(v||0)<1e-9) dot="notrade";
+    }
+    var title = d.in_covered_history? d.day_utc : d.day_utc+" · ngoài phạm vi dữ liệu";
+    row+='<td onclick="'+(d.in_covered_history?"openDay('"+d.day_utc+"')":"")+'" title="'+esc(title)+'">'+
+      '<span class="daynum">'+parseInt(d.day_utc.slice(8),10)+"</span>"+(d.in_covered_history?'<span class="dot '+dot+'"></span>':"")+
+      '<div class="daypnl '+cls(d.total_day_pnl_usd_eq)+'">'+pnl+"</div></td>";
+    cellIdx++;
+    if(cellIdx%7===0){ html+="<tr>"+row+"</tr>"; row=""; }
+  });
+  if(row) html+="<tr>"+row+"</tr>";
+  $("cal").innerHTML=html;
+}
+$("prevM").onclick=function(){ shiftMonth(-1); };
+$("nextM").onclick=function(){ shiftMonth(1); };
+function shiftMonth(k){
+  var y=parseInt(S.month.slice(0,4)),m=parseInt(S.month.slice(5,7))+k;
+  if(m<1){m=12;y--;} if(m>12){m=1;y++;}
+  S.month=y+"-"+(m<10?"0":"")+m; loadMonth(S.month);
+}
+function openDay(day){
+  fetch("/day.json?date="+day,{cache:"no-store"}).then(function(r){return r.json();}).then(function(d){
+    var h="<h3 style='margin-bottom:2px'>Ngày "+day+" (UTC) — LỊCH SỬ CŨ (không cộng vào kỳ mới)</h3>";
+    var pr=d.portfolio_row;
+    if(pr){
+      h+="<p class='note'>Tổng ngày: <b class='"+cls(pr.total_day_pnl_usd_eq)+"'>"+usd(pr.total_day_pnl_usd_eq)+"</b> USD-eq · trạng thái: "+esc(pr.status)+"</p>";
+      h+="<table><tr><th>Sleeve</th><th>PnL ngày</th><th>Realized</th><th>ΔUnrealized</th><th>Fees</th><th>Funding</th><th>Trạng thái</th></tr>";
+      Object.keys(pr.sleeves).forEach(function(k){
+        var s=pr.sleeves[k], dec=s.decomposition||{};
+        var pnl = (s.day_pnl!==null&&s.day_pnl!==undefined)?usd(s.day_pnl):(s.day_realized_usd!==undefined?usd(s.day_realized_usd):"—");
+        h+="<tr><td>"+esc(k)+(s.round_trips!==undefined?" ("+s.round_trips+" round trips)":"")+"</td>"+
+           "<td class='n "+cls(s.day_pnl!==undefined?s.day_pnl:s.day_realized_usd)+"'>"+pnl+"</td>"+
+           "<td class='n'>"+(dec.realized!==undefined?usd(dec.realized):"—")+"</td>"+
+           "<td class='n'>"+(dec.unrealized_change!==undefined?usd(dec.unrealized_change):"—")+"</td>"+
+           "<td class='n'>"+(dec.fees!==undefined?usd(dec.fees):"—")+"</td>"+
+           "<td class='n'>"+(dec.funding!==undefined?usd(dec.funding):"—")+"</td>"+
+           "<td>"+esc(s.status)+"</td></tr>";
+      });
+      h+="</table>";
+    }
+    if(d.fx_trades&&d.fx_trades.length){
+      h+="<h3 style='margin:10px 0 4px;font-size:13px'>FX — giao dịch đóng trong ngày (GROSS/HYPOTHETICAL)</h3>";
+      h+="<table><tr><th>Giờ đóng (UTC)</th><th>Cặp</th><th>Chiều</th><th>Vào</th><th>Ra</th><th>Lot</th><th>PnL</th><th>Lý do</th></tr>";
+      d.fx_trades.forEach(function(t){
+        h+="<tr><td>"+esc(t.close_ts_utc.slice(11,19))+"</td><td>"+esc(t.pair)+"</td><td class='"+(t.dir>0?"pos":"neg")+"'>"+(t.dir>0?"LONG":"SHORT")+"</td>"+
+           "<td class='n'>"+(t.entry_px!=null?Number(t.entry_px).toFixed(5):"—")+"</td><td class='n'>"+(t.exit_px!=null?Number(t.exit_px).toFixed(5):"—")+"</td><td class='n'>"+esc(String(t.lots))+"</td>"+
+           "<td class='n "+cls(t.pnl_usd)+"'>"+usd(t.pnl_usd)+"</td><td>"+esc(t.reason||"")+"</td></tr>";
+      });
+      h+="</table>";
+    }
+    $("popTitle").textContent="";
+    $("popBody").innerHTML=h;
+    $("overlay").style.display="flex";
+  });
+}
+$("overlay").addEventListener("click",function(ev){ if(ev.target===$("overlay")) $("overlay").style.display="none"; });
+
+/* ---------- loop ---------- */
+async function getJSON(u){ var r=await fetch(u,{cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }
+async function tick(){
+  try{ S.health=await getJSON("/health.json?"+Date.now()); }catch(e){ S.health=null; }
+  try{ S.portfolio=await getJSON("/portfolio.json?"+Date.now()); }catch(e){}
+  renderStatus(); renderNew();
+  if(!$("viewOld").classList.contains("hidden")) renderOld();
+  $("lastupdate").textContent="Cập nhật: "+fmtVN(new Date().toISOString())+" (giờ VN)";
+}
+S.month=new Date().toISOString().slice(0,7);
+tick(); setInterval(tick,15000);
+</script>
+</body>
+</html>

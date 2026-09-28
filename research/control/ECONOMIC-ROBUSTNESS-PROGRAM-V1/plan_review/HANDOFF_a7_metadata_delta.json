@@ -1,0 +1,105 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "erp1-a1-metadata-delta",
+  "cycle_id": "FX-RANGEFADE-2M-SHADOW-V1",
+  "role": "quant-auditor",
+  "lane": "a1-metadata-delta",
+  "dispatch_sha": "651b5c94cea005d9012df786158aa6efeebf6bf2",
+  "actual_start_sha": "651b5c94cea005d9012df786158aa6efeebf6bf2",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/A7_a1_metadata_delta_REPORT.md",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/HANDOFF_a7_metadata_delta.json"
+  ],
+  "tests": [
+    {
+      "command": ".venv/bin/python -m pytest . -q  (cwd = FX worktree research/control/FX-RANGEFADE-2M-SHADOW-V1/tests)",
+      "result": "65 passed in 2.24s (15 new in tests/test_a1_metadata_patch.py: 4 one-second-boundary, idempotence, label-law branches, state-writer source check, 7 fail-closed incl. parametrized malformed artifacts, scope containment)"
+    },
+    {
+      "command": "inline recompute: derive_a1_activation(A1_ACTIVATION.json, seq-97 row ts 2026-09-25T05:35:04+00:00) and derive_a1_activation(A1_ACTIVATION.json, now_utc()) via real fx_shadow_core",
+      "result": "historical-row input -> ACTIVATED skew 1.0s CONSISTENT (matches dispatch D2); boot-time input -> ACTIVATION_UNVERIFIED_FAIL_CLOSED SKEW_EXCEEDS_TOLERANCE skew 5900.0s, label stays UNSEPARATED (F1 demonstrated live)"
+    },
+    {
+      "command": "git -C FX-worktree diff --numstat 68156025..651b5c94 + grep sweeps (SHORT_BETA_SEPARATED, control_phase consumers) + AST parse of both patched daemon files",
+      "result": "68/0 + 25/8 + 128/0 across exactly 3 files; zero old-label strings and zero control_phase consumers in cycle dir; both files parse clean on Python 3.12.14"
+    }
+  ],
+  "authority_claims": [
+    "Audit-only authorization honored: no restart/stop of pid 72270 (verified alive, started 2026-09-25T05:35:03Z = artifact new_daemon, pre-patch code); writes limited to the 2 changed_paths in the ROOT repo",
+    "T_ctrl authority verified: derive returns artifact phase_a.t_ctrl_utc (2026-09-25T05:35:03Z) verbatim; journal ts only in cross_check/cost_book_row_ts; no code path substitutes journal ts for T_ctrl",
+    "Fail-closed matrix complete: missing/malformed/no-t_ctrl artifact, missing journal row, unparseable ts, journal-precedes-artifact, skew>300s all yield ACTIVATION_UNVERIFIED_FAIL_CLOSED + T_ctrl None + UNSEPARATED even with ctrl records; exact 0.0s boundary CONSISTENT"
+  ],
+  "known_limitations": [
+    "F1 (HIGH, wiring — blocks owner GO): shadow_daemon.py feeds the FRESH boot row ts (now_utc()) into derive_a1_activation instead of the activation-time journal cross-check evidence (seq 97 @ 2026-09-25T05:35:04+00:00, on disk, designated 'CROSS-CHECK evidence only' by owner law). The pass window [T_ctrl, T_ctrl+300s] closed at 05:40:03Z, ~85 min before the commit existed, so the owner-GO'd restart structurally yields ACTIVATION_UNVERIFIED_FAIL_CLOSED / T_ctrl null / UNSEPARATED — the dispatch's own expected restart outcome (ACTIVATED / T_ctrl=05:35:03Z / ACCRUING label) is unreachable as committed. Fail-closed direction preserved (no false ACTIVATED, no data corruption); remediation = pass the replayed a1_lines cost_book row ts to derive + add a wiring-level fixture.",
+    "F2 (MEDIUM, fixture honesty): test_ii_state_writer_uses_derived_block asserts SOURCE strings, not a booted daemon; derivation + label functions are behaviorally tested but the boot-input selection seam (where F1 sits) has no behavioral coverage. First authorized restart remains the only in-vivo integration test of the glue.",
+    "F3 (LOW): non-dict JSON shapes (top-level list/str artifact, or truthy non-dict phase_a) raise AttributeError at boot instead of graceful FAIL_CLOSED — owner-controlled artifact, low probability, fail-closed direction preserved.",
+    "F4 (LOW): sorted(ln.get('ts')) would raise TypeError on a ts-less journal line; unreachable in practice (Journal.log always stamps ts).",
+    "F5 (LOW): journal schema change is additive-plus-drop on NEW rows only (t_ctrl_artifact + cost_book_row_ts added; stale control_phase placeholder dropped, zero consumers); all 108 on-disk rows keep old shape, no history rewrite.",
+    "F6 (LOW, cosmetic): pre-existing comment 'label flips to separated' (shadow_daemon.py ~L480) stale vs ACCRUING law; not introduced by this patch.",
+    "On-disk shadow_state.json keeps WRONG placeholders until the owner-GO'd restart (running pid 72270 = pre-patch code): phase PHASE_I_code_only_NOT_ACTIVATED, T_ctrl null, over-strong SHORT_BETA_SEPARATED label — expected and disclosed, consumers must treat state.json as pre-patch output until then."
+  ],
+  "incidents": [],
+  "tree_status": "FX worktree /Users/hoangminhlong/my-quantitative/.worktrees/fx-rangefade-2m-shadow-v1: branch orca/fx-rangefade-2m-shadow-v1 @ 651b5c94cea005d9012df786158aa6efeebf6bf2 (parent 6815602517acd8ab9e59c58f7e51f2d2722c1eba, both == dispatch); commit touches exactly 3 files (fx_shadow_core.py 68+/0-, shadow_daemon.py 25+/8-, test_a1_metadata_patch.py 128+/0-); frozen v2_lib.py/engine.py and whole signal/fill/cost path byte-identical at git level; journal append-only, 108 rows, 0 patched fields on disk. This audit wrote ONLY the 2 changed_paths in the ROOT repo (no commit made; pytest run in FX tests dir as dispatched). PSV1 worktree untouched (prospective-shadow-v1 main @ 69ddc604, predates and excludes the FX commit); XSECT decision 2026-09-26T00:00Z still PENDING. Running FX daemon pid 72270 (started 2026-09-25T05:35:03Z, pre-patch code) left untouched — restart belongs to an owner GO.",
+  "workers": 0,
+  "verdicts": {
+    "a1_metadata_delta": "REMEDIATION_REQUIRED",
+    "D1_scope_frozen_surface": "PASS (new-row-only journal change disclosed: control_phase dropped on new rows, zero consumers)",
+    "D2_t_ctrl_authority": "PASS_IN_DERIVATION_FAIL_IN_WIRING (F1 HIGH)",
+    "D3_fail_closed_matrix": "PASS",
+    "D4_label_law": "PASS",
+    "D5_idempotence_purity_paths": "PASS",
+    "D6_fixtures": "PASS 65/65 (honesty finding F2)",
+    "D7_running_process_truth": "CONFIRMED pid 72270 pre-patch, no restart, on-disk wrong placeholders disclosed",
+    "D8_a3_non_interference": "PASS",
+    "high": 1,
+    "medium": 1,
+    "low": 4,
+    "blocking": "F1"
+  },
+  "phase_a_requirements": [
+    "DO NOT owner-GO the restart on 651b5c94 as-is: first land the F1 remediation in the same lane — derive the cross-check ts from the replayed a1_lines cost_book row (seq 97 @ 2026-09-25T05:35:04+00:00) instead of the fresh boot row; keep the boot row fields as additive evidence; add one wiring-level fixture exercising the daemon's actual input selection.",
+    "After remediation, the owner-GO'd restart will produce: a1_controls phase ACTIVATED, T_ctrl 2026-09-25T05:35:03Z (artifact authority), cross_check skew 1.0s CONSISTENT vs journal evidence (never substituted), first_ctrl_record_ts 2026-09-25T06:00:06+00:00, label SHORT_BETA_SEPARATION_ACCRUING (... no FX-vs-control conclusion); new cost_book rows carry t_ctrl_artifact + cost_book_row_ts.",
+    "Until that restart, pid 72270 keeps writing the pre-patch state block (PHASE_I_code_only_NOT_ACTIVATED / T_ctrl null / over-strong SHORT_BETA_SEPARATED label) — treat shadow_state.json consumers accordingly; no backfill of journal or history."
+  ],
+  "outputs": [
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/A7_a1_metadata_delta_REPORT.md",
+    "research/control/ECONOMIC-ROBUSTNESS-PROGRAM-V1/plan_review/HANDOFF_a7_metadata_delta.json"
+  ],
+  "current": {
+    "round": 2,
+    "verdict": "AUTHORIZED_FOR_RESTART_PENDING_OWNER_GO",
+    "audited_head": "f811d736b3aa6d1cc8cd1f2c35debb405bd0f874",
+    "blocking": null
+  },
+  "round2": {
+    "audit_time_utc": "2026-09-25T07:19:55Z",
+    "object_commit": "f811d736b3aa6d1cc8cd1f2c35debb405bd0f874 (parent 651b5c94cea005d9012df786158aa6efeebf6bf2, measured == dispatch)",
+    "diff_numstat": "fx_shadow_core.py 15/0 (boot_cross_check_ts helper), shadow_daemon.py 4/1 (wiring only: _cb_ts = C.boot_cross_check_ts(a1_lines, now_utc()...)), test_a1_metadata_patch.py 35/0 (3 seam fixtures); same 3-file lane, frozen surface untouched, tracked tree clean",
+    "tests": [
+      {
+        "command": ".venv/bin/python -m pytest . -q  (cwd = FX worktree research/control/FX-RANGEFADE-2M-SHADOW-V1/tests)",
+        "result": "68 passed in 1.55s (65 + 3 F1 seam fixtures: late-boot vs activation-row with counterfactual, empty-journal fallback, daemon-wiring source assertion)"
+      },
+      {
+        "command": "live production-path simulation: daemon-identical journal replay filtering over the REAL shadow_journal.jsonl -> boot_cross_check_ts -> derive_a1_activation -> short_beta_label_for",
+        "result": "helper picks 2026-09-25T05:35:04+00:00 (seq 97, FIRST row) -> ACTIVATED / T_ctrl 2026-09-25T05:35:03Z / skew 1.0s CONSISTENT; label with ctrl records = SHORT_BETA_SEPARATION_ACCRUING (no FX-vs-control conclusion); empty-journal fallback True"
+      }
+    ],
+    "f1_status": "CLOSED — helper returns the FIRST cost_book row ts (parse-errors skipped, ts-less row falls to fallback; fresh ts only when no prior row, so a genuine first boot late after T_ctrl still fails closed); daemon wiring verified in diff; fixture 1 encodes the post-patch steady state (two cost_book rows) asserting FIRST is chosen plus the counterfactual that boot-clock wiring would FAIL_CLOSED",
+    "f2_status": "RECLASSIFIED MEDIUM -> LOW-residual — the seam that hid F1 now has behavioral coverage (fixtures 1-2); remaining gap is generic (main() never booted by tests; fixture 3 is source-level), so the first owner-GO'd restart stays the in-vivo integration test, bounded by direct reads + the live real-journal simulation",
+    "carryover_findings": [
+      "F3 (LOW): non-dict JSON shapes (top-level list/str, truthy non-dict phase_a) raise AttributeError at boot instead of graceful FAIL_CLOSED — unchanged, owner-controlled artifact",
+      "F4 (LOW): sorted(ln.get('ts')) TypeError on a ts-less journal line — unreachable in practice — unchanged",
+      "F5 (LOW): journal change additive-plus-drop on NEW rows only — unchanged",
+      "F6 (LOW, cosmetic): stale comment 'label flips to separated' — unchanged",
+      "INFO (no defect): on subsequent boots the new row's cost_book_row_ts field carries the activation-evidence ts (== cross_check.journal_cost_book_ts in state) rather than the boot wall clock; wall clock remains in the row's own ts field — no information lost, self-consistent"
+    ],
+    "process_truth": "pid 72270 untouched (same start 2026-09-25T05:35:03Z, elapsed 1:44:10 at recheck), no restart performed; both patched files AST-parse clean on Python 3.12.14",
+    "high": 0,
+    "medium": 0,
+    "low": 4,
+    "blocking": null,
+    "restart_expectation": "owner-GO'd restart produces: a1_controls phase ACTIVATED, T_ctrl 2026-09-25T05:35:03Z (artifact authority, never substituted), activation_cross_check {journal_cost_book_ts: 2026-09-25T05:35:04+00:00, skew_s: 1.0, verdict: CONSISTENT}, first_ctrl_record_ts 2026-09-25T06:00:06+00:00, label SHORT_BETA_SEPARATION_ACCRUING (... no FX-vs-control conclusion); new cost_book rows carry t_ctrl_artifact + cost_book_row_ts"
+  }
+}
