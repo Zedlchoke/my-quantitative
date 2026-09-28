@@ -1096,3 +1096,31 @@ terminal with the named single owner action — no lane burn, no audit arc.
   daily, momentum mọi cadence); F-0 bỏ observable còn lại shape ⇒ same
   family. Bằng chứng mới phải là payer/information/risk shape, không phải
   granularity.
+
+## P-31 — Floor geometry is part of floor validity: a per-fold floor that arithmetic forbids is a silent design kill — and discovering it after the census still forbids re-derivation (PORTFOLIO-ROUTER-12ASSETS-100K-V1, 2026-09-28)
+
+**Source:** the PR12A100K state-engine battery. The preregistered F3 floor
+("≥26 state-true decision weeks / state / outer fold" on 26-week test folds)
+demands ~100% per-fold occupancy — arithmetically incompatible with any
+multi-state partition, discovered only when the census ran. No relaxation was
+attempted; the close was instead re-grounded on the floors that were
+arithmetically meaningful (F1 ≥10 merged episodes on the full calendar) plus
+the floor-independent P-29 rho kill (V2 vs dead vol-percentile class 0.48 >
+0.20), and the terminal verdict was written to be F2/F3-independent — A7
+verified that independence explicitly.
+
+**Lesson:** before a census, run the floor-feasibility arithmetic (occupancy ×
+episode structure vs fold geometry) as a desk check — an impossible floor is
+not conservative, it is a pre-loaded verdict that wastes the question. When a
+mis-specified floor is discovered post-census, the move is NOT to re-derive
+floors (RSM mirage law) but to (a) disclose the defect, (b) ground the verdict
+on the floors/kills that are independently valid, and (c) record the
+specification defect so the next preregistration calibrates floors to the
+state machine's actual occupancy structure.
+
+**Consequence:** floor triplets in future plans carry a feasibility annex
+(expected occupancy/episode budget per state vs fold count) frozen WITH the
+floors; post-census close memos must state which kills are
+floor-defect-independent. Encoded in
+research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/TERMINAL_DECISION.md and
+this entry.

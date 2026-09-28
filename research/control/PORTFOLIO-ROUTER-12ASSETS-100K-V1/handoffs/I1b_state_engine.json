@@ -1,0 +1,106 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "I1b_state_engine",
+ "cycle_id": "PORTFOLIO-ROUTER-12ASSETS-100K-V1",
+ "role": "I1b macro state engine (3 PIT variables -> 4 states + ABSTAIN, weekly Friday 17:00 ET clock) + its pre-PnL battery (state census with preregistered floors; representation-rho P-29; P-20 distinctness)",
+ "lane": "I1b",
+ "dispatch_sha": "8d3e7d4b981b3bfc5b546e18d9aff7f305eea564",
+ "actual_start_sha": "8d3e7d4b981b3bfc5b546e18d9aff7f305eea564",
+ "commit_sha": "NONE_A1_COMMITS",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/portfolio-router-12assets-100k-v1/integration",
+ "changed_paths": [
+  ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/state_engine.py (new)",
+  ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/tests/test_state_engine.py (new)",
+  ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/battery_state.py (new)",
+  ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/fold_grid.json (new, battery output)",
+  ".worktrees/portfolio-router-12assets-100k-v1/integration/research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/battery/STATE_BATTERY_REPORT.json (new)",
+  ".worktrees/portfolio-router-12assets-100k-v1/integration/research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/battery/STATE_BATTERY_REPORT.md (new)",
+  "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/handoffs/I1b_state_engine.json (this file, root handoff collection point per dispatch)"
+ ],
+ "api_contract": {
+  "module": "research/pr12a100k/state_engine.py",
+  "compute_state": "compute_state(decision_ts, macro: MacroPanel) -> StateResult{decision_ts, state, effective_state, vars{v1_pm_bp,v1_band,v2_pct,v2_band,v3_spread,v3_pct,v3_band}, ages_days{v1,v2,v3}, stale_flags{v1,v2,v3}, whipsaw_flag, episode_id}; decision_ts must be a Friday (America/New_York); to_json() gives canonical bytes",
+  "build_macro_panel": "build_macro_panel(paths=None) -> MacroPanel; pure, from the raw store via loaders.load_macro_series + the CBOE VIX channel parser in state_engine; sha256-verified vs data_manifest_macro.json",
+  "state_timeline": "state_timeline(panel, fridays) -> pd.DataFrame, one deterministic row per decision Friday; rows are exactly compute_state(f, panel) flattened",
+  "MacroPanel.truncate": "panel.truncate(ts) -> MacroPanel restricted to what a decision at ts could see (the no-lookahead law, machine-checked by test)"
+ },
+ "tests": [
+  {
+   "cmd": "cd /Users/hoangminhlong/my-quantitative/.worktrees/portfolio-router-12assets-100k-v1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/pr12a100k/tests/test_state_engine.py -q",
+   "result": "14 passed (incl. no-lookahead truncation over 32 sampled real decision dates 2021-2026, V3 10-day boundary, per-variable staleness ABSTAIN, dwell/merge hand fixtures, ladder priority incl. all-three-fire, determinism bytes)",
+   "runtime_s": 18.5
+  },
+  {
+   "cmd": "cd /Users/hoangminhlong/my-quantitative/.worktrees/portfolio-router-12assets-100k-v1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/pr12a100k/tests/ -q",
+   "result": "33 passed (14 state_engine + 19 pre-existing loaders, no regressions)",
+   "runtime_s": 19.0
+  },
+  {
+   "cmd": "cd /Users/hoangminhlong/my-quantitative/.worktrees/portfolio-router-12assets-100k-v1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python research/pr12a100k/battery_state.py",
+   "result": "PASS_EXECUTED deterministic: two independent runs reproduced payload_sha256 4a5f0fc581995d2b9083ee11bf4a1b91ee37f5ce6eaf5d8e542f79ac07ef587a; timeline double-computation identical (csv sha256 4fc9a29d8137)",
+   "runtime_s": 69.5
+  }
+ ],
+ "battery_findings": {
+  "calendar": "286 decision Fridays 2021-01-08..2026-06-26 (5-pair intersection, COVERAGE_NOTE)",
+  "fold_grid": "9 folds (26w test, expanding train, 1w embargo, 52w warmup) saved to research/pr12a100k/fold_grid.json",
+  "state_census": {
+   "WAR_ENERGY": {"merged_episodes": 10, "occupancy_weeks": 55, "dwell_mean_weeks": 6.0, "verdict": "NOT_RUN_THIN (F1 margin 0 pass; F2 min-fold raw episodes 0 margin -2; F3 min-fold weeks 0 margin -26)"},
+   "RISK_STRESS": {"merged_episodes": 7, "occupancy_weeks": 24, "dwell_mean_weeks": 3.4, "verdict": "NOT_RUN_THIN (F1 -3; F2 -2; F3 -26)"},
+   "TIGHTENING": {"merged_episodes": 2, "occupancy_weeks": 59, "dwell_mean_weeks": 31.0, "verdict": "NOT_RUN_THIN (F1 -8; F2 -2; F3 -26)"},
+   "EASING": {"merged_episodes": 3, "occupancy_weeks": 30, "dwell_mean_weeks": 10.0, "verdict": "NOT_RUN_THIN (F1 -7; F2 -2; F3 -26)"},
+   "ABSTAIN": {"merged_episodes": 5, "occupancy_weeks": 118, "verdict": "NOT_RUN_THIN (F1 -5; F2 -2; F3 -26)"}
+  },
+  "rho_battery_P29_bar_0.20": {
+   "rho_v2_pct_vs_eurusd_rv30_pct": 0.4828,
+   "rho_v2_STRESS_vs_eurusd_rv_p80": 0.3034,
+   "rho_state_RISK_STRESS_vs_eurusd_rv_p80": 0.2179,
+   "verdicts": "all three measured rows FAIL_RHO_BAR (P-29: the V2/VIX layer does NOT escape the dead RGC-G2/FXFV3-A6 vol-percentile representation class)",
+   "tips_slope": "NOT_RUN (no TIPS data, disclosed)",
+   "drawdown_hysteresis_PSV1_constants": "degenerate on all 5 FX symbols (risk_off weeks = 0: max FX-major drawdowns 2021-2026 ~ -22..-27% never reach the -30% PSV1 entry band); rho undefined, reported degenerate not PASS"
+  },
+  "p20_distinctness": {
+   "frac_fridays_v2band_differs_from_atr14_expansion": 0.219,
+   "v3_vs_20d_backwardation_proxy": "SKIPPED_CIRCULAR (the proxy IS the Brent-WTI spread = V3's own input; documented per dispatch)"
+  },
+  "whipsaw_weeks": 0,
+  "stale_weeks": 0
+ },
+ "authority_claims": [],
+ "known_limitations": [
+  "V2 T−1 interpretation note: the dispatch's raw formula 'value of d usable from d 16:15 ET' would nominally admit the decision Friday's own VIX close (16:15<17:00); the engine applies the design-draft §3.4 uniform T−1 buffer (obs_date <= decision_date-1) so a Friday decision consumes THURSDAY's close, reproducing the PIT_DOSSIER G-PIT-V2 application sentence ('Friday 17:00 ET decision consumes Thursday's close, margin 24h45m >= 24h'). Strictly conservative direction (costs staleness, never lookahead). Documented in state_engine.py INTERPRETATION NOTE.",
+  "Percentile convention: weak/inclusive rank over the trailing 252 usable observations INCLUDING the current value; a constant series ranks p100 (documented; irrelevant on real data, exercised deliberately in tests).",
+  "Episode merge is episode-accounting only (shared episode_id for same-state runs separated by <4 weekly observations); it never rewrites weekly effective_state values - rewriting would fabricate state during intervening weeks incl. ABSTAIN weeks (fail-closed law).",
+  "ABSTAIN bypasses min-dwell and is effective immediately; re-entry into a tradeable state after an abstain run again needs 2 consecutive observations (the first post-abstain week stays effectively ABSTAIN).",
+  "episode_id numbering is chain-global from the panel epoch (first computable Friday 2016-04-08 on the real panel), so calendar-window episodes start at EP024; stable and deterministic.",
+  "F3 (>=26 state-true weeks per 26-week fold) requires full-fold occupancy per fold - structurally brutal for a 4+1 state partition; margins reported as frozen, never relaxed (all five states NOT_RUN_THIN; per design §3.5 the router degenerates toward the always-eligible book - a first-class outcome).",
+  "Drawdown-hysteresis battery covers only the 5 FX symbols in this data plane (XAU/XAG/BRENT/WTI/NATGAS tapes are L1 scope); USDCAD/AUDUSD D1 closes come from the sparse ancestor-convention ANC H1 panels.",
+  "EURUSD RV30 percentile uses the available window (>=63 obs) for the first 15 Fridays of the calendar (D1 panel starts 2021-01; full 252-obs windows only from ~2022-02); disclosed in the report, n=271 overlap weeks.",
+  "Battery MD/JSON embed provenance (command, runtimes, timestamp) which varies across runs; the deterministic core is certified by payload_sha256 which re-runs must reproduce (verified once)."
+ ],
+ "incidents": [
+  "RESOLVED_DURING_LANE: first battery invocation computed WORKTREE one dirname too high and wrote STATE_BATTERY_REPORT.{json,md} to .worktrees/portfolio-router-12assets-100k-v1/research/... (outside the integration worktree); stray directory tree removed and the report regenerated in the correct worktree path; root checkout unaffected.",
+  "RESOLVED_DURING_LANE: pandas-3 unit-resolution bug caught during development (asi8 returns the index's own unit (us) while Timestamp.value is ns -> V3 cursor pinned at series end, spread frozen at the 2026 value with negative ages); fixed by normalizing date-key arrays with as_unit('ns') before any comparison; no report was published from the buggy build."
+ ],
+ "tree_status": "READ_ONLY (no git commands run; A1 commits; files created only under the lane's write scopes)",
+ "workers": 0,
+ "outputs": {
+  "engine": ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/state_engine.py",
+  "tests": ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/tests/test_state_engine.py",
+  "battery_script": ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/battery_state.py",
+  "fold_grid": ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/fold_grid.json",
+  "battery_report_json": ".worktrees/portfolio-router-12assets-100k-v1/integration/research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/battery/STATE_BATTERY_REPORT.json",
+  "battery_report_md": ".worktrees/portfolio-router-12assets-100k-v1/integration/research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/battery/STATE_BATTERY_REPORT.md",
+  "handoff": "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/handoffs/I1b_state_engine.json"
+ },
+ "extra": {
+  "consumed_authorities": [
+    "router/ROUTER_POLICY_DESIGN_DRAFT.md §3 (engine design, floors, T−1 clock, rho battery)",
+    "pit/PIT_DOSSIER.md + data_manifest_macro.json (frozen available_at rules G-PIT-V1/V2/V3)",
+    "pr12a100k/loaders.py + data_manifest_fx.json + COVERAGE_NOTE.md (loader layer, 286-week intersection calendar)",
+    "census/CENSUS_PROTOCOL.md §4 (cheat-sheet context)",
+    "wayfinder/MAP.md lines 296-299 (PSV1 SPARSE_RISK_OFF −0.30/−0.10 + 90-bar dwell constants)"
+  ],
+  "downstream_consumers": "compute_state/state_timeline is the frozen API for the router and evaluation lanes; fold_grid.json defines the shared fold grid the evaluation must use"
+ }
+}

@@ -1,0 +1,66 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "I1a_fx_dataplane",
+  "cycle_id": "PORTFOLIO-ROUTER-12ASSETS-100K-V1",
+  "role": "I1a FX data plane + loaders (5 FX price panels: locate, verify coverage/identity, build loader layer)",
+  "lane": "I1a",
+  "dispatch_sha": "a63d053dffe21779567fa9276434230d14b0f336",
+  "actual_start_sha": "a63d053dffe21779567fa9276434230d14b0f336",
+  "commit_sha": "NONE_A1_COMMITS",
+  "changed_paths": [
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/loaders.py",
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/data_manifest_fx.json",
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/COVERAGE_NOTE.md",
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/measure_panels.py",
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/measured_panels.json",
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/tests/conftest.py",
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/tests/test_loaders.py",
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/tests/gen_fixtures.py",
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/tests/fixtures/ (6 bi5 synthetic corpus files + corrupt payload + 5 macro fixtures)",
+    "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/handoffs/I1a_fx_dataplane.json"
+  ],
+  "tests": [
+    {
+      "cmd": "cd /Users/hoangminhlong/my-quantitative/.worktrees/portfolio-router-12assets-100k-v1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/pr12a100k/tests/test_loaders.py -q",
+      "result": "PASS",
+      "n_passed": 19,
+      "note": "covers: fredgraph CSV parse + '.' missing; EFFR JSON parse + revision flags; asof PIT guard (T+1 never visible at T, tz-aware decision stamps, unknown-rule/duplicate-index fail-closed); bi5 decode + BID/ASK union + tradable flag; M1->H1 hand-computed OHLC/spread vs closed-form expectations; DST boundary days resample to exactly 23/25 hour buckets with correct labels; D1 close-stamped rollup; fail-closed matrix (missing file/dir, bad header, bad value, bad EFFR record, empty/corrupt bi5, empty range, unknown symbol/rule); real ANC parquet close-shift smoke (30420 rows, +1h conversion verified)"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "SUMMARY: all 5 panels located and measured from disk; loader layer (macro/M1/H1/PIT) built and 19/19 tests green; walk-forward calendar: 5-pair intersection 2021-01-03 22:00 UTC -> 2026-06-30 = 286 Mon-aligned full weeks (M1-only pairs extend to 2026-09-23 = 298 weeks).",
+    "PANELS (measured): EURUSD M1 .worktrees/fx-rangefade-2m-shadow-v1/.../FX-RANGEFADE-2M-SHADOW-V1/data_local/EURUSD/M1/{BID,ASK} 2x2092 files 36,722,777 B, active 2021-01-03T22:00Z->2026-09-23T23:59Z; GBPUSD + USDJPY M1 .worktrees/fx-majors-search-v1/integration/.../FX-MAJORS-SEARCH-V1/data_local/{GBPUSD,USDJPY}/M1/{BID,ASK} 2x2092 each (36,601,602 / 38,433,187 B), same active range; USDCAD + AUDUSD H1 .worktrees/erp1-tracka-cohort-1/repro_twin/.../ERP1-TRACKA-COHORT-1/data_local/derived/bars1h_ANC_{USDCAD,AUDUSD}.parquet (30,386 / 30,420 rows, 1,306,817 / 1,215,240 B, 2021-01-03T23:00Z -> 2026-06-30T23:00/20:00Z source-open-stamped).",
+    "IDENTITY: 5 files per M1 symbol re-hashed vs the staged per-file sha256 manifests (fxm.m1_manifest@1, complete=true, 4184 files each): 15/15 match; ANC parquet sha256 recorded (335a6e2a.../4e0ca174...); census-side m1_manifest_sha256 for GBPUSD matches the on-disk manifest. Corpus digest strategy documented: sha256 over sorted 'filename,size' lines (per side) in the manifest; the prior-attempt script uses combined-side 'side/filename size' - both documented, both stable.",
+    "TIMEZONE: UTC verified two ways (record counts on DST switch days = 1440 not 1380/1500; seasonal shift of the NY-close boundary 21:59Z winter vs 20:59Z summer inside the files). Loader convention: all bars CLOSE-stamped UTC (bar labeled T aggregates (T-rule, T]); at decision time T every bar stamped <=T is complete - no lookahead by construction.",
+    "H1-vs-M1 CEILING (USDCAD/AUDUSD): raw M1 .bi5 for these two pairs is NOT on disk anywhere (ERP1 worktree retains only derived H1 planes + duka manifests; confirms L1's note). Their bid_h/bid_l follow the ancestor convention (max/min of M1 closes, not intrabar extremes) and there is no ask H/L; intraday M1 features are impossible for these pairs; cross-pair feature parity only at H1-or-coarser. ANC panels are tradable-hours-only (sparse): Saturdays 0 rows, ~21:00-22:00Z rollover hour mostly absent, weekday median 21 rows/day - bar absence must not be read as zero return.",
+    "GAPS: M1 panels 0 missing calendar days, 0 short files (all 2092x2 files decode to exactly 1440 records), 0 OHLC invariant violations, only zero-tradable weekday 2021-01-01, largest tradable-minute run 4,321 min (2024-01-01, New Year week; standard weekend ~2,880 min). ANC panels: 17,711/17,674 hours absent vs full grid in 2,061/1,948 runs, largest 75/76 h - structural (weekend/rollover), not data loss.",
+    "MACRO: no fredgraph CSV / NY Fed EFFR JSON staged anywhere yet (repo-wide search). load_macro_series implements both formats and is unit-tested on synthetic fixtures; the macro lane must stage real files before use.",
+    "Sibling-lane pointer: the cycle handoffs dir also contains censuses for 7 further symbols (NZDUSD USDCHF XAUUSD XAGUSD BRENT WTI NATGAS, per L1 all FLAT_BLOCKED_DATA/PIT_UNPROVEN) - out of I1a scope, untouched.",
+    "No git commands run (A1 integrates); no backtests; no network; no bulk data copied (loaders read panels at source paths); work was confined to .worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/ plus this handoff file."
+  ],
+  "incidents": [
+    "Found research/pr12a100k/measure_panels.py already present at session start (prior interrupted I1a attempt, timestamped before any of this session's writes; no measured_panels.json existed). Reviewed it fully: paths/measurements legitimate; FIXED one units bug (intraday branch stored raw SECONDS into largest_tradable_gap_minutes while the cross-day branch stored minutes, inflating the reported max ~60x to ~50,820 on Christmas days) and re-ran: corrected largest tradable gap is 4,321 min on 2024-01-01 for all three M1 pairs. All other outputs of the script agree exactly with this session's independent inline measurements.",
+    "pandas 3.0.5 API: Resampler.agg does not accept named-agg kwargs, and lowercase 'd' freq is deprecated - both handled inside resample_bars; asof normalizes index/decision timestamps to ns before searchsorted (pandas 3 second-resolution inference otherwise silently mismatches units - caught by the PIT unit test)."
+  ],
+  "tree_status": "READ_ONLY",
+  "workers": 0,
+  "outputs": [
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/loaders.py",
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/data_manifest_fx.json",
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/COVERAGE_NOTE.md",
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/measured_panels.json",
+    ".worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/tests/test_loaders.py"
+  ],
+  "extra": {
+    "panel_table": {
+      "EURUSD": {"granularity": "M1", "files": "2x2092", "bytes": 36722777, "active_range_utc": ["2021-01-03T22:00Z", "2026-09-23T23:59Z"]},
+      "GBPUSD": {"granularity": "M1", "files": "2x2092", "bytes": 36601602, "active_range_utc": ["2021-01-03T22:00Z", "2026-09-23T23:59Z"]},
+      "USDJPY": {"granularity": "M1", "files": "2x2092", "bytes": 38433187, "active_range_utc": ["2021-01-03T22:00Z", "2026-09-23T23:59Z"]},
+      "USDCAD": {"granularity": "H1", "files": 1, "bytes": 1306817, "rows": 30386, "active_range_utc": ["2021-01-03T23:00Z", "2026-06-30T23:00Z"]},
+      "AUDUSD": {"granularity": "H1", "files": 1, "bytes": 1215240, "rows": 30420, "active_range_utc": ["2021-01-03T23:00Z", "2026-06-30T20:00Z"]}
+    },
+    "walk_forward": {"intersection_5pair": ["2021-01-03T22:00Z", "2026-06-30"], "mon_aligned_full_weeks": 286, "m1_only_extension_weeks": 298, "m1_pairs_end": "2026-09-23"},
+    "api": ["load_macro_series(path, fmt)", "asof(series, decision_ts, rule='T+Nd')", "load_fx_m1(symbol, start, end, root, tradable_only)", "resample_bars(m1, 'h'|'d')", "load_fx_h1(symbol)", "decode_bi5_minutes(raw, scale, day)", "corpus_digest(side_dir)"]
+  }
+}

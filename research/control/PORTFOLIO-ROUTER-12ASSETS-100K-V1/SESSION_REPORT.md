@@ -90,3 +90,36 @@ evidence landed at `a51dc758` (root main); worktree + branch
 (registry sha256 9f3af880…). Full chain: `plan/REGISTRATION_RECEIPT.md`.
 Scored execution remains locked behind A7 prelaunch + owner GO #2 (two-key).
 S1 sealed; no orders; lock free.
+
+## Addendum 2 — EXECUTION + TERMINAL CLOSE (2026-09-28)
+
+Owner directive (recorded verbatim in plan/OWNER_DIRECTIVE_2026-09-28.md):
+finish the engine, test, pass A7; prove VIX + Brent−WTI PIT first (else
+NOT_RUN_PIT_GATE_FAILED, no substitution); data decisions + fetching
+delegated; "chạy GO scored luôn" read as a standing scored-GO delegation
+CONDITIONED on A7 (two-key preserved, P-19 precedent).
+
+Executed: D1 macro/PIT (3/3 gates PASS_EVIDENCED; 50-file sha256'd raw
+store; frozen available_at rules: EFFR d+1 15:00 ET, VIX CBOE-channel
+d 16:15 ET with FRED 9,278/9,878-identical cross-check, Brent−WTI obs ≤
+decision−10cd per measured EIA weekly cadence) · I1a FX data plane (5 panels
+verified, 286-week grid, 19/19 tests) · I1b state engine + battery (33/33
+tests; battery payload 4a5f0fc5 A1+A7 double-reproduced). I1c/I1d never
+dispatched — mooted by the battery result.
+
+TERMINAL: **`ROUTER_STATES_THIN` at 0 scored cells** (TERMINAL_DECISION.md):
+state floors killed every state (episodes 10/7/2/3 vs F1≥10; only WAR_ENERGY
+margin-0) AND P-29 rho killed the V2 layer (0.4828/0.3034/0.2179 vs 0.20 bar
+vs dead vol-percentile class). PIT did NOT fail — the engine died on
+statistics. No relaxation, no substitution (owner's own law). Standing
+scored-GO delegation died unconsumed (nothing scoreable: router ≡ always-
+eligible book by construction). A7 terminal CONFIRM 0C/0H; F-3 discharged
+(TRIAL_LEDGER TR-0001); F-4/F-5 erratum appended.
+
+Two-half close landed: worktree terminal 8669f478; FAMILY_FAILURES line 170
+(validator: 0 errors for the new row; 156 pre-existing errors in old rows
+disclosed, unrepaired per precedent); LESSONS P-31 (floor-feasibility annex);
+MAP sprint section; HYPOTHESIS_LEDGER row (+0/+0, P-9); registry TERMINAL
+flip via researchctl. Pre-existing red noted: tests/test_family_failures.py
+7 failed at HEAD before and after this close (signature tests over old
+entries) — disclosed, not repaired here.

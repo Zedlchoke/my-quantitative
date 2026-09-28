@@ -1,3 +1,43 @@
+## Sprint state (synced at the PORTFOLIO-ROUTER-12ASSETS-100K-V1 terminal, 2026-09-28)
+
+- **PORTFOLIO-ROUTER-12ASSETS-100K-V1 TERMINAL → `ROUTER_STATES_THIN`** (0
+  scored cells, 0 PnL, S1 SEALED, budget 0/64, GO phrase extinguished
+  UNCONSUMED — the owner's standing scored delegation had no gate to open).
+  Branch `orca/portfolio-router-12assets-100k-v1-integration` terminal
+  `8669f478` (base main `abe7f70b` via `a51dc758` evidence landing).
+  The 12-asset FX+metals+energy macro-state router died at the preregistered
+  pre-PnL battery, twice, before any outcome existed:
+  - **PIT first (owner's parallel priority): ALL 3 gates PASS_EVIDENCED**
+    (`pit/PIT_DOSSIER.md`, 50 sha256'd raw files) — EFFR usable d+1 15:00 ET;
+    VIX CBOE-channel d 16:15 ET (FRED mirror identical 9,278/9,278 dates,
+    3-vintage no-retro-revision); Brent−WTI frozen conservative rule
+    obs ≤ decision−10cd (measured EIA weekly-release cadence; T−1/T−2
+    rejected as lookahead). NOT_RUN_PIT_GATE_FAILED did NOT fire — the data
+    PIT-proved clean; the engine died on statistics.
+  - **Kill 1 — state floors:** census over 286 Fridays 2021-01..2026-06:
+    WAR_ENERGY 10 merged episodes (F1 margin 0), RISK_STRESS 7, TIGHTENING 2,
+    EASING 3 → 3/4 states F1-fail; all states NOT_RUN_THIN → permanent FLAT
+    rows; ≥2 thin ⇒ typed close (policy §3.5 / protocol §4.1, no relaxation).
+  - **Kill 2 — P-29 representation-rho:** V2 (VIX 252d pct) vs dead
+    RGC-G2/FXFV3-A6 vol-percentile class: 0.4828 / 0.3034 / 0.2179 vs the
+    immovable 0.20 bar — floor-independent kill of the V2 layer.
+  - A7 terminal `CONFIRM` 0C/0H/1M/3L/3I — rho + episode census independently
+    recomputed to ≤4e-10; no post-census edits to frozen laws; close verified
+    F2/F3-defect-independent. Battery payload `4a5f0fc5` double-reproduced.
+  - **Durable assets:** PIT-evidenced raw store (VIX/Brent/WTI/EFFR with
+    frozen available_at rules — the program's first fully-evidenced macro
+    panel), 5-FX-pair verified data plane (M1×3 + H1×2, 286-week grid,
+    UTC/DST-proven loaders, 33/33 tests), the state-engine + battery harness
+    (truncation no-lookahead replay law), 1,200-row census with frozen
+    pre-PnL rubric, and LESSONS P-31 (floor feasibility annex). Family death:
+    `PR12A-MACROSTATE-3VAR-WEEKLY` (FAMILY_FAILURES line 170).
+  - Census headline for successors: 1,200 brainstorm ideas = 15
+    DISTINCT_TESTABLE (all on the 5 evidenced FX pairs) / 433 PIT_UNPROVEN /
+    548 dead-class variants / 121+15 data/cost-blocked / 68 unfalsifiable —
+    a sleeve-only program on the eligible pairs is the open successor
+    question, requiring its own cycle (plan §0 / TERMINAL_DECISION).
+  - Denominators UNCHANGED (P-9): +0/+0 scored cells.
+
 ## Sprint state (synced at the DTP-FX-MECHCOURT-V1 terminal, 2026-09-27)
 
 - **DTP-FX-MECHCOURT-V1 CLOSED → `DTP_FX_V1_BLOCKED_DATA_OR_COST`**

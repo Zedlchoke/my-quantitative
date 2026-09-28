@@ -1,0 +1,64 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "D1_macro_pit",
+  "cycle_id": "PORTFOLIO-ROUTER-12ASSETS-100K-V1",
+  "role": "D1 macro state-variable data + PIT evidence lane (VIX, Brent spot, WTI spot, EFFR)",
+  "lane": "D1",
+  "dispatch_sha": "a63d053dffe21779567fa9276434230d14b0f336",
+  "actual_start_sha": null,
+  "commit_sha": "NONE_A1_COMMITS",
+  "no_commit_disclosure": "no git commands run this session per dispatch; all artifacts are new untracked files for A1 to commit",
+  "changed_paths": [
+    "research/pr12a100k/data_manifest_macro.json",
+    "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/pit/PIT_DOSSIER.md",
+    "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/pit/analyze_macro_pit.py",
+    "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/pit/analysis_macro_pit.json",
+    "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/pit/build_manifest.py",
+    "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/handoffs/D1_macro_pit.json"
+  ],
+  "tests": [
+    "analyze_macro_pit.py executed exit=0; all cross-checks recomputed from archived bytes (analysis_macro_pit.json)",
+    "VIX dual-channel: FRED VIXCLS vs CBOE VIX_History CLOSE: 9,278 common dates 1990->2026-09-22, 0 mismatches, max|diff|=0.0",
+    "Brent FRED vs EIA-direct page values: 9,092 common dates, 0 mismatches; WTI: 9,507 common dates, 0 mismatches",
+    "Wayback vintage no-retro-revision: VIX 3 vintages (2024-11-20, 2026-03-03, current) 0 diffs 0 date-set diffs; oil 5 vintages 0 value diffs on common dates (890 Brent / 743 WTI pre-2015 dates retro-blanked vs current - out of engine window, documented)",
+    "EFFR census: 2,696 rows 2016-01-04->2026-09-25; revisionIndicator present per row, 1 flagged (2017-05-31); FX window 2021-01..2026-06 fully covered (1,377 rows)"
+  ],
+  "authority_claims": [
+    "GATE VERDICTS (for the cycle's PIT gate): G-PIT-V1 EFFR = PASS_EVIDENCED; G-PIT-V2 VIX = PASS_EVIDENCED; G-PIT-V3 Brent-WTI = PASS_EVIDENCED (conservative frozen rule); G-PIT-V1b EFFR coverage = PASS_EVIDENCED. Typed GO/scoring remains with the cycle's own gate + owner; this dossier is the evidence input."
+  ],
+  "known_limitations": [
+    "SUMMARY: raw store ~/.my-quantitative-data/pr12a100k/raw/ holds 50 sha256'd files: full-history VIX (FRED VIXCLS + CBOE direct), Brent (FRED + EIA direct pages), WTI (FRED + EIA direct pages), EFFR (NY Fed API full served history), 8 Wayback vintage CSVs + 3 CDX indexes, and 16 evidence pages with publication-schedule language; MANIFEST.json carries per-file url/sha256/fetched_at/license.",
+    "ALFRED alfredgraph.csv route NOT REACHED from this host (HTTP/2 stream resets / HTTP1.1 timeouts; discrimination: eia.gov 200 in same window; probe transcripts archived in raw/alfred/probes/). Vintage evidence obtained instead via Internet Archive captures of the exact fredgraph.csv endpoints (raw bytes /web/<ts>id_/) - genuine point-in-time captures, not ALFRED-native.",
+    "VIX no-retro-revision is verified across 3 vintages spanning 2024-11->2026-09 only; no archived CBOE retro-revision policy statement (whitepaper PDF 403-blocked, evidence archived). FRED VIXCLS mirror lag is VARIABLE (measured 1 bd in 2024-11 and 2026-03, 3 bd on 2026-09-28) - frozen FRED-channel rule uses the measured worst (d+3 business days); CBOE-direct channel rule is d 16:15 ET with 24h45m Friday-decision margin.",
+    "EIA weekly-Wednesday-release-through-prior-Tuesday cadence is measured only over 2025-12->2026-09 (5 vintages + page-stated Release/Next-Release dates); pre-2025-12 cadence unmeasured -> frozen rule (consume obs <= decision Friday - 10 calendar days) is conservative and PIT-safe but possibly staler than historically necessary. Worst measured instance: 9 days (Christmas 2025). T-1/T-2 oil rules proposed in the dispatch are REJECTED - they would consume unpublished data under the measured cadence.",
+    "EIA/FRED retro-blanked ~1,630 pre-2015 observations (890 Brent, 743 WTI) between the 2025-12 vintage and current - proof the channel's deep history is not immutable; all outside the 2018+ engine window.",
+    "License nuance (P-25): CBOE-direct file is 'one copy ... personal non-commercial use' per cboe.com/terms (quote archived) - kept as single internal-research cross-check copy, no redistribution; the licensed path of record for VIX values is FRED VIXCLS ('Copyrighted: Citation required', internal use with attribution). NY Fed terms quote is disclaimer-based, not an open license (internal research use, disclaimers apply).",
+    "EFFR API serves from 2016-01-04 only (pre-2016 EFFR not on this endpoint) - sufficient for the 2021-01->2026-06+ FX panel window.",
+    "Data-store files (~/.my-quantitative-data/pr12a100k/raw/) live outside the repo; A1 should treat MANIFEST.json sha256s as the integration anchors when committing worktree artifacts."
+  ],
+  "incidents": [
+    "stlouisfed.org edge rate-limited this host's IP after the combined 13:07Z+13:13-13:21Z bursts: fred+alfred HTTP/2 stream resets from 13:25Z onward (all attempts). No retries beyond documented probes; no blocks circumvented. The 13:13-13:21Z fetch session (FETCH_LOG.tsv, 22 fetches incl. the three full-history CSVs and EFFR full pull) completed before the limit.",
+    "CBOE whitepaper PDF 403 (two URLs, bodies archived); EIA hist_xl/*.xls route 404 (artifacts kept); NY Fed reference-rates-api docs page serves a moved/404 shell (archived). Working EFFR pattern was corrected from dispatch's 'secured/effr' to 'unsecured/EFFR' (prior-cycle transcript evidence).",
+    "Wayback vintage_DCOILWTICO_20260503.csv was served gzip-compressed; decompressed locally (both raw .gz payload and decompressed CSV kept, sha256'd)."
+  ],
+  "tree_status": "READ_ONLY",
+  "workers": 0,
+  "outputs": {
+    "raw_manifest": "~/.my-quantitative-data/pr12a100k/raw/MANIFEST.json (50 files)",
+    "pit_dossier": "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/pit/PIT_DOSSIER.md",
+    "computed_evidence": "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/pit/analysis_macro_pit.json",
+    "loader_contract": "research/pr12a100k/data_manifest_macro.json (4 series, schema keys exactly: raw_path, sha256, format, date_field, value_field, date_range, license_note, pit_gate, available_at_rule)",
+    "gate_verdicts": {
+      "G-PIT-V1_EFFR": "PASS_EVIDENCED",
+      "G-PIT-V1b_EFFR_coverage": "PASS_EVIDENCED",
+      "G-PIT-V2_VIX": "PASS_EVIDENCED",
+      "G-PIT-V3_Brent_WTI": "PASS_EVIDENCED"
+    },
+    "frozen_available_at_rules": {
+      "EFFR": "value of effectiveDate d usable from d+1 15:00 ET (published ~09:00 ET next NY Fed business day; same-day revisions until ~14:30 ET; 1/2,696 flagged historically); Friday 17:00 ET decision consumes Thursday value",
+      "VIX_FRED_channel": "value of day d usable from d+3 business days (measured worst mirror lag; typical 1 bd)",
+      "VIX_CBOE_channel": "value of day d usable from d 16:15 ET; Friday 17:00 ET decision consumes Thursday close (24h45m margin)",
+      "BRENT_WTI": "consume latest observation with date <= (decision Friday - 10 calendar days); normal case T-3, holiday worst case 10-11 days (measured max 9 days Christmas 2025)"
+    }
+  }
+}

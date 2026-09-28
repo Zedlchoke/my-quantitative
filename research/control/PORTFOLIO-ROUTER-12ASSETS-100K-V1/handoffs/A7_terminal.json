@@ -1,0 +1,66 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "A7_terminal",
+ "cycle_id": "PORTFOLIO-ROUTER-12ASSETS-100K-V1",
+ "role": "A7 independent terminal audit of the ROUTER_STATES_THIN close (fresh context; auditor built nothing audited)",
+ "lane": "A7",
+ "dispatch_sha": "59578b6c08bad787b5a6f074d974aa334b97edd0",
+ "actual_start_sha": "59578b6c08bad787b5a6f074d974aa334b97edd0",
+ "commit_sha": "NONE_READ_ONLY",
+ "worktree": "/Users/hoangminhlong/my-quantitative (root checkout, read-only; worktree .worktrees/portfolio-router-12assets-100k-v1/integration verified at HEAD 59578b6c08bad787b5a6f074d974aa334b97edd0, branch orca/portfolio-router-12assets-100k-v1-integration, porcelain CLEAN)",
+ "changed_paths": [
+  "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/audits/A7_TERMINAL_AUDIT.md (new, this audit)",
+  "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/handoffs/A7_terminal.json (this file)"
+ ],
+ "verdict": "A7_TERMINAL_VERDICT: CONFIRM",
+ "audit_checks": {
+  "1_independent_recompute": {
+   "method": "auditor's own implementation from raw files (EFFR nyfed JSON, CBOE VIX csv, FRED Brent/WTI csv, EURUSD M1 via loaders data plane); state_engine.py and battery_state.py reporting layers NOT imported",
+   "epoch_first_computable_friday": "2016-04-08T17:00:00-04:00 (matches)",
+   "calendar": "286 Fridays 2021-01-08..2026-06-26 (matches)",
+   "merged_episodes_per_state": {"WAR_ENERGY": 10, "RISK_STRESS": 7, "TIGHTENING": 2, "EASING": 3, "ABSTAIN": 5},
+   "occupancy_weeks": {"WAR_ENERGY": 55, "RISK_STRESS": 24, "TIGHTENING": 59, "EASING": 30, "ABSTAIN": 118},
+   "candidate_weeks": {"WAR_ENERGY": 68, "RISK_STRESS": 34, "TIGHTENING": 61, "EASING": 26, "ABSTAIN": 97},
+   "raw_runs": "all 38 runs identical entry-for-entry (dates + lengths) vs battery JSON",
+   "merged_episodes_detail": "all 27 episodes EP024-EP050 identical incl. span_weeks and state_true_weeks",
+   "per_fold_f2_f3": "all 45 F2 values and all 45 F3 values identical vs battery JSON",
+   "rho_v2_pct_vs_eurusd_rv30_pct": {"battery": 0.4828124267259972, "recompute": 0.4828124263454978, "delta": 3.8e-10, "n": 271},
+   "rho_v2_stress_vs_rv_p80": {"battery": 0.30335437324521436, "recompute": 0.30335437324521436, "delta": 0.0, "n": 271},
+   "rho_state_risk_stress_vs_rv_p80": {"battery": 0.21793013546206105, "recompute": 0.21793013546206105, "delta": 0.0, "n": 271},
+   "rv_undefined_short_history_fridays": 15,
+   "payload_sha256": "recomputed over provenance-free payload = 4a5f0fc581995d2b9083ee11bf4a1b91ee37f5ce6eaf5d8e542f79ac07ef587a MATCH"
+  },
+  "2_kill_code": "RV30 sampled at last completed D1 bar before Friday 17:00 ET (= Thursday's bar, close-stamped right-edge labels; verified) -> PIT-clean; percentiles trailing-only inclusive-252; V3 cutoff = decision-10 calendar days on Brent/WTI common dates (= PIT_DOSSIER G-PIT-V3 frozen rule verbatim); V1 positional 63-row delta with d+1 15:00 ET availability (= G-PIT-V1); ladder priority = policy 3.3; dwell 2w / merge <4w transitive, ABSTAIN bypasses dwell, merge never rewrites weekly states (= policy 3.3); V2 T-1 buffer documented, conservative direction. No computation defect found that could flip any verdict.",
+  "3_tests": "33/33 passed (fresh run, 18.65s): no-lookahead truncation genuinely truncates (32 real Fridays full-vs-truncated byte-identical + synthetic post-decision VIX spike), V3 10-day boundary, staleness, dwell/merge fixtures, ladder, determinism",
+  "4_frozen_laws": "floors F1>=10/F2>=2/F3>=26 and rho bar 0.20 preregistered in committed pre-GO docs (a51dc758); ZERO post-census commits touch plans/ router/ plan/; diff a51dc758->59578b6c on control dir = pure additions (pit/, battery/, MANIFEST.md); no relaxation, no substitution; TIPS row NOT_RUN disclosed",
+  "5_close_label": "ROUTER_STATES_THIN at 0 scored cells is the correct and strongest allowed typed close per protocol 4.1/8 (>=2 of 4 states fail floors; all 4 fail, 3 on F1 alone); PIT evidence pages exist and carry the quoted text (NY Fed 9:00 a.m., CBOE 4:15 p.m. ET, EIA Wednesday releases); VIX dual-channel cross-check independently reproduced (9,278 common dates, 0 value diffs); raw MANIFEST n_files=50",
+  "6_boundaries": "S1 SEALED_UNTOUCHED (registry; no S1 access in code - grep hits are DGS10 substrings); no PnL/equity artifacts anywhere in worktree; no SCORED files; registry budget 0/64, go_phrase REGISTERED_NOT_CONSUMED, workers 0; I1c/I1d never dispatched (no handoffs); owner directive recorded verbatim and its scored-GO delegation lawfully dies unconsumed (handbook P-8/19.3: GO typed early = intent, dies unconsumed; terminal absorbs; nothing left to score)",
+  "7_f_independence": "CONFIRMED: F1 alone kills RISK_STRESS(7)/TIGHTENING(2)/EASING(3) = 3 of 4 tradeable states >= the 2 required for the close; the V2 rho kill is floor-independent; WAR_ENERGY margin-0 survivor cannot form a router alone; under the stricter test-folds-only F1 reading WAR_ENERGY drops to 6 and all four fail F1 outright"
+ },
+ "findings": [
+  {"id": "F-1", "severity": "MEDIUM", "summary": "Engine staleness constants (V1>10 cal / V2>5 bus / V3>25 cal) trace only to unarchived dispatch packet I1b; committed design draft 3.4 (V1>5 bus, V2/V3>2 bus) is incompatible with the frozen V3 10-day rule and would force permanent ABSTAIN (harder kill). Engine reading is pass-favorable and states still failed; verdict-safe both directions; provenance hygiene only."},
+  {"id": "F-2", "severity": "LOW", "summary": "Census F1 counted over full 286-week calendar incl. 52w warmup (policy 3.5 'full fold set (total)' wording); protocol 4.1 says 'training fold set'. Test-folds-only reading: WAR_ENERGY 10->6, all four states F1-fail. Close unchanged or strengthened."},
+  {"id": "F-3", "severity": "LOW", "summary": "No trial-ledger row for the preregistered primary-config census evaluation (protocol 3 trial 1); ledger not yet created. Two-half close must add the accounting row or record the ledger-exempt rationale (P-9 denominators)."},
+  {"id": "F-4", "severity": "LOW", "summary": "TERMINAL_DECISION 'Five router-class attempts ... same verdict five different ways' counts REGIME-GATED-COMBO-V1 whose reading is exposed-pending-owner, not a terminal verdict. Rhetorical, not load-bearing."},
+  {"id": "F-5", "severity": "INFO", "summary": "V3 historical cadence constancy is ASSERTED-conservative in PIT_DOSSIER; TERMINAL_DECISION compresses to 'cadence measured'. Direction conservative; dossier discloses."},
+  {"id": "F-6", "severity": "INFO", "summary": "Drawdown-hysteresis rho rows degenerate on all 5 FX symbols (0 risk-off weeks; -30% band never hit) - reported degenerate, not PASS. V2 kill rests on the three measured rho rows."},
+  {"id": "F-7", "severity": "INFO", "summary": "Registry head (a63d053d) lags worktree HEAD (59578b6c) by two commits; the pending two-half close must land the registry TERMINAL + head/budget flip."}
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "Auditor's recompute necessarily shares the loaders data plane for EURUSD M1 (the only raw substrate); aggregation to D1, RV30, percentiles, state logic, dwell/merge and rho were independently implemented.",
+  "Evidence-page quote verification is text-presence + cadence-arithmetic spot-checking, not a re-crawl of live sources (out of read-only scope)."
+ ],
+ "incidents": [],
+ "tree_status_note": "no git writes anywhere; worktree porcelain clean; only the 2 audit output files created under the cycle control dir (root)",
+ "tree_status": "READ_ONLY",
+ "workers": 0,
+ "outputs": {
+  "audit_report": "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/audits/A7_TERMINAL_AUDIT.md",
+  "handoff": "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/handoffs/A7_terminal.json"
+ },
+ "extra": {
+  "claim_under_audit": "TERMINAL_DECISION.md typed close ROUTER_STATES_THIN at 0 scored cells (floors kill + P-29 rho kill, PIT gates passed first, standing GO dies unconsumed, no relaxation/substitution)",
+  "verdict_one_line": "CONFIRM - every census and rho number reproduces from raw bytes under an independent implementation; kills are real, preregistered, and untouched post-census; boundaries clean; 0 CRITICAL, 0 HIGH, 1 MEDIUM (provenance, verdict-safe), 3 LOW, 3 INFO"
+ }
+}
