@@ -124,3 +124,29 @@ Remediation rerun of the 12 cells = owner decision (see final report).
   2023+ folds net negative) — decayed edge, killed by its own preregistered bar.
 - CARRY/PAIRMR/ETHBTC/BASISTERM: INVALID pending owner decision on the
   one-line semantic repair + rerun.
+
+
+## REMEDIATION RESULT (INC-DT100-1 closed, owner order "sửa và chạy lại 12 cell spread")
+
+Fix: spread_marking flag — synthetic spreads mark PnL as (exit−entry)×1e4
+(difference), ratio form eliminated; regression fixture pins the math (8/8 tests).
+Rerun: 12 cells ×3 stress under heavy lock (E_REMEDIATION_12), 246.3s, exit 0.
+
+| family | arm | trades | exp(bps) | PF | folds+ | x1.5 | fundΣ(bps) | verdict |
+|---|---|---|---|---|---|---|---|---|
+| CARRY | A/N1/N2 | 2927/7980/1937 | −21.8/−22.6/−21.5 | 0.02 | 0/4 | âm | +1173~+1234 (income) | CELL_FAIL |
+| PAIRMR | A/N1/N2 | 834/1324/386 | −3335/−1278/−8582 | 0.31–0.90 | 0/4 | âm | 0 | CELL_FAIL/THIN |
+| ETHBTC | A/N1/N2 | 816/1327/352 | −2648/−1220/−6239 | 0.33–0.86 | 0/4 | âm | 0 | CELL_FAIL/THIN |
+| BASISTERM | A/N1/N2 | 16207/33946/9480 | −23.8/−23.8/−23.6 | 0.02–0.04 | 0/4 | âm | +133~+394 | CELL_FAIL |
+
+Đọc: funding-harvest là THẬT (CARRY thu được +11.7k–12.3k bps funding tổng) nhưng
+thua xa chuyển động spread nghịch + 24bps chi phí 2 chân mỗi lượt — đúng dạng
+chết "marginal-gate" của CARRY-7D lịch sử. Pair-MR/BASISTERM chết tuyệt đối.
+
+## CYCLE VERDICT (proposed, terminal A7 pending)
+
+`DAYTRADER_100_V1_REJECT_ALL` — 99 scored computations (87 + 12 remediation),
+0 Stage-A candidates, reproduction ALL_MATCH 261/261, mọi row mang disclosure
+ancestry-relaxed-by-owner-order. Incident INC-DT100-1 disclosed end-to-end:
+bug → incident row → owner-approved remediation → fix + regression fixture →
+rerun → verdicts unchanged in direction (all dead).
