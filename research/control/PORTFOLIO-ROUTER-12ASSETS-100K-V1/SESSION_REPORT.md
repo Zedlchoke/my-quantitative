@@ -79,3 +79,14 @@ instruction). Lock FREE_PROVEN, workers 0. REGIME-GATED-COMBO-V1 still AWAITING
 OWNER a/b — untouched. 16 handoff JSONs under `handoffs/` (12 census + L1 + L3 + L4 + L5),
 48 files total in the control dir (measured). Next action is the owner's: see §11 of the
 plan draft for the exact decision list and GO phrase #1.
+
+## Addendum — REGISTRATION (2026-09-28T12:53:46Z)
+
+Owner typed the registration GO verbatim at the gate. Consumed: pre-GO
+evidence landed at `a51dc758` (root main); worktree + branch
+`orca/portfolio-router-12assets-100k-v1-integration` bootstrapped (manifest
+`a63d053d`); cycle registered via researchctl — **ACTIVE_LIGHT, 0/64, doctor
+0 findings for the new row**; control-plane committed at `36638aa3`
+(registry sha256 9f3af880…). Full chain: `plan/REGISTRATION_RECEIPT.md`.
+Scored execution remains locked behind A7 prelaunch + owner GO #2 (two-key).
+S1 sealed; no orders; lock free.
