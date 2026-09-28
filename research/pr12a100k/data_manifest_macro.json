@@ -1,0 +1,60 @@
+{
+  "schema": "pr12a100k_data_manifest_macro@1",
+  "cycle": "PORTFOLIO-ROUTER-12ASSETS-100K-V1",
+  "lane": "D1_macro_pit",
+  "generated_at_utc": "2026-09-28T13:55:00Z",
+  "raw_store_base": "~/.my-quantitative-data/pr12a100k/raw",
+  "pit_dossier": "research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/pit/PIT_DOSSIER.md",
+  "series": {
+    "VIXCLS": {
+      "raw_path": "~/.my-quantitative-data/pr12a100k/raw/vix/VIXCLS_fredgraph.csv",
+      "sha256": "675f9bcb86ee88799f8f7a8b7ee9c30f7a0be26a26df8f9549bddf9e84c4a598",
+      "format": "fredgraph_csv",
+      "date_field": "observation_date",
+      "value_field": "VIXCLS",
+      "date_range": ["1990-01-02", "2026-09-22"],
+      "license_note": "FRED label 'Copyrighted: Citation required' (source CBOE, reprinted with permission); FRED terms: internal use with attribution to FRED and original source. Cross-check file vix/VIX_History_cboe.csv (sha256 4bca3f49062d5196f00cf6e62d04f77304608884ca4d791d2e7210e274d52796, CBOE direct, single-copy internal use per cboe.com/terms) agrees on all 9,278 common dates, max |diff| = 0.",
+      "pit_gate": "G-PIT-V2 PASS_EVIDENCED",
+      "available_at_rule": "FRED mirror lag measured 1-3 business days (frozen conservative: value of day d usable from d+3 business days; a Friday 17:00 ET decision then consumes the prior Monday at worst). If the engine wires the CBOE-direct file instead (see license_note), the rule upgrades to: value of day d usable from d 16:15 ET (Friday 17:00 ET decision consumes Thursday close, margin 24h45m). '.' rows are holidays/missing - carry as NaN, do not forward-fill silently."
+    },
+    "DCOILBRENTEU": {
+      "raw_path": "~/.my-quantitative-data/pr12a100k/raw/brent/DCOILBRENTEU_fredgraph.csv",
+      "sha256": "fc3ab55170885e666085c1bdcb9ecf864826055d6370b305c6f8cb1b3e34edd0",
+      "format": "fredgraph_csv",
+      "date_field": "observation_date",
+      "value_field": "DCOILBRENTEU",
+      "date_range": ["1987-05-20", "2026-09-22"],
+      "license_note": "FRED label 'Public Domain: Citation requested'; source U.S. EIA (US-government work). Citation: U.S. Energy Information Administration, Crude Oil Prices: Brent - Europe [DCOILBRENTEU], retrieved from FRED. Values identical to EIA's own history page on all 9,092 common dates (max |diff| = 0).",
+      "pit_gate": "G-PIT-V3 PASS_EVIDENCED",
+      "available_at_rule": "EIA releases the daily spot table weekly on Wednesday, covering through the prior Tuesday (stated Release Date 9/23/2026, Next Release 9/30/2026; corroborated by 3 Wayback vintages). FROZEN RULE: at a Friday 17:00 ET decision, consume only observations with date <= (decision Friday - 10 calendar days) [normal case is T-3; worst holiday-clustered case measured 9 days and arithmetically capped at 10-11]. '.' rows = no data reported (holidays); carry as NaN."
+    },
+    "DCOILWTICO": {
+      "raw_path": "~/.my-quantitative-data/pr12a100k/raw/wti/DCOILWTICO_fredgraph.csv",
+      "sha256": "344a4a7cce2b66e4e1d1789b3b15be4a96e24e4cad1d043e5c093be83d51bbcf",
+      "format": "fredgraph_csv",
+      "date_field": "observation_date",
+      "value_field": "DCOILWTICO",
+      "date_range": ["1986-01-02", "2026-09-22"],
+      "license_note": "FRED label 'Public Domain: Citation requested'; source U.S. EIA (US-government work). Citation: U.S. Energy Information Administration, Crude Oil Prices: West Texas Intermediate (WTI) - Cushing, Oklahoma [DCOILWTICO], retrieved from FRED. Values identical to EIA's own history page on all 9,507 common dates (max |diff| = 0).",
+      "pit_gate": "G-PIT-V3 PASS_EVIDENCED",
+      "available_at_rule": "Same as DCOILBRENTEU: weekly Wednesday EIA release through prior Tuesday; FROZEN RULE: consume only observations with date <= (decision Friday - 10 calendar days). NOTE: negative values are genuine data (2020-04-20 = -36.98 USD/bbl, present in both channels) - loaders must accept negatives; winsorize only at the feature layer."
+    },
+    "EFFR": {
+      "raw_path": "~/.my-quantitative-data/pr12a100k/raw/effr/EFFR_nyfed_search_full_2016-01-01_2026-09-27.json",
+      "sha256": "a2f1264c807e990afb859b0422a99eadc1d9ced494bdaed3d474712b8815ee69",
+      "format": "nyfed_json",
+      "date_field": "effectiveDate",
+      "value_field": "percentRate",
+      "date_range": ["2016-01-04", "2026-09-25"],
+      "license_note": "NY Fed reference rates, keyless public API (markets.newyorkfed.org/api/rates/unsecured/EFFR/search.json). 'Use of the Reference Rates are subject to important disclaimers, limitations and indemnification obligations.' Internal research use; rows are newest-first; revisionIndicator served per row (1 flagged of 2,696: 2017-05-31).",
+      "pit_gate": "G-PIT-V1 PASS_EVIDENCED (+ G-PIT-V1b coverage 2021-01..2026-06 complete)",
+      "available_at_rule": "Value of effectiveDate d is published the next NY Fed business day at approximately 9:00 a.m. ET; same-day revisions possible until ~14:30 ET (1bp threshold). FROZEN RULE: value of d usable from d+1 15:00 ET; a Friday 17:00 ET decision consumes Thursday's EFFR (2.5h margin past the revision window). Skip rows where revisionIndicator != '' only if the engine wants first-print values; they are auditable, not errors."
+    }
+  },
+  "notes_for_loader_lane": [
+    "All four files verified parseable; '.'/empty cells in fredgraph CSVs mean missing (holiday/no-trade), not zero.",
+    "EFFR JSON array is newest-first; effectiveDate is ISO; percentRate is a JSON number (percent).",
+    "Do not re-fetch from stlouisfed.org from this host without a cooldown: the edge rate-limits bursts (HTTP/2 stream resets) - discrimination evidence in raw/alfred/probes/.",
+    "Wayback vintage files (raw/alfred/vintage_*.csv) are evidence artifacts, NOT loader inputs; they pin no-retro-revision claims in the PIT dossier."
+  ]
+}
