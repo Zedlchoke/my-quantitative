@@ -44,6 +44,8 @@ def src(key: str):
         v = load_fx_pair(s[f"{key}_m1_bid"], s[f"{key}_m1_ask"], config.FX_SCALES[key])
     elif key.startswith("premium_"):
         v = load_binance_zipdir(s[key])
+    elif key.startswith("spot_"):
+        v = load_binance_zipdir(s[key])
     elif key == "quarterly_btc":
         from dt100.data import load_quarterly_continuous
         v = load_quarterly_continuous(s[key])
@@ -62,10 +64,18 @@ def load_funding(dirname: str) -> pd.DataFrame:
         with zipfile.ZipFile(zp) as z:
             with z.open(z.namelist()[0]) as fh:
                 df = pd.read_csv(io.BytesIO(fh.read()), header=None,
-                                 names=["calc_time", "interval", "rate"])
+                                 names=["calc_time", "interval", "rate"],
+                                 low_memory=False)
+        if len(df) and not str(df.iloc[0, 0]).isdigit():   # header row present
+            with zipfile.ZipFile(zp) as z2:
+                blob = z2.read(z2.namelist()[0])
+            df = pd.read_csv(io.BytesIO(blob), header=0, low_memory=False)
+            df = df.iloc[:, :3]
+            df.columns = ["calc_time", "interval", "rate"]
         frames.append(df)
     out = pd.concat(frames, ignore_index=True).drop_duplicates("calc_time")
-    out["ts"] = pd.to_datetime(out["calc_time"], unit="ms", utc=True)
+    out["ts"] = pd.to_datetime(pd.to_numeric(out["calc_time"]), unit="ms", utc=True)
+    out["rate"] = pd.to_numeric(out["rate"])
     return out[["ts", "rate"]].sort_values("ts").reset_index(drop=True)
 
 
@@ -84,7 +94,7 @@ def fund_contra_pos(df_1m: pd.DataFrame, funding: pd.DataFrame, p: dict) -> pd.S
 
 def build_pos(arm: dict, df):
     kind, p = arm["kind"], arm["params"]
-    extra = {k: arm[k] for k in ("lead", "other", "legs") if k in arm}
+    extra = {k: arm[k] for k in ("lead", "other", "legs", "premium") if k in arm}
     if kind == "fund_contra":
         return fund_contra_pos(df, src("funding_btc"), p)
     if kind == "carry_pair":
@@ -116,31 +126,25 @@ def build_pos(arm: dict, df):
         return ("SYNTH", synth, out.iloc[1:].reset_index(drop=True))
     fn = getattr(signals, kind)
     if kind == "leadlag":
-        return signals.leadlag(src(extra["lead"]), df, p)
+        ll = signals.leadlag(src(extra["lead"]), df, p)
+        synth = ll[["ts", "o", "h", "l", "c"]]
+        return ("SYNTH", synth, ll["pos"])
     if kind in ("pair_mr",):
-        pairdf = signals.pair_mr(df, src(extra["other"]), p)
+        pairdf = signals.pair_mr(df, src(extra["other"]), p).dropna().reset_index(drop=True)
         z = pairdf["z"]
         pos = pd.Series(0.0, index=pairdf.index)
         pos[z.shift(1) > p["band"]] = -1.0
         pos[z.shift(1) < -p["band"]] = 1.0
         out = pd.Series(0.0, index=pairdf.index)
-        idx = np.flatnonzero(pos.to_numpy() != 0)
-        for i in idx:
+        for i in np.flatnonzero(pos.to_numpy() != 0):
             out.iloc[i + 1:i + 1 + p["hold"]] = pos.iloc[i]
-        # synthetic price frame = spread level; engine marks on it
         synth = pd.DataFrame({"ts": pairdf["ts"], "o": pairdf["spread"].shift(1),
                               "h": pairdf["spread"], "l": pairdf["spread"],
-                              "c": pairdf["spread"]}).dropna().reset_index(drop=True)
-        return pos.rename("pos").to_frame().assign(ts=pairdf["ts"].to_numpy()).pipe(
-            lambda d: ("SYNTH", synth, out))
+                              "c": pairdf["spread"]}).iloc[1:].reset_index(drop=True)
+        return ("SYNTH", synth, out.iloc[1:].reset_index(drop=True))
     if kind == "corr_break":
-        posdf = signals.corr_break(df, src(extra["other"]), p)
-        out = pd.Series(0.0, index=posdf.index)
-        idx = np.flatnonzero(posdf["pos"].to_numpy() != 0)
-        for i in idx:
-            out.iloc[i + 1:i + 1 + p["hold"]] = posdf["pos"].iloc[i]
-        synth = df.set_index("ts").reindex(posdf["ts"]).reset_index()
-        return ("SYNTH", synth, out)
+        cb = signals.corr_break(df, src(extra["other"]), p)
+        return ("SYNTH", cb[["ts", "o", "h", "l", "c"]], cb["pos"])
     return fn(df, p)
 
 

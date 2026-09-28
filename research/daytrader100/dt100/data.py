@@ -164,6 +164,9 @@ def load_quarterly_continuous(dirname: str, roll_days: int = 30) -> pd.DataFrame
             df = df.iloc[1:]
         df = df[["open_time", "open", "high", "low", "close", "volume", "taker_buy_base"]]
         df.columns = ["open_time", "o", "h", "l", "c", "v", "tb"]
+        for col in ("open_time", "o", "h", "l", "c", "v", "tb"):
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        df = df.dropna(subset=["open_time", "o", "c"])
         by_sym.setdefault(sym, []).append(df)
     frames = []
     for sym, lst in by_sym.items():

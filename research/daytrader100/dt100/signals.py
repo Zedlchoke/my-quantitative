@@ -314,9 +314,11 @@ def pair_mr(df_a: pd.DataFrame, df_b: pd.DataFrame, p: dict) -> pd.DataFrame:
     return pd.DataFrame({"ts": m.index, "spread": spread, "z": z}).reset_index(drop=True)
 
 
-def corr_break(df_alt: pd.DataFrame, df_btc: pd.DataFrame, p: dict) -> pd.Series:
-    a = df_alt.set_index("ts")["c"].pct_change().rename("a")
+def corr_break(df_alt: pd.DataFrame, df_btc: pd.DataFrame, p: dict) -> pd.DataFrame:
+    """Returns its OWN aligned frame (alt ohlc + pos) — same contract as leadlag."""
+    a_full = df_alt.set_index("ts")
     b = df_btc.set_index("ts")["c"].pct_change().rename("b")
+    a = a_full["c"].pct_change().rename("a")
     m = pd.concat([a, b], axis=1).dropna()
     corr = m["a"].rolling(p["corr_win"]).corr(m["b"])
     low_corr = corr < np.nanpercentile(corr.dropna(), p["corr_pct"])
@@ -325,18 +327,27 @@ def corr_break(df_alt: pd.DataFrame, df_btc: pd.DataFrame, p: dict) -> pd.Series
     pos = pd.Series(0.0, index=m.index)
     pos[low_corr.shift(1) & (z.shift(1) > p["band"])] = 1.0
     pos[low_corr.shift(1) & (z.shift(1) < -p["band"])] = -1.0
-    out = pd.DataFrame({"ts": m.index, "pos": pos}).reset_index(drop=True)
-    return out
+    out = pd.Series(0.0, index=m.index)
+    for i in np.flatnonzero(pos.to_numpy() != 0):
+        out.iloc[i + 1:i + 1 + p["hold"]] = pos.iloc[i]
+    frame = a_full.reindex(m.index).reset_index()[["ts", "o", "h", "l", "c"]]
+    return pd.concat([frame, out.rename("pos").reset_index(drop=True)], axis=1)
 
 
-def leadlag(df_btc: pd.DataFrame, df_sol: pd.DataFrame, p: dict) -> pd.Series:
+def leadlag(df_btc: pd.DataFrame, df_sol: pd.DataFrame, p: dict) -> pd.DataFrame:
+    """Returns its OWN aligned frame (ts + SOL ohlc + pos) so the runner marks
+    PnL on exactly the rows the signal was built on — never a foreign index."""
     rb = df_btc.set_index("ts")["c"].pct_change(p["lag"]).rename("rb")
     m = df_sol.set_index("ts").join(rb, how="left").ffill()
     z = _z(m["rb"], 1440)
     pos = pd.Series(0.0, index=m.index)
     pos[z.shift(1) > p["band"]] = 1.0
     pos[z.shift(1) < -p["band"]] = -1.0
-    return _hold_until_df(pos, p["hold"])
+    out = pd.Series(0.0, index=m.index)
+    for i in np.flatnonzero(pos.to_numpy() != 0):
+        out.iloc[i + 1:i + 1 + p["hold"]] = pos.iloc[i]
+    frame = m.reset_index()[["ts", "o", "h", "l", "c"]]
+    return pd.concat([frame, out.rename("pos").reset_index(drop=True)], axis=1)
 
 
 def _hold_until_df(pos: pd.Series, hold: int) -> pd.Series:
