@@ -347,6 +347,45 @@ def _hold_until_df(pos: pd.Series, hold: int) -> pd.Series:
     return out
 
 
+# ------------------------------------------------------------------ carry/basis
+
+def carry_pair(df_spot: pd.DataFrame, df_perp: pd.DataFrame, p: dict) -> pd.DataFrame:
+    """Cash-and-carry book (owner order 2026-09-28, G3 addendum r1).
+
+    spread = log(spot) - log(perp)  [tradeable price units]
+    pz     = z-score of the perp premium (perp/spot - 1, rolling zwin)
+    Long spread when perp rich (pz > band): long spot + short perp, harvesting
+    the measured funding stream on the short perp leg.
+    """
+    a = df_spot.set_index("ts")["c"].rename("spot")
+    b = df_perp.set_index("ts")["c"].rename("perp")
+    m = pd.concat([a, b], axis=1).dropna()
+    prem = m["perp"] / m["spot"] - 1
+    pz = _z(prem, p["zwin"])
+    spread = np.log(m["spot"]) - np.log(m["perp"])
+    return pd.DataFrame({"ts": m.index, "spread": spread.to_numpy(),
+                         "pz": pz.to_numpy()})
+
+
+def basis_term(df_q: pd.DataFrame, df_perp: pd.DataFrame, df_prem: pd.DataFrame,
+               p: dict) -> pd.DataFrame:
+    """Term-vs-perp basis divergence (G3 addendum r1).
+
+    trigger dz = z(term basis) - z(perp premium); dz > band means term richer
+    than the perp premium -> SHORT spread (short quarterly, long perp) betting
+    convergence. PnL marks on spread = log(quarterly) - log(perp).
+    """
+    q = df_q.set_index("ts")["c"].rename("q")
+    b = df_perp.set_index("ts")["c"].rename("perp")
+    m = pd.concat([q, b], axis=1).dropna()
+    prem = df_prem.set_index("ts")["c"].reindex(m.index).ffill()
+    tb = np.log(m["q"]) - np.log(m["perp"])
+    zb = _z(tb, p["zwin"])
+    zp = _z(prem, p["zwin"])
+    return pd.DataFrame({"ts": m.index, "spread": tb.to_numpy(),
+                         "dz": (zb - zp).to_numpy()})
+
+
 # ------------------------------------------------------------------ FX 1m
 
 def asian_range(df: pd.DataFrame, p: dict) -> pd.Series:

@@ -74,7 +74,15 @@ SRC = {
     "jpy_m1_ask": "/Users/hoangminhlong/my-quantitative/.worktrees/fx-majors-search-v1/integration/research/control/FX-MAJORS-SEARCH-V1/data_local/USDJPY/M1/ASK",
     "premium_btc": WT + "/research/control/DAYTRADER-100-V1/data_staging/premium/BTCUSDT",
     "premium_sol": WT + "/research/control/DAYTRADER-100-V1/data_staging/premium/SOLUSDT",
+    "funding_btc": WT + "/research/control/DAYTRADER-100-V1/data_staging/funding/BTCUSDT",
+    "funding_sol": WT + "/research/control/DAYTRADER-100-V1/data_staging/funding/SOLUSDT",
+    "spot_btc": WT + "/research/control/DAYTRADER-100-V1/data_staging/spot/BTCUSDT",
+    "spot_sol": WT + "/research/control/DAYTRADER-100-V1/data_staging/spot/SOLUSDT",
+    "quarterly_btc": WT + "/research/control/DAYTRADER-100-V1/data_staging/quarterly/BTCUSDT",
 }
+
+# Dukascopy integer-point scales (duka_lib.py verified layout)
+FX_SCALES = {"eur": 1e5, "gbp": 1e5, "jpy": 1e3}
 
 CONTROLS = ["clock_shadow", "sign_flip", "stale_lag"]   # re-evaluations, zero cells
 CONTROL_SEED = 20260928

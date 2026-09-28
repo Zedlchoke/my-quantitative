@@ -62,7 +62,7 @@ def stale_lag(pos: pd.Series, lag_bars: int) -> pd.Series:
 def run_arm(df: pd.DataFrame, pos: pd.Series, folds: list, asset: str,
             symbol: str, stress: float = 1.0, warmup_end: str | None = None,
             funding: pd.DataFrame | None = None,
-            cost_multiplier: float = 1.0) -> dict:
+            cost_multiplier: float = 1.0, funding_sign: float = 1.0) -> dict:
     """Returns trade-level frame + aggregate stats. No display of PnL in dry mode
     is enforced by the runner, not here (scored path only)."""
     ts = df["ts"]
@@ -115,7 +115,7 @@ def run_arm(df: pd.DataFrame, pos: pd.Series, folds: list, asset: str,
                 lo, hi = ts.iloc[entry_i[k]], ts.iloc[exit_i[k]]
                 m = (funding["ts"] >= lo) & (funding["ts"] < hi)
                 if m.any():
-                    fund_bps[k] = dirs[k] * funding.loc[m, "rate"].to_numpy().sum() * 1e4
+                    fund_bps[k] = dirs[k] * funding.loc[m, "rate"].to_numpy().sum() * 1e4 * funding_sign
     else:
         sp = df["spread_bps"].to_numpy()
         half_entry = np.maximum(sp[entry_i] / 2, config.FX_MIN_HALF_SPREAD_BPS)

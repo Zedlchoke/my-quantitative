@@ -102,6 +102,16 @@ ARMS: list[dict] = [
          anchor=_f("tsmom_h", "btc1h", {"lookback": 72}),
          n1=_f("tsmom_h", "btc1h", {"lookback": 24}),
          n2=_f("tsmom_h", "btc1h", {"lookback": 120})),
+    # ---------------- owner order 2026-09-28 ("mở thêm các strategy ... giờ đã có
+    # dữ kiện"): unlocked by the keyless channel proven this session (288/288)
+    dict(family="DT100-46-CARRY", asset="crypto", symbol="BTCUSDT", res="1m",
+         anchor=_f("carry_pair", "spot_btc", {"zwin": 90 * 1440, "band": 1.5, "hold": 480}, {"other": "btc1m", "legs": 2}),
+         n1=_f("carry_pair", "spot_btc", {"zwin": 90 * 1440, "band": 1.0, "hold": 480}, {"other": "btc1m", "legs": 2}),
+         n2=_f("carry_pair", "spot_btc", {"zwin": 60 * 1440, "band": 2.0, "hold": 960}, {"other": "btc1m", "legs": 2})),
+    dict(family="DT100-95-BASISTERM", asset="crypto", symbol="BTCUSDT", res="1m",
+         anchor=_f("basis_term", "quarterly_btc", {"zwin": 90 * 1440, "band": 1.5, "hold": 480}, {"other": "btc1m", "premium": "premium_btc", "legs": 2}),
+         n1=_f("basis_term", "quarterly_btc", {"zwin": 90 * 1440, "band": 1.0, "hold": 480}, {"other": "btc1m", "premium": "premium_btc", "legs": 2}),
+         n2=_f("basis_term", "quarterly_btc", {"zwin": 60 * 1440, "band": 2.0, "hold": 960}, {"other": "btc1m", "premium": "premium_btc", "legs": 2})),
     # ---------------- FX M1 (EURUSD primary; GBPUSD = drop-one, not a cell)
     dict(family="DT100-07-PDHLSWEEPFX", asset="fx", symbol="EURUSD", res="1m",
          anchor=_f("pdhl_sweep", "eur", {"reclaim_frac": 0.0004}),

@@ -40,14 +40,13 @@ def src(key: str):
         v = load_binance_zipdir(s["sol1h"])
     elif key == "btc1h":
         v = aggregate(load_binance_zipdir(s["btc1m"]), "1h")
-    elif key == "eur":
-        v = load_fx_pair(s["eur_m1_bid"], s["eur_m1_ask"])
-    elif key == "gbp":
-        v = load_fx_pair(s["gbp_m1_bid"], s["gbp_m1_ask"])
-    elif key == "jpy":
-        v = load_fx_pair(s["jpy_m1_bid"], s["jpy_m1_ask"])
+    elif key in ("eur", "gbp", "jpy"):
+        v = load_fx_pair(s[f"{key}_m1_bid"], s[f"{key}_m1_ask"], config.FX_SCALES[key])
     elif key.startswith("premium_"):
         v = load_binance_zipdir(s[key])
+    elif key == "quarterly_btc":
+        from dt100.data import load_quarterly_continuous
+        v = load_quarterly_continuous(s[key])
     elif key.startswith("funding_"):
         v = load_funding(s[key])
     else:
@@ -85,10 +84,37 @@ def fund_contra_pos(df_1m: pd.DataFrame, funding: pd.DataFrame, p: dict) -> pd.S
 
 def build_pos(arm: dict, df):
     kind, p = arm["kind"], arm["params"]
-    fn = getattr(signals, kind)
-    extra = arm.get("extra") or {}
+    extra = {k: arm[k] for k in ("lead", "other", "legs") if k in arm}
     if kind == "fund_contra":
         return fund_contra_pos(df, src("funding_btc"), p)
+    if kind == "carry_pair":
+        pairdf = signals.carry_pair(df, src(extra["other"]), p).dropna().reset_index(drop=True)
+        pos = pd.Series(0.0, index=pairdf.index)
+        pos[pairdf["pz"].shift(1) > p["band"]] = 1.0    # perp rich -> long spread
+        pos[pairdf["pz"].shift(1) < -p["band"]] = -1.0
+        out = pd.Series(0.0, index=pairdf.index)
+        for i in np.flatnonzero(pos.to_numpy() != 0):
+            out.iloc[i + 1:i + 1 + p["hold"]] = pos.iloc[i]
+        synth = pd.DataFrame({"ts": pairdf["ts"], "o": pairdf["spread"].shift(1),
+                              "h": pairdf["spread"], "l": pairdf["spread"],
+                              "c": pairdf["spread"]}).dropna().reset_index(drop=True)
+        return ("SYNTH", synth, out.iloc[1:].reset_index(drop=True))
+    if kind == "basis_term":
+        pairdf = signals.basis_term(df, src(extra["other"]), src(extra["premium"]), p)
+        pairdf = pairdf.dropna().reset_index(drop=True)
+        pos = pd.Series(0.0, index=pairdf.index)
+        pos[pairdf["dz"].shift(1) > p["band"]] = -1.0   # term rich -> short spread
+        pos[pairdf["dz"].shift(1) < -p["band"]] = 1.0
+        out = pd.Series(0.0, index=pairdf.index)
+        for i in np.flatnonzero(pos.to_numpy() != 0):
+            out.iloc[i + 1:i + 1 + p["hold"]] = pos.iloc[i]
+        # PnL marks on the TRADEABLE level spread (log quarterly - log perp),
+        # never on the z-score; dz is only the trigger.
+        synth = pd.DataFrame({"ts": pairdf["ts"], "o": pairdf["spread"].shift(1),
+                              "h": pairdf["spread"], "l": pairdf["spread"],
+                              "c": pairdf["spread"]}).dropna().reset_index(drop=True)
+        return ("SYNTH", synth, out.iloc[1:].reset_index(drop=True))
+    fn = getattr(signals, kind)
     if kind == "leadlag":
         return signals.leadlag(src(extra["lead"]), df, p)
     if kind in ("pair_mr",):
@@ -150,25 +176,29 @@ def main():
                 folds = config.CRYPTO_FOLDS if fam["asset"] == "crypto" else config.FX_FOLDS
                 warmup = config.CRYPTO_WARMUP[1] if fam["asset"] == "crypto" else config.FX_WARMUP[1]
                 funding = None
-                if fam["family"] in ("DT100-C1-FORECASTFUND", "DT100-35-FUNDCONTRA"):
+                if fam["family"] in ("DT100-C1-FORECASTFUND", "DT100-35-FUNDCONTRA",
+                                     "DT100-46-CARRY", "DT100-95-BASISTERM"):
                     funding = src("funding_btc")
-                legs = (spec.get("extra") or {}).get("legs", 1)
+                legs = spec.get("legs", 1)
+                fsign = -1.0 if fam["family"] == "DT100-46-CARRY" else 1.0
                 stats = run_arm(mark_df, pos, folds, fam["asset"], fam["symbol"],
                                 stress=args.stress, warmup_end=warmup,
-                                funding=funding, cost_multiplier=float(legs))
+                                funding=funding, cost_multiplier=float(legs),
+                                funding_sign=fsign)
                 if args.mode == "dry":
                     per_fold_counts = {k: v.get("n", 0) for k, v in stats.get("per_fold", {}).items()}
                     cs = clock_shadow(pos, mark_df["ts"])
-                    cs_stats = run_arm(mark_df, cs, folds, fam["asset"], fam["symbol"],
-                                       stress=args.stress, warmup_end=warmup, funding=funding,
-                                       cost_multiplier=float(legs))
+                    # parity invariant = FIRED-BAR count preserved (trade counts
+                    # legitimately differ when permuted directions merge/split)
+                    parity = int((cs != 0).sum()) == int((pos != 0).sum())
                     rows.append({
                         "record_id": rid, "family": fam["family"], "arm": arm_name,
                         "trades_total": stats.get("trades", 0),
                         "trades_per_fold": per_fold_counts,
                         "decision_digest": digest_bytes(pos.to_numpy()),
-                        "clock_shadow_trades": cs_stats.get("trades", 0),
-                        "controls_parity": cs_stats.get("trades", 0) == stats.get("trades", 0),
+                        "fired_bars": int((pos != 0).sum()),
+                        "clock_shadow_fired_bars": int((cs != 0).sum()),
+                        "controls_parity": parity,
                         "non_vacuous": stats.get("trades", 0) >= 50,
                         "mode": "dry (NO PnL computed)",
                     })
@@ -180,6 +210,10 @@ def main():
                 rows.append({"record_id": rid, "family": fam["family"], "arm": arm_name,
                              "verdict": "NOT_RUN_DATA_BLOCKED_UNDER_OWNER_ORDER",
                              "detail": str(e)[:160], "mode": args.mode})
+            except Exception as e:  # noqa: BLE001 — loud TECHABORT row, never silent
+                rows.append({"record_id": rid, "family": fam["family"], "arm": arm_name,
+                             "verdict": "TECHABORT", "detail": f"{type(e).__name__}: {e}"[:200],
+                             "mode": args.mode})
     ids = [r["record_id"] for r in rows]
     dup = len(ids) != len(set(ids))
     payload = {"rows": rows, "record_ids_distinct": not dup, "n_rows": len(rows)}
