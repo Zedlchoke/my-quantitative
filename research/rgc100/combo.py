@@ -66,7 +66,7 @@ def build_leg_pos(leg, df, src):
 
 def leg_weekly_pnl(tr: pd.DataFrame) -> pd.Series:
     """Trade PnL aggregated to ISO-Monday weeks (bps of leg notional)."""
-    wk = tr["ts_entry"].dt.floor("W")
+    wk = tr["ts_entry"].dt.to_period("W").dt.start_time.dt.tz_localize("UTC")  # Monday-start weeks
     return tr.assign(wk=wk).groupby("wk")["net_bps"].sum()
 
 
@@ -218,7 +218,7 @@ def run_combo(mode: str = "scored", out_dir: str | None = None, seed: int = 2026
                  for name, a, b in FOLDS}
     result = {}
     for name, vals in combos.items():
-        s = pd.Series(vals, index=monds)
+        s = pd.Series(vals, index=mondays)
         per = {fn: float(s[(s.index >= a) & (s.index < b)].sum())
                for fn, (a, b) in folds_idx.items()}
         result[name] = {"total_bps": float(s.sum()), "per_fold": per,
