@@ -62,7 +62,8 @@ def stale_lag(pos: pd.Series, lag_bars: int) -> pd.Series:
 def run_arm(df: pd.DataFrame, pos: pd.Series, folds: list, asset: str,
             symbol: str, stress: float = 1.0, warmup_end: str | None = None,
             funding: pd.DataFrame | None = None,
-            cost_multiplier: float = 1.0, funding_sign: float = 1.0) -> dict:
+            cost_multiplier: float = 1.0, funding_sign: float = 1.0,
+            spread_marking: bool = False) -> dict:
     """Returns trade-level frame + aggregate stats. No display of PnL in dry mode
     is enforced by the runner, not here (scored path only)."""
     ts = df["ts"]
@@ -103,7 +104,14 @@ def run_arm(df: pd.DataFrame, pos: pd.Series, folds: list, asset: str,
     exit_px = o[exit_i].astype(float)
     if final_open and keep.size and keep[-1]:
         exit_px[-1] = c[-1]          # frame-end mark at the last CLOSE
-    gross_bps = dirs * (exit_px / entry_px - 1.0) * 1e4
+    # INC-DT100-1 remediation (owner order 2026-09-28 "sửa và chạy lại 12 cell
+    # spread"): synthetic-spread frames mark PnL as the DIFFERENCE of the spread
+    # (long spread profits when spread rises), never the ratio — log-spreads
+    # cross zero and ratios explode.
+    if spread_marking:
+        gross_bps = dirs * (exit_px - entry_px) * 1e4
+    else:
+        gross_bps = dirs * (exit_px / entry_px - 1.0) * 1e4
 
     if asset == "crypto":
         cc = config.CRYPTO_COSTS[symbol]

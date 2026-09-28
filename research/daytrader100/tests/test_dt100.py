@@ -95,6 +95,23 @@ def test_determinism():
     assert a["expectancy_bps"] == b["expectancy_bps"] and a["trades"] == b["trades"]
 
 
+def test_spread_marking_difference_math():
+    """INC-DT100-1 regression: synthetic-spread PnL = DIFFERENCE, not ratio."""
+    df = toy(12, seed=9)
+    vals = [0.010, 0.010, 0.010, 0.010, 0.012, 0.012, 0.010, 0.010, 0.010, 0.010, 0.010, 0.010]
+    df.loc[:, "o"] = vals
+    df.loc[:, "c"] = vals
+    pos = pd.Series(0.0, index=df.index)
+    pos.iloc[3] = 1.0   # decided close3 -> fill spread[4]=0.012
+    pos.iloc[5] = 0.0   # flat decided close5 -> exit spread[6]=0.010
+    st = run_arm(df, pos, FOLDS, "crypto", "BTCUSDT",
+                 cost_multiplier=2.0, spread_marking=True)
+    assert st["trades"] == 1
+    # gross = (0.010 - 0.012) * 1e4 = -20 bps ; cost = 2 legs * 2 * (5+1) = 24
+    assert abs(st["expectancy_bps"] - (-20.0 - 24.0)) < 1e-9
+    # ratio marking would give (0.010/0.012-1)*1e4 = -1666.7 bps — pinned away
+
+
 def test_signal_domain_all_families():
     df = toy(4000, seed=8)
     checks = {

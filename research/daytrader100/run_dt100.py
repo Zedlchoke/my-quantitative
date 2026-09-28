@@ -192,7 +192,10 @@ def main():
                                                   "DT100-95-BASISTERM") else 1.0
                 run_kwargs = dict(folds=folds, asset=fam["asset"], symbol=fam["symbol"],
                                   warmup_end=warmup, funding=funding,
-                                  cost_multiplier=float(legs), funding_sign=fsign)
+                                  cost_multiplier=float(legs), funding_sign=fsign,
+                                  spread_marking=fam["family"] in (
+                                      "DT100-46-CARRY", "DT100-75-PAIRMR",
+                                      "DT100-79-ETHBTC", "DT100-95-BASISTERM"))
                 if args.mode == "dry":
                     stats = run_arm(mark_df, pos, stress=args.stress, **run_kwargs)
                     per_fold_counts = {k: v.get("n", 0) for k, v in stats.get("per_fold", {}).items()}
