@@ -184,7 +184,10 @@ def main():
                                      "DT100-46-CARRY", "DT100-95-BASISTERM"):
                     funding = src("funding_btc")
                 legs = spec.get("legs", 1)
-                fsign = -1.0 if fam["family"] == "DT100-46-CARRY" else 1.0
+                # dir=+1 on the synthetic spread = SHORT the perp leg for both
+                # CARRY and BASISTERM -> funding is INCOME on that leg (A7 HIGH-1)
+                fsign = -1.0 if fam["family"] in ("DT100-46-CARRY",
+                                                  "DT100-95-BASISTERM") else 1.0
                 stats = run_arm(mark_df, pos, folds, fam["asset"], fam["symbol"],
                                 stress=args.stress, warmup_end=warmup,
                                 funding=funding, cost_multiplier=float(legs),

@@ -142,9 +142,9 @@ ARMS: list[dict] = [
 BLOCKED_UNDER_ORDER = [
     "DT100-19-LIMITFADE(bt)", "DT100-21-ESNQZ(bt)", "DT100-22-22(bd)", "DT100-23-23(bd)",
     "DT100-24-24(av+bd)", "DT100-33-SETTLE(bt)", "DT100-36..45 event/news (bd)",
-    "DT100-46-CARRY(needs spot legs; bd)", "DT100-47-55 spreads (bd/bt)",
+    "DT100-47..55 spreads cross-venue/CME/rates (bd/bt)",
     "DT100-57..59,61..68 orderflow/L2 (bd)", "DT100-77 leadlag-eq (bd/bt)",
     "DT100-81,82,84..86 price-action-skeleton (av)",
     "DT100-88..93 vol instruments (av/bd)",
-    "DT100-95..100 on-chain/stable (bd)",
+    "DT100-96..100 on-chain/stable (bd)",
 ]
