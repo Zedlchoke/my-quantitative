@@ -14,7 +14,7 @@
   (genuine no-trade bars, kept). CSV header regime change at 2022-01 (auto-detected per file).
 - Funding census (measured): 7,643 rows, contiguous 8h grid 2019-09-10→2026-08-31,
   interval always 8h, rate per-8h decimal min/median/max −0.003/0.0000972/+0.003,
-  ts jitter ≤47ms (engine floors to 8h slot before join), 5,451 events inside eval window.
+  ts jitter ≤47ms (engine floors to 8h slot before join), 5,451 events inside [2021-01-04, 2025-12-26) as first measured; A7 recomputed 5,460 inside the corrected erratum window [2021-01-04, 2025-12-29) — engine loads by corrected window (A7 finding F-3).
 
 ## FOLD ERRATUM (2026-09-29, before code freeze)
 Plan §4 prose "F10 ends 2025-12-26" was arithmetically wrong: 2021-01-04 + 260 weeks

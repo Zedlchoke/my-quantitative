@@ -19,7 +19,7 @@ from governance import heavy_lock               # noqa: E402
 
 CMD = [f"{ROOT}/.venv/bin/python",
        f"{WT}/research/btcombo6/run_btcombo6.py",
-       "--mode", "scored", "--stress-all"]
+       "--mode", "scored"]
 
 ARTIFACTS = [
     f"{WT}/research/control/BTC-COMBO6-SCORED-V1/scored/btcombo6_scored_stress1.0.json",
