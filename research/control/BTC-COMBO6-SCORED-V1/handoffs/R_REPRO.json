@@ -1,0 +1,53 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "BTC-COMBO6-R-REPRO",
+  "cycle_id": "BTC-COMBO6-SCORED-V1",
+  "role": "R_REPRODUCTION",
+  "lane": "r-repro",
+  "dispatch_sha": "c0f97a9db2e460707188877348af01d1c5d395d6",
+  "actual_start_sha": "c0f97a9db2e460707188877348af01d1c5d395d6",
+  "commit_sha": "NONE_DETACHED",
+  "authority_claims": [
+    "Detached twin created by 'git -C /Users/hoangminhlong/my-quantitative worktree add .../btc-combo6-scored-v1/repro_twin --detach c0f97a9db2e460707188877348af01d1c5d395d6'; rev-parse HEAD == c0f97a9db2e460707188877348af01d1c5d395d6 verified before AND after all work; HEAD never moved; NO commits made in the twin (all outputs left untracked)",
+    "Machine-wide heavy lock acquired via governance.heavy_lock.acquire (cycle_id BTC-COMBO6-SCORED-V1, role R_REPRODUCTION, worktree=repro_twin, command=[.venv python, <twin>/research/btcombo6/run_btcombo6.py, --mode, scored], expected_artifacts=[<twin> scored/btcombo6_scored_stress1.0.json]); lock proven FREE_PROVEN immediately before; acquired 2026-09-29T02:56:27.987Z pid 20268; heartbeats before scored / after scored / after truncation; released in finally FINISHED 2026-09-29T02:56:44.517Z note='scored rc=0; truncation check rc=0 (all legs/cuts PASS)'; no NOT_RUN_RESOURCE_CONFLICT / CONTROL_STATE_DRIFT",
+    "Scored mode re-executed in the twin at the freeze SHA (subprocess cwd=twin, rc=0, 7.3s) on the committed digest-verified corpus (corpus_digest e270c9c77801aa19... == FREEZE.md pin); staging manifest/cache committed at freeze were NOT rewritten (absent from twin git status)",
+    "All three scored artifacts canonical-equal integration vs twin ignoring ONLY generated_utc (recursive first-diff scan found no differing field); content_sha256 fields equal on every artifact: 1.0 d787697451af997b0c5f314937ac46444d747c35347dba4ed4370e95c615e5e6, 1.5 f5eb9c915b6565f3f5a289fcdd3d713b4096d160a353384dbecbbf12f8ea9276, 2.0 e1a43807dd659175fbda60b3239d1238757505ef52ebe70d0bc438cd24a2776d; 1.0/1.5 byte-equal to dispatch pins",
+    "TRIAL_LEDGER.jsonl: 1 header + 7 scored_outcome rows (COMBO, LEG-1..6) identical between worktrees ignoring only generated_utc/updated_utc/created_utc, matching on cell, cell_kind, full per-stress blocks, verdict, trades_total and the full scored_content_sha256 dict; header equal ignoring updated_utc",
+    "A7 F-5 truncation-replay check executed with the twin's own engine/signal/data modules on the real corpus for ALL 6 legs x 3 cuts (2022-07-01, 2024-01-01, 2025-06-01): truncated-run trade lists are EXACT field-by-field prefixes of the full-run lists AND prefix lengths equal the count of full-run trades with exit_ts < cut: 18/18 PASS; sanity 6/6 in-process full-run trades == twin scored stress1.0 artifact trades",
+    "Integration worktree touched ONLY by this handoff file (A1 to commit); integration scored/ outputs and TRIAL_LEDGER.jsonl never written by this lane"
+  ],
+  "changed_paths": [
+    ".worktrees/btc-combo6-scored-v1/repro_twin/research/control/BTC-COMBO6-SCORED-V1/scored/btcombo6_scored_stress1.0.json (untracked twin output)",
+    ".worktrees/btc-combo6-scored-v1/repro_twin/research/control/BTC-COMBO6-SCORED-V1/scored/btcombo6_scored_stress1.5.json (untracked twin output)",
+    ".worktrees/btc-combo6-scored-v1/repro_twin/research/control/BTC-COMBO6-SCORED-V1/scored/btcombo6_scored_stress2.0.json (untracked twin output)",
+    ".worktrees/btc-combo6-scored-v1/repro_twin/research/control/BTC-COMBO6-SCORED-V1/TRIAL_LEDGER.jsonl (untracked twin output)",
+    ".worktrees/btc-combo6-scored-v1/repro_twin/research/control/BTC-COMBO6-SCORED-V1/scored_repro/ (REPRO_REPORT.md, run_locked_repro.py, truncation_check.py, compare_artifacts.py, lock_run_summary.json, truncation_check.json, compare_artifacts.json, locked_run.log; all untracked twin evidence)",
+    "research/control/BTC-COMBO6-SCORED-V1/handoffs/R_REPRO.json (this file; only write into the integration worktree)"
+  ],
+  "tests": [
+    "scored repro run: rc=0 in 7.3s under the heavy lock; three artifacts + ledger written in the twin",
+    "artifact canonical equality (ignoring generated_utc only): stress1.0 PASS, stress1.5 PASS, stress2.0 PASS; content_sha256 equality integration==twin: 3/3; pinned-constant match: 1.0 PASS, 1.5 PASS, 2.0 BOTH-SIDES single-char discrepancy vs the dispatch pin (see incidents)",
+    "TRIAL_LEDGER scored_outcome rows equal ignoring generated_utc/updated_utc/created_utc: 7/7 PASS; header equal ignoring updated_utc: PASS",
+    "truncation-replay prefix law 6 legs x 3 cuts: 18/18 PASS (LEG-1 1778/2555/3549, LEG-2 188/269/370, LEG-3 89/144/206, LEG-4 301/406/546, LEG-5 339/463/621, LEG-6 205/278/391 truncated==expected-prefix trades); artifact-trades sanity match 6/6; engine _guard_sealed passed on every run",
+    "REPRO_VERDICT: ALL_MATCH"
+  ],
+  "known_limitations": [
+    "Raw file bytes are NOT identical between worktrees by design: generated_utc (and only it) differs; the comparison canonicalizes by removing exactly that key (json.dumps sort_keys), per dispatch",
+    "Truncation cuts were chosen by R-REPRO (2022-07-01, 2024-01-01, 2025-06-01 as suggested by the dispatch); they cover early/mid/late corpus but are 3 of infinitely many possible cut points",
+    "Truncation check ran at stress=1.0 only (cost tier does not affect fill/exit sequencing; fees scale linearly per side, so prefix structure is tier-independent)",
+    "The twin remains on disk (do-not-delete per dispatch); its outputs are untracked and A1 owns evidence commit"
+  ],
+  "incidents": [
+    "I-1 INFO/DISCREPANCY: the R-REPRO dispatch pinned stress=2.0 expected content_sha256 e1a43807dd659175fbda6033... (char 22='3'), but ALL recordings — integration scored artifact, integration TRIAL_LEDGER 7/7 scored_content_sha256 dicts, twin artifact, twin ledger, and the twin in-process recomputation at the freeze SHA — carry e1a43807dd659175fbda60b3... (char 22='b'). SHA-256 outputs of different contents cannot differ by exactly one hex char; assessment: single-character transcription error in the dispatch packet constant. Integration-vs-twin equality (the reproduction criterion) is unaffected; verdict ALL_MATCH stands. A1/owner acknowledgement requested."
+  ],
+  "tree_status": "integration-worktree-dirty-only-by-this-handoff (expected; A1 commits); twin-detached-clean-except-untracked-outputs; no commits made anywhere by this lane",
+  "workers": 0,
+  "outputs": [
+    "research/control/BTC-COMBO6-SCORED-V1/handoffs/R_REPRO.json",
+    ".worktrees/btc-combo6-scored-v1/repro_twin/research/control/BTC-COMBO6-SCORED-V1/scored_repro/REPRO_REPORT.md",
+    ".worktrees/btc-combo6-scored-v1/repro_twin/research/control/BTC-COMBO6-SCORED-V1/scored_repro/lock_run_summary.json",
+    ".worktrees/btc-combo6-scored-v1/repro_twin/research/control/BTC-COMBO6-SCORED-V1/scored_repro/truncation_check.json",
+    ".worktrees/btc-combo6-scored-v1/repro_twin/research/control/BTC-COMBO6-SCORED-V1/scored_repro/compare_artifacts.json",
+    ".worktrees/btc-combo6-scored-v1/repro_twin/research/control/BTC-COMBO6-SCORED-V1/scored_repro/locked_run.log"
+  ]
+}
