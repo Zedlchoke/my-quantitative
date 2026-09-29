@@ -1,0 +1,419 @@
+{
+  "schema": "pc12a_fill_fixture@1",
+  "fixture_id": "fx3_netting_two_legs_opposite",
+  "mechanism": "L4 netting: two session legs vote OPPOSITE on one asset (LEG-TA +0.6 lot, LEG-MB -0.4 lot) -> ONE net fill of +0.2 lot; both votes journaled as VOTE rows; cash effect only on NET-ORDER rows; virtual per-leg attribution sums to the book totals.",
+  "conventions": {
+    "symbol": "EURUSD",
+    "venue_model": "PANEL_DUKA_SYNTH",
+    "pip_size": 0.0001,
+    "pip_value_per_lot_usd": 10.0,
+    "lot_size_base_units": 100000,
+    "commission_bps_per_side": 0.35,
+    "commission_rate_per_side": 3.5e-05,
+    "slip_non_event_pips": 0.2,
+    "slip_event_pips": 1.0,
+    "slip_applied_per_side": 2e-05,
+    "swap_pips_per_night": 1.0,
+    "swap_wednesday_multiplier": 3,
+    "swap_calendar": {
+      "Sun": 1,
+      "Mon": 1,
+      "Tue": 1,
+      "Wed": 3,
+      "Thu": 1,
+      "Fri": 0,
+      "Sat": 0
+    },
+    "swap_boundary_utc": "22:00:00",
+    "initial_cash_usd": 100000.0,
+    "stress_tier": 1.0,
+    "tolerance": 1e-09,
+    "synthetic": true,
+    "note": "Synthetic M1 bars invented for the fixture (realistic EURUSD June-2024 pip magnitudes; spreads 0.4 pip within the C1 EURUSD p50 0.3 / p90 0.5 band). Not panel data."
+  },
+  "legs": [
+    {
+      "leg_id": "LEG-TA",
+      "family_id": "FX-SESSION-TREND",
+      "clock": "SESSION_M1_1400_1800",
+      "risk_weight_lot": 0.6,
+      "rule_frozen": "long 0.6 lot if decision-bar mid_close > 1.0870; exit at 18:00"
+    },
+    {
+      "leg_id": "LEG-MB",
+      "family_id": "FX-SESSION-MEANREV",
+      "clock": "SESSION_M1_1400_1800",
+      "risk_weight_lot": 0.4,
+      "rule_frozen": "short 0.4 lot if decision-bar mid_close > 1.0870 (overbought reversion); exit at 18:00"
+    }
+  ],
+  "input_bars": [
+    {
+      "ts_open_utc": "2024-06-13T13:59:00Z",
+      "span_min": 1,
+      "role": "decision_bar",
+      "bid_open": 1.08695,
+      "ask_open": 1.08699,
+      "bid_close": 1.08703,
+      "ask_close": 1.08707,
+      "mid_open": 1.08697,
+      "mid_close": 1.08705,
+      "spread_cell_validation": "EURUSD C1 band"
+    },
+    {
+      "ts_open_utc": "2024-06-13T14:00:00Z",
+      "span_min": 1,
+      "role": "fill_bar",
+      "bid_open": 1.0871,
+      "ask_open": 1.08714,
+      "bid_close": 1.08716,
+      "ask_close": 1.0872,
+      "mid_open": 1.08712,
+      "mid_close": 1.08718,
+      "spread_cell_validation": "EURUSD C1 band"
+    },
+    {
+      "ts_open_utc": "2024-06-13T17:59:00Z",
+      "span_min": 1,
+      "role": "decision_bar",
+      "bid_open": 1.0874,
+      "ask_open": 1.08744,
+      "bid_close": 1.08748,
+      "ask_close": 1.08752,
+      "mid_open": 1.0874199999999998,
+      "mid_close": 1.0875,
+      "spread_cell_validation": "EURUSD C1 band"
+    },
+    {
+      "ts_open_utc": "2024-06-13T18:00:00Z",
+      "span_min": 1,
+      "role": "fill_bar",
+      "bid_open": 1.08766,
+      "ask_open": 1.0877,
+      "bid_close": 1.08762,
+      "ask_close": 1.08766,
+      "mid_open": 1.08768,
+      "mid_close": 1.08764,
+      "spread_cell_validation": "EURUSD C1 band"
+    }
+  ],
+  "decisions": [
+    {
+      "ts_decision_utc": "2024-06-13T14:00:00Z",
+      "order_kind": "OPEN",
+      "votes": [
+        {
+          "leg_id": "LEG-TA",
+          "direction_vote": 1,
+          "desired_risk_units": 60000,
+          "feature_pit_snapshot": [
+            {
+              "input_id": "M1_EURUSD_MIDCLOSE_1359",
+              "available_time_utc": "2024-06-13T14:00:00Z",
+              "value_digest": "sha256:synth:fx3:d1:1.08705",
+              "max_age": "P7D",
+              "max_age_ok": true
+            }
+          ],
+          "decision_bar_mid_close": 1.08705,
+          "rule_evaluation": "1.08705 > 1.0870 -> vote +1"
+        },
+        {
+          "leg_id": "LEG-MB",
+          "direction_vote": -1,
+          "desired_risk_units": 40000,
+          "feature_pit_snapshot": [
+            {
+              "input_id": "M1_EURUSD_MIDCLOSE_1359",
+              "available_time_utc": "2024-06-13T14:00:00Z",
+              "value_digest": "sha256:synth:fx3:d1:1.08705",
+              "max_age": "P7D",
+              "max_age_ok": true
+            }
+          ],
+          "decision_bar_mid_close": 1.08705,
+          "rule_evaluation": "1.08705 > 1.0870 overbought -> vote -1"
+        }
+      ],
+      "netting": {
+        "net_target_units": 20000,
+        "arithmetic": "truncate(+1 x 0.6 + -1 x 0.4) = +0.2 lot = +20,000 units",
+        "current_units": 0,
+        "delta_units": 20000
+      }
+    },
+    {
+      "ts_decision_utc": "2024-06-13T18:00:00Z",
+      "order_kind": "CLOSE",
+      "votes": [
+        {
+          "leg_id": "LEG-TA",
+          "direction_vote": 0,
+          "desired_risk_units": 0,
+          "feature_pit_snapshot": [
+            {
+              "input_id": "M1_EURUSD_MIDCLOSE_1759",
+              "available_time_utc": "2024-06-13T18:00:00Z",
+              "value_digest": "sha256:synth:fx3:d2:1.08750",
+              "max_age": "P7D",
+              "max_age_ok": true
+            }
+          ],
+          "decision_bar_mid_close": 1.0875,
+          "rule_evaluation": "session close -> vote 0"
+        },
+        {
+          "leg_id": "LEG-MB",
+          "direction_vote": 0,
+          "desired_risk_units": 0,
+          "feature_pit_snapshot": [
+            {
+              "input_id": "M1_EURUSD_MIDCLOSE_1759",
+              "available_time_utc": "2024-06-13T18:00:00Z",
+              "value_digest": "sha256:synth:fx3:d2:1.08750",
+              "max_age": "P7D",
+              "max_age_ok": true
+            }
+          ],
+          "decision_bar_mid_close": 1.0875,
+          "rule_evaluation": "session close -> vote 0"
+        }
+      ],
+      "netting": {
+        "net_target_units": 0,
+        "arithmetic": "0 + 0 = 0",
+        "current_units": 20000,
+        "delta_units": -20000
+      }
+    }
+  ],
+  "expected": {
+    "timeline": [
+      {
+        "step": 1,
+        "ts_utc": "2024-06-13T14:00:00Z",
+        "event": "decision_two_votes_opposite",
+        "fill_price": null,
+        "cash_usd_after": 100000.0,
+        "units_after": 0,
+        "mark_mid": 1.08705,
+        "equity_usd_after": 100000.0
+      },
+      {
+        "step": 2,
+        "ts_utc": "2024-06-13T14:00:00Z",
+        "event": "net_fill_buy_open_20000",
+        "fill_price": 1.08716,
+        "cash_usd_after": 78256.038988,
+        "units_after": 20000,
+        "mark_mid": 1.08718,
+        "equity_usd_after": 99999.638988
+      },
+      {
+        "step": 3,
+        "ts_utc": "2024-06-13T18:00:00Z",
+        "event": "decision_both_exit",
+        "fill_price": null,
+        "cash_usd_after": 78256.038988,
+        "units_after": 20000,
+        "mark_mid": 1.0875,
+        "equity_usd_after": 100006.038988
+      },
+      {
+        "step": 4,
+        "ts_utc": "2024-06-13T18:00:00Z",
+        "event": "net_fill_sell_close_20000",
+        "fill_price": 1.0876400000000002,
+        "cash_usd_after": 100008.07764,
+        "units_after": 0,
+        "mark_mid": 1.08764,
+        "equity_usd_after": 100008.07764
+      },
+      {
+        "step": 5,
+        "ts_utc": "2024-06-13T18:01:00Z",
+        "event": "final_mark",
+        "fill_price": null,
+        "cash_usd_after": 100008.07764,
+        "units_after": 0,
+        "mark_mid": 1.08764,
+        "equity_usd_after": 100008.07764
+      }
+    ],
+    "fills": [
+      {
+        "order_id": "fx3-n1",
+        "order_kind": "OPEN",
+        "side": "buy",
+        "delta_units": 20000,
+        "fill_price": 1.08716,
+        "quoted_side": 1.08714,
+        "mid_at_fill": 1.08712,
+        "half_spread_pips": 0.2,
+        "spread_once_usd": 0.3999999999981796,
+        "slip_beyond_halfspread_usd": 0.4,
+        "cross_cost_usd": 0.7999999999981796,
+        "commission_usd": 0.7610119999999999,
+        "cash_delta_usd": -21743.961011999996,
+        "bar": "2024-06-13T14:00:00Z",
+        "netting_votes": [
+          {
+            "leg_id": "LEG-TA",
+            "vote": 1,
+            "desired_units": 60000,
+            "contribution": "+60000"
+          },
+          {
+            "leg_id": "LEG-MB",
+            "vote": -1,
+            "desired_units": 40000,
+            "contribution": "-40000"
+          }
+        ]
+      },
+      {
+        "order_id": "fx3-n2",
+        "order_kind": "CLOSE",
+        "side": "sell",
+        "delta_units": -20000,
+        "fill_price": 1.0876400000000002,
+        "quoted_side": 1.08766,
+        "mid_at_fill": 1.08768,
+        "half_spread_pips": 0.2,
+        "spread_once_usd": 0.3999999999981796,
+        "slip_beyond_halfspread_usd": 0.4,
+        "cross_cost_usd": 0.7999999999981796,
+        "commission_usd": 0.761348,
+        "cash_delta_usd": 21752.038652000003,
+        "bar": "2024-06-13T18:00:00Z",
+        "netting_votes": [
+          {
+            "leg_id": "LEG-TA",
+            "vote": 0,
+            "desired_units": 0,
+            "contribution": "0"
+          },
+          {
+            "leg_id": "LEG-MB",
+            "vote": 0,
+            "desired_units": 0,
+            "contribution": "0"
+          }
+        ]
+      }
+    ],
+    "vote_rows": [
+      {
+        "row_id": "fx3-r1",
+        "ts_decision_utc": "2024-06-13T14:00:00Z",
+        "leg_id": "LEG-TA",
+        "direction_vote": 1,
+        "desired_risk_units": 60000,
+        "outcome": "FILLED",
+        "via_net_order": "fx3-n1",
+        "netting": {
+          "net_target_units": 20000,
+          "leg_contribution_units": 60000,
+          "offset_by": [
+            {
+              "leg_id": "LEG-MB",
+              "units": -40000
+            }
+          ]
+        },
+        "fill_price": null,
+        "cash_delta_usd": 0.0,
+        "virtual_attribution": {
+          "virtual_units": 60000,
+          "gross_vs_mid_usd": 33.599999999993635,
+          "spread_once_usd": 0.4799999999978155,
+          "slip_usd": 0.48,
+          "commission_usd": 0.9134159999999999,
+          "virtual_net_usd": 31.72658399999582
+        }
+      },
+      {
+        "row_id": "fx3-r2",
+        "ts_decision_utc": "2024-06-13T14:00:00Z",
+        "leg_id": "LEG-MB",
+        "direction_vote": -1,
+        "desired_risk_units": 40000,
+        "outcome": "FILLED",
+        "via_net_order": "fx3-n1",
+        "netting": {
+          "net_target_units": 20000,
+          "leg_contribution_units": -40000,
+          "offset_by": [
+            {
+              "leg_id": "LEG-TA",
+              "units": 60000
+            }
+          ]
+        },
+        "fill_price": null,
+        "cash_delta_usd": 0.0,
+        "virtual_attribution": {
+          "virtual_units": -40000,
+          "gross_vs_mid_usd": -22.399999999995757,
+          "spread_once_usd": 0.31999999999854367,
+          "slip_usd": 0.32000000000000006,
+          "commission_usd": 0.608944,
+          "virtual_net_usd": -23.6489439999943
+        }
+      },
+      {
+        "row_id": "fx3-r3",
+        "ts_decision_utc": "2024-06-13T18:00:00Z",
+        "leg_id": "LEG-TA",
+        "direction_vote": 0,
+        "desired_risk_units": 0,
+        "outcome": "FILLED",
+        "via_net_order": "fx3-n2",
+        "netting": {
+          "net_target_units": 0,
+          "leg_contribution_units": 0,
+          "offset_by": []
+        },
+        "fill_price": null,
+        "cash_delta_usd": 0.0
+      },
+      {
+        "row_id": "fx3-r4",
+        "ts_decision_utc": "2024-06-13T18:00:00Z",
+        "leg_id": "LEG-MB",
+        "direction_vote": 0,
+        "desired_risk_units": 0,
+        "outcome": "FILLED",
+        "via_net_order": "fx3-n2",
+        "netting": {
+          "net_target_units": 0,
+          "leg_contribution_units": 0,
+          "offset_by": []
+        },
+        "fill_price": null,
+        "cash_delta_usd": 0.0
+      }
+    ],
+    "costs": {
+      "spread_once_total_usd": 0.7999999999963592,
+      "slip_total_usd": 0.8,
+      "commission_total_usd": 1.52236,
+      "swap_total_usd": 0.0,
+      "swap_lines": []
+    },
+    "gross_vs_mid_usd": 11.199999999997878,
+    "net_pnl_usd": 8.07764000000152,
+    "virtual_check": {
+      "leg_TA_gross_vs_mid_usd": 33.599999999993635,
+      "leg_MB_gross_vs_mid_usd": -22.399999999995757,
+      "sum_equals_book_gross": true,
+      "attribution_rule": "crossing+commission costs attributed pro-rata to |virtual_units| (0.6 / 0.4)"
+    },
+    "decomposition": {
+      "lhs": 8.07764000000152,
+      "equity_delta": 8.077640000003157,
+      "residual": -1.637801005927031e-12
+    }
+  },
+  "hand_calc": "Two legs, one asset, opposite votes at 14:00 2024-06-13: LEG-TA +60,000 units (0.6 lot), LEG-MB -40,000 units (0.4 lot). L4 netting: net target = truncate(+0.6 - 0.4) = +0.2 lot = +20,000 units -> ONE net buy. NET OPEN: fill = 1.08714 + 0.00002 = 1.08716; mid = 1.08712; spread_once = 20,000 x 0.00002 = $0.40; slip = $0.40; commission = 0.000035 x 20,000 x 1.08716 = 0.7 x 1.08716 = $0.761012; cash = 100,000 - 21,743.20 - 0.761012 = $78,256.038988; units +20,000; equity @ mid_close 1.08718 = 78,256.038988 + 21,743.60 = $99,999.638988 (crossing costs exceed the +0.2-pip mark move). NET CLOSE 18:00 (both legs vote 0): fill = 1.08766 - 0.00002 = 1.08764; mid = 1.08768; spread_once $0.40; slip $0.40; commission = 0.7 x 1.08764 = $0.761348; cash = 78,256.038988 + 21,752.80 - 0.761348 = $100,008.07764. GROSS VS MID (book, net position) = 20,000 x (1.08768 - 1.08712) = 20,000 x 0.00056 = $11.20. VIRTUAL (attribution only, never re-charged): LEG-TA +60,000: 60,000 x 0.00056 = +$33.60; LEG-MB -40,000: -$22.40; sum = +$11.20 = book gross. Cost attribution pro-rata 0.6/0.4: TA spread $0.48 + slip $0.48 + comm $0.913416; MB $0.32 + $0.32 + $0.608944; sums = book totals. NET = 11.20 - 0.80 - 0.80 - 1.52236 - 0 = $8.07764 = equity_T - equity_0. EXACT."
+}

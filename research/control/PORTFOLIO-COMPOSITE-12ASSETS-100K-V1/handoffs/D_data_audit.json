@@ -1,0 +1,115 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "PC12A_D_data_audit",
+  "status": "DONE",
+  "cycle_id": "PORTFOLIO-COMPOSITE-12ASSETS-100K-V1-PREGO",
+  "role": "D-data-PIT-cost-audit",
+  "lane": "poolB/data_audit",
+  "summary": "Physical audit of the three M1 FX panels (EURUSD/GBPUSD/USDJPY, BID+ASK, 12,552 .bi5 files, 111,757,566 bytes) completed with zero anomalies: 0 missing/0-byte/undecodable files, format empirically pinned (24-byte BE records, price divisors 1e5/1e5/1e3, 0 OHLC violations, 0 negative spreads), all 12,552 sha256 recorded with per-side/pair/overall aggregate digests (DATA_FREEZE input ready) and 100% agreement with the staged per-file manifests. Two material findings for the strategy class: (1) the dispatch's 'Dukascopy M1 volume = tick count' premise is REFUTED - the volume column is a size-weighted float32 sum of per-tick volumes (integer fraction only 2.5-3.7% of active minutes), absolute unit unverifiable from candles; (2) COST_AUTHORITY_TABLE C1 (Friday 20:00) and C2-Friday reproduce EXACTLY, but the C2 Mon-Thu roll cell was measured on the wrong hour (matches 22:00-23:00Z, not its declared (21:00,22:00] window) and understates the declared window by ~1.3-2x (true p50/p90: EURUSD 1.2/3.7, GBPUSD 2.8/7.8, USDJPY 2.1/7.4 pips) - correct before costing roll-sensitive trials. Provenance: prior data_manifest_fx.json agrees on all material fields; 2 clerical errors flagged (non-reproducible largest-run field; 1-char hash typo).",
+  "artifacts": [
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/DATA_AUDIT_REPORT.md",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/audit_scripts.py",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/audit_summary.json",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/panel_hashes_EURUSD.jsonl",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/panel_hashes_GBPUSD.jsonl",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/panel_hashes_USDJPY.jsonl",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/handoffs/D_data_audit.json"
+  ],
+  "dispatch_sha": null,
+  "actual_start_sha": null,
+  "commit_sha": "NONE_READ_ONLY",
+  "no_commit_disclosure": "no git commands at all this session (lane law); panels in foreign worktrees were only read; all artifacts left untracked under research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/ for owner review",
+  "changed_paths": [
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/DATA_AUDIT_REPORT.md",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/audit_scripts.py",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/audit_summary.json",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/panel_hashes_EURUSD.jsonl",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/panel_hashes_GBPUSD.jsonl",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/panel_hashes_USDJPY.jsonl",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/handoffs/D_data_audit.json"
+  ],
+  "tests": [
+    {"command": "researchctl locks inspect (pre-run)", "exit_code": 0, "result": "FREE_PROVEN; audit is a light single-pass read (~24s), no heavy job"},
+    {"command": "full hash+decode pass over all 12,552 .bi5 files (3 pairs x BID/ASK)", "exit_code": 0, "result": "12,552/12,552 hashed and lzma-decoded; 0 missing days, 0 zero-byte, 0 undecodable, 0 files with records!=1440, 0 malformed names"},
+    {"command": "record-format verification on 68-day structured sample (45-day 47-step grid + Sundays + Xmas/NY + roll Wednesdays + anchor days)", "exit_code": 0, "result": "24-byte BE records (t_sec, open, close, low, high, volume_f32) confirmed: 0 OHLC-invariant violations under Dukascopy order vs 1206-1431 under alternatives; next-open vs prev-close p50 0.1 pip; price divisors 1e5/1e5/1e3 give in-band fraction 1.000 (all other divisors 0.000)"},
+    {"command": "volume semantics test (integer-fraction of positive volumes)", "exit_code": 0, "result": "integer fraction only 0.0249/0.0350/0.0371 (EURUSD/GBPUSD/USDJPY) -> volume is NOT a tick count; float32 size-weighted sum of per-tick volumes; absolute unit NOT verifiable from candles"},
+    {"command": "C1 re-measure: all 286 Fridays 2021-01-08..2026-06-26, [20:00,20:01) spread_open", "exit_code": 0, "result": "EURUSD 0.3/0.5, GBPUSD 0.8/1.3, USDJPY 0.5/0.9 pips p50/p90, n=286/286 each -> EXACT agreement with COST_AUTHORITY_TABLE C1"},
+    {"command": "C2 roll-window full re-measure + window-variant localisation", "exit_code": 0, "result": "Friday cell reproduces EXACTLY (0.5/1.1, 1.2/2.3, 0.8/1.8); Mon-Thu cell does NOT reproduce on its declared (21:00,22:00] window (mine 1.2/3.7, 2.8/7.8, 2.1/7.4) - the table values match the 22:00-23:00Z hour instead (0.7/2.6, 1.6/5.7, 1.1/4.8); Friday 22-23Z has 0 tradable minutes so the Friday cell can only be the true window"},
+    {"command": "negative-spread scan across entire panels", "exit_code": 0, "result": "0 negative spread_open and spread_close minutes across all 3 pairs (full 2092x1440 grids); BID/ASK tradable masks identical (symmetric difference 0)"},
+    {"command": "provenance: per-file sha256 vs staged m1_manifest.json (fxm.m1_manifest@1)", "exit_code": 0, "result": "4184/4184 match on each of the 3 pairs (12,552/12,552 overall), 0 mismatches, 0 missing"},
+    {"command": "provenance: prior data_manifest_fx.json (pr12a100k) agreement", "exit_code": 0, "result": "side counts, per-side bytes, corpus digests (reproduced), tradable minutes, zero-tradable weekdays, first/last ts all AGREE; 2 clerical divergences flagged: largest_tradable_minute_run 4321@2024-01-01 (identical across pairs) does not reproduce (actual 5787/4377/5764 at distinct dates; run around 2024-01-01 is 1418), and USDJPY m1_manifest.json recorded hash has a 1-char typo (pos 33 'a' vs 'e'); verified vs independent shasum"}
+  ],
+  "authority_claims": [
+    "Panels MEASURED physically sound: EURUSD/GBPUSD/USDJPY M1 .bi5, 2092 files per side per pair, 2021-01-01..2026-09-23, 0 missing weekday or weekend files, 0 corrupt/0-byte/undecodable, every file exactly 1440 records; tradable minutes 2,130,647 / 2,130,680 / 2,131,564; single zero-tradable weekday 2021-01-01; first tradable 2021-01-03T22:00Z, last 2026-09-23T23:59Z",
+    "Record format MEASURED: 24-byte big-endian (sec_offset, open, close, low, high, volume_float32); price divisor 1e5 (EURUSD, GBPUSD) and 1e3 (USDJPY); pip 1e-4/1e-4/1e-2; timestamps UTC (DST boundary evidence: Sunday reopen 22:00Z winter vs 21:00Z summer)",
+    "VOLUME PREMISE REFUTED (load-bearing for pool B): the M1 volume column is a non-integral float32 (integer fraction 2.5-3.7% of active minutes) => size-weighted sum of per-tick volumes, NOT a tick count; tick counts are NOT recoverable from these candles; absolute volume unit UNVERIFIED (needs instrument metadata or tick files); within-pair relative profiles are unit-invariant",
+    "COST_AUTHORITY_TABLE C1 (Friday 20:00 fill spread) REPRODUCED EXACTLY on the full population: EURUSD 0.3/0.5, GBPUSD 0.8/1.3, USDJPY 0.5/0.9 pips p50/p90, 286/286 Fridays each",
+    "COST_AUTHORITY_TABLE C2 DISCREPANCY (material): Mon-Thu roll cell appears measured on the 22:00-23:00Z hour, not its declared (21:00,22:00] window; declared-window truth is p50/p90 = 1.2/3.7 (EURUSD), 2.8/7.8 (GBPUSD), 2.1/7.4 (USDJPY) pips, i.e. ~1.3-2x the table's 0.6/2.7, 1.4/5.8, 1.0/4.9 => current S_roll UNDERSTATES Mon-Thu rollover cost; Friday cell (0.5/1.1, 1.2/2.3, 0.8/1.8) reproduces exactly",
+    "C3 Sunday reopen corroborated on 4 sample Sundays (medians 5.05/15.35/14.85 pips vs table 5.9/13.4/11.0); full-population C3 re-measure NOT_RUN (table cell accepted on corroboration)",
+    "DATA_FREEZE input ready: 12,552 per-file sha256 in 3 JSONL manifests + per-side/pair/overall aggregate digests; overall aggregate d8d9807fbdad8f6ecd253382520a0c33907dd75ef26bb653a2df1c66e58690f3",
+    "Provenance: prior pr12a100k data_manifest_fx.json (found at .worktrees/portfolio-router-12assets-100k-v1/integration/research/pr12a100k/, NOT under the fx worktree control dirs) agrees on every material field and on all 12,552 per-file hashes vs the staged m1_manifest.json files; 2 clerical errors in that manifest flagged (non-reproducible largest-run field; 1-char hash typo for USDJPY m1_manifest.json)"
+  ],
+  "known_limitations": [
+    "absolute Dukascopy volume unit (lots vs millions of base currency) is NOT derivable from the candle panels; any cross-pair absolute-volume feature or unit-denominated reporting is BLOCKED on that confirmation",
+    "volume unit and semantics verdict rest on candle-level evidence (non-integrality, granularity, activity correlation, float32 bit patterns); Dukascopy instrument metadata or tick files were not available to pin the unit",
+    "C3 Sunday-reopen is corroborated on n=4 sample Sundays only, not re-measured on the full 283/284-Sunday population",
+    "spread percentiles here use numpy linear interpolation on 0.1-pip-quantized raw spreads; the prior lane used exact 0.1-pip histogram quantiles - method difference can shift the last digit (did not affect any agreement above; all reproductions were exact at the table's precision)",
+    "the C2 Mon-Thu wrong-hour attribution is inferred from exact reproduction of the Friday cell on (21:00,22:00] plus near-match of the Mon-Thu cell on 22:00-23:00Z (within 0.1-0.2 pip); the prior lane's actual code was not re-read (outside this lane's read scope decision, its measurement script was not written into the repo)",
+    "audit is venue-Dukascopy only; panel-to-IBKR spread transfer remains UNMEASURED (standing caveat of the cost table, unchanged by this audit)",
+    "Friday 20:00 spread measured from the [20:00,20:01) bar spread_open exactly as the table specifies; intrabar spread dynamics within the fill minute are not observable from M1 candles"
+  ],
+  "incidents": [],
+  "tree_status": "READ_ONLY_OWNER_DIRTY_PRESERVED",
+  "workers": 0,
+  "outputs": [
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/DATA_AUDIT_REPORT.md",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/audit_scripts.py",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/audit_summary.json",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/panel_hashes_EURUSD.jsonl",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/panel_hashes_GBPUSD.jsonl",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/poolB/data_audit/panel_hashes_USDJPY.jsonl"
+  ],
+  "outputs_stats": {
+    "measured_at": "2026-09-29",
+    "method_ref": "audit_scripts.py (deterministic, ~24s) -> audit_summary.json",
+    "status": "DONE"
+  },
+  "key_numbers": {
+    "files_audited": 12552,
+    "total_bytes": 111757566,
+    "files_per_side_per_pair": 2092,
+    "span": "2021-01-01..2026-09-23",
+    "missing_weekday_files": 0,
+    "missing_weekend_files": 0,
+    "zero_byte_or_undecodable": 0,
+    "tradable_minutes": {"EURUSD": 2130647, "GBPUSD": 2130680, "USDJPY": 2131564},
+    "zero_tradable_weekdays": ["2021-01-01"],
+    "format": "24-byte BE: t_sec u32, open u32, close u32, low u32, high u32, volume f32",
+    "price_divisor": {"EURUSD": 100000, "GBPUSD": 100000, "USDJPY": 1000},
+    "ohlc_invariant_violations_sample": 0,
+    "negative_spread_minutes_total": 0,
+    "volume_integer_fraction_of_active_minutes": {"EURUSD": 0.0249, "GBPUSD": 0.0350, "USDJPY": 0.0371},
+    "volume_verdict": "SIZE_WEIGHTED_NOT_TICK_COUNT; absolute unit UNVERIFIED",
+    "volume_frac_gt0": {"EURUSD": {"all": 0.7208, "weekday": 0.9213}, "GBPUSD": {"all": 0.7197, "weekday": 0.9205}, "USDJPY": {"all": 0.7222, "weekday": 0.9233}},
+    "volume_p50_p90_positive_minutes": {"EURUSD": [84.68, 392.89], "GBPUSD": [62.52, 224.05], "USDJPY": [137.42, 546.2]},
+    "volume_core_lull_ratio_12_16z_vs_22_06z": {"EURUSD": 3.17, "GBPUSD": 2.42, "USDJPY": 1.97},
+    "corr_volume_vs_range_pips": {"EURUSD": 0.675, "GBPUSD": 0.519, "USDJPY": 0.565},
+    "c1_friday_2000_p50_p90_pips": {"EURUSD": [0.3, 0.5], "GBPUSD": [0.8, 1.3], "USDJPY": [0.5, 0.9], "n_each": "286/286", "table_agreement": "EXACT"},
+    "c2_roll_declared_window_2100_2200_montthu_p50_p90_pips": {"EURUSD": [1.2, 3.7], "GBPUSD": [2.8, 7.8], "USDJPY": [2.1, 7.4]},
+    "c2_roll_table_montthu": {"EURUSD": [0.6, 2.7], "GBPUSD": [1.4, 5.8], "USDJPY": [1.0, 4.9], "verdict": "DISCREPANT - table matches the 22:00-23:00Z hour; Friday cell exact"},
+    "c3_sunday_reopen_sample_median_pips": {"EURUSD": 5.05, "GBPUSD": 15.35, "USDJPY": 14.85, "n": 4},
+    "spot20d_p50_p90_pips_2000z": {"EURUSD": [0.3, 0.4], "GBPUSD": [0.7, 0.92], "USDJPY": [0.4, 0.72]},
+    "spot20d_p50_p90_pips_2130z": {"EURUSD": [1.15, 3.05], "GBPUSD": [3.75, 7.65], "USDJPY": [2.8, 6.25]},
+    "per_file_hash_agreement_vs_staged_manifests": "12552/12552",
+    "overall_aggregate_sha256": "d8d9807fbdad8f6ecd253382520a0c33907dd75ef26bb653a2df1c66e58690f3",
+    "pair_aggregate_sha256": {
+      "EURUSD": "964abbac52132489896e1d193ee9fbb9f9f8e85ef015654d11ba271dcf9bad34",
+      "GBPUSD": "9ffb0e4ba747de0ceb6095767c9f08db63b426c4dff98c94de8e61ed85c30fb9",
+      "USDJPY": "57b77f770b29690db1473a058f1215fccbde53838ab34a0cb6268012fe88fdad"
+    },
+    "provenance_divergences_flagged": [
+      "prior manifest largest_tradable_minute_run 4321@2024-01-01 (all pairs) not reproducible; actual 5787/4377/5764 at per-pair dates",
+      "prior manifest USDJPY m1_manifest.json sha256 has 1-char typo (pos 33); file itself verified fine"
+    ]
+  }
+}

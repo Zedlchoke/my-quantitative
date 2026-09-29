@@ -1,0 +1,231 @@
+{
+  "schema": "pc12a_fill_fixture@1",
+  "fixture_id": "fx1_open_close_same_day",
+  "mechanism": "same-day session round trip: entry fill, exit fill, spread-once, commission, gross-vs-mid, NO swap (no 22:00 UTC boundary crossed while holding).",
+  "conventions": {
+    "symbol": "EURUSD",
+    "venue_model": "PANEL_DUKA_SYNTH",
+    "pip_size": 0.0001,
+    "pip_value_per_lot_usd": 10.0,
+    "lot_size_base_units": 100000,
+    "commission_bps_per_side": 0.35,
+    "commission_rate_per_side": 3.5e-05,
+    "slip_non_event_pips": 0.2,
+    "slip_event_pips": 1.0,
+    "slip_applied_per_side": 2e-05,
+    "swap_pips_per_night": 1.0,
+    "swap_wednesday_multiplier": 3,
+    "swap_calendar": {
+      "Sun": 1,
+      "Mon": 1,
+      "Tue": 1,
+      "Wed": 3,
+      "Thu": 1,
+      "Fri": 0,
+      "Sat": 0
+    },
+    "swap_boundary_utc": "22:00:00",
+    "initial_cash_usd": 100000.0,
+    "stress_tier": 1.0,
+    "tolerance": 1e-09,
+    "synthetic": true,
+    "note": "Synthetic M1 bars invented for the fixture (realistic EURUSD June-2024 pip magnitudes; spreads 0.4 pip within the C1 EURUSD p50 0.3 / p90 0.5 band). Not panel data."
+  },
+  "legs": [
+    {
+      "leg_id": "LEG-T1",
+      "family_id": "FX-SESSION-TREND",
+      "clock": "SESSION_M1_1400_1800",
+      "rule_frozen": "long 1.0 lot if decision-bar mid_close > 1.0840; exit (vote 0) at 18:00 session close"
+    }
+  ],
+  "input_bars": [
+    {
+      "ts_open_utc": "2024-06-06T13:59:00Z",
+      "span_min": 1,
+      "role": "decision_bar",
+      "bid_open": 1.0841,
+      "ask_open": 1.08414,
+      "bid_close": 1.0842,
+      "ask_close": 1.08424,
+      "mid_open": 1.08412,
+      "mid_close": 1.0842200000000002,
+      "spread_cell_validation": "EURUSD C1 band"
+    },
+    {
+      "ts_open_utc": "2024-06-06T14:00:00Z",
+      "span_min": 1,
+      "role": "fill_bar",
+      "bid_open": 1.08432,
+      "ask_open": 1.08436,
+      "bid_close": 1.0844,
+      "ask_close": 1.08444,
+      "mid_open": 1.08434,
+      "mid_close": 1.0844200000000002,
+      "spread_cell_validation": "EURUSD C1 band"
+    },
+    {
+      "ts_open_utc": "2024-06-06T17:59:00Z",
+      "span_min": 1,
+      "role": "decision_bar",
+      "bid_open": 1.0848,
+      "ask_open": 1.08484,
+      "bid_close": 1.0849,
+      "ask_close": 1.08494,
+      "mid_open": 1.0848200000000001,
+      "mid_close": 1.0849199999999999,
+      "spread_cell_validation": "EURUSD C1 band"
+    },
+    {
+      "ts_open_utc": "2024-06-06T18:00:00Z",
+      "span_min": 1,
+      "role": "fill_bar",
+      "bid_open": 1.08502,
+      "ask_open": 1.08506,
+      "bid_close": 1.085,
+      "ask_close": 1.08504,
+      "mid_open": 1.08504,
+      "mid_close": 1.08502,
+      "spread_cell_validation": "EURUSD C1 band"
+    }
+  ],
+  "decisions": [
+    {
+      "ts_decision_utc": "2024-06-06T14:00:00Z",
+      "leg_id": "LEG-T1",
+      "direction_vote": 1,
+      "desired_risk_units": 100000,
+      "order_kind": "OPEN",
+      "feature_pit_snapshot": [
+        {
+          "input_id": "M1_EURUSD_MIDCLOSE_1359",
+          "available_time_utc": "2024-06-06T14:00:00Z",
+          "value_digest": "sha256:synth:fx1:d1:1.08422",
+          "max_age": "P7D",
+          "max_age_ok": true
+        }
+      ],
+      "decision_bar_mid_close": 1.08422,
+      "rule_evaluation": "1.08422 > 1.0840 -> vote +1"
+    },
+    {
+      "ts_decision_utc": "2024-06-06T18:00:00Z",
+      "leg_id": "LEG-T1",
+      "direction_vote": 0,
+      "desired_risk_units": 0,
+      "order_kind": "CLOSE",
+      "feature_pit_snapshot": [
+        {
+          "input_id": "M1_EURUSD_MIDCLOSE_1759",
+          "available_time_utc": "2024-06-06T18:00:00Z",
+          "value_digest": "sha256:synth:fx1:d2:1.08492",
+          "max_age": "P7D",
+          "max_age_ok": true
+        }
+      ],
+      "decision_bar_mid_close": 1.08492,
+      "rule_evaluation": "session close -> vote 0"
+    }
+  ],
+  "expected": {
+    "timeline": [
+      {
+        "step": 1,
+        "ts_utc": "2024-06-06T14:00:00Z",
+        "event": "decision_long",
+        "fill_price": null,
+        "cash_usd_after": 100000.0,
+        "units_after": 0,
+        "mark_mid": 1.08422,
+        "equity_usd_after": 100000.0
+      },
+      {
+        "step": 2,
+        "ts_utc": "2024-06-06T14:00:00Z",
+        "event": "fill_buy_open",
+        "fill_price": 1.08438,
+        "cash_usd_after": -8441.795329999979,
+        "units_after": 100000,
+        "mark_mid": 1.08442,
+        "equity_usd_after": 100000.20467000002
+      },
+      {
+        "step": 3,
+        "ts_utc": "2024-06-06T18:00:00Z",
+        "event": "decision_exit",
+        "fill_price": null,
+        "cash_usd_after": -8441.795329999979,
+        "units_after": 100000,
+        "mark_mid": 1.08492,
+        "equity_usd_after": 100050.20467
+      },
+      {
+        "step": 4,
+        "ts_utc": "2024-06-06T18:00:00Z",
+        "event": "fill_sell_close",
+        "fill_price": 1.0850000000000002,
+        "cash_usd_after": 100054.40717000003,
+        "units_after": 0,
+        "mark_mid": 1.08502,
+        "equity_usd_after": 100054.40717000003
+      },
+      {
+        "step": 5,
+        "ts_utc": "2024-06-06T18:01:00Z",
+        "event": "final_mark",
+        "fill_price": null,
+        "cash_usd_after": 100054.40717000003,
+        "units_after": 0,
+        "mark_mid": 1.08502,
+        "equity_usd_after": 100054.40717000003
+      }
+    ],
+    "fills": [
+      {
+        "order_id": "fx1-o1",
+        "side": "buy",
+        "delta_units": 100000,
+        "fill_price": 1.08438,
+        "quoted_side": 1.08436,
+        "mid_at_fill": 1.08434,
+        "half_spread_pips": 0.2,
+        "spread_once_usd": 1.999999999990898,
+        "slip_beyond_halfspread_usd": 2.0,
+        "cross_cost_usd": 3.999999999990898,
+        "commission_usd": 3.795329999999999,
+        "cash_delta_usd": -108441.79532999998,
+        "bar": "2024-06-06T14:00:00Z"
+      },
+      {
+        "order_id": "fx1-o2",
+        "side": "sell",
+        "delta_units": -100000,
+        "fill_price": 1.0850000000000002,
+        "quoted_side": 1.08502,
+        "mid_at_fill": 1.08504,
+        "half_spread_pips": 0.2,
+        "spread_once_usd": 1.999999999990898,
+        "slip_beyond_halfspread_usd": 2.0,
+        "cross_cost_usd": 3.999999999990898,
+        "commission_usd": 3.7975000000000003,
+        "cash_delta_usd": 108496.20250000001,
+        "bar": "2024-06-06T18:00:00Z"
+      }
+    ],
+    "costs": {
+      "spread_once_total_usd": 3.999999999981796,
+      "slip_total_usd": 4.0,
+      "commission_total_usd": 7.592829999999999,
+      "swap_total_usd": 0.0,
+      "swap_lines": []
+    },
+    "gross_vs_mid_usd": 69.9999999999923,
+    "net_pnl_usd": 54.4071700000105,
+    "decomposition": {
+      "lhs": 54.4071700000105,
+      "equity_delta": 54.40717000003497,
+      "residual": -2.446398639222025e-11
+    }
+  },
+  "hand_calc": "LEG-T1 long 100,000 EURUSD (1.0 lot). ENTRY: fill = ask_open 1.08436 + slip 0.00002 = 1.08438; mid_at_fill = (1.08432+1.08436)/2 = 1.08434; spread_once = 100,000 x (1.08436-1.08434) = $2.00; slip = 100,000 x 0.00002 = $2.00; cross = fill-mid = 0.00004 -> $4.00 = 2+2; commission = 0.000035 x 100,000 x 1.08438 = 3.5 x 1.08438 = $3.79533; cash = 100,000 - 100,000x1.08438 - 3.79533 = 100,000 - 108,438 - 3.79533 = -$8,441.79533 (margin leverage, 108.4% gross <= 250% cap); equity @ fill-bar mid_close 1.08442 = -8,441.79533 + 108,442 = $100,000.20467. EXIT same day 18:00: fill = bid_open 1.08502 - 0.00002 = 1.08500; mid = (1.08502+1.08506)/2 = 1.08504; spread_once = $2.00; slip = $2.00; commission = 3.5 x 1.08500 = $3.7975; cash = -8,441.79533 + 108,500 - 3.7975 = $100,054.40717; units 0. NO swap: no 22:00 UTC accrual boundary between 14:00 and 18:00 same day. GROSS VS MID = 100,000 x (1.08504 - 1.08434) = 100,000 x 0.0007 = $70.00. NET = 70.00 - 4.00 (spread-once) - 4.00 (slip) - 7.59283 (commission) - 0 (swap) = $54.40717 = equity_T - equity_0. EXACT."
+}

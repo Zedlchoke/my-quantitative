@@ -1,0 +1,176 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "PC12A_P_passbars_accounting",
+ "status": "DONE",
+ "cycle_id": "PORTFOLIO-COMPOSITE-12ASSETS-100K-V1",
+ "role": "LANE_P_POLICY_JOURNAL_ACCOUNTING",
+ "lane": "P",
+ "dispatch_sha": "40036c9aa2de17588820eb783f4b5eb46fd00385",
+ "actual_start_sha": "40036c9aa2de17588820eb783f4b5eb46fd00385",
+ "commit_sha": null,
+ "commit_note": "no git operations performed (forbidden for this lane); all artifacts are new uncommitted files in the declared paths, left for the Lead to commit by exact pathspec",
+ "changed_paths": [
+  "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/policy/PASS_BARS_V2.md",
+  "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/FILL_ACCOUNTING_SPEC.md",
+  "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/fx1_open_close_same_day.json",
+  "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/fx2_overnight_hold_with_wed.json",
+  "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/fx3_netting_two_legs_opposite.json",
+  "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/fx4_blocked_signal.json",
+  "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/fx5_deferred_cost_guard.json",
+  "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/fx6_worst_fill_grading.json",
+  "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/README.md",
+  "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/handoffs/P_passbars_accounting.json"
+ ],
+ "tests": [
+  {
+   "command": ".venv/bin/python Decimal hand-check of all 5 fixture designs (calendar day-of-week assertions for every decision/accrual timestamp; per-fixture fills, crossing lines, commissions, dated swap lines with Wed x3, gross-vs-mid, cash paths, equity marks; decomposition residuals asserted == 0 in Decimal)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "inline: 'ALL DECIMAL HAND-CHECKS PASSED'; fx1 net=54.40717, fx2 net=274.40556 (swap 70 = 1+1+1+3+1 x $10), fx3 net=8.07764 (virtual A 33.60 + B -22.40 = book 11.20), fx4 net=4.900432, fx5 net=5.658097 (open-position invariant; swap 14; guard trailing 9.180191 >= cap 9.00 -> DEFER at 07-05, 0.780191 < 9.00 -> EXECUTE at 07-12)"
+  },
+  {
+   "command": ".venv/bin/python fixture generation with per-value assertions against the Decimal hand-check (tolerance 1e-9) + float invariant residuals",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "inline: 5/5 fixtures written; float invariant residuals: fx1 -2.45e-11, fx2 -2.76e-11, fx3 -1.64e-12, fx4 +3.41e-12, fx5 -1.10e-11 (all << 1e-9 tolerance)"
+  },
+  {
+   "command": ".venv/bin/python INDEPENDENT re-verification reading the fixture JSONs from disk, replaying with a fresh spec-based implementation (fills from bar quotes + slip, spread-once law, commission, 22:00-UTC swap calendar walk with Wed x3 / Fri 0x, guard-window recomputation, netting) and asserting every number within 1e-9",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "inline: 'ALL 5 FIXTURES INDEPENDENTLY RE-VERIFIED FROM DISK: PASS' after one patch (see incidents); guard trailing-spend windows re-derived and matched fixture-declared values at all three fx5 decisions; structural checks (vote/blocked/deferred rows: NULL fill fields, zero cash deltas, BLOCKED_STALE max_age_ok false, DEFERRED_COST_GUARD row with journaled estimate not charged) all OK"
+  },
+  {
+   "command": ".venv/bin/python revision cross-check (A1-directed, 2026-09-29): every corrected C2 Mon-Thu figure now cited in FILL_ACCOUNTING_SPEC section 3 matched verbatim against poolB/data_audit/DATA_AUDIT_REPORT.md section D(iii); C1/C2-Fri/C3 cells matched verbatim against SLEEVE-FX5 COST_AUTHORITY_TABLE; asserted the single remaining '2.7' mention is the explicit undercharge note, erratum block present, dual-source citations present, corrected S_eff realization max(3.7,0.5)=3.7 in place",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "inline: 'ALL CROSS-CHECKS PASS' - corrected cells EURUSD 1.2/3.7 (n=65,109), GBPUSD 2.8/7.8 (n=65,274), USDJPY 2.1/7.4 (n=64,892) match audit D(iii) verbatim; C1 (0.3/0.5, 0.8/1.3, 0.5/0.9 n=286/286), C2-Fri (0.5/1.1, 1.2/2.3, 0.8/1.8) and C3 (5.9/9.0, 13.4/23.8, 11.0/22.0) match the table verbatim; audit's 22:00-23:00Z variant rows (0.7/2.6, 1.6/5.7, 1.1/4.8) confirm the hour-shift diagnosis"
+  },
+  {
+   "command": ".venv/bin/python fx6_worst_fill_grading Decimal hand-check (skeptic F-16 remediation): day-of-week assertion (2024-06-27 Thursday), entry ordinary fill 1.08706 (sp $0.20, slip $0.20, comm $0.380471, cash 89129.019529, equity 100000.219529), graded stop exit fill 1.08498 = min(bid_open 1.08550, bid_close 1.08500) - 0.00002 (never at stop 1.08560), gap excess $5.00 vs ordinary modeled sell 1.08548, slip line $5.20, cross $5.40 = sp 0.20 + slip 5.20, comm $0.379743, cash end 99978.439786, gross_vs_mid -$15.00, net -$21.560214, decomposition residual exactly 0, price-move cross-check 10,000 x (1.08702-1.08498) = $20.40 = 15.00 + 5.40",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "inline: 'ALL FX6 DECIMAL HAND-CHECKS PASSED'; float generation asserted against the Decimal values within 1e-9 before writing the fixture (float invariant residual -3.06e-12)"
+  },
+  {
+   "command": ".venv/bin/python FINAL independent re-verification of all SIX fixtures from disk (replay engine extended with the graded exception-fill path): fills, spread-once law per fill, commissions, dated swap lines with lowercase weekdays and Wed x3, guard-window re-derivation, graded-fill rule (worst of open/close per side, never at stop, gap excess inside slip line), step numbering sequential in every fixture, book identity at every timeline step, totals, gross-vs-mid, invariant residual <= 1e-9",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "inline: 'ALL 6 FIXTURES INDEPENDENTLY RE-VERIFIED FROM DISK (FINAL): PASS' - fx1 +54.40717 (res 2.45e-11), fx2 +274.40556 (2.76e-11, steps 1..10 after F-13 renumber), fx3 +8.07764 (1.64e-12), fx4 +4.900432 (3.41e-12), fx5 +5.658097 (1.10e-11), fx6 -21.560214 (3.06e-12); structural checks incl. fx6 loss_fill_candidate at both fill-top-level and grading block"
+  },
+  {
+   "command": ".venv/bin/python + grep consistency sweep of the remediated PASS_BARS_V2.md: no governing 'DSR > 0' remains (only provenance notes describing the repealed vacuous condition), no governing '0.5/N' remains (only repeal provenance), DSR > 0.95 governs P5a with the equivalence formula, N_eff (14 mentions) and PSR (6 mentions) present, E-Law 8 added, skeptic provenance notes present for F-1/F-2/F-3/F-6/F-7/F-11/F-17",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "inline: 8 E-Laws listed; governing P5a condition 'DSR > 0.95' in formula block, equivalence block and section 9 matrix; all stale mentions confined to provenance notes; every applied finding carries its skeptic provenance"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "PASS_BARS_V2.md declares supersession of PORTFOLIO_POLICY_ARCHITECTURE.md section 10 (V1 bars), but the architecture file itself could NOT be edited (lane write-ban: new files only) - V1 text remains on disk; the Lead/owner must reconcile or annotate at registration to avoid two competing bar authorities",
+  "P7's 'pooled-equivalent' DD share was frozen as time-pro-rata (maxDD_pooled x duration(f)/duration(pooled); equal folds -> maxDD/n_folds) - the owner's phrase did not pin the normalization; flagged in the doc as the frozen definition, amendable at registration",
+  "Swap calendar frozen as the declared U4/U5 realization (Sun/Mon/Tue/Thu x1, Wed x3, Fri-close and Sat no event = exactly 7 pip-nights per 7 calendar nights, value-date-consistent); the real two-sided rates and exact clock come only from the owner IBKR statement (Interest Accruals) - all fixture swap numbers are NET_DEFAULT_COST-band numbers",
+  "Fixture bars are synthetic (invented M1 quotes at realistic EURUSD June-2024 pip magnitudes, 0.4-pip spreads inside the measured C1 band), not panel data; fixtures gate the ACCOUNTING laws, not the data plane",
+  "The SLEEVE-FX5 COST_AUTHORITY_TABLE still carries the hour-shifted Mon-Thu roll numbers on disk (another cycle's control dir - outside this lane's write boundary); FILL_ACCOUNTING_SPEC's dual-source cell table is the mechanism that prevents silent undercharging until that table itself is corrected by its owning lane/owner; any engine implementation must read the Mon-Thu roll cell from the DATA_AUDIT_REPORT-corrected values cited in spec section 3, not from the table's Mon-Thu column",
+  "No engine exists yet; fixtures/README.md carries the runner SPEC (pytest-style pseudocode) only - the future tests/test_fill_accounting_fixtures.py implements it",
+  "PASS_BARS_V2 introduces new typed close-codes (POLICY_DEFLATION_FAIL, POLICY_OVERFIT_SUSPECT, POLICY_FOLD_CONCENTRATION) and the POLICY_COST_DOMINATED_2x-style mandatory-disclosure semantics for P6c; the campaign's Stage-A leg-level x1.5 COST_DOMINATED kill is unchanged and not overridden"
+ ],
+ "incidents": [
+  "REVISION 2026-09-29 (A1 directive, Lane D finding 4 - MATERIAL cost-table error): FILL_ACCOUNTING_SPEC.md section 3 was revised after Lane D's physical audit proved the SLEEVE-FX5 COST_AUTHORITY_TABLE's C2 Mon-Thu roll cell was measured on the WRONG hour (its numbers match 22:00-23:00 UTC, not the declared (21:00,22:00] window). Changes: (a) ERRATUM block added at the top of section 3 stating S_roll as previously tabled UNDERCHARGES Mon-Thu rollover fills ~1.3-2x and the corrected cells govern; (b) the corrected (21:00,22:00] Mon-Thu cells substituted (EURUSD 1.2/3.7 n=65,109; GBPUSD 2.8/7.8 n=65,274; USDJPY 2.1/7.4 n=64,892 - per-minute close spreads, tradable minutes, 1,140 Mon-Thu days) with the EURUSD Mon-Thu S_eff realization corrected from max(2.7,0.5)=2.7 to max(3.7,0.5)=3.7; (c) dual-source cell authority made explicit - COST_AUTHORITY_TABLE governs C1/C2-Friday/C3 (all reproduced exactly by the audit), poolB/data_audit/DATA_AUDIT_REPORT.md section D(iii) governs the corrected Mon-Thu roll cells - so the future engine cannot silently pick the undercharging numbers; (d) header authority-inputs paragraph updated accordingly; (e) incidental fix of a section cross-reference (window fills are section 3, previously cited as section 4). PASS_BARS_V2.md, the 5 fixture JSONs and fixtures/README.md were NOT touched (no fixture fill lies in a roll window; synthetic bars use C1-band spreads - unaffected, confirmed). FILL_ACCOUNTING_SPEC.md sha256 updated from e1957525e61abb862564a4cb03cc82a1c2157063bf2b86ac3cf0ed1e8d1c6932 to a1ed4928074b3649088c9cebfedb01f35b2257d3e406142800061240617a890d",
+  "fx4 fixture was first generated with feature_pit_snapshot.max_age_ok as the STRING 'false' instead of boolean false (generator argument-type slip); caught by the structural assertion in the independent re-verification, patched in both occurrences (decisions + blocked_rows) before final verification; final fx4 sha256 reflects the patched file",
+  "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/handoffs/ did not exist at start; created for this handoff only",
+  {
+   "id": "P-REM-TERMINATION",
+   "note": "Remediation agent hit usage limit AFTER writing all fixes; final reply never sent. A1 verified on disk: F-1 DSR>0.95 (5 refs), F-2 B2 same-total-budget, F-3 E-Law 8 counting unit, F-6 PSR companion, F-7 force-flat asymmetry disclosure, F-11 N_eff/dedup (14 refs), F-13 fx2 steps 1-10 continuous, F-14 swap weekday casing unified, F-15 value-date-consistent phrasing, F-16 fx6 present + A1 independent identity check PASS (recon == reported net to 0.0), F-17 B3 frozen obj_B3 + 4-step tie-break. No partial-write damage found."
+  }
+ ],
+ "tree_status": "read-only lane respected: only the declared new files were written (policy/PASS_BARS_V2.md, journal/FILL_ACCOUNTING_SPEC.md, journal/fixtures/* x6, handoffs/P_passbars_accounting.json); no existing file edited (the one fixture patch was to this lane's own just-created file); no git operations, no registry/ledger/worktree writes, no network, no S1, no heavy-job interactions; owner's dirty tree preserved untouched",
+ "workers": 0,
+ "outputs": {
+  "artifacts": [
+   {
+    "path": "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/policy/PASS_BARS_V2.md",
+    "sha256": "e61958b052d39b92a6bb06d22ddc51670fcb0c878233dbff3b744b9bf36d5f3c",
+    "content": "P1-P8 rewritten to owner's AND-semantics (net PnL strictly higher AND maxDD strictly lower); P1 primary vs B1 with B0-FLAT sub-bar (net>0; DD-vs-FLAT degeneracy explained); P2 vs B2/B3; P3 vs B4 battery (>=95% composite objective + median-seed on BOTH quantities); P4 vs B5/B6/B7; P5 DSR>0.95 + PBO<=0.5 with full formulas and ledger inputs (N_eff clusters, V[SR], E[max] with Euler-Mascheroni at N_eff, CSCV S=16); P6 fully defined (P6a x1.5 governing, P6b x2.0 reporting, P6c COST_DOMINATED mandatory disclosure on x2.0 sign-flip, P6d switching ladder at p90 governing); P7 fold concentration <=50% + fold DD <= 2x pooled-equivalent; P8 leave-one-leg with POLICY_ONE_LEG_CARRIER on exactly-one break; E-Laws 1-8 (pooled folds, force-flat at fold edges with per-arm force-flat cost companion report, USD maxDD governing, strict ties-fail, comparability, NOT_RUN, budget counting unit identities-vs-seed-sub-runs); baseline realization laws B0-B9; closing matrix bar x baseline x quantity x governing/reporting. REMEDIATED 2026-09-29 per skeptic REVISE_BEFORE_OWNER verdict (provenance noted per finding in the doc): F-1 CRITICAL P5a pass condition corrected from the vacuous 'DSR > 0' (Phi strictly positive for finite argument) to DSR > 0.95 with the stated equivalence (SR_hat must exceed SR_0, the expected max of N_eff null Sharpes, at the 95% confidence level; Phi^-1(0.95) ~ 1.6449); F-2 B2 EQUAL_WEIGHT redefined from the degenerate '0.5/N of the per-leg cap' to an equal split of the policy's realized per-decision total heat target, each leg capped at the per-leg cap (N=1 now coincides with B1 naturally); F-3 budget counting unit defined (E-Law 8): the B4 battery is ONE identity executed as >=100 seeded sub-runs on its own budget line (<=128 per A1 plan amendment) so the lawful battery can never self-trigger STOP-2; F-6 IS/OOS double-correction disclosure added with the PSR (no-deflation) value reported alongside DSR; F-7 fold-edge force-flat differential-charging disclosure added to E-Law 2 with a mandatory per-arm fold-edge force-flat cost companion report; F-11 P5 trial-counting rules added (byte-identical-arm dedup; correlated-trial family clusters with cluster-adjusted N_eff used in E[max], raw-N DSR reported alongside so clusters never hide deflation); F-17 B3 selection statistic frozen (obj_B3 = DSR on TRAIN net returns at x2.0 cost with ledger SR_0/N_eff) plus a 4-step deterministic tie-break recorded into the trial identity"
+   },
+   {
+    "path": "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/FILL_ACCOUNTING_SPEC.md",
+    "sha256": "b5bd0b6a36f34df0c2a2bb4b54d97ffcdbe558abaf3c896cdce2692eab1535dd",
+    "content": "mid=(bid+ask)/2 same bar; completed-bars-only decisions; next-bar-open fills at ask+slip / bid-slip (U3 0.2/1.0 pip); SPREAD-ONCE LAW (cross_cost = fill-mid = half-spread + slip, charged exactly once via the fill price; cost block may only decompose, never add); commission U2 0.35bps |delta|x fill per side; swap U4/U5 1.0 pip/night against, 22:00 UTC boundary, declared calendar Sun/Mon/Tue/Thu x1 + Wed x3 + Fri/Sat no event (7 pip-nights/week under the declaration), accrual membership u(E-)!=0; C2/C3 window fills at max(window p90, general p90)/2 + event slip with EURUSD worked micro-example; FX-spot book identity (u, cash, equity=cash+u x mid_close; per-event deltas); equity-decomposition invariant to 1e-9 with algebraic proof; blocked/deferred/netted-to-zero no-effect law; netting execution model (L2 before L4, net-order rows carry the only cash effect, pro-rata virtual attribution); cost guard + deferral semantics; UNAVAILABLE != 0 fail-closed; stress tiers preserve the law at every tier. REVISION 1 (2026-09-29, A1 directive, Lane D finding 4): ERRATUM in section 3 - COST_AUTHORITY_TABLE C2 Mon-Thu cell measured on the wrong hour (matches 22:00-23:00Z, not the declared (21:00,22:00]); S_roll as previously tabled undercharges Mon-Thu rollover fills ~1.3-2x; corrected cells govern; dual-sourced cell authority - COST_AUTHORITY_TABLE for C1/C2-Fri/C3 (audit-reproduced exactly), DATA_AUDIT_REPORT section D(iii) for the corrected Mon-Thu roll cells (EURUSD 1.2/3.7 n=65,109; GBPUSD 2.8/7.8 n=65,274; USDJPY 2.1/7.4 n=64,892); EURUSD Mon-Thu S_eff corrected max(2.7,0.5)=2.7 -> max(3.7,0.5)=3.7. REVISION 2 (2026-09-29, skeptic remediation): F-15 the swap calendar claim softened to the DECLARED U4/U5 realization (a frozen modeling calendar, NOT a venue-measured fact; owner statement replaces it whole); F-16 section 1.5 worst-fill grading made explicit - graded exception fills execute at the WORST of the fill bar's open and close on the quoted side (buys max(ask_open,ask_close), sells min(bid_open,bid_close)) +/- U3 band, never at the stop price, mid_at_fill stays the OPEN mid, the distance beyond the ordinary quoted-side-open+band fill booked as GAP EXCESS inside the slippage-beyond-halfspread line, spread-once identity intact, LOSS_FILL candidacy flagged; fixture consumption updated to six gates"
+   },
+   {
+    "path": "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/fx1_open_close_same_day.json",
+    "sha256": "782618e60e0ae7293ce593af57ae27b10d8480a5a0eb768f35dcd13605164dd9"
+   },
+   {
+    "path": "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/fx2_overnight_hold_with_wed.json",
+    "sha256": "3672b593fae145a4fefdf2a244306cb45cdc9145e1cda52e48bd4654a65828d5",
+    "content": "REMEDIED 2026-09-29 (skeptic F-13/F-14/F-15): timeline renumbered 1..10 (was 1-7,9-11 skipping 8); swap-line weekday_utc casing unified to lowercase across all fixtures; mechanism/hand_calc wording softened to the DECLARED U4/U5 calendar (not a venue-measured fact). All expected numbers byte-identical (verified programmatically before/after)."
+   },
+   {
+    "path": "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/fx3_netting_two_legs_opposite.json",
+    "sha256": "f018022b817411944b508f64728294b08ee8ac88375fcd6d220a6b9884767cc2"
+   },
+   {
+    "path": "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/fx4_blocked_signal.json",
+    "sha256": "e1583b721cb08bd9b77072f603cce8ce7056de8e5e9d9e2dbc323c21b9382239"
+   },
+   {
+    "path": "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/fx5_deferred_cost_guard.json",
+    "sha256": "4af58084e3d4ed64f2fe5e9354b7311d0e940841f0ba03b0aebaf0d9f0a48b4b"
+   },
+   {
+    "path": "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/fx6_worst_fill_grading.json",
+    "sha256": "4937e3073eadc989851e19e2926820fdd1adada593c43fcd9f2e6c3fa74c0509",
+    "content": "NEW 2026-09-29 (skeptic F-16): pins the section 1.5 worst-fill grading path - a stop-market exit on a [18:00,18:01) gap bar that opens ALREADY through the stop 1.08560 fills at worst(bid_open 1.08550, bid_close 1.08500) - 0.00002 = 1.08498, NEVER at the stop price; entry is the ordinary quoted-side fill 1.08706; mid_at_fill stays the fill bar's OPEN mid; the 5.0-pip distance beyond the ordinary modeled sell (1.08548) is booked as $5.00 GAP EXCESS inside the slippage-beyond-halfspread line ($5.20 = band 0.20 + excess 5.00); spread-once identity intact (cross $5.40 = 0.20 + 5.20); LOSS_FILL candidacy flagged at fill top level and in the grading block; gross_vs_mid -$15.00; net PnL -$21.560214; invariant residual ~3e-12"
+   },
+   {
+    "path": "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/journal/fixtures/README.md",
+    "sha256": "5e9c05c0c12ea22b55afa7b7f7dd0aad3db94242203c5ee6010d8286650f6ad7",
+    "content": "fixture map (now SIX gates incl. fx6 worst-fill grading), conventions, field map, pytest-style runner spec (equality within 1e-9, spread-once law per fill, swap calendar, invariant residual, structural journal laws incl. the fx6 graded-path assertions, optional stress sweep), reference numbers table with fx6"
+   }
+  ],
+  "key_numbers": {
+   "fixture_net_pnl_usd": {
+    "fx1_open_close_same_day": 54.40717,
+    "fx2_overnight_hold_with_wed": 274.40556,
+    "fx3_netting_two_legs_opposite": 8.07764,
+    "fx4_blocked_signal": 4.900432,
+    "fx5_deferred_cost_guard": 5.658097,
+    "fx6_worst_fill_grading": -21.560214
+   },
+   "fixture_swap_totals_usd": {
+    "fx2": 70.0,
+    "fx5": 14.0,
+    "others": 0.0
+   },
+   "fx2_wednesday_x3_swap_usd": 30.0,
+   "fx3_net_fill_units": 20000,
+   "fx3_virtual_gross_usd": {
+    "LEG-TA": 33.6,
+    "LEG-MB": -22.4
+   },
+   "fx5_guard": {
+    "cap_usd": 9.0,
+    "trailing_at_defer_usd": 9.180191,
+    "trailing_at_execute_usd": 0.780191
+   },
+   "fx6_worst_fill": {
+    "entry_fill": 1.08706,
+    "stop_level": 1.0856,
+    "graded_fill": 1.08498,
+    "worst_of_open_close": 1.085,
+    "ordinary_modeled_fill": 1.08548,
+    "gap_excess_usd": 5.0,
+    "slip_line_usd": 5.2,
+    "cross_cost_usd": 5.4,
+    "gross_vs_mid_usd": -15.0
+   },
+   "float_invariant_residuals_max_abs": 2.76e-11,
+   "decimal_invariant_residuals": 0,
+   "tolerance": 1e-09
+  }
+ },
+ "summary": "Lane P produced the three requested artifacts fixing the owner-identified gaps in the program's evaluation and accounting design. (1) PASS_BARS_V2.md rewrites the PASS bars to the owner's exact requirement - net PnL after ALL costs STRICTLY HIGHER AND max drawdown STRICTLY LOWER (AND-semantics on both quantities, ties fail, OR-path repealed) - and fully defines P1-P8: P1 primary vs B1 with the B0-FLAT sub-bar (net>0; DD-vs-FLAT degenerate because FLAT maxDD==0 by construction), P2 vs B2/B3, P3 vs the >=100-seed B4 battery (>=95% on the composite objective AND median-seed on BOTH net PnL and maxDD), P4 vs B5/B6/B7, P5 DSR>0/PBO<=0.5 with the complete formulas and ledger inputs, the previously-missing P6 COST-STRESS SURVIVAL (x1.5 governing vs same-stress B1, x2.0 reported non-governing, x2.0 sign-flip -> mandatory POLICY_COST_DOMINATED disclosure even if P1 held at x1.0, switching-ladder p90 sub-bar), P7 fold concentration with the DD concentration clause, and P8 leave-one-leg with POLICY_ONE_LEG_CARRIER on exactly-one break - each bar with formula-level precision, baseline, pass condition, fail close-code and edge cases, closed by the bar x baseline x quantity x governing/reporting matrix. (2) FILL_ACCOUNTING_SPEC.md defines the fill and bookkeeping model to the last identity: mid conventions, completed-bars-only decisions, next-bar-open fills at the quoted side +/- U3 slip, the spread-once law (cross cost = fill-vs-mid, decomposed half-spread + slip, charged exactly once, never an additional spread line), U2 commission per side, the U4/U5 swap calendar (22:00 UTC boundary, Wed x3, never income), C2/C3 window-fill pricing (REVISED 2026-09-29: dual-sourced cells with the Lane D-corrected Mon-Thu roll window governing over the hour-shifted table column, per the erratum in section 3), the FX-spot book identity on the $100k book, and the equity-decomposition invariant (gross-vs-mid - spread-once - commission - swap - slip = equity_T - equity_0 to 1e-9) with proof; blocked/deferred/netted-to-zero signals have zero cash/position effect with decision-state-snapshot-only rows; UNAVAILABLE != 0 fail-closed. (3) Five hand-computed fixture JSONs (same-day round trip; overnight hold crossing a Wednesday so the x3 swap is visible; two-leg opposite netting to a single smaller position with both votes journaled; blocked-stale signal; deferred cost guard ending open) plus fixtures/README.md with the pytest-style runner spec - every number verified three ways: Decimal hand-check (residual 0), float generation with 1e-9 assertions against the hand-check, and an independent from-disk replay; max float invariant residual 2.76e-11. REVISION 2026-09-29 (A1 directive): FILL_ACCOUNTING_SPEC.md section 3 revised per Lane D finding 4 - corrected Mon-Thu (21:00,22:00] roll cells substituted with dual-source citations and an erratum note (prior tabled S_roll undercharges Mon-Thu rollover fills ~1.3-2x; corrected cells govern); PASS_BARS_V2 and fixtures untouched (unaffected); handoff updated with the incident, the revision test entry and the new artifact sha256.",
+ "recommended_next_action": "Lead: validate handoff, commit the 9 new files by exact pathspec, and reconcile the PASS_BARS_V2 supersession against PORTFOLIO_POLICY_ARCHITECTURE.md section 10 at the next registration amendment (V1 text still on disk by lane write-ban); owner decisions unchanged (registration GO, P_A statement, P_B class authorization per the D-list). Future engine lane: implement FILL_ACCOUNTING_SPEC and land tests/test_fill_accounting_fixtures.py from the README runner spec - the fixtures are the accounting gate for every Stage-C scored run."
+}

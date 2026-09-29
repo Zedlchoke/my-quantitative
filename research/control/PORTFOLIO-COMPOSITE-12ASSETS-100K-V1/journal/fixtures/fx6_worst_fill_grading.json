@@ -1,0 +1,246 @@
+{
+  "schema": "pc12a_fill_fixture@1",
+  "fixture_id": "fx6_worst_fill_grading",
+  "mechanism": "FILL_ACCOUNTING_SPEC section 1.5 worst-fill grading: a stop-market exit on a gap bar that trades THROUGH the stop level fills at the WORST of the fill bar's open and close on the quoted side (sell: min(bid_open, bid_close)) minus the U3 slip band - NEVER at the stop price; the distance beyond the ordinary quoted-side-open+band fill is booked as GAP EXCESS inside the slippage-beyond-halfspread line; the spread-once law and the section-6 invariant still close exactly; the row flags LOSS_FILL candidacy.",
+  "conventions": {
+    "symbol": "EURUSD",
+    "venue_model": "PANEL_DUKA_SYNTH",
+    "pip_size": 0.0001,
+    "pip_value_per_lot_usd": 10.0,
+    "lot_size_base_units": 100000,
+    "commission_bps_per_side": 0.35,
+    "commission_rate_per_side": 3.5e-05,
+    "slip_non_event_pips": 0.2,
+    "slip_event_pips": 1.0,
+    "slip_applied_per_side": 2e-05,
+    "swap_pips_per_night": 1.0,
+    "swap_wednesday_multiplier": 3,
+    "swap_calendar": {
+      "Sun": 1,
+      "Mon": 1,
+      "Tue": 1,
+      "Wed": 3,
+      "Thu": 1,
+      "Fri": 0,
+      "Sat": 0
+    },
+    "swap_boundary_utc": "22:00:00",
+    "initial_cash_usd": 100000.0,
+    "stress_tier": 1.0,
+    "tolerance": 1e-09,
+    "synthetic": true,
+    "note": "Synthetic M1 bars invented for the fixture (realistic EURUSD June-2024 pip magnitudes). Not panel data."
+  },
+  "legs": [
+    {
+      "leg_id": "LEG-X6",
+      "family_id": "FX-SESSION-TREND-STOP",
+      "clock": "SESSION_M1_1400_1800",
+      "rule_frozen": "long 0.1 lot if decision-bar mid_close > 1.0869; hard stop 1.08560 (standing stop-market, evaluated on every held bar; fills at the graded market price, never at the stop)"
+    }
+  ],
+  "input_bars": [
+    {
+      "ts_open_utc": "2024-06-27T13:59:00Z",
+      "span_min": 1,
+      "role": "decision_bar",
+      "bid_open": 1.0869,
+      "ask_open": 1.08694,
+      "bid_close": 1.087,
+      "ask_close": 1.08704,
+      "mid_open": 1.08692,
+      "mid_close": 1.0870199999999999,
+      "note": "EURUSD C1 band"
+    },
+    {
+      "ts_open_utc": "2024-06-27T14:00:00Z",
+      "span_min": 1,
+      "role": "fill_bar",
+      "bid_open": 1.087,
+      "ask_open": 1.08704,
+      "bid_close": 1.0871,
+      "ask_close": 1.08714,
+      "mid_open": 1.0870199999999999,
+      "mid_close": 1.08712,
+      "note": "ordinary entry fill bar; spread 0.4 pip"
+    },
+    {
+      "ts_open_utc": "2024-06-27T18:00:00Z",
+      "span_min": 1,
+      "role": "gap_fill_bar",
+      "bid_open": 1.0855,
+      "ask_open": 1.08554,
+      "bid_close": 1.085,
+      "ask_close": 1.08504,
+      "mid_open": 1.0855199999999998,
+      "mid_close": 1.08502,
+      "note": "NEWS GAP bar: bid_open 1.08550 is ALREADY through the stop 1.08560 (gap through level); bar closes further down at 1.08500/1.08504; worst-of-open/close grading applies to the stop exit"
+    }
+  ],
+  "decisions": [
+    {
+      "ts_decision_utc": "2024-06-27T14:00:00Z",
+      "leg_id": "LEG-X6",
+      "direction_vote": 1,
+      "desired_risk_units": 10000,
+      "order_kind": "OPEN",
+      "attached_standing_order": {
+        "order_kind": "STOP_EXIT",
+        "stop_level": 1.0856,
+        "grading_rule": "worst of fill-bar open/close on the quoted side, +/- U3 slip band; never at the stop price",
+        "evaluated_on": "every held bar"
+      },
+      "feature_pit_snapshot": [
+        {
+          "input_id": "M1_EURUSD_MIDCLOSE_1359",
+          "available_time_utc": "2024-06-27T14:00:00Z",
+          "value_digest": "sha256:synth:fx6:d1:1.08702",
+          "max_age": "P7D",
+          "max_age_ok": true
+        }
+      ],
+      "decision_bar_mid_close": 1.08702,
+      "rule_evaluation": "1.08702 > 1.0869 -> vote +1, 0.1 lot, stop attached at 1.08560"
+    },
+    {
+      "ts_event_utc": "2024-06-27T18:00:00Z",
+      "order_kind": "STOP_EXIT",
+      "trigger": "gap_through_level",
+      "trigger_detail": "bid_open 1.08550 of the [18:00,18:01) bar < stop 1.08560 -> stop-market triggers at the gap open",
+      "graded_fill_rule": "sell side: worst(bid_open 1.08550, bid_close 1.08500) = 1.08500, minus U3 band 0.00002",
+      "exit_reason_code": "STOP_GAP"
+    }
+  ],
+  "expected": {
+    "timeline": [
+      {
+        "step": 1,
+        "ts_utc": "2024-06-27T14:00:00Z",
+        "event": "decision_long_stop_attached",
+        "fill_price": null,
+        "cash_usd_after": 100000.0,
+        "units_after": 0,
+        "mark_mid": 1.08702,
+        "equity_usd_after": 100000.0
+      },
+      {
+        "step": 2,
+        "ts_utc": "2024-06-27T14:00:00Z",
+        "event": "fill_buy_open_ordinary",
+        "fill_price": 1.08706,
+        "cash_usd_after": 89129.019529,
+        "units_after": 10000,
+        "mark_mid": 1.08712,
+        "equity_usd_after": 100000.219529
+      },
+      {
+        "step": 3,
+        "ts_utc": "2024-06-27T18:00:00Z",
+        "event": "stop_triggered_gap_open_mark",
+        "fill_price": null,
+        "cash_usd_after": 89129.019529,
+        "units_after": 10000,
+        "mark_mid": 1.0855199999999998,
+        "equity_usd_after": 99984.219529
+      },
+      {
+        "step": 4,
+        "ts_utc": "2024-06-27T18:00:00Z",
+        "event": "stop_market_exit_graded_fill",
+        "fill_price": 1.08498,
+        "cash_usd_after": 99978.439786,
+        "units_after": 0,
+        "mark_mid": 1.08502,
+        "equity_usd_after": 99978.439786
+      },
+      {
+        "step": 5,
+        "ts_utc": "2024-06-27T18:01:00Z",
+        "event": "final_mark",
+        "fill_price": null,
+        "cash_usd_after": 99978.439786,
+        "units_after": 0,
+        "mark_mid": 1.08502,
+        "equity_usd_after": 99978.439786
+      }
+    ],
+    "fills": [
+      {
+        "order_id": "fx6-o1",
+        "order_kind": "OPEN",
+        "side": "buy",
+        "delta_units": 10000,
+        "fill_price": 1.08706,
+        "quoted_side": 1.08704,
+        "mid_at_fill": 1.0870199999999999,
+        "half_spread_pips": 0.2,
+        "spread_once_usd": 0.20000000000131024,
+        "slip_beyond_halfspread_usd": 0.2,
+        "cross_cost_usd": 0.40000000000131025,
+        "commission_usd": 0.38047099999999995,
+        "cash_delta_usd": -10870.980470999999,
+        "bar": "2024-06-27T14:00:00Z",
+        "graded": false
+      },
+      {
+        "order_id": "fx6-o2",
+        "order_kind": "STOP_EXIT",
+        "side": "sell",
+        "delta_units": -10000,
+        "fill_price": 1.08498,
+        "quoted_side": 1.0855,
+        "mid_at_fill": 1.0855199999999998,
+        "half_spread_pips": 0.2,
+        "spread_once_usd": 0.1999999999990898,
+        "slip_beyond_halfspread_usd": 5.1999999999994495,
+        "slip_band_usd": 0.2,
+        "gap_excess_usd": 4.999999999999449,
+        "cross_cost_usd": 5.399999999997629,
+        "commission_usd": 0.379743,
+        "cash_delta_usd": 10849.420257000002,
+        "bar": "2024-06-27T18:00:00Z",
+        "graded": true,
+        "grading": {
+          "rule": "worst of fill-bar open/close on the quoted side (sell: min(bid_open, bid_close)) minus U3 band",
+          "bid_open": 1.0855,
+          "bid_close": 1.085,
+          "worst_of": 1.085,
+          "ordinary_modeled_fill": 1.08548,
+          "fill_never_at_stop_price": true,
+          "stop_level": 1.0856,
+          "loss_fill_candidate": true,
+          "loss_fill_detail": "graded fill 1.08498 is 5.0 pips beyond the ordinary modeled sell 1.08548 (quoted side 1.08550 - band 0.00002): booked as gap excess in the slippage-beyond-halfspread line per spec 1.5/6"
+        },
+        "loss_fill_candidate": true,
+        "loss_fill_detail": "graded fill 1.08498 is 5.0 pips beyond the ordinary modeled sell 1.08548 (quoted side 1.08550 - band 0.00002): booked as gap excess in the slippage-beyond-halfspread line per spec 1.5/6"
+      }
+    ],
+    "costs": {
+      "spread_once_total_usd": 0.40000000000040004,
+      "slip_total_usd": 5.39999999999945,
+      "slip_band_total_usd": 0.4,
+      "gap_excess_total_usd": 4.999999999999449,
+      "commission_total_usd": 0.760214,
+      "swap_total_usd": 0.0,
+      "swap_lines": []
+    },
+    "gross_vs_mid_usd": -15.000000000000568,
+    "net_pnl_usd": -21.560214000000418,
+    "worst_fill_check": {
+      "stop_level": 1.0856,
+      "triggered_at": "gap open (bid_open 1.08550 < 1.08560)",
+      "graded_fill": 1.08498,
+      "worst_of_open_close": 1.085,
+      "ordinary_modeled_fill": 1.08548,
+      "gap_excess_usd": 4.999999999999449,
+      "cross_cost_identity": "spread_once 0.20 + slip band 0.20 + gap excess 5.00 = cross_cost 5.40 = |fill - mid_open| x 10,000",
+      "never_at_stop_price": true
+    },
+    "decomposition": {
+      "lhs": -21.560214000000418,
+      "equity_delta": -21.56021399999736,
+      "residual": -3.0588864774472313e-12
+    }
+  },
+  "hand_calc": "LEG-X6 long 10,000 EURUSD with a hard stop at 1.08560. ENTRY Thu 2024-06-27 14:00 (ordinary path): fill = ask_open 1.08704 + 0.00002 = 1.08706; mid_open 1.08702; spread_once = 10,000 x 0.00002 = $0.20; slip = $0.20; commission = 0.35 x 1.08706 = $0.380471; cash = 100,000 - 10,870.60 - 0.380471 = $89,129.019529; equity @ entry-bar mid_close 1.08712 = $100,000.219529. HOLD to 18:00 (no 22:00 UTC boundary crossed -> no swap). STOP EXIT on the [18:00,18:01) NEWS GAP bar: the bar OPENS at bid 1.08550 - ALREADY through the stop 1.08560 - and closes further down at 1.08500/1.08504. Worst-fill grading (spec 1.5): the sell executes at worst(bid_open 1.08550, bid_close 1.08500) = 1.08500, minus U3 band 0.00002 -> GRADED FILL 1.08498 - NEVER at the stop price 1.08560. Mark at the gap open (mid 1.08552) before the exit: equity = 89,129.019529 + 10,855.20 = $99,984.219529. EXIT COSTS: mid_at_fill stays the fill bar's OPEN mid 1.08552 (spec 1.4); spread_once = 10,000 x (1.08552 - 1.08550) = $0.20; the ordinary modeled sell would be 1.08550 - 0.00002 = 1.08548, so the graded fill is 0.00050 (5.0 pips) beyond it: GAP EXCESS = 10,000 x 0.00050 = $5.00 booked inside the slippage-beyond-halfspread line (band $0.20 + excess $5.00 = $5.20); cross_cost = |1.08498 - 1.08552| x 10,000 = $5.40 = 0.20 + 5.20 (spread-once law intact); commission = 0.35 x 1.08498 = $0.379743; cash = 89,129.019529 + 10,849.80 - 0.379743 = $99,978.439786; units 0. The row flags LOSS_FILL candidacy (fill beyond modeled band). GROSS VS MID = 10,000 x (1.08552 - 1.08702) = -$15.00 (mid-to-mid; the intra-bar gap move sits in the crossing lines). Cross-check of the full price move: 10,000 x (1.08702 - 1.08498) = $20.40 = 15.00 (mid-to-mid) + 5.40 (graded crossing). NET = -15.00 - 0.40 (spread-once) - 5.40 (slip incl. gap excess) - 0.760214 (commission) - 0 (swap) = -$21.560214 = equity_T - equity_0. EXACT."
+}

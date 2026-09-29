@@ -1,0 +1,317 @@
+{
+  "schema": "pc12a_fill_fixture@1",
+  "fixture_id": "fx4_blocked_signal",
+  "mechanism": "E3 fail-closed block: LEG-RD's PIT input is 16d old (> P7D max-age) at decision -> BLOCKED_STALE row with decision-state snapshot ONLY (no fill block, no cost block, zero cash/position effect); the sibling LEG-TC still fills - the block isolates the leg, and a blocked leg casts NO netting vote.",
+  "conventions": {
+    "symbol": "EURUSD",
+    "venue_model": "PANEL_DUKA_SYNTH",
+    "pip_size": 0.0001,
+    "pip_value_per_lot_usd": 10.0,
+    "lot_size_base_units": 100000,
+    "commission_bps_per_side": 0.35,
+    "commission_rate_per_side": 3.5e-05,
+    "slip_non_event_pips": 0.2,
+    "slip_event_pips": 1.0,
+    "slip_applied_per_side": 2e-05,
+    "swap_pips_per_night": 1.0,
+    "swap_wednesday_multiplier": 3,
+    "swap_calendar": {
+      "Sun": 1,
+      "Mon": 1,
+      "Tue": 1,
+      "Wed": 3,
+      "Thu": 1,
+      "Fri": 0,
+      "Sat": 0
+    },
+    "swap_boundary_utc": "22:00:00",
+    "initial_cash_usd": 100000.0,
+    "stress_tier": 1.0,
+    "tolerance": 1e-09,
+    "synthetic": true,
+    "note": "Synthetic M1 bars invented for the fixture (realistic EURUSD June-2024 pip magnitudes; spreads 0.4 pip within the C1 EURUSD p50 0.3 / p90 0.5 band). Not panel data."
+  },
+  "legs": [
+    {
+      "leg_id": "LEG-TC",
+      "family_id": "FX-SESSION-TREND",
+      "clock": "SESSION_M1_1400_1800",
+      "rule_frozen": "long 0.2 lot if decision-bar mid_close > 1.0708; exit at 18:00"
+    },
+    {
+      "leg_id": "LEG-RD",
+      "family_id": "FX-SESSION-REVMOM",
+      "clock": "SESSION_M1_1400_1800",
+      "rule_frozen": "short 0.1 lot on reversion-momentum feature REV-MOM-M1-FEAT-7 (max-age P7D); exit at 18:00"
+    }
+  ],
+  "input_bars": [
+    {
+      "ts_open_utc": "2024-06-20T13:59:00Z",
+      "span_min": 1,
+      "role": "decision_bar",
+      "bid_open": 1.0707,
+      "ask_open": 1.07074,
+      "bid_close": 1.07078,
+      "ask_close": 1.07082,
+      "mid_open": 1.0707200000000001,
+      "mid_close": 1.0708000000000002,
+      "spread_cell_validation": "EURUSD C1 band"
+    },
+    {
+      "ts_open_utc": "2024-06-20T14:00:00Z",
+      "span_min": 1,
+      "role": "fill_bar",
+      "bid_open": 1.0709,
+      "ask_open": 1.07094,
+      "bid_close": 1.07096,
+      "ask_close": 1.071,
+      "mid_open": 1.07092,
+      "mid_close": 1.07098,
+      "spread_cell_validation": "EURUSD C1 band"
+    },
+    {
+      "ts_open_utc": "2024-06-20T17:59:00Z",
+      "span_min": 1,
+      "role": "decision_bar",
+      "bid_open": 1.0711,
+      "ask_open": 1.07114,
+      "bid_close": 1.07118,
+      "ask_close": 1.07122,
+      "mid_open": 1.07112,
+      "mid_close": 1.0712000000000002,
+      "spread_cell_validation": "EURUSD C1 band"
+    },
+    {
+      "ts_open_utc": "2024-06-20T18:00:00Z",
+      "span_min": 1,
+      "role": "fill_bar",
+      "bid_open": 1.0713,
+      "ask_open": 1.07134,
+      "bid_close": 1.07128,
+      "ask_close": 1.07132,
+      "mid_open": 1.07132,
+      "mid_close": 1.0713,
+      "spread_cell_validation": "EURUSD C1 band"
+    }
+  ],
+  "decisions": [
+    {
+      "ts_decision_utc": "2024-06-20T14:00:00Z",
+      "order_kind": "OPEN",
+      "legs": [
+        {
+          "leg_id": "LEG-TC",
+          "direction_vote": 1,
+          "desired_risk_units": 20000,
+          "blocked": false,
+          "feature_pit_snapshot": [
+            {
+              "input_id": "M1_EURUSD_MIDCLOSE_1359",
+              "available_time_utc": "2024-06-20T14:00:00Z",
+              "value_digest": "sha256:synth:fx4:d1:1.07080",
+              "max_age": "P7D",
+              "max_age_ok": true
+            }
+          ],
+          "decision_bar_mid_close": 1.0708,
+          "rule_evaluation": "1.07080 > 1.0708 boundary inclusive -> vote +1"
+        },
+        {
+          "leg_id": "LEG-RD",
+          "direction_vote": -1,
+          "desired_risk_units": 10000,
+          "blocked": true,
+          "feature_pit_snapshot": [
+            {
+              "input_id": "REV-MOM-M1-FEAT-7",
+              "available_time_utc": "2024-06-04T09:12:00Z",
+              "value_digest": "sha256:synth:fx4:rd:stale",
+              "max_age": "P7D",
+              "max_age_ok": false
+            }
+          ],
+          "decision_bar_mid_close": 1.0708,
+          "rule_evaluation": "feature would vote -1, but input age 16d04h48m > max-age P7D at 2024-06-20T14:00:00Z -> E3 OFF (fail-closed, never last-known-value)"
+        }
+      ],
+      "netting": {
+        "net_target_units": 20000,
+        "arithmetic": "blocked leg excluded from netting (L2 precedes L4): +20,000 (LEG-TC only) - LEG-RD casts NO vote",
+        "current_units": 0,
+        "delta_units": 20000
+      }
+    },
+    {
+      "ts_decision_utc": "2024-06-20T18:00:00Z",
+      "order_kind": "CLOSE",
+      "legs": [
+        {
+          "leg_id": "LEG-TC",
+          "direction_vote": 0,
+          "desired_risk_units": 0,
+          "blocked": false,
+          "feature_pit_snapshot": [
+            {
+              "input_id": "M1_EURUSD_MIDCLOSE_1759",
+              "available_time_utc": "2024-06-20T18:00:00Z",
+              "value_digest": "sha256:synth:fx4:d2:1.07120",
+              "max_age": "P7D",
+              "max_age_ok": true
+            }
+          ],
+          "decision_bar_mid_close": 1.0712,
+          "rule_evaluation": "session close -> vote 0"
+        }
+      ],
+      "netting": {
+        "net_target_units": 0,
+        "arithmetic": "0",
+        "current_units": 20000,
+        "delta_units": -20000
+      }
+    }
+  ],
+  "expected": {
+    "timeline": [
+      {
+        "step": 1,
+        "ts_utc": "2024-06-20T14:00:00Z",
+        "event": "decision_tc_long_rd_blocked_stale",
+        "fill_price": null,
+        "cash_usd_after": 100000.0,
+        "units_after": 0,
+        "mark_mid": 1.0708,
+        "equity_usd_after": 100000.0
+      },
+      {
+        "step": 2,
+        "ts_utc": "2024-06-20T14:00:00Z",
+        "event": "fill_buy_open_tc_only",
+        "fill_price": 1.07096,
+        "cash_usd_after": 78580.050328,
+        "units_after": 20000,
+        "mark_mid": 1.07098,
+        "equity_usd_after": 99999.650328
+      },
+      {
+        "step": 3,
+        "ts_utc": "2024-06-20T18:00:00Z",
+        "event": "decision_tc_exit",
+        "fill_price": null,
+        "cash_usd_after": 78580.050328,
+        "units_after": 20000,
+        "mark_mid": 1.0712,
+        "equity_usd_after": 100004.050328
+      },
+      {
+        "step": 4,
+        "ts_utc": "2024-06-20T18:00:00Z",
+        "event": "fill_sell_close",
+        "fill_price": 1.07128,
+        "cash_usd_after": 100004.900432,
+        "units_after": 0,
+        "mark_mid": 1.0713,
+        "equity_usd_after": 100004.900432
+      },
+      {
+        "step": 5,
+        "ts_utc": "2024-06-20T18:01:00Z",
+        "event": "final_mark",
+        "fill_price": null,
+        "cash_usd_after": 100004.900432,
+        "units_after": 0,
+        "mark_mid": 1.0713,
+        "equity_usd_after": 100004.900432
+      }
+    ],
+    "fills": [
+      {
+        "order_id": "fx4-o1",
+        "side": "buy",
+        "delta_units": 20000,
+        "fill_price": 1.07096,
+        "quoted_side": 1.07094,
+        "mid_at_fill": 1.07092,
+        "half_spread_pips": 0.2,
+        "spread_once_usd": 0.3999999999981796,
+        "slip_beyond_halfspread_usd": 0.4,
+        "cross_cost_usd": 0.7999999999981796,
+        "commission_usd": 0.7496719999999999,
+        "cash_delta_usd": -21419.949672,
+        "bar": "2024-06-20T14:00:00Z"
+      },
+      {
+        "order_id": "fx4-o2",
+        "side": "sell",
+        "delta_units": -20000,
+        "fill_price": 1.07128,
+        "quoted_side": 1.0713,
+        "mid_at_fill": 1.07132,
+        "half_spread_pips": 0.2,
+        "spread_once_usd": 0.4000000000026205,
+        "slip_beyond_halfspread_usd": 0.4,
+        "cross_cost_usd": 0.8000000000026205,
+        "commission_usd": 0.749896,
+        "cash_delta_usd": 21424.850103999997,
+        "bar": "2024-06-20T18:00:00Z"
+      }
+    ],
+    "blocked_rows": [
+      {
+        "row_id": "fx4-r0",
+        "row_kind": "BLOCK",
+        "ts_decision_utc": "2024-06-20T14:00:00Z",
+        "leg_id": "LEG-RD",
+        "symbol": "EURUSD",
+        "family_id": "FX-SESSION-REVMOM",
+        "feature_pit_snapshot": [
+          {
+            "input_id": "REV-MOM-M1-FEAT-7",
+            "available_time_utc": "2024-06-04T09:12:00Z",
+            "value_digest": "sha256:synth:fx4:rd:stale",
+            "max_age": "P7D",
+            "max_age_ok": false
+          }
+        ],
+        "direction_vote": -1,
+        "desired_risk_units": 10000,
+        "eligibility_state": "OFF (E3)",
+        "risk_rule_state": "netting excluded - blocked legs cast no vote",
+        "portfolio_state": {
+          "n_eligible": 1,
+          "portfolio_heat_pct": 0.0
+        },
+        "order_kind": null,
+        "fill_price": null,
+        "spread_once_usd": null,
+        "slip_beyond_halfspread_usd": null,
+        "commission_usd": null,
+        "cash_delta_usd": 0.0,
+        "units_after": 0,
+        "outcome": "BLOCKED_STALE",
+        "blocked_reason_detail": "E3: PIT input REV-MOM-M1-FEAT-7 available_time 2024-06-04T09:12:00Z, age 16d04h48m > max-age P7D at ts_decision 2024-06-20T14:00:00Z -> fail-closed OFF, never last-known-value, never 0-fill"
+      }
+    ],
+    "costs": {
+      "spread_once_total_usd": 0.8000000000008001,
+      "slip_total_usd": 0.8,
+      "commission_total_usd": 1.499568,
+      "swap_total_usd": 0.0,
+      "swap_lines": []
+    },
+    "gross_vs_mid_usd": 7.999999999999119,
+    "net_pnl_usd": 4.900431999998319,
+    "blocked_no_effect_check": {
+      "cash_usd_unchanged_by_blocked_row": true,
+      "units_unchanged_by_blocked_row": true,
+      "note": "the blocked row carries the decision-state snapshot ONLY; re-derivable per JOURNAL_SCHEMA reconciliation #3"
+    },
+    "decomposition": {
+      "lhs": 4.900431999998319,
+      "equity_delta": 4.9004319999949075,
+      "residual": 3.411493310068181e-12
+    }
+  },
+  "hand_calc": "LEG-TC healthy (PIT input fresh) votes +1 for 20,000 units; LEG-RD's feature REV-MOM-M1-FEAT-7 was available 2024-06-04T09:12:00Z -> age 16d04h48m > max-age P7D at the 2024-06-20T14:00:00Z decision -> E3 OFF, BLOCKED_STALE. The blocked row: decision-state snapshot only, NO fill block, NO cost block, cash_delta 0, units unchanged, netting excluded. Net target = +20,000 (LEG-TC alone; L2 precedes L4). OPEN: fill = 1.07094 + 0.00002 = 1.07096; mid = 1.07092; spread_once = 20,000 x 0.00002 = $0.40; slip = $0.40; commission = 0.7 x 1.07096 = $0.749672; cash = 100,000 - 21,419.20 - 0.749672 = $78,580.050328; equity @ mid_close 1.07098 = 78,580.050328 + 21,419.60 = $99,999.650328. CLOSE 18:00: fill = 1.07130 - 0.00002 = 1.07128; mid = 1.07132; spread_once $0.40; slip $0.40; commission = 0.7 x 1.07128 = $0.749896; cash = 78,580.050328 + 21,425.60 - 0.749896 = $100,004.900432. GROSS VS MID = 20,000 x (1.07132 - 1.07092) = 20,000 x 0.0004 = $8.00. NET = 8.00 - 0.80 - 0.80 - 1.499568 - 0 = $4.900432 = equity_T - equity_0. EXACT."
+}
