@@ -224,7 +224,7 @@ FROZEN_CLUSTER_MAP_PLACEHOLDER: Dict[str, int] = {
     # cluster_id -> max |net units| per asset in the cluster (PLACEHOLDER:
     # to be frozen at Stage-B from measured TRAIN co-movement).
     # Verification-lane fix (arm-distinctness battery): keys are the
-    # cluster_ids of the 12 FROZEN leg configs (full mech-key spelling,
+    # cluster_ids of the FROZEN leg configs (full mech-key spelling,
     # e.g. "volprof_vc1_vaedge"); the earlier short spellings never
     # matched any config, leaving L5 silently inert for the 9 VOLPROF
     # legs (the .get(cid, cap) fallback masked the miss).
@@ -234,6 +234,22 @@ FROZEN_CLUSTER_MAP_PLACEHOLDER: Dict[str, int] = {
     "trend_daily": 100_000,
     "calendar_weekday": 100_000,
 }
+
+# Stage-A wave-1 extension: the 64 T1 corpus legs cluster by
+# (family, horizon) -- same placeholder cap per cluster until Stage-B
+# re-freezes from measured TRAIN co-movement. Registered so the L5
+# lookup can never silently fall back (same law as above).
+for _w1_cluster in (
+        "trend_multimonth", "trend_multiweek", "trend_intraday",
+        "meanrev_daily", "meanrev_intraday", "meanrev_multiweek",
+        "breakout_daily", "breakout_intraday", "breakout_multiweek",
+        "breakout_weekly", "calendar_daily", "calendar_intraday",
+        "calendar_multimonth", "calendar_multiweek", "calendar_weekly",
+        "regime_daily", "regime_multiweek", "statarb_daily",
+        "statarb_intraday", "statarb_multiweek", "statarb_weekly",
+        "xasset_intraday", "xasset_weekly"):
+    FROZEN_CLUSTER_MAP_PLACEHOLDER[_w1_cluster] = 100_000
+del _w1_cluster
 PER_ASSET_NET_CAP_UNITS = 100_000
 
 

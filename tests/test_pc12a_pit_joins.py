@@ -86,12 +86,17 @@ def test_every_leg_pit_join_is_decision_time_available():
     available_time key can exist (those joins are NOT_RUN in this engine).
     """
     cfgs = _real_cfgs()
-    assert len(cfgs) == 12
+    assert len(cfgs) == 76     # 12 legacy arms + 64 wave-1 T1 corpus legs
     allowed = {
         "EURUSD_M1_BIDASK_VOL", "GBPUSD_M1_BIDASK_VOL",
         "USDJPY_M1_BIDASK_VOL", "WEEKLY_PROFILE", "TZDATA_SESSIONS",
         "TZDATA_WEEKDAYS", "USDJPY_D1_AGGREGATE", "GBPUSD_D1_AGGREGATE",
         "EURUSD_D1_AGGREGATE",
+        # wave-1: own-symbol joins of the (not-yet-staged) AUDUSD/USDCAD
+        # legs and cross-pair D1 feeds for the derivable-cross legs --
+        # all price-only, same availability class as the pairs above
+        "AUDUSD_M1_BIDASK_VOL", "USDCAD_M1_BIDASK_VOL",
+        "AUDUSD_D1_AGGREGATE", "USDCAD_D1_AGGREGATE",
     }
     for cfg in cfgs:
         joins = set(cfg.get("pit_join_list", []))

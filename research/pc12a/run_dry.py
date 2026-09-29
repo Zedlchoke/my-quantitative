@@ -70,15 +70,26 @@ class SymbolEngine:
 
     def __init__(self, symbol: str, leg_cfgs: List[Dict], args,
                  journal: _jr.JournalWriter, guard: _pol.CostGuard,
-                 report: Dict):
+                 report: Dict, cross_feeds: Optional[Dict] = None):
         self.symbol = symbol
         self.kernel = _ck.CostKernel(symbol, tier=args.tier)
         self.legs: List[_legs.BaseLeg] = [_legs.build_leg(c)
                                           for c in leg_cfgs]
         self.volprof_legs = [l for l in self.legs
                              if isinstance(l, _legs.VolprofLeg)]
+        # wave-1: generic minute-clock legs (wants_every_bar, non-VOLPROF)
+        # decide on every tradable M1 bar; remaining legs are daily-clock
+        self.minute_legs = [l for l in self.legs
+                            if l.wants_every_bar
+                            and not isinstance(l, _legs.VolprofLeg)]
+        for l in self.minute_legs:   # warmup gate until window start
+            l.warmup_active = True
         self.daily_legs = [l for l in self.legs
-                           if not isinstance(l, _legs.VolprofLeg)]
+                           if not l.wants_every_bar
+                           and not isinstance(l, _legs.VolprofLeg)]
+        for l in self.legs:  # cross-asset D1 feeds (PIT-filtered by legs)
+            if hasattr(l, "set_cross_feeds"):
+                l.set_cross_feeds(cross_feeds or {})
         self.journal = journal
         self.guard = guard
         self.report = report
@@ -102,15 +113,17 @@ class SymbolEngine:
             l.identity.candidate_id: 0 for l in self.legs}
         self.leg_by_id = {l.identity.candidate_id: l for l in self.legs}
         self.first_decision_ts: Optional[dt.datetime] = None
+        self.daily_closes: List[Dict] = []   # cross-asset D1 feed export
 
     # -- warmup ---------------------------------------------------------------
 
     def _warmup_start(self) -> dt.date:
         need = WARMUP_TRADING_DAYS["volprof"] if self.volprof_legs else 0
-        for l in self.daily_legs:
+        for l in self.daily_legs + self.minute_legs:
             need = max(need, WARMUP_TRADING_DAYS.get(
                 l.identity.candidate_id,
-                WARMUP_TRADING_DAYS["default_daily"]))
+                getattr(l, "warmup_trading_days",
+                        WARMUP_TRADING_DAYS["default_daily"])))
         cal_days = int(need * CALENDAR_DAYS_PER_TRADING_DAY) + 10
         return self.window_start - dt.timedelta(days=cal_days)
 
@@ -167,6 +180,7 @@ class SymbolEngine:
                 "tradable": tradable.copy(),
                 "day_high": float(bid_high[tradable].max()),
                 "day_low": float(bid_low[tradable].min()),
+                "day_open": float(mid_close[tradable][0]),
                 "day_close": float(mid_close[tradable][-1]),
                 "last_bid_close": float(day.bid.close[tradable][-1]),
                 "last_ask_close": float(day.ask.close[tradable][-1]),
@@ -176,12 +190,23 @@ class SymbolEngine:
 
         if not in_window:
             # indicator warm-up only (no decisions journaled, no fills):
-            # daily legs consume the completed prior trading day during
-            # the warmup stream so their lookback history exists at the
-            # window start
+            # daily legs consume the completed prior trading day and
+            # minute legs consume every tradable bar (decisions dropped)
+            # so their lookback history exists at the window start
+            midnight_w = dt.datetime.combine(date, dt.time(0, 0),
+                                             tzinfo=UTC)
+            sessions_w = cal.session_windows_utc(date)
+            flat_w = midnight_w + dt.timedelta(hours=FLAT_HOUR_MIN[0],
+                                               minutes=FLAT_HOUR_MIN[1])
             for m in range(_panels.RECORDS_PER_DAY):
                 if tradable[m]:
                     _advance_tr(m)
+                    if self.minute_legs:
+                        ts_w = midnight_w + dt.timedelta(minutes=m + 1)
+                        ctx_w = self._make_ctx(day, m, ts_w, sessions_w,
+                                               flat_w)
+                        for leg in self.minute_legs:
+                            leg.on_bar(ctx_w)
             if self.prev_day_agg is not None and self.daily_legs:
                 for leg in self.daily_legs:
                     leg.on_daily_bar(self.prev_day_agg)
@@ -189,6 +214,12 @@ class SymbolEngine:
                 self._maybe_freeze(date)
             self._update_prev_agg(date)
             return
+
+        # first in-window day: minute legs leave warmup (entries allowed)
+        if not getattr(self, "_warmup_released", False):
+            self._warmup_released = True
+            for leg in self.minute_legs:
+                leg.warmup_active = False
 
         midnight = dt.datetime.combine(date, dt.time(0, 0), tzinfo=UTC)
         sessions = cal.session_windows_utc(date)
@@ -210,9 +241,11 @@ class SymbolEngine:
             _advance_tr(m)   # deque as-of THIS completed bar (PIT: <= m)
             ts_close = midnight + dt.timedelta(minutes=m + 1)
             ctx = self._make_ctx(day, m, ts_close, sessions, flat_ts)
-            holding = any(l.desired_units != 0 for l in self.volprof_legs)
+            holding = any(l.desired_units != 0 for l in self.volprof_legs) \
+                or any(l.desired_units != 0 for l in self.minute_legs)
             wants = (ctx.in_entry_window or holding or ctx.is_flat_instant
-                     or (ts_close >= flat_ts and holding))
+                     or (ts_close >= flat_ts and holding)
+                     or bool(self.minute_legs))
             if wants:
                 self._minute_decision(ctx, day, m, ts_close)
 
@@ -270,7 +303,11 @@ class SymbolEngine:
             ask_high=float(day.ask.high[m]),
             atr60=atr60, in_entry_window=in_win,
             is_flat_instant=ts_close == flat_ts, day=ts_close.date(),
-            profile=self.profile, last_data_ts=ts_close)
+            profile=self.profile, last_data_ts=ts_close,
+            mid_high=(float(day.bid.high[m]) + float(day.ask.high[m]))
+            / 2.0,
+            mid_low=(float(day.bid.low[m]) + float(day.ask.low[m])) / 2.0,
+            bid_volume=float(day.bid.volume[m]))
 
     # -- decisions ----------------------------------------------------------------
 
@@ -288,6 +325,11 @@ class SymbolEngine:
                          m: int, ts_close: dt.datetime) -> None:
         decisions: Dict[str, _legs.LegDecision] = {}
         for leg in self.volprof_legs:
+            dec = leg.on_bar(ctx)
+            if dec is not None:
+                decisions[leg.identity.candidate_id] = dec
+        # wave-1 generic minute-clock legs (session/H1/H4/M5 rules)
+        for leg in self.minute_legs:
             dec = leg.on_bar(ctx)
             if dec is not None:
                 decisions[leg.identity.candidate_id] = dec
@@ -615,7 +657,12 @@ class SymbolEngine:
                 "available": dt.datetime.combine(
                     date, dt.time(0, 0), tzinfo=UTC) + dt.timedelta(days=1),
                 "close": b["day_close"],
+                "open": b.get("day_open", b["day_close"]),
             }
+            self.daily_closes.append({
+                "date": date, "open": self.prev_day_agg["open"],
+                "high": b["day_high"], "low": b["day_low"],
+                "close": b["day_close"]})
 
 
 # ---------------------------------------------------------------------------
@@ -662,6 +709,13 @@ def main(argv=None) -> int:
     ap.add_argument("--out", required=True, help="output directory")
     ap.add_argument("--tier", type=float, default=1.0,
                     choices=[1.0, 1.5, 2.0])
+    ap.add_argument("--export-dailies", default=None,
+                    help="write {symbol: daily aggregates} to this JSON "
+                         "after the run (for cross-asset feed chaining "
+                         "when the wave is split by symbol)")
+    ap.add_argument("--import-dailies", default=None,
+                    help="pre-seed cross-asset D1 feeds from a prior "
+                         "pass's --export-dailies file")
     args = ap.parse_args(argv)
 
     t0 = time.time()
@@ -714,18 +768,61 @@ def main(argv=None) -> int:
     guard = _pol.CostGuard(_pol.CostGuardState())
     store = _panels.PanelStore()
     data_digests: Dict[str, str] = {}
+    legs_not_run: Dict[str, str] = {}
+    # wave-1: symbols whose legs consume another pair's D1 feed stream
+    # LAST so the feed is complete (deterministic order); legs on symbols
+    # without staged panels are recorded NOT_RUN (fail-closed disclosure)
+    def _has_cross_need(sym: str, cfgs: List[Dict]) -> bool:
+        for c in cfgs:
+            for j in c.get("pit_join_list", []):
+                if j.endswith("_D1_AGGREGATE") and not j.startswith(sym):
+                    return True
+        return False
+
+    stream_order = (
+        sorted(s_ for s_ in by_symbol
+               if not _has_cross_need(s_, by_symbol[s_]))
+        + sorted(s_ for s_ in by_symbol
+                 if _has_cross_need(s_, by_symbol[s_])))
+    cross_feeds: Dict[str, List[Dict]] = {}
+    if args.import_dailies:
+        with open(args.import_dailies, encoding="utf-8") as fh:
+            cross_feeds = json.load(fh)
+        for _s, _days in cross_feeds.items():   # revive date objects
+            for _b in _days:
+                if isinstance(_b.get("date"), str):
+                    _b["date"] = dt.date.fromisoformat(_b["date"])
+        report["imported_cross_feeds"] = sorted(cross_feeds)
     with _jr.JournalWriter(journal_path, run_id, meta={
             "window": {"start": s, "end": e}, "tier": args.tier,
             "legs_digest": legs_digest}) as journal:
-        for symbol in sorted(by_symbol):
+        for symbol in stream_order:
+            if symbol not in store.roots:
+                reason = (f"NOT_RUN: no audited M1 panel root staged for "
+                          f"{symbol} on this checkout (Lane-D audit covers "
+                          f"the 3 evidenced pairs)")
+                for c in by_symbol[symbol]:
+                    lid = c.get("class_candidate_id") or c["corpus_gid"]
+                    legs_not_run[lid] = reason
+                continue
             eng = SymbolEngine(symbol, by_symbol[symbol], args, journal,
-                               guard, report)
+                               guard, report, cross_feeds=cross_feeds)
             eng.run(store)
+            cross_feeds[symbol] = eng.daily_closes
             data_digests[symbol] = store.panel_digest(
                 symbol, _dates_between(store.roots[symbol],
                                        eng._warmup_start(),
                                        args.window_end))
+        report["legs_not_run"] = legs_not_run
         report["journal_row_count"] = journal.n_rows
+
+    if args.export_dailies:
+        def _ser(o):
+            if isinstance(o, (dt.date, dt.datetime)):
+                return o.isoformat()
+            raise TypeError
+        with open(args.export_dailies, "w", encoding="utf-8") as fh:
+            json.dump(cross_feeds, fh, default=_ser)
 
     report["code_digest"] = _code_digest()
     report["data_digests"] = data_digests

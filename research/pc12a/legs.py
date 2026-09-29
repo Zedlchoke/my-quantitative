@@ -269,6 +269,11 @@ class BarContext:
     day: dt.date
     profile: Optional[WeeklyProfile]
     last_data_ts: Optional[dt.datetime]  # for the 90s staleness law
+    # wave-1 additions (defaulted for backward compatibility): per-bar
+    # mid extremes and size-weighted volume for intraday aggregations
+    mid_high: float = 0.0
+    mid_low: float = 0.0
+    bid_volume: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -889,6 +894,18 @@ def build_leg(cfg: Dict) -> BaseLeg:
         return VolprofLeg(ident)
     if key in _LEG_CLASSES:
         return _LEG_CLASSES[key](ident)
+    # wave-1 rule archetypes (research/pc12a/leg_rules.py): routed by the
+    # config's 'archetype' field when present (mech_key keeps the census
+    # spelling for identity), else by (sleeve, mech_key)
+    from . import leg_rules
+    arch = cfg.get("archetype")
+    if arch:
+        k2 = (ident.sleeve_id, arch)
+        if k2 not in leg_rules.RULE_REGISTRY:
+            raise LegError(f"unknown archetype {arch}")
+        return leg_rules.RULE_REGISTRY[k2](ident)
+    if key in leg_rules.RULE_REGISTRY:
+        return leg_rules.RULE_REGISTRY[key](ident)
     raise LegError(f"no implementation registered for {key}")
 
 

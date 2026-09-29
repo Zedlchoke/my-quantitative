@@ -172,12 +172,23 @@ def _content(row: dict) -> str:
 def _symbol_prefix(journal_path: pathlib.Path, symbol: str) -> list:
     """Content-canonical rows of one symbol whose every carried timestamp
     is <= t_cut (the row's full lifecycle completed inside truncated data),
-    in journal order."""
+    in journal order.
+
+    Wave-1 seam exclusion: ONOFF counterfactual TWIN rows stamp only the
+    decision instant but their would-fill consumes the FIRST bar AFTER the
+    decision -- a twin decided at/after (t_cut - 1 minute) reads data the
+    truncated panel no longer has, so it is a truncation-seam row and is
+    excluded from the prefix comparison (its parent DECISION row still
+    compares)."""
     out = []
     for line in journal_path.read_text().splitlines():
         if not line:
             continue
         row = json.loads(line)
+        if row.get("counterfactual") and row.get("ts_decision_utc"):
+            if _parse(row["ts_decision_utc"]) >= T_CUT - dt.timedelta(
+                    minutes=1):
+                continue
         if row.get("symbol") != symbol:
             continue
         mx = _row_max_ts(row)
@@ -280,7 +291,10 @@ def test_truncated_data_preserves_pre_cut_bytes(runs):
 def test_full_run_reports_all_twelve_real_legs(runs):
     report = json.loads(
         (runs["full"] / "DRY_RUN_REPORT.json").read_text())
-    assert len(report["legs"]) == 12
+    # wave-1: the dir carries 12 legacy + 64 wave-1 legs; every
+    # configured leg must appear in the report
+    assert len(report["legs"]) == len(_legs.load_leg_configs(
+        str(REAL_LEGS_DIR)))
     on_disk = {p.stem for p in REAL_LEGS_DIR.glob("*.json")}
     assert set(report["legs"]) == on_disk
 
@@ -350,6 +364,26 @@ def _drive_volprof(leg: _legs.BaseLeg, profile, stream, cut: dt.datetime):
     return votes
 
 
+def _drive_minute(leg: _legs.BaseLeg, stream, cut: dt.datetime):
+    """Feed the bar stream to a wave-1 minute-clock leg; stop at the cut."""
+    votes = []
+    for ts, lvl, prev in stream:
+        if ts > cut:
+            break
+        ctx = _legs.BarContext(
+            ts=ts, symbol=leg.identity.symbol, mid_close=lvl,
+            mid_close_prev=prev, bid_open=lvl - 2e-5, ask_open=lvl + 2e-5,
+            bid_close=lvl - 2e-5, ask_close=lvl + 2e-5,
+            bid_low=lvl - 3e-5, ask_high=lvl + 3e-5, atr60=0.0005,
+            in_entry_window=True, is_flat_instant=False, day=ts.date(),
+            profile=None, last_data_ts=ts, mid_high=lvl + 1e-5,
+            mid_low=lvl - 1e-5, bid_volume=25.0)
+        d = leg.on_bar(ctx)
+        votes.append(None if d is None else
+                     (d.vote, d.desired_units, d.reason_code))
+    return votes
+
+
 def _drive_daily(leg: _legs.BaseLeg, bars, cut: dt.datetime):
     votes = []
     for bar in bars:
@@ -387,7 +421,7 @@ def _daily_bars(n=60, start=dt.date(2024, 3, 4)):
 
 def test_leg_level_vote_prefix_identity_all_twelve_real_configs():
     cfgs = _legs.load_leg_configs(str(REAL_LEGS_DIR))
-    assert len(cfgs) == 12
+    assert len(cfgs) == 76     # 12 legacy + 64 wave-1
     profile = _legs.build_profile(
         dt.datetime(2024, 6, 7, 20, 0, tzinfo=UTC), _day_buffer())
     stream = _synthetic_bar_stream()
@@ -404,6 +438,10 @@ def test_leg_level_vote_prefix_identity_all_twelve_real_configs():
             full = _drive_volprof(leg, profile, stream, stream[-1][0])
             repl = _drive_volprof(_legs.build_leg(cfg), profile, stream,
                                   leg_cut)
+        elif leg.wants_every_bar:
+            # wave-1 minute-clock legs (session/H1/H4/M5 archetypes)
+            full = _drive_minute(leg, stream, stream[-1][0])
+            repl = _drive_minute(_legs.build_leg(cfg), stream, leg_cut)
         else:
             full = _drive_daily(leg, bars, bars[-1]["available"])
             repl = _drive_daily(_legs.build_leg(cfg), bars, bar_cut)

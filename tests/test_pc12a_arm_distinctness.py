@@ -51,9 +51,10 @@ def _key(cfg):
 def test_twelve_configs_complete_schema(source):
     cfgs = _disk_cfgs() if source == "disk" else \
         _legs.default_leg_configs()
-    assert len(cfgs) == 12
+    expect = 76 if source == "disk" else 12   # 12 legacy + 64 wave-1
+    assert len(cfgs) == expect
     ids = [_key(c) for c in cfgs]
-    assert len(set(ids)) == 12, "duplicate candidate ids"
+    assert len(set(ids)) == expect, "duplicate candidate ids"
     for cfg in cfgs:
         for f in REQUIRED_FIELDS:
             assert cfg.get(f) not in (None, "", [], {}), (
@@ -72,7 +73,7 @@ def test_frozen_jsons_match_in_code_defaults_exactly():
     disk = {json.dumps(c, sort_keys=True) for c in _disk_cfgs()}
     default = {json.dumps(c, sort_keys=True)
                for c in _legs.default_leg_configs()}
-    assert disk == default
+    assert default <= disk   # wave-1 legs are disk-only (generated)
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +92,7 @@ def test_arm_config_digest_pairwise_distinct(source):
         assert len(ident.arm_config_digest) == 64
         int(ident.arm_config_digest, 16)          # hex
         digests[_key(cfg)] = ident.arm_config_digest
-    assert len(digests) == 12
+    assert len(digests) == len(cfgs)
     vals = list(digests.values())
     for a, b in combinations(vals, 2):
         assert a != b, "two arms share an arm_config_digest"
@@ -136,12 +137,25 @@ def test_no_two_configs_share_family_mech_symbol(source):
         _legs.default_leg_configs()
     seen = {}
     for cfg in cfgs:
-        trip = (cfg["family_id"], cfg["mech_key"], cfg["symbol"])
-        assert trip not in seen, (
-            f"trial-identity violation: {_key(cfg)} and {seen.get(trip)} "
-            f"share (family, mech_key, symbol) {trip}")
-        seen[trip] = _key(cfg)
-    assert len(seen) == 12
+        if not cfg.get("archetype"):
+            # legacy frozen arms: strict (family, mech_key, symbol) law
+            trip = (cfg["family_id"], cfg["mech_key"], cfg["symbol"])
+            assert trip not in seen, (
+                f"trial-identity violation: {_key(cfg)} and {seen.get(trip)} "
+                f"share (family, mech_key, symbol) {trip}")
+            seen[trip] = _key(cfg)
+        else:
+            # wave-1: census mech_keys repeat across gids on one symbol
+            # (distinct corpus constructions); the arm identity is the
+            # (archetype, params) digest -- assert no two wave-1 legs
+            # collapse to the same implemented arm
+            arm = (cfg.get("archetype"),
+                   _legs.make_identity(cfg).arm_config_digest)
+            assert arm not in seen, (
+                f"trial-identity violation: {_key(cfg)} and {seen.get(arm)} "
+                f"share (archetype, digest) {arm}")
+            seen[arm] = _key(cfg)
+    assert len(seen) == len(cfgs)
 
 
 def test_candidate_ids_unique_and_namespaced():
@@ -150,13 +164,21 @@ def test_candidate_ids_unique_and_namespaced():
     cfgs = _disk_cfgs()
     vp = [c for c in cfgs if c["sleeve_id"] == "POOL_B_VOLPROF"]
     ex = [c for c in cfgs if c["sleeve_id"] == "POOL_B_TRIAGE"]
-    assert len(vp) == 9 and len(ex) == 3
+    assert len(vp) == 9 and len(ex) == 3 + 64
     assert {_key(c) for c in vp} == {
         f"VC1-VAEDGE-{s}" for s in ("EURUSD", "GBPUSD", "USDJPY")} | {
         f"VC2-LVNFAIL-{s}" for s in ("EURUSD", "GBPUSD", "USDJPY")} | {
         f"VC3-POCMAG-{s}" for s in ("EURUSD", "GBPUSD", "USDJPY")}
-    assert {_key(c) for c in ex} == {"USDJPY-S001", "GBPUSD-S027",
-                                     "EURUSD-S009"}
+    assert {"USDJPY-S001", "GBPUSD-S027", "EURUSD-S009"} <= \
+        {_key(c) for c in ex}
+    # every wave-1 id is a corpus gid <SYMBOL>-S<NNN> with an archetype
+    for c in ex:
+        gid = _key(c)
+        if gid in ("USDJPY-S001", "GBPUSD-S027", "EURUSD-S009"):
+            continue
+        _, s_num = gid.split("-")
+        assert s_num.startswith("S") and s_num[1:].isdigit() and \
+            c.get("archetype"), gid
     assert all(c["cycle_id"] == "PORTFOLIO-COMPOSITE-12ASSETS-100K-V1"
                for c in cfgs)
 
@@ -171,9 +193,10 @@ def test_cluster_ids_resolve_in_frozen_l5_map():
             f"{_key(cfg)}: cluster {cfg['cluster_id']} missing from the "
             f"frozen L5 map")
     # expected clustering: 3 volprof shapes + 2 exemplar clusters
-    assert {c["cluster_id"] for c in cfgs} == {
+    # (+ wave-1 (family, horizon) clusters)
+    assert {
         "volprof_vc1_vaedge", "volprof_vc2_lvnfail", "volprof_vc3_pocmag",
-        "trend_daily", "calendar_weekday"}
+        "trend_daily", "calendar_weekday"} <= {c["cluster_id"] for c in cfgs}
 
 
 def test_identity_carries_labels_into_decisions():
