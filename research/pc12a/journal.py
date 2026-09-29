@@ -23,7 +23,11 @@ never carry PnL fields in a dry run):
 
 Outcome enum (frozen): FILLED | BLOCKED_STALE | BLOCKED_FLOOR |
 BLOCKED_COST_BUDGET | BLOCKED_RISK_CAP | NETTED_TO_ZERO |
-DEFERRED_COST_GUARD | KILLSWITCH_FLAT.
+DEFERRED_COST_GUARD | KILLSWITCH_FLAT | UNAVAILABLE_FILL_BAR
+(A7-prelaunch F-3 remediation: the no-fill-bar fail-closed path journals
+the precise outcome instead of overloading BLOCKED_STALE; zero rows of
+this kind exist in the frozen full-window journal — the path never fired —
+so no committed artifact changes).
 """
 
 from __future__ import annotations
@@ -44,6 +48,7 @@ OUTCOME_ENUM = (
     "NETTED_TO_ZERO",
     "DEFERRED_COST_GUARD",
     "KILLSWITCH_FLAT",
+    "UNAVAILABLE_FILL_BAR",  # A7-prelaunch F-3 remediation (see docstring)
 )
 
 ROW_KINDS = ("HEADER", "DECISION", "NET_ORDER", "BLOCK", "DEFER",
@@ -118,7 +123,10 @@ class JournalWriter:
                 if f in fields and fields[f] is not None:
                     raise JournalError(
                         f"{row_kind} row carries non-NULL fill field {f}")
-            fields.setdefault("cash_delta_usd", 0.0)
+            # A7-prelaunch F-2 remediation: absent fill fields are NULL,
+            # never 0.0 (FILL_ACCOUNTING_SPEC §8) — the old setdefault(0.0)
+            # wrote a fabricated zero.
+            fields.setdefault("cash_delta_usd", None)
         row = {"row_kind": row_kind}
         row.update(fields)
         return self._write_raw(row)
@@ -224,7 +232,10 @@ def net_order_row(*, order_id, order_kind, ts_fill_utc, symbol, side,
                   spread_once_usd, slip_beyond_halfspread_usd,
                   cross_cost_usd, commission_usd, cell_id, u3_band_id,
                   venue_model, units_after, contributing_legs,
-                  graded=False, gap_excess_usd=None) -> Dict:
+                  cash_delta_usd, graded=False, gap_excess_usd=None) -> Dict:
+    # A7-prelaunch F-2 remediation: NET_ORDER rows carry the §7 per-event
+    # cash delta (=-delta*fill -/+ commission, sign per side) — derivable
+    # from existing fields, hence leaks nothing new under RGC-INC-1.
     return {
         "order_id": order_id, "order_kind": order_kind,
         "ts_fill_utc": ts_fill_utc, "symbol": symbol, "side": side,
@@ -238,6 +249,7 @@ def net_order_row(*, order_id, order_kind, ts_fill_utc, symbol, side,
         "venue_model": venue_model, "units_after": units_after,
         "contributing_legs": contributing_legs, "graded": graded,
         "gap_excess_usd": gap_excess_usd,
+        "cash_delta_usd": cash_delta_usd,
     }
 
 

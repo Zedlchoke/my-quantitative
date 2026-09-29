@@ -85,3 +85,37 @@ no push/merge · owner dirty tree in the root checkout untouched ·
 one Lead session (P-17). Next and ONLY remaining gates: independent A7
 prelaunch (fresh context), then owner GO #2
 `GO PORTFOLIO COMPOSITE 12ASSETS 100K V1 SCORED EXECUTION`.
+
+## REMEDIATION APPENDIX (A1, post-A7-prelaunch, 2026-09-29)
+
+A7_PRELAUNCH_VERDICT: **AUTHORIZED_WITH_FINDINGS** (0 CRITICAL / 0 HIGH /
+1 MEDIUM / 2 LOW / 6 INFO) — audits/A7_PRELAUNCH_AUDIT.md. Dispositions:
+
+- **F-1 (MEDIUM) smoke-artifact/tree mismatch — FIXED.** The pre-fix smoke
+  (965 rows, impl-lane vintage) is renamed
+  `research/pc12a/smoke_dry_run_pre_fix_superseded/` with a README marking
+  it superseded bug evidence (append-only discipline). The current smoke
+  (863 rows, post-fix construction) is committed at
+  `research/pc12a/smoke_dry_run/`; the freeze-commit message's "removed"
+  claim is corrected by THIS appendix (the earlier rm targeted a
+  non-existent path — a no-op, now disclosed).
+- **F-2 (LOW) — FIXED.** Blocked/deferred/tie rows carry
+  `cash_delta_usd: null` (never 0.0) per FILL_ACCOUNTING_SPEC §8; NET_ORDER
+  rows now carry the §7 per-event cash delta (derivable from existing
+  fields — leaks nothing). Regression tests added; the old dryrun-test
+  assertion that codified the 0.0 defect is corrected.
+- **F-3 (LOW) — FIXED (with corrected diagnosis).** No crash existed (the
+  internal counters are unvalidated; the journal row used BLOCKED_STALE) —
+  the true defect was report-vs-journal label divergence. The enum gains
+  `UNAVAILABLE_FILL_BAR`, the fail-closed path journals the precise
+  outcome, with a regression test.
+- Full-window dry-run REGENERATED under remediated code: 35,504 rows,
+  leak-clean (engine scanner + A1 independent scan), determinism re-proven
+  (two runs byte-identical), journal sha256 **`3fb9c83d42ac5b98…`**
+  (supersedes `a6bde2ce…`; the old journal contained the 0.0 defect on
+  4,343 blocked rows). Suite: **154/154 pc12a tests green** (150 + 4
+  remediation regressions).
+
+The CODE_FREEZE sha advances to the commit carrying this appendix; the
+freeze otherwise stands unchanged. Scored GO remains
+REGISTERED_NOT_CONSUMED.

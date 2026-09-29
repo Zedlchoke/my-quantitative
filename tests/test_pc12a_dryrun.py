@@ -133,10 +133,9 @@ def test_dry_run_journal_chain_and_outcomes(synthetic_env, tmp_path):
     for r in rows:
         if r["row_kind"] in ("BLOCK", "DEFER", "NETTED_TO_ZERO"):
             for f in jr.NULL_FILL_FIELDS:
-                if f == "cash_delta_usd":
-                    assert r[f] == 0.0   # zero cash effect, per fixture law
-                else:
-                    assert r.get(f) is None  # NULL, never 0-valued fields
+                # A7-prelaunch F-2: cash_delta_usd is NULL (never 0.0) on
+                # blocked/deferred/tie rows — zero cash EFFECT, absent field.
+                assert r.get(f) is None
     # NET_ORDER rows satisfy the spread-once identity per fill
     for r in rows:
         if r["row_kind"] == "NET_ORDER":

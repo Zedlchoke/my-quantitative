@@ -200,7 +200,8 @@ def _write_cost_journal(path: pathlib.Path, n_orders=4) -> list:
                 u3_band_id="U3_NON_EVENT", venue_model="PANEL_DUKA",
                 units_after=(i + 1) * 10_000 * (1 if i % 2 == 0 else -1),
                 contributing_legs=[{"leg_id": f"L{i}", "vote": 1,
-                                    "contribution_units": 10_000}])
+                                    "contribution_units": 10_000}],
+                cash_delta_usd=-1084.0 - i)
             rows.append(jw.write("NET_ORDER", row))
         rows.append(jw.write("SWAP", jr.swap_row(
             ts_utc="2024-06-04T22:00:00Z", symbol="EURUSD",

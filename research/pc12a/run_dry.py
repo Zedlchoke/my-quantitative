@@ -441,10 +441,10 @@ class SymbolEngine:
                 self._leg_outcome(lid, "UNAVAILABLE_FILL_BAR")
                 self._hist("UNAVAILABLE_FILL_BAR")
                 self.journal.write("BLOCK", _jr.blocked_row(
-                    outcome="BLOCKED_STALE",
+                    outcome="UNAVAILABLE_FILL_BAR",
                     blocked_reason_detail=(
-                        "UNAVAILABLE_FILL_BAR: no fill bar before the next "
-                        "decision (fail-closed, no cash effect)"),
+                        "no fill bar before the next decision "
+                        "(fail-closed, no cash effect)"),
                     decision_fields=self._dec_fields(
                         self.leg_by_id[lid], eligible[lid], ts, on)))
             return
@@ -497,6 +497,10 @@ class SymbolEngine:
         contributing = [{"leg_id": lid, "vote": eligible[lid].vote,
                          "contribution_units": self.leg_desires.get(lid, 0)}
                         for lid in sorted(eligible)]
+        # A7-prelaunch F-2 remediation: per-event cash delta (FILL_ACCOUNTING
+        # SPEC section 7); sign follows the book update above.
+        cash_delta = (-(delta * fq.fill_price + commission) if delta > 0
+                      else ((-delta) * fq.fill_price - commission))
         self.journal.write("NET_ORDER", _jr.net_order_row(
             order_id=order_id,
             order_kind=eligible[next(iter(eligible))].order_kind or "OPEN",
@@ -508,7 +512,8 @@ class SymbolEngine:
             cross_cost_usd=fq.cross_cost_usd, commission_usd=commission,
             cell_id=fq.cell_id, u3_band_id="U3_NON_EVENT",
             venue_model="PANEL_DUKA", units_after=self.book_units,
-            contributing_legs=contributing))
+            contributing_legs=contributing,
+            cash_delta_usd=cash_delta))
 
     # -- misc -----------------------------------------------------------------
 
