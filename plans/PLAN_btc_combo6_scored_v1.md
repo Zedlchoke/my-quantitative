@@ -126,8 +126,8 @@ screenshot fields — NOT owner-supplied, flagged for owner review at scored GO)
   label carried on all outputs.
 - End cap: last 5m bar in corpus. Sealed tail (see §4) NOT loaded past
   2025-12-27 boundary? — NO: sealed tail is loaded (one corpus, one digest)
-  but NEVER evaluated: engine hard-caps evaluation at F10 end 2025-12-26;
-  sealed-tail equality is asserted by count in outputs only.
+  but NEVER evaluated: engine hard-caps evaluation at F10 end 2025-12-29
+  (per §12 erratum); sealed-tail equality is asserted by count in outputs only.
 
 ## §3 Cost authority (frozen, declared-pessimistic)
 
@@ -143,10 +143,13 @@ GROSS/NET dual books: NET (with full kernel) is decision-grade.
 - Corpus: 2020-01-01 → 2026-09-22 (5m, UTC).
 - Warmup: 2020-01-01 → 2020-12-31 (≥ 52w; max indicator need 72h — generous).
 - Test folds: 10 × 26w, F1 starts 2021-01-04 (Monday):
-  F1 2021-01-04…, each fold 26 weeks, F10 ends 2025-12-26.
+  each fold exactly 26 weeks, Monday-aligned; F10 ends 2025-12-29
+  (ERRATUM 2026-09-29 — see §12; original prose said 2025-12-26, an
+  arithmetic slip: 2021-01-04 + 260w = 2025-12-29, measured by lane
+  DATA-VERIFY before code freeze).
   No parameter fitting exists (owner-pinned specs) ⇒ embargo N/A_NO_FITTING
   (recorded, not inferred); fold boundaries are force-flat + attribution walls.
-- Sealed OOS tail: 2025-12-27 → 2026-09-22 (~39w) SEALED — not evaluated this
+- Sealed OOS tail: 2025-12-29 → 2026-09-22 (~38.7w) SEALED — not evaluated this
   cycle; candidate for prospective verification only (new authority required).
 - Non-vacuity: ≥ 30 closed trades per leg over the 10 folds, else leg verdict
   carries `TRADE_COUNT_ONLY`.
@@ -231,6 +234,16 @@ Verdict bars:
 | reproduction | `scored_repro/` + ALL_MATCH verdict |
 | terminal | `audits/A7_TERMINAL_AUDIT.md`, `TERMINAL_DECISION.md` |
 | close | registry TERMINAL, HYPOTHESIS_LEDGER row, FAMILY_FAILURES, MAP, LESSONS |
+
+## §12 Erratum register
+
+- E1 (2026-09-29, pre-code-freeze): §4 fold end corrected 2025-12-26 →
+  2025-12-29 (Monday-aligned 10×26w). Found by lane DATA-VERIFY (delta
+  2025-12-26 − 2021-01-04 = 1817d = 259w+4d ≠ 260w); amended to lane IMPL
+  before freeze; implemented programmatically in research/btcombo6/spec.py
+  (pinned by test); control-plane record:
+  research/control/BTC-COMBO6-SCORED-V1/DATA_COST_FREEZE.md (root main
+  commit 11e64164). Sealed-tail start moves 2025-12-27 → 2025-12-29.
 
 ## §11 Owner open items (non-blocking, disclosed)
 
