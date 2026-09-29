@@ -155,7 +155,12 @@ def read_rows(path: str) -> List[Dict]:
 
 
 def verify_chain(path: str) -> Dict:
-    """Recompute the chain; any tamper/truncation is reported."""
+    """Recompute the chain; any tamper/truncation is reported.
+
+    Verification-lane hardening: the HEADER's self-hash is recomputed too
+    (it roots the chain but its own fields -- e.g. the run meta -- were
+    previously taken on faith; a tampered header went undetected).
+    """
     rows = read_rows(path)
     prev: Optional[str] = None
     for i, row in enumerate(rows):
@@ -163,6 +168,12 @@ def verify_chain(path: str) -> Dict:
             if row.get("row_kind") != "HEADER":
                 return {"ok": False, "first_bad_seq": row.get("seq"),
                         "reason": "first row is not HEADER"}
+            body = {k: v for k, v in row.items() if k != "row_sha256"}
+            digest = hashlib.sha256(
+                _canonical(body).encode("utf-8")).hexdigest()
+            if digest != row.get("row_sha256"):
+                return {"ok": False, "first_bad_seq": row.get("seq"),
+                        "reason": "row_sha256 mismatch (field tampered)"}
             prev = row.get("row_sha256")  # the header roots the chain
             continue
         if row.get("prev_row_sha256") != prev:

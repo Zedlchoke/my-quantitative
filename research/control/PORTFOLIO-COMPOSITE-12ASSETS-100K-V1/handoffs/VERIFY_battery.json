@@ -1,0 +1,94 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "PC12A_VERIFY_battery",
+  "status": "DONE",
+  "cycle_id": "PORTFOLIO-COMPOSITE-12ASSETS-100K-V1",
+  "role": "verification-lane-battery-section-8",
+  "lane": "tests/ (new battery files) + minimal disclosed engine fixes under research/pc12a/",
+  "summary": "Completed the campaign section-8 verification battery the impl lane did not cover, as 4 new test files (68 tests): (1) tests/test_pc12a_truncation.py -- no-lookahead truncation replay (ERP-tracka law) on a deterministic synthetic mini-panel (same .bi5 encoder as the impl panel tests) driving the FULL dry pipeline over the 12 real leg configs: the run over the panel truncated at t_cut=2024-06-11T12:00Z reproduces the full run's rows for every decision <= t_cut -- per-symbol content identity for all 3 symbols AND a raw BYTE-prefix on the leading EURUSD block (hash-chain sensitive to any earlier byte); plus a leg-level vote-sequence prefix replay for each of the 12 real legs on fresh instances; plus surgical-truncation and no-fabricated-rows proofs. THE BATTERY FAILED INITIALLY AND CAUGHT TWO GENUINE LOOKAHEAD BUGS IN THE IMPL ENGINE (fixed, see changed_paths): the rolling ATR60 TR-deque was built over the WHOLE day before the decision loop (same-day future bars entered ctx.atr60 -> stops and VC3 deviation), and the shared L6 CostGuard summed spends with timestamps AFTER the decision (sequential symbol engines had already recorded post-decision spends). (2) tests/test_pc12a_pit_joins.py -- PIT joins: fold-embargo arithmetic for all 8 folds (train data strictly before test start minus the 1-week embargo; last possible freeze precedes it), tzdata session marks swept across DST seams 2021-2026 (no hardcoded offsets; both regimes present every campaign year), the 90s M1 staleness law at the boundary, POISONED FUTURE BAR fails closed at BOTH layers (VolprofLeg returns NOT_RUN for any last_data_ts after the decision; Eligibility returns OFF/E3 for a snapshot whose available_time_utc is after the decision or unparseable -- both guards ADDED by this lane, disclosed), FEATURES_BLACKLIST with one poison per pattern of the full frozen tuple AND the gate proven live inside Eligibility.evaluate, the swap value-date rule swept across the campaign (Sun..Thu 22:00 UTC events only, Wed x3, weekly multiplier sum 7, NO Friday-close or Saturday event), the Friday-20:00 profile freeze proven to truncate AT the stamp (poisoned post-20:00 prices never enter the digest), and the negative macro-join proof (no leg pit_join_list references EFFR/VIX/Brent-WTI/SOFR/SONIA -- macro joins are NOT_RUN in this engine). (3) tests/test_pc12a_arm_distinctness.py -- trial-identity law: the 12 FROZEN JSON configs match the in-code defaults byte-for-byte, arm_config_digest is pairwise distinct (12/12), deterministic and a pure function of (candidate, params) -- param changes move it, label changes do not -- no two configs share (family_id, mech_key, symbol), every config carries non-empty outcome_exposed_label and cluster_id, and every cluster_id resolves in the frozen L5 map. THIS EXPOSED A THIRD IMPL BUG: FROZEN_CLUSTER_MAP_PLACEHOLDER used short keys (volprof_vc1) while the frozen configs use volprof_vc1_vaedge etc., so the L5 ClusterCaps .get(cid, cap) silently fell back for all 9 VOLPROF legs (cluster caps inert; numerically masked because all placeholder caps equal the per-asset default). Fixed by aligning the map keys to the config spelling (cap VALUES unchanged). (4) tests/test_pc12a_counter_tests.py -- counter-tests proving the DETECTORS work: the RGC-INC-1 self-grep leak scan FAILS on a deliberately poisoned report containing net_pnl (and on each forbidden key individually, with clean controls incl. the committed smoke artifacts), the CLI gate itself is counter-tested END TO END (journal.net_order_row poisoned with a net_pnl field -> rd.main returns exit 2); the reconciliation counter-test tampers ONE byte in a cost field of a synthetic journal (spread_once_usd 3.0 -> 8.0) and BOTH independent detectors trip (hash-chain row_sha256 mismatch AND the spread+slip==cross_cost identity), plus last-row tamper, raw same-length byte flip in the file text, and the books section-6 decomposition residual breaking under cost tamper. A FIFTH finding emerged here: verify_chain never recomputed the HEADER self-hash (a tampered run meta went undetected) -- hardened, with a header-tamper counter-test. NO PnL is computed or asserted anywhere in the new tests (synthetic inputs; count/digest/cost-field assertions only).",
+  "artifacts": [
+    "tests/test_pc12a_truncation.py",
+    "tests/test_pc12a_pit_joins.py",
+    "tests/test_pc12a_arm_distinctness.py",
+    "tests/test_pc12a_counter_tests.py",
+    "research/pc12a/run_dry.py (EDIT -- disclosed)",
+    "research/pc12a/policy.py (EDIT -- disclosed)",
+    "research/pc12a/legs.py (EDIT -- disclosed)",
+    "research/pc12a/journal.py (EDIT -- disclosed)",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/handoffs/VERIFY_battery.json"
+  ],
+  "dispatch_sha": "dispatch:PC12A_VERIFY_battery:owner-registration packet (expected HEAD 1b6e19dc26de1a63b7b34eb7dabac3f561653f53)",
+  "actual_start_sha": "1b6e19dc26de1a63b7b34eb7dabac3f561653f53",
+  "commit_sha": null,
+  "no_commit_disclosure": "ONE clean commit created by this lane including this handoff (pathspec staging; message 'PC12A verification lane: truncation replay + PIT joins + arm distinctness + leak/tamper counter-tests (68 tests)'); the sha cannot reference its own commit -- read it from git log -1 on the integration branch",
+  "changed_paths": {
+    "added": [
+      "tests/test_pc12a_truncation.py",
+      "tests/test_pc12a_pit_joins.py",
+      "tests/test_pc12a_arm_distinctness.py",
+      "tests/test_pc12a_counter_tests.py",
+      "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/handoffs/VERIFY_battery.json"
+    ],
+    "modified": [
+      "research/pc12a/run_dry.py",
+      "research/pc12a/policy.py",
+      "research/pc12a/legs.py",
+      "research/pc12a/journal.py"
+    ],
+    "deleted": [],
+    "engine_edits_disclosure": [
+      "research/pc12a/run_dry.py _process_day: PIT restructure of the rolling 60-bar TR state -- on decision days the deque now advances bar-by-bar INSIDE the decision loop (a decision at minute m sees only bars <= m); the whole-day pre-pass is retained ONLY on warmup days where no decisions are journaled. REASON: battery-1 truncation replay FAILED -- ctx.atr60 had consumed same-day FUTURE bars (stops, VC3 deviation gating). CONSEQUENCE: dry-run outputs differ from the impl lane's committed research/pc12a/smoke_dry_run/* (generated under the old semantics); those smoke artifacts are SUPERSEDED evidence and were not regenerated by this lane.",
+      "research/pc12a/policy.py CostGuard.evaluate: trailing-spend window now bounded (wstart < t <= now). REASON: the guard is shared across symbol engines that run sequentially; spends timestamped after the decision instant had entered an earlier decision's trailing sum (second battery-1 failure).",
+      "research/pc12a/policy.py Eligibility.evaluate: a PIT snapshot whose available_time_utc parses to an instant AFTER the decision, or fails to parse, returns OFF/E3 (fail closed). REASON: battery-2 poisoned-future-bar law -- previously only the max_age_ok flag was checked.",
+      "research/pc12a/policy.py FROZEN_CLUSTER_MAP_PLACEHOLDER: keys aligned to the frozen configs' cluster_id spelling (volprof_vc1_vaedge/volprof_vc2_lvnfail/volprof_vc3_pocmag/trend_daily/calendar_weekday; cap values unchanged at 100_000). REASON: battery-3 -- the old short keys never matched any config so L5 caps silently fell back to the per-asset default for the 9 VOLPROF legs.",
+      "research/pc12a/legs.py VolprofLeg.on_bar: staleness law made symmetric -- last_data_ts AFTER ctx.ts (future-dated bar) fails closed with NOT_RUN, like the existing >90s stale case. REASON: battery-2 poison law at the leg layer.",
+      "research/pc12a/journal.py verify_chain: the HEADER row's self-hash is now recomputed like every other row. REASON: battery-5 counter-testing showed a tampered header (e.g. forged legs_digest meta) previously went undetected because the header only rooted the chain."
+    ],
+    "note": "all four engine edits are minimal and additive-fail-closed; every pre-existing pc12a test still passes unchanged"
+  },
+  "tests": {
+    "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/ -q -k pc12a (cwd = this worktree)",
+    "pc12a_result": "150 passed, 0 failed (82 pre-existing + 68 new: truncation 5, pit_joins 33, arm_distinctness 12, counter_tests 18)",
+    "worktree_full_suite": "2057 passed, 7 failed, 1 skipped (111s)",
+    "preexisting_failures_disclosure": "the 7 failures are ALL in tests/test_family_failures.py (test_real_registry_validates + test_real_registry_uses_core_signatures[*]) -- the identical PRE-EXISTING set disclosed in the IMPL_engine handoff at the same base HEAD 1b6e19dc; this lane touched nothing that module reads"
+  },
+  "authority_claims": [
+    "HEAD verified at task start: 1b6e19dc26de1a63b7b34eb7dabac3f561653f53 on branch orca/portfolio-composite-12assets-100k-v1-integration, clean tree (exactly as dispatched).",
+    "Campaign section-8 battery items 1 (no-lookahead truncation replay), 2 (PIT joins incl. embargo/tzdata/staleness/blacklist/swap value-date), 5-support (leak scan counter-test) and the arm-distinctness/trial-identity law: ACHIEVED and green; the truncation law is asserted at BOTH pipeline level (byte-prefix where the file layout permits + per-symbol content identity) and leg level (vote-sequence prefix on fresh instances).",
+    "Two genuine lookahead violations (same-day ATR60 deque; unbounded CostGuard trailing window) and two silent-failure defects (L5 cluster-key drift; unverified journal HEADER self-hash) were FOUND BY THE BATTERY, fixed minimally, and the battery now passes -- the fixes are disclosed per-file in changed_paths.engine_edits_disclosure.",
+    "RGC-INC-1: no PnL/outcome value is computed or asserted anywhere in the new tests; the only PnL-adjacent strings are deliberate synthetic poisons fed to the leak scanner to prove it fails on them, and the CLI exit-2 gate is counter-tested end to end.",
+    "Section-8 items 3 (per-bar journal<->positions<->cash<->equity reconciliation) and 4 (determinism + reproduction twin at freeze SHA): item 4's determinism half is covered by the impl lane's byte-identical rerun tests (re-verified green in the 150); the per-bar reconciliation engine and the detached-worktree reproduction twin belong to the orchestrator's scored stage, NOT this pre-scored battery lane."
+  ],
+  "known_limitations": [
+    "The ERP-tracka BYTE-prefix is provable only over the leading EURUSD symbol block: run_dry main() streams symbol engines sequentially (EURUSD block, then GBPUSD, then USDJPY), so post-cut rows of an earlier symbol legitimately shift later symbols' seq/prev-row chain fields. GBPUSD/USDJPY are verified content-identical modulo those three chain-bookkeeping fields. A true time-interleaved portfolio loop would make the whole-file byte law provable -- recommended for the Stage-B engine.",
+    "On a truncated panel the cut date's 22:00 UTC SWAP accrual still fires (declared U4/U5 calendar event valued from the last tradable bar <= the cut); the test documents and bounds this as the ONLY tolerated post-cut row kind.",
+    "Macro PIT joins (EFFR d+1 15:00 ET, VIX d 16:15 ET, Brent-WTI <= decision-10 calendar days) are NOT_RUN: this dry engine consumes no macro series; coverage is the negative assertion that no pit_join_list references any macro input.",
+    "The impl lane's committed research/pc12a/smoke_dry_run/* was generated under the pre-fix ATR semantics and is superseded by the run_dry.py fix; it still scans clean under the leak scanner (asserted) but must not be treated as reproducible output of the fixed engine.",
+    "Leg-level replay uses synthetic deterministic streams; legs whose real-data triggers are rare (EURUSD-S009's 252d vol-percentile gate) contribute few or no decisions on synthetic data -- the prefix law still holds vacuously-to-weakly for them at leg level, while the pipeline-level law covers them through whatever rows they did produce."
+  ],
+  "incidents": [
+    "Battery-1 initial RED on the unmodified impl engine (GBPUSD prefix divergence at 2024-06-11T11:00Z via ATR60; USDJPY divergence at 2024-06-10T13:41Z via the shared CostGuard) -- root-caused, fixed minimally in-run, battery then GREEN; full worktree suite re-run to confirm no collateral failures.",
+    "Battery-3 initial RED (cluster_id volprof_vc1_vaedge missing from the frozen L5 map) -- key drift fixed; cap values unchanged."
+  ],
+  "tree_status": "clean after the single commit; only this lane's 5 additions and 4 disclosed engine edits touched",
+  "workers": "verification lane solo (root .venv pytest; no heavy lock; no network; no S1; nothing outside the worktree written)",
+  "outputs": [
+    "tests/test_pc12a_truncation.py",
+    "tests/test_pc12a_pit_joins.py",
+    "tests/test_pc12a_arm_distinctness.py",
+    "tests/test_pc12a_counter_tests.py"
+  ],
+  "outputs_stats": {
+    "new_tests": 68,
+    "pc12a_suite_total": 150,
+    "engine_files_edited": 4,
+    "genuine_defects_found_and_fixed": 5
+  },
+  "key_numbers": {
+    "battery1_pipeline_prefix_rows_compared": "per-symbol <= t_cut rows (EURUSD 84 / GBPUSD 133 / USDJPY 152 in the synthetic window) + byte-prefix over the leading EURUSD block",
+    "t_cut": "2024-06-11T12:00:00Z (mid-window, volume zeroed from minute 720, later days absent)",
+    "swap_calendar_sweep": ">= 250 campaign weeks, weekly multiplier sum 7, no Fri/Sat event",
+    "blacklist_patterns_enforced": "18/18",
+    "leak_scan_poison": "net_pnl -> clean=False, keys contains pnl; CLI gate exit code 2"
+  }
+}

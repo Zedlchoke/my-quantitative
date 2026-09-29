@@ -137,10 +137,14 @@ class SymbolEngine:
         bid_high, bid_low = day.bid.high, day.bid.low
         mid_close = day.mid_close
 
-        # rolling 60-bar TR over tradable minutes
-        for m in range(_panels.RECORDS_PER_DAY):
-            if not tradable[m]:
-                continue
+        # Rolling 60-bar TR state.  PIT law (campaign §8.1 truncation
+        # replay, verification-lane fix): on DECISION days the deque
+        # advances bar-by-bar INSIDE the decision loop so a decision at
+        # minute m only ever sees bars <= m.  The original whole-day
+        # pre-pass fed same-day FUTURE bars into ctx.atr60 (stops, VC3
+        # deviation) and broke the prefix-identity law; it is retained
+        # ONLY on warmup days, where no decisions are journaled.
+        def _advance_tr(m: int) -> None:
             if self.last_mid_close is None:
                 tr = float(bid_high[m] - bid_low[m])
             else:
@@ -171,10 +175,13 @@ class SymbolEngine:
                 self.day_buffer.pop(0)
 
         if not in_window:
-            # indicator warm-up only: daily legs consume the completed
-            # prior trading day during the warmup stream (no decisions
-            # journaled, no fills) so their lookback history exists at the
+            # indicator warm-up only (no decisions journaled, no fills):
+            # daily legs consume the completed prior trading day during
+            # the warmup stream so their lookback history exists at the
             # window start
+            for m in range(_panels.RECORDS_PER_DAY):
+                if tradable[m]:
+                    _advance_tr(m)
             if self.prev_day_agg is not None and self.daily_legs:
                 for leg in self.daily_legs:
                     leg.on_daily_bar(self.prev_day_agg)
@@ -200,6 +207,7 @@ class SymbolEngine:
         for m in range(_panels.RECORDS_PER_DAY):
             if not tradable[m]:
                 continue
+            _advance_tr(m)   # deque as-of THIS completed bar (PIT: <= m)
             ts_close = midnight + dt.timedelta(minutes=m + 1)
             ctx = self._make_ctx(day, m, ts_close, sessions, flat_ts)
             holding = any(l.desired_units != 0 for l in self.volprof_legs)

@@ -358,9 +358,13 @@ class VolprofLeg(BaseLeg):
             return flat_vote
         if prof is None or ctx.atr60 <= 0:
             return None
-        # staleness fail-closed (4.2): newest bar older than 90s -> NOT_RUN
+        # staleness fail-closed (4.2): newest bar older than 90s -> NOT_RUN;
+        # a bar timestamped AFTER the decision (future-dated poison) is a
+        # lookahead and fails closed the same way (campaign §8 PIT law).
         if ctx.last_data_ts is not None and (
-                ts - ctx.last_data_ts).total_seconds() > self.STALE_MAX_SEC:
+                ctx.last_data_ts > ts
+                or (ts - ctx.last_data_ts).total_seconds()
+                > self.STALE_MAX_SEC):
             return None
 
         if self.desired_units != 0:

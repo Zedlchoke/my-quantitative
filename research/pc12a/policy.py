@@ -141,6 +141,23 @@ class Eligibility:
                     "OFF", "E3",
                     f"E3: PIT input {snap.get('input_id')} stale at "
                     f"{now.isoformat()}")
+            # PIT join law (campaign §8.2): an input claiming availability
+            # AFTER the decision instant is future data -- fail closed, and
+            # an unparseable availability stamp is unverifiable -> E3 too.
+            av = snap.get("available_time_utc")
+            if isinstance(av, str):
+                try:
+                    av_ts = dt.datetime.strptime(
+                        av, "%Y-%m-%dT%H:%M:%SZ").replace(
+                            tzinfo=dt.timezone.utc)
+                except ValueError:
+                    av_ts = None
+                if av_ts is None or av_ts > now:
+                    return EligibilityVerdict(
+                        "OFF", "E3",
+                        f"E3: PIT input {snap.get('input_id')} "
+                        f"available_time {av!r} not verifiably <= "
+                        f"decision {now.isoformat()} -> fail closed")
         w26 = now - dt.timedelta(weeks=self.E1_ARM_WEEKS)
         if stats.leg_start_ts is not None and stats.leg_start_ts <= w26:
             trailing = sum(1 for t in stats.decision_events
@@ -205,10 +222,15 @@ class Netting:
 
 FROZEN_CLUSTER_MAP_PLACEHOLDER: Dict[str, int] = {
     # cluster_id -> max |net units| per asset in the cluster (PLACEHOLDER:
-    # to be frozen at Stage-B from measured TRAIN co-movement)
-    "volprof_vc1": 100_000,
-    "volprof_vc2": 100_000,
-    "volprof_vc3": 100_000,
+    # to be frozen at Stage-B from measured TRAIN co-movement).
+    # Verification-lane fix (arm-distinctness battery): keys are the
+    # cluster_ids of the 12 FROZEN leg configs (full mech-key spelling,
+    # e.g. "volprof_vc1_vaedge"); the earlier short spellings never
+    # matched any config, leaving L5 silently inert for the 9 VOLPROF
+    # legs (the .get(cid, cap) fallback masked the miss).
+    "volprof_vc1_vaedge": 100_000,
+    "volprof_vc2_lvnfail": 100_000,
+    "volprof_vc3_pocmag": 100_000,
     "trend_daily": 100_000,
     "calendar_weekday": 100_000,
 }
@@ -260,7 +282,14 @@ class CostGuard:
     def evaluate(self, now: dt.datetime, current_units: int,
                  target_units: int, est_total_usd: float) -> GuardVerdict:
         wstart = now - dt.timedelta(days=self.state.window_days)
-        in_win = [(t, c) for t, c in self.state.spend if t > wstart]
+        # PIT law (campaign §8.1, verification-lane fix): only spends with
+        # timestamp <= the decision instant may enter the trailing sum.
+        # The guard is shared across symbol engines that run sequentially,
+        # so the spend list can already contain FUTURE-dated entries when
+        # an earlier instant of another symbol is evaluated; summing them
+        # leaked post-decision spends into a past decision.
+        in_win = [(t, c) for t, c in self.state.spend
+                  if wstart < t <= now]
         trailing = sum(c for _, c in in_win)
         risk_reducing = abs(target_units) < abs(current_units) or (
             current_units * target_units < 0 and abs(target_units)
