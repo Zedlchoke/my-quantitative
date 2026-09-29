@@ -1,0 +1,43 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "BTC-COMBO6-A7-TERM",
+  "cycle_id": "BTC-COMBO6-SCORED-V1",
+  "role": "A7_AUDITOR",
+  "lane": "a7-term",
+  "dispatch_sha": "7f3cce39df0cfe1d8aed40344d60c283a8b94bd8",
+  "actual_start_sha": "7f3cce39df0cfe1d8aed40344d60c283a8b94bd8",
+  "commit_sha": "NONE_READ_ONLY",
+  "authority_claims": [
+    "Integration HEAD measured == dispatch sha 7f3cce39df0cfe1d8aed40344d60c283a8b94bd8; parent chain verified exactly 7f3cce39 -> ce1dd0ef (A7-pre+GO) -> c0f97a9d (FREEZE) -> 2db0e19b (IMPL) -> 2481f307 (BASE/plan); branch orca/btc-combo6-scored-v1-integration; tree clean apart from these two audit artifacts. Repro twin detached at c0f97a9d, HEAD unmoved, ZERO tracked-file modifications (untracked scored/ + TRIAL_LEDGER.jsonl + scored_repro/ outputs only, as declared by R_REPRO)",
+    "content_sha256 digests independently re-derived from artifact bytes with an A7-written canonical-JSON hasher (no engine imports) for all 3 stress tiers in BOTH worktrees: 1.0 d787697451af997b0c5f314937ac46444d747c35347dba4ed4370e95c615e5e6, 1.5 f5eb9c915b6565f3f5a289fcdd3d713b4096d160a353384dbecbbf12f8ea9276, 2.0 e1a43807dd659175fbda60b3239d1238757505ef52ebe70d0bc438cd24a2776d — each equals the artifact self-declaration, the ledger scored_content_sha256 dict (identical dict in 7/7 rows), and the twin's digest. Incident I-1 resolved: the …fbda6033 variant exists in NO artifact or ledger; the dispatch packet constant was the typo; terminal records carry the correct digest",
+    "All scored arithmetic recomputed from trade lists (stress 1.0, plus 1.5/2.0 combo): every leg net/count/PF/pos-folds, combo net -63617.859135 / 6080 trades / PF 0.915785, per-fold nets F1..F10, sum(legs)==combo exactly, equity_end -3617.86 == 60000+net, stress 1.5 -100107.478520 PF 0.871008, stress 2.0 -136597.097906 PF 0.828554 — ALL deltas vs SCORED_REPORT/ledger exactly 0 (report's integer rounding within 0.41 on per-fold dollars). Combo MDD not exactly derivable (no equity series in artifact) but realized-equity lower bound 95718.17 > 15000 independently confirms P4 FAIL; internal identity verified",
+    "Baselines recomputed: B1 entry fee 6.00 == 10000x6bps, exit fee 15.9595 == 87920.50 exit px x 0.30253589 qty x 6bps, gross identity qty*(exit-fill) == 16599.1064 exact, net +10689.2109 exact, fill 33053.93 @ 2021-01-04T00:00Z; funding -5887.9360 sane vs census (5460 events, implied mean charged rate 1.078e-4 vs median 9.72e-5). B3 prior-fold argmax re-run: chosen F1 LEG-1 / F2-F3 LEG-2 / F4-F7 LEG-3 / F8-F10 LEG-2 identical to artifact, total -12645.240573 exact",
+    "Verdict law: P1-P7 recomputed from artifact numbers (FAIL/FAIL 0.916/FAIL 4-of-10/FAIL 97271/FAIL/TRUE-vacuous/FAIL vs B1 +10689 and mean-leg -10603); some legs pass P1 (LEG-2 +4707.81, LEG-3 +1662.25) and combo fails P7 => plan §7 predecided label COMBO6_NO_INCREMENTAL_VALUE; A7's independent label == engine == artifact == ledger; no label invented outside §7 (engine's extra UNCATEGORIZED_DEFER_OWNER escape hatch exists but was not invoked)",
+    "Fair treatment of positive legs verified: LEG-2/LEG-3 verdict rows record p1_net_positive true + non_vacuous in artifact AND ledger (equal); SCORED_REPORT presents them accurately (nets/PF/pos-folds match recompute) and the NO_INCREMENTAL_VALUE branch (not REJECT_ALL) is the honest §7 disposition; git diff c0f97a9d..HEAD -- research/btcombo6/ is EMPTY (no post-PnL parameter changes; landing commit touched control/evidence files only)",
+    "PIT/sealed at terminal: zero trades with fill_ts or exit_ts >= 2025-12-29T00:00Z across all 3 stress artifacts (max exit 2025-12-28T23:55Z); B1 wall exit in-window; wall timestamp appears only in fold-calendar declarations + generated_utc; registry s1 SEALED_UNTOUCHED",
+    "Repro evidence verified: compare_artifacts.json content-equal + canonical-equal all tiers with null first-diffs (A7 re-derived twin digests and re-compared the twin ledger itself, 8 rows equal ignoring ts); truncation_check.json 18/18 prefix_ok+count_ok and A7 independently re-counted ALL 18 expected prefix lengths from the twin artifact's trade lists (incl. LEG-3 @ 2024-01-01 = 144; LEG-3 total 226 == full-run artifact); lock_run_summary R_REPRODUCTION released FINISHED 02:56:44.517Z rc=0",
+    "Two-key + budget + locks: GO_RECORDED key_1 sha 7f89e6394811100484e3780d5880d8240420286c258732cf4b69dd01d8023f01 == A7's shasum of audits/A7_PRELAUNCH.md; key_2 verbatim == OWNER_DIRECTIVE quote; budget 7/12 (observed 7 == published 7, 8 ledger lines <= 20-row cap); heavy history has exactly 2 BTC-COMBO6 rows (E_SCORED_CELLS pid 19747 done rc=0 7.4s with the 3 expected artifacts; R_REPRODUCTION pid 20268 release note 'scored rc=0; truncation check rc=0'); lock currently FREE_PROVEN; F-1 wrapper fix and F-2/F-3 root-doc corrections verified on disk",
+    "FINDINGS: T-1 MEDIUM SCORED_REPORT L57 claims 'DSR computed in artifact' but no dsr/sharpe/deflated field exists in any scored artifact (both worktrees; plan §8 condition 6080>=100 met, value absent) — label unaffected, record must be corrected at close. T-2 LOW ledger header freeze_commit='PENDING_FREEZE' is an engine constant; freeze c0f97a9d pinned in >=5 other records; recommendation: accept placeholder, do NOT hand-edit the ledger, close record states c0f97a9d. T-3 LOW registry row stale (pre-GO state) — must be updated at close (head 7f3cce39, budget 7/12, GO CONSUMED, terminal label). T-4 INFO I-1 confirmed dispatch-side typo. T-5 INFO MDD equity-series limitation (lower bound suffices for P4). T-6 INFO gate-table 'reproduction PENDING' row stale within landing commit 7f3cce39. T-7 INFO engine vocabulary superset (unused escape hatch).",
+    "VERDICT: A7_TERMINAL_VERDICT: CONFIRM_WITH_CONDITIONS (0 CRITICAL, 0 HIGH, 1 MEDIUM, 2 LOW, 4 INFO). Conditions A1-executable at close: C1 terminal record corrects the DSR claim (DSR: NOT_COMPUTED; report L57 flagged as misstatement; no rewrite of frozen bytes); C2 close binds freeze c0f97a9d + registry update (head 7f3cce39, budget 7/12, GO CONSUMED, terminal COMBO6_NO_INCREMENTAL_VALUE; TRIAL_LEDGER.jsonl never hand-edited); C3 all terminal records carry the correct stress-2.0 digest e1a43807dd659175fbda60b3239d1238757505ef52ebe70d0bc438cd24a2776d with I-1 acknowledged"
+  ],
+  "changed_paths": [
+    "research/control/BTC-COMBO6-SCORED-V1/audits/A7_TERMINAL_AUDIT.md",
+    "research/control/BTC-COMBO6-SCORED-V1/handoffs/A7_term.json"
+  ],
+  "tests": [],
+  "known_limitations": [
+    "Combo max drawdown 97270.69 is not exactly recomputable from artifact bytes (artifacts carry metrics + trades but no bar-level equity series); verified via internal identity (equity_end == 60000 + net) and an A7 realized-equity lower bound 95718.17 that independently confirms the P4 FAIL bar (<= 15000)",
+    "The truncated-run side of the truncation-replay check was not re-executed by A7 (twin is frozen read-only evidence); A7 verified its machine JSON structure, all 18 pass flags, and independently re-counted all 18 expected prefix lengths from the twin artifact's own trade lists",
+    "content_sha256 recipe (canonical JSON settings + excluded key set) was read from combo.py source and re-implemented independently in stdlib; the recipe itself is trusted-by-reading while every digest input was re-measured from artifact bytes",
+    "Scored CLIs were not run inside the integration worktree (they rewrite artifacts); reproduction relied on the committed twin evidence plus A7's independent byte-level re-derivations in the twin"
+  ],
+  "incidents": [
+    "I-1 (carried, resolved): R-REPRO dispatch pinned stress-2.0 expected content_sha256 e1a43807dd659175fbda6033... (char 22='3'); A7 confirms the actual digest in every recording (integration artifact + ledger 7/7, twin artifact + ledger, A7 independent recompute in both worktrees) is e1a43807dd659175fbda60b3239d1238757505ef52ebe70d0bc438cd24a2776d (char 22='b'); typo was in the dispatch constant only; terminal record must keep the correct digest"
+  ],
+  "tree_status": "integration-clean-except-these-two-audit-artifacts (A1 to commit); twin-untouched; NO commits made by this lane",
+  "workers": 0,
+  "outputs": [
+    "research/control/BTC-COMBO6-SCORED-V1/audits/A7_TERMINAL_AUDIT.md",
+    "research/control/BTC-COMBO6-SCORED-V1/handoffs/A7_term.json"
+  ]
+}
