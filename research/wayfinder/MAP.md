@@ -1,3 +1,33 @@
+## Sprint state (synced at the BTC-COMBO6-SCORED-V1 terminal, 2026-09-29)
+
+- **BTC-COMBO6-SCORED-V1 TERMINAL -> `COMBO6_NO_INCREMENTAL_VALUE`** (owner-directed
+  replication: 6 screenshot bot strategies combined into one $60k portfolio,
+  BTCUSDT 2021-01..2025-12 walk-forward, 7/12 scored cells, 0 survivors).
+  Branch `orca/btc-combo6-scored-v1-integration` terminal `6f9dfd52`
+  (base main `2481f307`; chain 2481f307 -> 2db0e19b IMPL -> c0f97a9d FREEZE ->
+  ce1dd0ef GO -> 7f3cce39 scored -> 6f9dfd52 terminal).
+  - Combo net **−63,617.86** (PF 0.916, 4/10 folds, maxDD 97,271/60,000;
+    ×1.5 −100,107; ×2.0 −136,597) vs **B1 always-long +10,689** — passive
+    dominates. LEG-2 (MA 4h/24h turn +4,708) and LEG-3 (MA 12h/72h +1,662)
+    pass P1 in isolation; LEG-1 momentum 1%/4h **−46,534** (3,795 trades ×
+    ~$12 fees — pure churn); no leg promoted post-PnL.
+  - Gate arc: sanitized dry-run (6/6 non-vacuous, leak-proof) -> A7 prelaunch
+    AUTHORIZED_WITH_FINDINGS (wrapper-flag F-1 fixed pre-score) -> two-key GO
+    (owner standing directive consumed at gate) -> scored under heavy lock ->
+    repro twin ALL_MATCH (byte-equal + 18/18 truncation replay) -> A7 terminal
+    CONFIRM_WITH_CONDITIONS (all numbers re-derived delta 0; C1 DSR
+    NOT_COMPUTED erratum, C2 freeze binding, C3 digest typo I-1 — all
+    discharged in TERMINAL_DECISION.md).
+  - **Fold erratum precedent**: independent data lane (A3) caught the plan's
+    260-week arithmetic slip (2025-12-26 -> 2025-12-29) BEFORE freeze — the
+    cheap-win pattern for every future fold calendar.
+  - Family death `BC6-OWNER-PINNED-TA-COMBO-6LEG` (FAMILY_FAILURES); ancestry
+    fence now blocks TA re-parameterizations of these legs without a changed
+    mechanism axis. Durable: btcombo6 engine + 102-zip sha-pinned perfect-grid
+    5m corpus (707,616 bars) + measured funding series.
+  - Denominators (P-9): +7 observed / +7 published this cycle; program union
+    left to next canonical reconciliation.
+
 ## Sprint state (synced at the PORTFOLIO-ROUTER-12ASSETS-100K-V1 terminal, 2026-09-28)
 
 - **PORTFOLIO-ROUTER-12ASSETS-100K-V1 TERMINAL → `ROUTER_STATES_THIN`** (0

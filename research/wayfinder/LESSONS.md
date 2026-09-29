@@ -1124,3 +1124,16 @@ floors; post-census close memos must state which kills are
 floor-defect-independent. Encoded in
 research/control/PORTFOLIO-ROUTER-12ASSETS-100K-V1/TERMINAL_DECISION.md and
 this entry.
+
+### P-32 — Cost-frequency dominance and the independent data-lane erratum catch (BTC-COMBO6-SCORED-V1, 2026-09-29)
+
+Source: owner-pinned 6-leg TA portfolio scored close (combo −63.6k vs buy-and-hold +10.7k).
+Lesson: (1) A symmetric TP/SL book on a fast clock can lose its entire capital to fees
+alone — LEG-1 paid ~45.5k fees on 10k notional over 5y with PF 0.78 BEFORE any signal
+judgment; frequency×cost is a first-class kill axis, so cost-churn arithmetic belongs in
+the pre-PnL battery, not just the post-mortem. (2) A read-only independent data lane
+recomputing the fold calendar caught a 260-week arithmetic slip (2025-12-26 vs
+2025-12-29) before code freeze for minutes of cost — fold calendars are always derived
+programmatically and cross-checked by a second lane, never hand-typed. Consequence:
+FAMILY_FAILURES BC6-OWNER-PINNED-TA-COMBO-6LEG fences TA re-parameterizations; any
+follow-up sleeve proposal needs a changed mechanism axis and a fresh plan.
