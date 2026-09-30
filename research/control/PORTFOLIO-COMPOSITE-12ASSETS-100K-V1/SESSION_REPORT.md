@@ -158,3 +158,53 @@ estate (50 sha-pinned files: EFFR/VIX/Brent−WTI).
 Registration GO, P_A statement, P_B volume-profile class authorization,
 P_C M1 re-fetch, P_D/P_E sequencing. Nothing above runs without them; no
 GO phrase was typed, inferred, or reused from any prior directive.
+
+---
+
+## Session 3 (overnight 2026-09-30→10-01, owner authorization to 08:00 VN): CAMPAIGN COMPLETED — TERMINAL
+
+**Typed close: `POLICY_NO_INCREMENTAL_VALUE`.** Stage-A (both waves) →
+Stage-B → Stage-C → repro investigation → A7 terminal → two-half close.
+
+### Stage-B (c5f3b805): 12 survivors (43 COST_DOMINATED kills had thinned
+62→12); cluster map frozen (one USDJPY trio ρ .63-.84); caps honestly
+non-binding; L6 guard $2,837/28d; 8 variants TRAIN-only; winner V3 frozen
+with honest NEGATIVE deflated objective (−$1.05M) — which PREDICTED the
+scored outcome.
+
+### Stage-C (e98f4fdd): scored 40/48 identities + 128-seed battery;
+policy net +$603,340.60 < B1 +$688,604.03 AND DD $418,227.97 > $397,156.85
+— P1 fails BOTH legs (the owner's exact AND-semantics bar). Worse than
+128/128 random gates; DSR 0.0002 (PSR 0.851 fails even undeflated);
+fold-0 89.7%; 7/12 leave-one-leg breaks. P1-B0 PASS: the legs' raw carry
+was REAL — the policy layers subtracted the value. Ledger 846/1500;
+observed==published 38/38 identities.
+
+### Repro STOP-3 investigation (A1): journal byte-identical; metrics
+differ in exactly 1 of 1,372 leaves (embedded code_digest — recipe hashes
+the live .py dir; frozen run pre-dated the final polish). Substantive
+determinism holds; adjudicated MEDIUM erratum by A7, not a blocker.
+
+### A7 terminal: CONFIRM_WITH_CONDITIONS (0C/1H/2M/2L/3I) — every
+governing bar recomputed independently, ZERO status flips. 4 conditions
+discharged in TERMINAL_DECISION.md (P8 isolation-vs-complement erratum —
+not verdict-changing; repro two-level proof; digest disclosure; registry
+sync).
+
+### Two-half close: worktree terminal commit c93123db; root half-1
+(e18e9c5a: HYPOTHESIS_LEDGER +1/+1, FAMILY_FAILURES
+PC12A-DIAGLEG-RISK-POLICY-COMPOSITE schema-validated, MAP section,
+LESSONS P-33) + registry TERMINAL (37fa6904; budget.used=0 stale
+disclosed per BTC-COMBO6/ILLIQ precedent — used 40 lives in phase text +
+ledger) + half-2 evidence landing (this commit; B4's 862MB seed journals
+pinned by JOURNAL_MANIFEST.json, not committed wholesale — worktree
+branch holds the full set). Lock FREE_PROVEN at close. S1
+SEALED_UNTOUCHED throughout. GO phrase consumed-then-extinguished (P-8).
+
+### Durable assets for successors
+
+150-row mechanization triage; 846-row labeled discovery ledger; 43
+COST_DOMINATED kills; COMPLEMENTARITY_TRAIN matrix; engine + 376 tests;
+IBKR probe chain + IDENTITY_FREEZE (7 daily candidates named, BLOCKED
+pending amendment); TB triple-barrier design (57-row budget registered,
+unspent); reopening condition = changed mechanism axis (Q-10).
