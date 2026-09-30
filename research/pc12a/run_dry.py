@@ -767,6 +767,15 @@ def main(argv=None) -> int:
     journal_path = os.path.join(args.out, "journal.jsonl")
     guard = _pol.CostGuard(_pol.CostGuardState())
     store = _panels.PanelStore()
+    # Stage-A wave 2: H1 ANC panels (AUDUSD/USDCAD) join the stream when
+    # PC12A_H1_PARQUETS is set (JSON {symbol: parquet path}); unset -> the
+    # frozen M1-only behavior is byte-identical (install is env-gated).
+    if os.environ.get("PC12A_H1_PARQUETS"):
+        from . import h1_panels as _h1
+        _h1.install()
+        store = _h1.CombinedStore(store, _h1.H1PanelStore(
+            roots=json.loads(os.environ["PC12A_H1_PARQUETS"])))
+        report["h1_panels"] = dict(store.h1.coverage)
     data_digests: Dict[str, str] = {}
     legs_not_run: Dict[str, str] = {}
     # wave-1: symbols whose legs consume another pair's D1 feed stream
