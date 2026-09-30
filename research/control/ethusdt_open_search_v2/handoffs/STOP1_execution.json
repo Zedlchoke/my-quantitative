@@ -1,0 +1,55 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "STOP1_EXECUTION_ETHUSDT_OPEN_SEARCH_V2",
+ "cycle_id": "ETHUSDT-OPEN-SEARCH-V2",
+ "role": "STOP-1 scored execution lane (frozen battery + gates + report + ledger, single commit)",
+ "lane": "stop1_execution",
+ "dispatch_sha": "d613786b6463a5f6b07ac53bbf7300722fc27a63",
+ "actual_start_sha": "d613786b6463a5f6b07ac53bbf7300722fc27a63",
+ "start_sha_verified": "git -C /Users/hoangminhlong/my-quantitative/.worktrees/ethusdt-open-search-v2/integration rev-parse HEAD == d613786b on branch orca/ethusdt-open-search-v2-integration at task open, tree clean. HEAD reconciliation vs the dispatch packet's expected f672e01e: d613786b is the GO-consumption commit = f672e01e + exactly ONE additive file (auth/GO_RECORDED_STOP1_COWNER.json, 28 lines; git diff --stat verified) — engine/freeze/data byte-identical to the A7-audited state; the audited code state is the state being run. Code-freeze digests re-verified before execution (eosv2_engine.py cf1f36d5.., run_scored.py 974111c5.., stage_all.py 5d96cad6..).",
+ "verdict": "ETHUSDT_OPEN_SEARCH_V2_NO_INCREMENTAL_VALUE",
+ "verdict_basis": "frozen runner scored/scored_summary.json: all_pass_cells [] — all 4 lane-B cells fail G3 (ALWAYS_ON wall) and G10 (no incremental value vs TREND_LF); matches the charter's preregistered honest prior",
+ "cell_table_net_at_1x": {
+  "EOSV2-B1": 288423.8,
+  "EOSV2-B2": 403801.9,
+  "EOSV2-B3": 139444.5,
+  "EOSV2-B4": 228882.71,
+  "EOSV2-A1": "NOT_RUN_THIN",
+  "EOSV2-A2": "NOT_RUN_THIN",
+  "EOSV2-A3": "NOT_RUN_THIN",
+  "EOSV2-A4": "NOT_RUN_THIN"
+ },
+ "gate_results": {
+  "G1": "PASS all 4",
+  "G2": "PASS all 4",
+  "G3": "FAIL all 4 (margins vs ALWAYS_ON_LONG -1.25M..-1.51M; vs TREND_LF -69K..-333K; vs SHORT_ALWAYS positive)",
+  "G4": "PASS all 4",
+  "G5": "FAIL B1(0.6112)/B2(0.5795)/B4(0.6440); PASS B3(0.4292)",
+  "G6": "PASS all 4 (block-shuffle 30-bar and sign-inversion controls never out-earn @1.0x)",
+  "G7": "PASS all 4 (fills@1.5x 236-516 <= 10000; cost/rt 0.1197-0.1386 bps <= 10)",
+  "G8": "P5 pending (frozen sequencing; determinism double re-run byte-identical sha256 0287ea23.. supports readiness)",
+  "G9": "P5 pending (frozen sequencing; must adjudicate remediation r1 governance flag below)",
+  "G10": "FAIL all 4 (B2 flips F2, B3 flips F1, B4 flips F2 positive->negative vs TREND_LF; B1 no flips but net below TREND_LF)",
+  "G11_disclosure_spearman_vs_trend_lf": {"B1": 0.628185, "B2": 0.665877, "B3": 0.453501, "B4": 0.455075}
+ },
+ "v1_reference_reproduction": "EXACT, all 4 references, all 3 tiers and all folds, to the cent: BASE_ALWAYS_ON_LONG 1653470.33 (folds 1627403.92/-72559.42/130354.40/-31728.56), BASE_TREND_LF 472864.82 (folds 296861.29/40179.87/58005.25/77818.42), REF_SHORT_ALWAYS -1656451.03, BASE_CASH 0.0 — matches V1 terminal eos1.scored_run@1 (V1 commit 8196e3ea) with zero divergence",
+ "lock_record": {
+  "mechanism": "research/governance/heavy_lock.py machine-wide (fcntl flock + registry + history), taken via scripts/stop1_execute.py harness",
+  "attempt_1": "TAKEN 2026-09-30T21:23:21Z pid 21026 -> RELEASED FAILED 21:23:36Z (TECHABORT pre-publication, stderr tail in release note; scored/ empty, zero outcome exposure)",
+  "attempt_2": "TAKEN 2026-09-30T21:25:31Z pid 21182 -> RELEASED FINISHED 21:26:06Z (battery + determinism; hold end-to-end across all compute)",
+  "prechecks": "locks inspect FREE_PROVEN before each take; machine-wide verified, no foreign worker touched"
+ },
+ "budget_count": {
+  "recorded": "8/8 cells consumed (state.json budget.used=8)",
+  "accountings_disclosed": "dispatch accounting: 4 arms + 4 references = 8 of the 8-cell cap; frozen runner denominator: scored_cells=4, computations 12, controls 24, references 12 (48 books, matches P3 dry-run); plan §4 reads references as NOT cells (would be 4/8) — conservative 8/8 recorded so no later lane infers spare budget",
+  "observed_equals_published": true
+ },
+ "incidents": "SCORED_ATTEMPT_1_TECHABORT_PRE_PUBLICATION: frozen runner KeyError 'all_pass' at run_scored.py:201 (aggregation iterates E.ARMS; lane-A NOT_RUN_THIN cells carry no gate fields); bug structurally unexposed pre-GO (dry-run never runs scored(); A7 tested only the refusal path). Remediation r1 = one token g[\"all_pass\"] -> g.get(\"all_pass\") — aggregation bookkeeping only, cannot alter PnL/gates/arms/folds/verdict semantics; applied PRE-outcome (no scored artifact existed; freeze red line not crossed); run_scored.py freeze digest superseded 974111c5.. -> 28f0ff88.. via additive freeze_remediations.r1 record; eosv2_engine.py digest unchanged byte-exact. V1 precedent identical arc (its SCORED_ATTEMPT_1/2). Governance delta vs V1: no fresh A7 delta was obtained before re-run (no A7 lane dispatched at this gate) — re-run proceeded under the consumed STOP-1 GO with full disclosure, FLAGGED FOR P5 A7 TERMINAL (G9) ADJUDICATION.",
+ "determinism": "cell EOSV2-B1 recomputed post-battery in 2 fresh processes (ROOT .venv python, frozen engine): canonical dumps byte-identical (sha256 0287ea234bceb69d92a98cb3b72553f542f707b30c4e144c340d394cb9cc1401 both runs); rounded nets + fold nets cross-check vs scored_summary.json exact (scored/determinism_b1.json pass=true)",
+ "next_steps_preregistered": "plan §6 sequencing: P5 repro twin + A7 terminal -> P6 two-half close. plan §8 for a gates-NO (A7 prelaunch did NOT veto lane B): 'NO candidate => standing directive authorizes tranche V3 ONLY with new lawful tuples; if A7 vetoes both lanes here, the posthoc open space on keyless data is EXHAUSTED and the campaign parks at an owner-redirection decision (asset change / new data authority / wall-redesign successor — each an owner decision per §34.5, not agent-derivable).' Branch determination deferred to P5 A7 terminal + P6 close per frozen sequencing.",
+ "commit_sha": null,
+ "tree_status": "This handoff is written INTO this lane's single execution commit (self-referential: its own sha cannot be known pre-commit; commit message 'EOSV2 STOP-1 scored execution: NO_INCREMENTAL_VALUE (8/8 cells, gates G3 wall + G10 fail all 4 lane-B cells)'. Committed paths staged by explicit pathspec only: audits_a7/go_authorization.json, scripts/stop1_execute.py (execution harness, NOT frozen engine code), scripts/run_scored.py (remediation r1, one line), freezes/eosv2_freeze.json (digest supersession + freeze_remediations.r1), scored/scored_summary.json + run_scored_stdout.json + determinism_b1.json + STOP1_SCORED_REPORT.md, state.json, events.jsonl, this handoff. No push, no merge, no ledger/registry writes outside the cycle's own control dir, no S1, no network, no orders.",
+ "workers": 0,
+ "outputs": "scored/STOP1_SCORED_REPORT.md (full report: per-cell table, references+V1 check, controls, gate matrix, determinism, budget, lock record, verdict quotes); scored/scored_summary.json (engine artifact verbatim); events.jsonl 2 new events (TECHABORT + SCORED_COMPLETE); state.json phase P4_STOP1_SCORED_COMPLETE budget 8/8 go CONSUMED scored_pnl_seen true",
+ "recommended_next_action": "Controller/owner: P5 repro twin (detached twin at code-freeze SHA incl. remediated run_scored.py digest 28f0ff88..) + fresh-context A7 terminal whose scope MUST include adjudicating (a) the r1 remediation-without-fresh-delta re-run and (b) the gates-NO campaign branch per plan §8, then P6 two-half close."
+}

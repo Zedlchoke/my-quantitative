@@ -436,9 +436,22 @@
  },
  "code_freeze": {
   "eosv2_engine.py": "cf1f36d52af2b343799480053bc01f0bebb62d5d4d89b803329f252733e85db9",
-  "run_scored.py": "974111c56437dc479355c4f4ba48285ea20316b005b3d1a9bfc0353712283922",
+  "run_scored.py": "28f0ff88dffc5e3e2daf5b442ac4e5c3fe72769bee8a18415b374a3b1aac572f",
   "stage_all.py": "5d96cad6a6be2efa9674878715119b20c3fee16a74f36671d05abc9b6275e061",
   "test_fixtures.py": "c43077015876fcc4710967bb3ab72c1a4d3a919cc2c93e122008cdd9cedb7139"
+ },
+ "freeze_remediations": {
+  "r1": {
+   "utc": "2026-09-30T21:23:21Z",
+   "trigger": "SCORED_ATTEMPT_1_TECHABORT_PRE_PUBLICATION (events.jsonl): KeyError 'all_pass' at run_scored.py:201 — scored-mode aggregation iterates E.ARMS including lane-A cells written as {'status': 'NOT_RUN_THIN'} which carry no gate fields; bug unexposed pre-GO (dry-run never runs scored(); A7 prelaunch verified the refusal path, not the authorized path)",
+   "change": "run_scored.py line 201 only: g[\"all_pass\"] -> g.get(\"all_pass\") — aggregation bookkeeping; NOT_RUN_THIN cells can never be all-pass (never computed), so eligibility/verdict semantics are unchanged",
+   "old_digest_run_scored_py": "974111c56437dc479355c4f4ba48285ea20316b005b3d1a9bfc0353712283922",
+   "new_digest_run_scored_py": "28f0ff88dffc5e3e2daf5b442ac4e5c3fe72769bee8a18415b374a3b1aac572f",
+   "pre_outcome": true,
+   "outcome_exposure_check": "scored/scored_summary.json absent + run_scored_stdout.json empty at remediation time — zero scored PnL published; freeze red line ('any change after scored PnL is visible = new experiment') not crossed",
+   "scope_guarantee": "touches no folds/gates/ladders/arms/verdict-enum/PnL math (plan §10 bounds respected); eosv2_engine.py digest unchanged byte-exact",
+   "governance_note": "V1 precedent (SCORED_ATTEMPT_1/2 TECHABORT_PRE_PUBLICATION, same scripts family) remediates pre-publication and re-runs; V1 additionally obtained fresh A7 delta AUTHORIZED_FOR_SCORED_RERUN — no A7 lane dispatched at this gate, so the re-run proceeds under the consumed STOP-1 GO and this record; flagged for P5 A7 terminal (G9) adjudication"
+  }
  },
  "cycle_id": "ETHUSDT-OPEN-SEARCH-V2",
  "engine_inheritance": "kernel laws byte-inherited from V1 terminal commit 8196e3eafd548b747a217f0acf6bf468e272324e (cost kernel, folds, PIT, funding, force-flat, one-bar-lag identical); V2-only additions: rvol_states/breadth_states constructors, ARMS, seeds eosv2|",

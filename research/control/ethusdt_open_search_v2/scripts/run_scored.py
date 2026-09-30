@@ -198,7 +198,7 @@ def scored() -> int:
                           "reason": "per-arm per-fold decision-population floor breach (see feasibility.json arm_floor_failures)"}
             continue
         cells[arm] = gates(arm, tier_table, refs, feas)
-    all_pass = [a for a, g in cells.items() if g["all_pass"]]
+    all_pass = [a for a, g in cells.items() if g.get("all_pass")]  # r1: NOT_RUN_THIN cells carry no gates (lane-A kill)
     n_elig = len(eligible_arms())
     out = {"schema": "eosv2.scored_run@1", "go": a, "built_utc": now(),
            "denominator": {"scored_cells": n_elig,
