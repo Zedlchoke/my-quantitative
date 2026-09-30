@@ -1,0 +1,85 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "PC12A_STAGEB",
+  "status": "DONE",
+  "cycle_id": "PORTFOLIO-COMPOSITE-12ASSETS-100K-V1",
+  "role": "stage-b-portfolio-assembly-train-lane",
+  "lane": "research/pc12a + tests + research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1",
+  "summary": "Stage-B PORTFOLIO ASSEMBLY complete on TRAIN folds only. (1) SURVIVOR SET reconciled from the 796-row ledger: 62 diag legs - 43 COST_DOMINATED - 7 NO_ENTRIES_TRAIN = exactly 12 survivors (arithmetic exact, no selection-priority cut, no BLOCKED_NO_SLATE); published with fold-7 TRAIN nets, outcome_exposed_labels, config cluster_ids and arm_config_digests. (2) CLUSTER MAP frozen from TRAIN co-movement only (|corr| >= 0.5 on fold-7 TRAIN pairwise weekly-equity correlations, union-find): one 3-leg JPY trend co-movement cluster CM:USDJPY-S002 = {S002,S003,S023} (rho +0.63/+0.78/+0.84) + 9 singletons; max |rho| outside the trio 0.3165 (P-20 disclosed). (3) L5 caps frozen: default = architecture §5 unit-space starting points (per-asset net 1 lot); TRAIN-tightened rule (multi-leg cluster with max co-loss rate >= 15% of TRAIN weeks -> 50k units) fired on USDJPY (worst pair co-loss 60/232 = 25.9%); caps axis proved NON-BINDING on TRAIN (all legs vote 0.1 lots; zero BLOCKED_RISK_CAP; V1==V2 and V3==V4 identical economics) - documented, no post-hoc re-tightening. L6 guard cap frozen at $2,836.97/28d = p90 of the TRAIN switching-cost ladder (3,394 events, p50 $1,770.51). (4) All 8 variants of the frozen grid trained over the expanding-TRAIN walk-forward (same 8-fold partition arithmetic as wave 2; longest stream ends 2025-06-20, 14d before test fold 7 starts; sealed tail untouched; per-symbol per-fold book residuals asserted <= 1e-6). (5) Winner V3 (baseline eligibility E1/E3/E4, supermajority-2/3 netting, default caps) by the frozen deflated TRAIN objective (obj = netPnL - W*SR0*sigma_w - maxDD; SR0 = 0.319497 from N=85 deduped arms, N_eff=28 clusters, V=0.024414): obj -$1,054,702, net +$138,256, maxDD $129,550, weekly SR_hat 0.0415. HONEST LABEL: the winner's TRAIN objective is NEGATIVE - the deflation term ($1.06M) dwarfs raw TRAIN net PnL; no TRAIN-side edge claim is made; frozen anyway per the dispatch's honest bar, Stage-C closes on test evidence. E2-strict variants were value-destroying on TRAIN (net -$31k, DD $233k; 1,316 stand-aside events) and died as ledger rows. Determinism: winner re-run byte-identical. (6) Ledger: 8 B-VARIANT rows + 1 B-FREEZE row appended (BSTG-W1-0797..0805), total 805/1500, stop line 1400 respected. POLICY_FROZEN.json (policy_digest 93077163796abddc237a227267161a48b6397c3fc339738f493965db45cbbbc) + STAGEB_ASSEMBLY.md written. Engine: run_stageb.py PortfolioEngine reuses the solo book machinery with per-asset L4 netting (ties/supermajority blocks -> asset FLAT EXECUTED, disclosed deviation from the dry-run early-return), L5 caps, shared PIT-windowed L6 guard.",
+  "counts": {
+    "survivors": 12,
+    "cost_dominated_excluded": 43,
+    "no_entries_excluded": 7,
+    "diag_legs_total": 62,
+    "clusters": 10,
+    "multi_leg_clusters": 1,
+    "variants_trained": 8,
+    "ledger_rows_appended": 9,
+    "ledger_total_after": 805,
+    "ledger_cap": 1500,
+    "tests_stageb": "18 passed",
+    "tests_neighbor_pc12a": "34 passed"
+  },
+  "survivors": [
+    "EURUSD-S009", "EURUSD-S013", "EURUSD-S046", "GBPUSD-S002",
+    "GBPUSD-S017", "USDJPY-S002", "USDJPY-S003", "USDJPY-S014",
+    "USDJPY-S023", "USDJPY-S026", "VC2-LVNFAIL-EURUSD",
+    "VC2-LVNFAIL-USDJPY"
+  ],
+  "cluster_map": {
+    "CM:USDJPY-S002": ["USDJPY-S002", "USDJPY-S003", "USDJPY-S023"],
+    "singletons": ["EURUSD-S009", "EURUSD-S013", "EURUSD-S046",
+                    "GBPUSD-S002", "GBPUSD-S017", "USDJPY-S014",
+                    "USDJPY-S026", "VC2-LVNFAIL-EURUSD",
+                    "VC2-LVNFAIL-USDJPY"]
+  },
+  "variant_objectives_train_usd": {
+    "V1": -1055788.92, "V2": -1055788.92, "V3": -1054702.22,
+    "V4": -1054702.22, "V5": -1372661.88, "V6": -1372661.88,
+    "V7": -1371711.41, "V8": -1371711.41
+  },
+  "winner": {
+    "variant_id": "V3",
+    "config": {"eligibility": "base", "netting": "super", "caps": "default"},
+    "objective_usd": -1054702.22,
+    "net_pnl_usd": 138256.17,
+    "max_dd_usd": 129550.08,
+    "weekly_sr_hat": 0.041539,
+    "sr0": 0.319497,
+    "honest_label": "NEGATIVE_TRAIN_OBJECTIVE_DEFLATION_DOMINATED",
+    "determinism_byte_identical": true,
+    "policy_digest": "93077163796abddc237a227267161a48b6397c3fc339738f493965db45cbbbc"
+  },
+  "lock": {
+    "method": "root checkout research/governance/heavy_lock.acquire (machine-wide)",
+    "role": "stage-b-portfolio-train",
+    "held_for_whole_job": true,
+    "disclosure": "first orchestration attempt failed on a JSON date-key serialization bug in the variant dump; the lock released FAILED cleanly (no partial ledger rows, corrupted partial VARIANT files purged), the bug was fixed and unit-tested, and the second orchestration held the lock for the full ladder->grid->repro->select->freeze->ledger sequence (1202s, status FINISHED)"
+  },
+  "runtime": {
+    "total_wall_seconds": 1202.2,
+    "ladder_seconds_approx": 420,
+    "grid_two_waves_of_4_parallel": true
+  },
+  "honesty_notes": [
+    "The winner's TRAIN objective is NEGATIVE (deflation-dominated: weekly SR_hat 0.0415 vs null SR0 0.3195 from 28 effective trial families); frozen anyway per the dispatch's honest bar - Stage-C will close the cycle on evidence under PASS_BARS_V2.",
+    "The caps axis was non-binding on TRAIN (0.1-lot voters; tight cap would bind only under full 6-leg USDJPY agreement, never observed); documented, no post-hoc tightening - the 8-variant grid is closed.",
+    "E2-strict degradation gating destroyed TRAIN value (stood the trend legs aside before their recovery); it died as ledger rows, not silently.",
+    "Ties/supermajority blocks EXECUTE the flatten (architecture §4) - disclosed deviation from the dry-run engine's early-return, which never fired in solo diagnostics.",
+    "All Stage-B artifacts carry label TRAIN-ONLY; every train_window ends <= 2025-06-20; test folds and the sealed tail never computed on; dry-run outputs remain leak-clean.",
+    "Per-leg fold-7 TRAIN nets are lawful TRAIN-side ledger data; no per-leg TEST data of any kind exists on this checkout."
+  ],
+  "artifacts": [
+    "research/pc12a/run_stageb.py",
+    "tests/test_pc12a_stageB.py",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/policy/POLICY_FROZEN.json",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/policy/STAGEB_ASSEMBLY.md",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/diagnostics/stageb/ (POLICY_INPUTS.json, LADDER.json, VARIANT_V1..V8.json, VARIANT_V3_REPRO.json, SELECTION.json, ORCHESTRATOR_LOG.txt)",
+    "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/TRIAL_LEDGER.jsonl (rows BSTG-W1-0797..0805)"
+  ],
+  "dispatch_sha": "dispatch:PC12A_STAGEB:owner packet (expected HEAD feb6f1e verified at lane start)",
+  "actual_start_sha": "feb6f1e754d231143e2011296682e030bcdc51c6",
+  "commit_sha": null,
+  "no_commit_disclosure": "commit lands with this handoff (single commit, pathspec-staged, worktree-named)",
+  "next_lane_inputs": "Stage-C consumes policy/POLICY_FROZEN.json (slate of 12, cluster map, caps default, guard $2,836.97/28d, baseline E1/E3/E4 eligibility, supermajority-2/3 netting with EXECUTED flatten semantics, code + data digests, determinism proof) plus PASS_BARS_V2.md for the B0-B9 battery; the frozen policy's TRAIN objective is negative and the claim bar remains the owner's AND-semantics on TEST folds only."
+}
