@@ -1553,3 +1553,6 @@ Owner-ordered rescore of 100 day-trader strategy brainstorm → census (55 ances
 
 ### PORTFOLIO-COMPOSITE-12ASSETS-100K-V1 (TERMINAL 2026-10-01, POLICY_NO_INCREMENTAL_VALUE)
 Amended-law portfolio program (owner 2026-09-29: novelty-label không phải gate; 1,200-idea corpus → 294 screened → 150 triage-runnable → 62 TRAIN-diagnosed → 12 survivors → 8 policy variants → scored 40/48 identities). Policy layers giảm net & tăng DD vs always-on; A7 terminal CONFIRM_WITH_CONDITIONS. Durable assets: 376-test engine, 846-row labeled discovery ledger, 43 COST_DOMINATED kills, COMPLEMENTARITY_TRAIN, IBKR probe chain + IDENTITY_FREEZE (7 daily candidates BLOCKED pending amendment), TB triple-barrier design (57-row budget registered, unspent). Worktree .worktrees/portfolio-composite-12assets-100k-v1/integration @ c93123db. Lesson P-33.
+
+### ETHUSDT-OPEN-SEARCH-V2 (TERMINAL 2026-10-01, NO_INCREMENTAL_VALUE)
+STOP-1 breadth-gate overlay: 8/8 cells, G3 wall fails 4/4, G10 fails 4/4; references reproduce V1 terminal 28/28 cent-exact; G8 repro ALL_MATCH; G9 A7 CONFIRM_WITH_CONDITIONS (r1 remediation lawful). First co-owner GO transmission (delegation 2026-09-30, auth record verbatim). §8 branch: tranche V3 pending owner decisions (new tuples / redirection / end). Worktree .worktrees/ethusdt-open-search-v2/integration @ 857af951. Lesson P-34.

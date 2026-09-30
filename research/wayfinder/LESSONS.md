@@ -1154,3 +1154,18 @@ byte-compare + code_digest hash thư mục sống tạo STOP-3 giả: so canonic
 digest qua manifest đóng băng (1/1,372 leaf khác = provenance digest, kết
 quả identical); (4) P8 isolation-vs-complement: viết rõ "without leg i"
 trong code, không chỉ trong văn bản bar.
+
+## P-34 — ETHUSDT-OPEN-SEARCH-V2 (TERMINAL 2026-10-01, NO_INCREMENTAL_VALUE): khi references tái lập đến từng cent, cái chết là tuyệt đối — breadth gate không vượt nổi bức tường structural của ALWAYS_ON
+
+Sự kiện: STOP-1 breadth-gate overlay (4 cell, prior âm đã đăng ký) chết
+trọn: G3 wall fail 4/4 (khoảng cách −1,25M — cùng bậc với V1), G10 fail
+4/4, references tái lập V1 **28/28 giá trị đến cent** qua mọi tier và
+fold — nghĩa là engine + corpus + kế thừa là chuẩn và kết quả âm là của
+cơ chế, không phải của lỗi đo. Bài học: (1) prior tương quan 0.45–0.67 với
+trend reference (G11) đã báo trước — một gate tương quan cao với cái đã
+chết thì cũng chết; (2) remediation một-token sau TECHABORT pre-publication
+là hợp pháp khi crash-guard thuần túy + freeze additive + zero-exposure
+chứng minh được CẤU TRÚC (thứ tự code: crash trước write) lẫn independiente
+(stderr của lock FAILED-release) — nhưng vẫn phải có A7 terminal xét xử,
+không tự absolve; (3) co-owner GO transmission hoạt động đúng: auth
+record verbatim + two-key + không tiêu trùng.
