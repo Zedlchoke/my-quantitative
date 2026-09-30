@@ -1,0 +1,56 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "cycle_id": "PORTFOLIO-COMPOSITE-12ASSETS-100K-V1",
+ "task_id": "A7_TERMINAL",
+ "role": "a7-terminal-auditor (fresh context, independent, read-only)",
+ "lane": "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/audits/A7_TERMINAL_AUDIT.md + handoffs/A7_terminal.json (only writes)",
+ "status": "DONE",
+ "dispatch_sha": "dispatch:A7_TERMINAL:audit the close of Stage-C scored evaluation @ e98f4fdd (root main b1138e70)",
+ "actual_start_sha": "e98f4fdd",
+ "commit_sha": null,
+ "no_commit_disclosure": "A7 writes two artifacts only; commit lands with the A1 close, not from the auditor",
+ "verdict": "CONFIRM_WITH_CONDITIONS",
+ "audited_verdict": "POLICY_NO_INCREMENTAL_VALUE (typed provisional per plan 7)",
+ "counts": {"critical": 0, "high": 1, "medium": 2, "low": 2, "info": 3},
+ "audit_matrix": {
+  "1_verdict_law": "PASS - every governing bar recomputed independently from arm artifacts (P1 both legs FAIL: net 603,340.60 < B1 688,604.03 AND DD 418,227.97 > 397,156.85; P3-c1 obj(P) -2,449,821.71 worse than ALL 128 seeds, count 0 vs threshold 121.6; P3-c2 medians reproduced exactly, DD leg fails; P5a inputs N=134/N_eff=29/V=0.0244136/SR0=0.3217753/SRhat=0.073252/DSR=0.000208/PSR=0.850919 all bitwise-reproduced from the 846-row ledger; P5b PBO 0.346309 reproduced (12870 combos, 70 trials); P7 fold0 89.75% + 6 DD breaches vs cap 2*maxDD/8; P2/P4/P6 all match) - ZERO status flips",
+  "2_partition": "PASS - 8 test folds 2022-01-07..2025-12-26 with 14d train-side embargo each; all 38 journals contained (only lawful fold-edge force-flat exits at next-session open, max 2025-12-28T22:04Z, before sealed tail); no row >= 2026-01-02; sealed tail fail-closed in engine; S1 SEALED_UNTOUCHED; B3 selection TRAIN-only frozen 15:52:11Z pre-test; fold-7 TRAIN prefix overlap with folds 0-6 test windows is the disclosed 5.2 design overlap (INFO)",
+  "3_accounting": "PASS - per-fill spread_once+slip == |fill-mid|*|delta| (sample 2941/2941 fills); book identity net == sum(cash_delta) - sum(swap) holds for ALL 38 arms (worst residual 4.3e-6 USD, 6dp rounding); 0 income swaps; cost bills equal journal sums; F-7 fold-edge force-flat companion present per arm and per fold and recomputed from '-ff' orders",
+  "4_budget": "PASS - 40/48 identities listed and verified (POLICY/B0/B1/B2/B3=5, B5/B6/B7/B8=4, P6a 2, P6b/c 2, P6d 2, P8 pairs 24, B4 battery 1); ledger 846/1500 continuous row-ids, stop line 1400 respected; C-SCORED 41 (40 identity rows + 1 verdict row); per-arm tables observed==published across metrics/handoff/report (38/38)",
+  "5_disclosed_incidents": "PASS - all 4 evidenced (B3 defect: 2 runs in B3 log 16:30/17:22, committed artifact is the correct single-leg EURUSD-S013 run with distinct digest, 1 ledger row, selection frozen pre-test, BARS uses the correct run; schedules bug: crash+fix+POLICY/B1 re-run with byte-identical repro both sides; 2 battery kills: 16:55 kill + 17:23 append-only refusal on SEED770012 + 20:14 complete resume 128/128; P5a N_eff correction conservative and verdict-identical - recompute at N_eff=4 gives DSR 0.097 < 0.95 and PSR 0.851 < 0.95)",
+  "6_negative_first_class": "PASS - policy digest 93077163 constant across all 38 arms and MATCH at entry; winner frozen at Stage-B with negative objective -1,054,702.22; no repeated scored-arm digests in the ledger (only freeze-row/verdict-row pair); no variant rows after freeze; no non-C-SCORED rows after 0806; only disclosed determinism-proven re-executions",
+  "7_close_readiness": "PASS - TERMINAL_DECISION.md draft not present (expected; A1 writes it after this audit); honest-prior chain coherent (Stage-B negative objective -> Stage-C negative verdict, negative first-class per plan 7); remaining 8 identities / 554 ledger rows NOT needed (no NOT_RUN bar; verdict types from P1 alone)"
+ },
+ "findings": {
+  "H-1": "P8 realized as per-leg isolation pairs (legs=[lid], run_scoredc.py:384-385) instead of the frozen PASS_BARS_V2 8 without-leg re-runs (P_-i vs B1_-i on remaining legs); ledger text says minus. NOT verdict-changing: FAIL under both readings (>=2 breaks either way, same P8_COALITION sub-code; P1's failure types the terminal verdict regardless per E-Law 7). Condition 1: erratum in TERMINAL_DECISION.md.",
+  "M-1": "Post-commit repro twin: REPRO_CHECK.json (working tree) records journal true / metrics false; root cause independently verified = exactly 1 of 1372 flattened metrics leaves differs, the embedded run-time code_digest (5e23dbbd as-ran vs 8cacead5 at-commit, recipe recomputed = run_dry.py:673 hashes pc12a/*.py); journals cmp-byte-identical; committed in-flight repro was true/true. Substantive determinism PASSES; comparator byte-standard vs canonical standard is a close erratum. Condition 2.",
+  "M-2": "Battery code digests are heterogeneous (37 arms 5e23dbbd, B3 b6189f67 after its fix re-run, committed tree 8cacead5 for B4/bars); SCORED_REPORT 5.6(ii) 'whole battery carries one code digest' is imprecise. Engine-path neutrality independently proven (B3 == B1_MO/POLICY_MO EURUSD-S013 identities to 1e-6 across code states; repro 1372-leaf identity). Condition 3: disclosure correction.",
+  "L-1": "sr_hat dual value: metrics sr_hat_weekly 0.073158 (208-return internal series) vs BARS P5a sr_hat 0.073252 (207-diff series); both recompute exactly; DSR 0.000208 either way.",
+  "L-2": "Root registry numeric fields unsynced: budget.used=0 and go_phrase_state=REGISTERED_NOT_CONSUMED vs consumed GO + 40/48 in phase text. A1 syncs at the two-half close. Condition 4.",
+  "I-1": "Pooled-test-vs-selection overlap (folds 0-6 inside fold-7 TRAIN prefix through 2025-06-20) verified as the disclosed 5.2 design overlap; favors the policy; verdict negative under it.",
+  "I-2": "Fold-edge force-flat exits fill at next-session open after the fold's last Friday (max 2025-12-28T22:04Z), booked inside the closing fold, before sealed tail - lawful E-Law 2.",
+  "I-3": "B4 first kill left SEED770012 half-written; append-only law refused the resume (fail-closed); final battery complete and deterministic."
+ },
+ "conditions": [
+  "1 (H-1): TERMINAL_DECISION.md records the P8 realization erratum (per-leg isolation pairs, not leave-one-out) with the non-flip analysis; close never cites P8 numbers as leave-one-out results.",
+  "2 (M-1): close records the two-level determinism proof (journal byte-identical; results leaf-identical 1371/1372, sole diff = embedded code_digest) and retires the raw byte-standard for self-referential artifacts; REPRO_CHECK.json current false record explained, not deleted.",
+  "3 (M-2): 'whole battery carries one code digest' corrected to the three-digest timeline (5e23dbbd / b6189f67 / 8cacead5) with the neutrality evidence.",
+  "4 (L-2): registry budget.used and go_phrase_state synced to the consumed state when the two-half close lands (A1)."
+ ],
+ "conditions_effect": "No condition authorizes scored re-runs; the remaining 8 identities and 554 ledger rows stay untouched by the close; no condition can change the verdict type.",
+ "artifacts": {
+  "audit": "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/audits/A7_TERMINAL_AUDIT.md",
+  "handoff": "research/control/PORTFOLIO-COMPOSITE-12ASSETS-100K-V1/handoffs/A7_terminal.json"
+ },
+ "verified_state": {
+  "worktree_head": "e98f4fdd9d7b5a812b165d2fd84d6829fd8755c1",
+  "branch": "orca/portfolio-composite-12assets-100k-v1-integration",
+  "chain": "feb6f1e7 -> c5f3b805 -> e98f4fdd",
+  "root_main": "b1138e701e7df60478f4b06e75c70db8f688644a",
+  "registry_head": "e98f4fdd",
+  "policy_digest": "93077163796abddc237a227267161a48b63927c3fc339738f493965db45cbbbc"
+ },
+ "next_lane_inputs": "A1 writes TERMINAL_DECISION.md carrying the 4 conditions + registry sync, then the two-half close. The typed provisional verdict POLICY_NO_INCREMENTAL_VALUE is CONFIRMED as the terminal close pending owner confirmation per plan 7.",
+ "summary": "A7 terminal audit of PORTFOLIO-COMPOSITE-12ASSETS-100K-V1 @ e98f4fdd. Every governing bar recomputed independently from arm artifacts: P1 fails BOTH legs vs B1 (net 603.3k < 688.6k AND DD 418.2k > 397.2k), P3-c1 policy objective worse than all 128/128 seeds, P3-c2 DD leg fails vs seed medians, P5a DSR 0.000208 with all ledger inputs (N=134, N_eff=29, V, SR0) bitwise-reproduced, P5b PBO 0.346309 reproduced, P7 fold0 89.75% concentration + 6 DD breaches - ZERO status flips; typed verdict POLICY_NO_INCREMENTAL_VALUE is supported. Partition lawful (8 test folds, sealed tail/S1 untouched, B3 TRAIN-only pre-test, disclosed overlap verified). Accounting exact (book identity all 38 arms, spread-once per-fill identity, F-7 companion per arm/fold). Budget 40/48 identities listed and verified; ledger 846 rows, 41 C-SCORED; observed==published 38/38. All 4 disclosed incidents evidenced and non-contaminating (B3's committed artifact is the correct single-leg run). Negative-first-class upheld. Adjudicated A1's repro finding: post-commit twin differs from frozen metrics in exactly 1 of 1372 leaves = the embedded run-time code_digest (recipe verified; journals byte-identical; committed in-flight repro true/true) - substantive determinism PASSES, recorded as erratum condition. Findings 0C/1H/2M/2L/3I: H-1 P8 realized as per-leg isolation pairs instead of the frozen without-leg re-runs (not verdict-changing, same FAIL/close-code both readings); M-1 repro comparator artifact; M-2 battery carries three code digests not one (neutrality proven); L-1 sr_hat dual value; L-2 registry fields unsynced. CONFIRM_WITH_CONDITIONS - 4 numbered recording conditions, no re-runs, close may proceed.",
+ "verdict_class": "negative_first_class_confirmed"
+}
