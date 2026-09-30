@@ -1137,3 +1137,20 @@ recomputing the fold calendar caught a 260-week arithmetic slip (2025-12-26 vs
 programmatically and cross-checked by a second lane, never hand-typed. Consequence:
 FAMILY_FAILURES BC6-OWNER-PINNED-TA-COMBO-6LEG fences TA re-parameterizations; any
 follow-up sleeve proposal needs a changed mechanism axis and a fresh plan.
+
+## P-33 — PORTFOLIO-COMPOSITE-12ASSETS-100K-V1 (TERMINAL 2026-10-01, POLICY_NO_INCREMENTAL_VALUE): policy layers là chi phí, không phải alpha — khi legs đã mang carry thô, mọi lớp "quản trị" phải tự trả tiền trên fold chưa dùng
+
+Sự kiện: chương trình amended-law (novelty = nhãn, không phải cổng) cho
+12 survivor-diagnostic legs một policy risk-only đầy đủ (eligibility E1-E5,
+netting siêu đa số, cluster caps, cost guard) — policy GIẢM net (603k vs
+689k của always-on) VÀ TĂNG drawdown (418k vs 397k), thua cả 128/128 random
+gates, DSR 0.0002. P1-B0 PASS chứng minh carry thô của legs là thật; chính
+các lớp quyết định đã trừ giá trị. Bài học: (1) với legs đã chọn bằng TRAIN,
+"quản trị rủi ro" mọi lớp đều có chi phí chuyển trạng thái + mất lệnh —
+increment phải được chứng minh sau phí trên fold chưa dùng, không mặc định;
+(2)Winner-selection bằng deflated objective âm (Stage-B −1.05M) là tín hiệu
+đúng — deflation term lấn át PnL thô đã báo trước kết quả Stage-C; (3) repro
+byte-compare + code_digest hash thư mục sống tạo STOP-3 giả: so canonical +
+digest qua manifest đóng băng (1/1,372 leaf khác = provenance digest, kết
+quả identical); (4) P8 isolation-vs-complement: viết rõ "without leg i"
+trong code, không chỉ trong văn bản bar.
