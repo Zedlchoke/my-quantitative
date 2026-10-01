@@ -729,3 +729,203 @@ def test_usdquote_book_rejects_nonunity_rate_and_bad_tier():
     fq = ev.price_fill(EUR_BAR_1, "BUY", 100000)
     assert fq.fill_price == Decimal("1.10030")  # 1.10010 + 0.00010 + 0.0001
     assert fq.slippage_band_id.endswith("EVENT-DECLARED")
+
+
+# ---------------------------------------------------------------------------
+# Exploratory battery rule tests (DS-03 / DS-05) — synthetic inputs only.
+# Corpus-parameter fidelity is asserted against the frozen constants; every
+# expected value below is hand-computed in the comments. No real panel is
+# read (RGC-INC-1: no performance field anywhere).
+# ---------------------------------------------------------------------------
+
+from daily_exploratory import rules as rls  # noqa: E402
+
+
+class TestDS03CorpusFidelity:
+    """USDJPY-S065 verbatim: NATGAS 10d ret > +15% khi Brent flat; long
+    USDJPY 5 phien; stop 1xATR; grid B=3% (default) / C=5% / A=off."""
+
+    def test_frozen_constants(self):
+        assert str(rls.DS03_NG_TRIGGER) == "0.15"      # corpus "+15%"
+        assert rls.DS03_NG_WINDOW == 10                # corpus "10d ret"
+        assert rls.DS03_BRENT_WINDOW == 10
+        assert str(rls.DS03_GRID["B"]) == "0.03"       # G1 node B 3%
+        assert str(rls.DS03_GRID["C"]) == "0.05"       # G1 node C 5%
+        assert rls.DS03_GRID["A"] is None              # null-control (off)
+        assert rls.DS03_GRID_DEFAULT == "B"            # G7 frozen default
+        assert rls.DS03_GRID_SELECTABLE == ("B", "C")  # A never selectable
+        assert rls.DS03_HOLD_SESSIONS == 5             # "5 phien"
+        assert str(rls.DS03_STOP_ATR_MULT) == "1"      # "stop 1xATR"
+        assert rls.ATR_WINDOW == 14                    # declared ATR-14
+
+    def _x(self, ng, br, atr="1.0"):
+        return rls.DS03Inputs("T", Decimal(ng), Decimal(br), Decimal(atr))
+
+    def test_entry_positive_when_natgas_breaks_and_brent_flat(self):
+        # ng +16% > +15%, |brent +1%| < 3% -> entry at node B
+        rule = rls.DS03Rule()
+        assert rule.entry_signal(self._x("0.16", "0.01"), "B") is True
+
+    def test_no_entry_below_trigger(self):
+        # ng +15% exactly = NOT > +15% -> no entry (strict corpus inequality)
+        assert rls.DS03Rule().entry_signal(self._x("0.15", "0.00"), "B") is False
+
+    def test_brent_flat_gate_blocks_when_brent_runs(self):
+        # brent +4%: node B (3%) blocks; node C (5%) admits; node A admits
+        rule = rls.DS03Rule()
+        x = self._x("0.20", "0.04")
+        assert rule.entry_signal(x, "B") is False      # "neu Brent cung chay"
+        assert rule.entry_signal(x, "C") is True
+        assert rule.entry_signal(x, "A") is True       # null-control off
+
+    def test_brent_negative_side_also_blocks(self):
+        # brent -4% (|ret| 4%): channel NOT flat at node B
+        assert rls.DS03Rule().entry_signal(self._x("0.20", "-0.04"), "B") is False
+
+    def test_stop_level_one_atr_below_fill(self):
+        # fill 150.00, ATR 2.0 -> stop 148.00 (1xATR)
+        rule = rls.DS03Rule()
+        lvl = rule.stop_level(Decimal("150.00"), self._x("0.20", "0.00", "2.0"))
+        assert lvl == Decimal("148.00")
+
+    def test_exits_due_stop_first_then_hold(self):
+        rule = rls.DS03Rule()
+        # low breaches stop -> STOP regardless of hold count
+        assert rule.exits_due(2, Decimal("148.0"), Decimal("148.5")) == \
+            (rls.EXIT_REASON_STOP, "low<=stop")
+        # 5 held sessions, stop intact -> HOLD
+        assert rule.exits_due(5, Decimal("148.5"), Decimal("148.0")) == \
+            (rls.EXIT_REASON_HOLD, "5 phien")
+        # 4 held sessions, stop intact -> no exit
+        assert rule.exits_due(4, Decimal("148.5"), Decimal("148.0")) is None
+
+
+class TestDS05CorpusFidelity:
+    """EURUSD-S006 verbatim: rank 20d return of {EUR,GBP,AUD,NZD,CHF,JPY,
+    CAD} vs USD; long EURUSD only when EUR rank 1-2; 2-consecutive-week
+    consistency; exit out of top-3; stop 2xATR."""
+
+    def test_frozen_constants(self):
+        assert rls.DS05_RANK_WINDOW == 20             # corpus "20d"
+        assert rls.DS05_ENTRY_RANK_MAX == 2           # "EUR rank 1-2"
+        assert rls.DS05_EXIT_RANK_MAX == 3            # "roi khoi top-3"
+        assert rls.DS05_CONSISTENCY_SESSIONS == 5     # 1 week = 5 sessions
+        assert str(rls.DS05_STOP_ATR_MULT) == "2"     # "stop 2xATR"
+        assert set(rls.DS05_CURRENCIES) == \
+            {"EUR", "GBP", "AUD", "NZD", "CHF", "JPY", "CAD"}
+
+    def _x(self, eur, gbp="0.01", jpy_pair="-0.02", atr="0.0100",
+           hist=(1, 1, 1, 1, 1, 1)):
+        # EUR strongest; JPY pair quoted USDJPY with pair-return -2% means
+        # JPY vs USD +~2% via INVERSE_RET (approximate here for ranking)
+        ret20 = {"EUR": Decimal(eur), "GBP": Decimal(gbp),
+                 "AUD": Decimal("0.005"), "NZD": Decimal("0.004"),
+                 "CHF": Decimal("-0.001"), "JPY": Decimal("0.02"),
+                 "CAD": Decimal("0.003")}
+        return rls.DS05Inputs("T", ret20, Decimal(atr), tuple(hist))
+
+    def test_rank_order_strongest_is_1(self):
+        x = self._x("0.03")
+        ranks = x.ranks()
+        assert ranks["EUR"] == 1                       # strongest vs USD
+        assert x.eur_rank() == 1
+
+    def test_rank_tie_break_lexicographic(self):
+        ret20 = {c: Decimal("0.01") for c in rls.DS05_CURRENCIES}
+        x = rls.DS05Inputs("T", ret20, Decimal("0.01"), tuple())
+        # all tied: AUD 1, CAD 2, CHF 3, EUR 4 (lexicographic tie-break)
+        assert x.eur_rank() == 4
+
+    def test_entry_needs_rank_top2_now_and_one_week_earlier(self):
+        rule = rls.DS05Rule()
+        x = self._x("0.03", hist=(1, 1, 1, 1, 1, 1))   # now 1, week ago 1
+        assert rule.entry_signal(x, rule.prior_week_rank(x)) is True
+        # week-ago rank 3 -> consistency fails (coupling = entry law)
+        x2 = self._x("0.03", hist=(3, 3, 3, 3, 3, 1))
+        assert rule.entry_signal(x2, rule.prior_week_rank(x2)) is False
+        # rank 3 now -> no entry regardless of history
+        x3 = self._x("-0.01", hist=(1, 1, 1, 1, 1, 1))
+        assert rule.entry_signal(x3, rule.prior_week_rank(x3)) is False
+
+    def test_prior_week_rank_reads_six_back(self):
+        rule = rls.DS05Rule()
+        x = self._x("0.03", hist=(7, 1, 1, 1, 1, 2))   # h[-6] = 7
+        assert rule.prior_week_rank(x) == 7
+        x2 = self._x("0.03", hist=(1,))                # too short -> None
+        assert rule.prior_week_rank(x2) is None
+
+    def test_exit_when_out_of_top3(self):
+        rule = rls.DS05Rule()
+        assert rule.exit_signal(self._x("0.03")) is False   # rank 1
+        weak = self._x("-0.05")                             # rank 7
+        assert rule.exit_signal(weak) is True
+
+    def test_stop_level_two_atr_below_fill(self):
+        # fill 1.0500, ATR 0.0100 -> stop 1.0300 (2xATR)
+        rule = rls.DS05Rule()
+        lvl = rule.stop_level(Decimal("1.0500"), self._x("0.03", atr="0.0100"))
+        assert lvl == Decimal("1.0300")
+
+
+class TestReturnHelpers:
+    """ret_over / inverse_ret_over on hand-built series."""
+
+    def test_ret_over_own_calendar(self):
+        dates = ["d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9",
+                 "d10", "d11"]
+        vals = {f"d{i}": Decimal(100 + i) for i in range(1, 12)}
+        # window 10 at d11: 111/101 - 1
+        assert rls.ret_over(dates, vals, 10, "d11") == Decimal(111) / Decimal(101) - 1
+        assert rls.ret_over(dates, vals, 10, "d5") is None   # insufficient history
+        assert rls.ret_over(dates, vals, 10, "nope") is None  # absent date
+
+    def test_inverse_ret_over(self):
+        # USDJPY-style: value of JPY in USD rises when the pair falls.
+        dates = ["d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9",
+                 "d10", "d11"]
+        vals = {f"d{i}": Decimal(100 + i) for i in range(1, 12)}
+        # inverse 10d ret at d11 = P[d1]/P[d11] - 1 = 101/111 - 1 (negative)
+        assert rls.inverse_ret_over(dates, vals, 10, "d11") == \
+            Decimal(101) / Decimal(111) - 1
+
+
+class TestBatteryCalendarLaw:
+    """Frozen fold calendar arithmetic (PLAN section 2.2)."""
+
+    def test_fold_dates_verbatim(self):
+        import daily_exploratory.battery as bt
+        assert bt.FOLDS[0] == (1, "2022-09-30", "2023-03-30")
+        assert bt.FOLDS[7] == (8, "2026-03-27", "2026-09-24")
+        assert len(bt.FOLDS) == 8
+        assert bt.LEARN == ("2021-10-01", "2022-09-22")
+        assert bt.EMBARGO == ("2022-09-23", "2022-09-29")
+        assert bt.WARMUP == ("2020-10-02", "2021-09-30")
+
+    def test_freshness_law(self):
+        import daily_exploratory.battery as bt
+        # freshest consumable: newest bar servable at the decision session
+        assert bt.freshest_consumable(
+            ["2022-09-29", "2022-09-30"], "2022-10-03") == "2022-09-30"
+        # serving-day within one business day (source holiday typed fresh)
+        assert bt.age_ok("2022-09-30", "2022-10-03") is True
+        # Friday bar serving Monday, decided Tuesday (Monday holiday):
+        assert bt.age_ok("2022-09-30", "2022-10-04") is True
+        # Thursday bar decided the following Tuesday: 2bd stale
+        assert bt.age_ok("2022-09-29", "2022-10-04") is False
+        # Friday bar serving Monday on a Monday-holiday Tuesday decision
+        assert bt.age_ok("2022-12-23", "2022-12-27") is True
+
+    def test_atr14_wilder_hand_case(self):
+        import daily_exploratory.battery as bt
+        from daily_exploratory.datainputs import D1Bar
+        # 15 flat sessions: TR = 1 every day; SMA(14) seed = 1 -> ATR 1
+        bars = {f"d{i}": D1Bar(f"d{i}", 10.0, 10.1, 9.9, 10.0, 9.95, 10.05)
+                for i in range(15)}
+        # mid_high-mid_low = 10.05-9.95 = 0.1 ... build exact TR=0.1 case:
+        bars = {f"d{i}": D1Bar(f"d{i}", 10.0, 10.0, 10.0, 10.0, 9.95, 10.05)
+                for i in range(15)}
+        out = bt.atr14_wilder(bars, list(bars))
+        # all TRs = 0.1 (high-low only, closes flat) -> ATR = 0.1 exactly
+        assert out["d14"] == Decimal("0.1")
+        assert out["d13"] == Decimal("0.1")            # first ATR at 14 TRs
+        assert "d12" not in out                        # needs 14 TRs
