@@ -309,3 +309,62 @@ entitlement scoped to the five measured majors; CEST; DRAFT FRED never-T+1;
 XAG browser negatives landed as XAG_BROWSER_ATTEMPTS_2026-10-01.json
 (TRANSCRIPT_DERIVED_RECORD class, bytes-not-captured disclosed); manifests
 carry append-in-place notes; handoff file counts corrected.
+
+
+---
+
+# Session 3 (owner-directed continuation, 2026-10-01 rev 3)
+
+Owner authorization: preparation/acquisition only; portfolio chat integrates
+separately; coordinate via committed evidence only.
+
+Intake: worktree clean @ cbae7556; lock FREE_PROVEN; registry unchanged
+(84; no successor registered yet; root main advanced to 87e65f00 by other
+lanes — untouched); TWS 7497: my first port probe was a FALSE NEGATIVE
+(coordinator correction: lsof shows PID 913 LISTENING) — recorded as a
+measurement-method lesson: /dev/tcp probe from the sandbox-shell is not
+reliable evidence of listener state; handshake outcome is the authoritative
+test (exactly what the coordinator instructed).
+
+Work performed:
+1. **Point-2 executed at the window's opening minute** (04:00:32Z = Thu
+   00:00:32 ET; window validity enforced in-script): 09-30 closed bar
+   persists with values on all 7; forming 10-01 on the 4 FX/metals; energy
+   10-01 absent (session unopened — expected). Limitation disclosed:
+   value-stability across points not measurable (point-1 stored dates
+   only); point-2 landed closes. Artifact d1_point2_result.json manifested.
+2. **SGE** (final lawful free XAG candidate): template-only HTML; no
+   reverse-engineering attempted; /data_Licensed on-site. Verdict unchanged.
+3. **Light independent recheck** of headline numbers from raw (different
+   code path): all confirmed; one checker-side median-index slip diagnosed,
+   gate-table values stand.
+4. OWNER_INPUT_CHECKLIST.md (OI-1..OI-6, minimal per-asset) and
+   HANDOFF_TO_PORTFOLIO_CHAT.md (source commit, manifests, exact
+   PASS/FAIL/NOT_RUN deltas, hard laws) written.
+5. Availability label changed (point-2) -> independent review of the delta
+   performed (see below after completion).
+
+Boundaries: no orders/GO/scored/S1/purchases; registry/eligibility
+untouched; owner dirty tree and all other lanes preserved; IBKR strictly
+read-only 7497 with bounded timeouts.
+
+### Session 3 — independent review of the point-2 label delta
+
+Fresh-context reviewer: 1 BLOCKING / 1 MAJOR / 3 MINOR / 3 INFO, all fixed
+pre-commit:
+- BLOCKING: my "energy session not yet open" explanation was an INFERENCE
+  contradicted by the lane's own d5 tradingHours (10-01 CL/NG session opened
+  18:00 ET Sep 30; ICE 20:00 ET) and d6 (ADJUSTED_LAST serves the forming
+  10-01 Brent bar). Correct cause, now stated: TRADES-channel forming-bar
+  non-serving property (evidenced at point-1); cause imported from outside
+  the artifact = law violation, owned and fixed.
+- MAJOR: stale rev-2 sentence in GATE_TABLE "opened gates" item 3
+  (claimed point-2 PREPARED / closed-bar NOT_MEASURED) contradicted the new
+  cells — reconciled.
+- MINORs: 2s timestamp skew pinned (script start vs artifact finalize);
+  handoff file count 13; energy PIT cells refreshed with point-2; INFOs
+  tightened ("persisted, with closes landed"; both point-1 files named in
+  the limitation).
+Reviewer's pass-notes: all seven sep30 closes in the docs match the artifact
+exactly; taxonomy correctly scoped to presence; fail-closed preserved (OI-1
+declaration still required); manifest 13/13 sha-verified; no secrets.
