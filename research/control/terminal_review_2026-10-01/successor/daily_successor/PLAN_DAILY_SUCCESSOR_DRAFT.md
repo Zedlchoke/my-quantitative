@@ -395,10 +395,16 @@ The ×2.0 reporting-tier deferral is a registered deviation from PB2 P6b (non-go
 **Rescope (§0b ¶1, binding — supersedes the 7-leg table above):**
 operative slate = {DS-03, DS-05}: SLATE 1×8, B0 1×0, B1S 1×8, B2 1×8,
 B3 1×8, C2 1×8, LORO×{DS-03,DS-05} 16, ×1.5 stress SLATE+B1S 16 →
-**10 identities / 64 scored rows**; LEARN rows = G1 only (2 selectable
-nodes) → **67 total** (10 ≤ 24 ✓, 67 ≤ 120 ✓). ×2.0 reporting rows for
-SLATE and B1S restored (16 rows → 83 ≤ 120 ✓). LORO/P8L is a 2-row
-table; reported with that degeneracy disclosed.
+**10 identities / 64 scored rows** (C2's 8 fold-rows sit OUTSIDE the
+row budget — they are the clock-shadow control's fold-level breakdown,
+counted as part of the C2 identity, not as separate ledger rows; the
+superseded table's inclusive reading is retired by this sentence). LEARN
+rows = G1 only (2 selectable nodes) → **67 total** (10 ≤ 24 ✓, 67 ≤ 120
+✓). ×2.0 reporting rows for SLATE and B1S restored (16 rows → 83 ≤ 120
+✓). LORO/P8L is a 2-row table; reported with that degeneracy disclosed.
+**Row-count reconciliation (A7 F1): 64 scored = SLATE 8 + B1S 8 + B2 8 +
+B3 8 + LORO 16 + ×1.5 16 = 64 exact; +G1 LEARN 3 = 67; +×2.0 reporting
+16 = 83. Every reading stated; ≤ 83 in all cases.**
 
 Counting law inherited (PB2 E-Law 8 / CAM §6): baseline IDENTITIES on the
 scored line; the random battery is ONE identity executed as ≤128 seeded
@@ -631,7 +637,10 @@ PASS bars scoped to the prospective surface only):**
 **Then A1 (and ONLY then):** `researchctl register` the successor
 daily-track amendment naming this plan + OWNER_PACKET v2 + GATE_UPDATE v2
 + GATE_TABLE_V2 + frozen manifests + DAILY_ADMISSION_MATRIX + OI_DECISIONS_APPLIED
-as preregistration inputs → freeze code/data/selection/cost → fresh-context
+as preregistration inputs + G6_ADJUDICATION.md + g6_pull/ artifacts +
+G3_G4_VIX_SIGMA.md + G5_G6_SPREADS_INPUTEND.md +
+G7_G8_G10_FREEZE_DRAFTS.md + SKEPTIC_PREREG_FINAL.md +
+SKEPTIC_OWNER_REVIEW_ADJUDICATION.md → freeze code/data/selection/cost → fresh-context
 **A7 prelaunch** → **STOP before any scored GO**. The typed GO phrase is
 registered at registration and belongs to the owner at that cycle's own
 gate — it is not consumable from this draft. (Registration also carries

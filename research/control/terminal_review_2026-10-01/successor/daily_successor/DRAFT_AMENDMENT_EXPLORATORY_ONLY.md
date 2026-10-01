@@ -20,5 +20,5 @@ declared costs) with these binding limitations —
 5. Nothing here relaxes any law: S1 SEALED, TERMINAL cycles untouched,
    no orders, no reuse of closed budgets.
 
-Status: **DRAFT — awaiting owner election. Not registered, not
-dispatched.**
+Status: **ADOPTED — owner election "ĐI TIẾP KHÔNG CÓ SAO KÊ" 2026-10-01;
+DAILY-EXPLORATORY-V1 registered under this amendment (dfae4fb8).**
