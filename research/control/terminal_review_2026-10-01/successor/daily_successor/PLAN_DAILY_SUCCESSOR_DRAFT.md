@@ -54,23 +54,24 @@ G-PIT-V2 per Matrix B). Executable vehicles: **FX-spot pairs only**.
    (corpus has NO stop; adding one = invention). **Admitted slate: DS-03,
    DS-05 only.** Un-parking requires the owner naming the missing source
    or approving the specific rule choice at registration.
-2. **Registration gate table (corrects any 'single-gate' phrasing —
-   registration proceeds ONLY when ALL are PASS):**
+2. **Registration gate table (GATE-ORDER CORRECTED per co-owner
+   2026-10-01 — the table is split by phase; G11/G12 FOLLOW registration
+   and are never its prerequisites):**
 
 | # | gate | status today |
 |---|---|---|
-| G1 | OI-2 statement file present | **NOT_RUN — file absent** (owner export) |
+| G1 **[PRE-registration]** | OI-2 statement file present — Access-Denied blocker (owner-measured 2026-10-01 13:45 ICT); G1/G2 NOT_RUN ⇒ NO scored run, NO after-cost PASS. An EXPLORATORY-ONLY amendment (declared costs, no after-cost claims) may be registered instead if the owner elects it (draft prepared, NOT dispatched) | **NOT_RUN — blocked** |
 | G2 | Statement components upgraded WHERE MEASURED (law in ¶3) | NOT_RUN (depends on G1) |
 | G3 | VIX span/availability re-verified at freeze | NOT_RUN (freeze-time check) |
 | G4 | σ tripwire 1σ/5σ/0.5σ computed vs each archive (NZD 64.64 / CHF 49.62 measured; XAU at freeze) | NOT_RUN (freeze-time; never loosened) |
-| G5 | Daily-band spread derivation frozen (MEASURED-DERIVED, logged) | NOT_RUN (freeze-time) |
+| G5 | Daily-band spread derivation — CO-OWNER DECISION 2026-10-01: NO PnL-based trim; raw BID/ASK open/close kept; **the async two-sided OPEN difference is a BAR-SIDE DIFFERENCE, NOT a simultaneously-measured executable spread**; O-FOLDS untrimmed = pessimistic EXPLORATORY scenario, C-FULL = control; **execution cost is MEASURED only where simultaneous quotes exist — everything else DECLARED** | computed; decision recorded |
 | G6 | AUD/CAD D1 input completion OR fold-8 truncation typed | NOT_RUN (owner action or typed fallback) |
 | G7 | Vehicle/PARAM-GAP + registration decisions frozen | PARTIAL (DS-03/DS-05 sets complete; parked legs frozen as parked) |
 | G8 | Selection freeze (slate + calendar + budget + grids) | NOT_RUN (freeze-time) |
-| G9 | Quote-CCY accounting implemented + reconciled (§7b of SUCCESSOR_PLAN_DRAFT) | NOT_RUN (engine build) |
+| G9 **[PRE-registration, allowed at prep]** | Quote-CCY engine components MAY be built/tested at preparation stage WITHOUT PnL exposure (synthetic fixtures + leak-law discipline, correct authority per co-owner); real-panel runs wait for the cycle | SPEC complete; build = prep-lawful, not yet run |
 | G10 | Prospective validation calendar + EXPLORATORY labels + ongoing input-collection law frozen (§7 item 7) | NOT_RUN (freeze-time) |
-| G11 | Owner GO phrase registered at registration; GO reserved to the owner at the scored cycle's own gate | NOT_RUN (registration act) |
-| G12 | Fresh-context A7 prelaunch PASS (post-registration, before first scored run) | NOT_RUN (prelaunch) |
+| G11 **[AT registration]** | Owner GO phrase registered at registration; GO reserved to the owner at the scored cycle's own gate | NOT_RUN (registration act — not a prerequisite) |
+| G12 **[POST-registration]** | Fresh-context A7 prelaunch PASS (after registration, before first scored run) | NOT_RUN (prelaunch — not a prerequisite) |
 
 3. **Statement attribution law (applies when G1 lands):** IBKR
    Flex/Activity **Trades** sections carry per-execution time/price/

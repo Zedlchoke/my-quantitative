@@ -71,3 +71,19 @@ Fail-closed unchanged: registration/scored/GO/S1 blocked until G1–G12
 ALL PASS; OI-2 remains the only OWNER-FILE dependency (G1/G2) — G6's
 extension pull is the one owner/lane ACTION dependency that does not
 involve the statement.
+
+## Co-owner decisions 2026-10-01 (packet 9db7f7f1) — recorded
+
+- **G6**: HMDS D1 pull for AUDUSD/USDCAD via TWS 127.0.0.1:7497
+  READ-ONLY **authorized and dispatched** (contract/pacing/sha/coverage/
+  gaps/PIT verification per lane; on failure → typed NOT_RUN_INPUT_END +
+  force-flat, NEVER gap-filling). Result pending in g6_pull/.
+- **G5**: no PnL trim; O/C kept raw; open-side = bar-side difference not
+  executable spread; O-FOLDS pessimistic-exploratory scenario, C-FULL
+  control; execution cost MEASURED only with simultaneous quotes.
+- **G9**: engine build/test lawful at preparation WITHOUT PnL exposure.
+- **Gate order corrected**: preregistration = G1–G8 + G10; at
+  registration = G11; post-registration = G12. The earlier "ALL G1–G12
+  before registration" framing was circular — corrected.
+- **OI-2**: G1/G2 NOT_RUN (Access Denied) ⇒ no scored/after-cost PASS;
+  an EXPLORATORY-ONLY amendment is DRAFTED (below) and NOT dispatched.
