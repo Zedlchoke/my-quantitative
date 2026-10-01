@@ -78,7 +78,7 @@ use the journals' own outcome rows; no reason is guessed.
   fold-2 −$208.8k gap) is dominated by the size/path divergence of (b),
   not by the guard. (Docket A measures the guard's full-window effect
   separately: the 29 cost-guard defers B1 actually filled netted
-  +$274,572 — the guard's deferrals were net HARMFUL across the window;
+  +$274,572 — the deferrals' B1-path attribution was net-negative across the window (attribution, not ablation);
   see symbol_docket/USDJPY_DOCKET.md §6.) No counterfactual on any
   single deferral is claimed.
 - **(b) Netting/size divergence, not gating — MEASURED.** Worst single
@@ -269,7 +269,7 @@ long entries are the only sign-consistent negative bucket in BOTH arms**
 (POLICY −281k n=91 across all 8 folds; B1 −84k n=74). Rule tests both
 sides: blocking NY longs is the ONLY PnL- and DD-consistent off-rule
 (+281k avoided, DD −412k→−360k); the cost guard's 29 defers B1 filled
-netted +$274.6k (guard HARMFUL window-wide — correcting packet §2.3(a));
+netted +$274.6k (guard's deferrals carried a negative B1-path attribution window-wide (attribution, not ablation) — correcting packet §2.3(a));
 E-floor blocked legs were worth +$428.7k paper/+187.1k realized in B1.
 
 ### 11.2 EURUSD + GBPUSD (docket B) [M]
@@ -325,3 +325,32 @@ justify preregistration.
    PC12A's architecture; conflicts resolved by the frozen netting law.
 6. **Acceptance**: PASS_BARS_V2 AND-semantics (net ↑ AND DD ↓ vs the
    named baselines incl. always-on) on the fresh calendar only.
+
+## 13. ERRATUM (session 3, 2026-10-01): USDJPY at-par currency convention — pooled P1 net leg is convention-dependent; terminal verdict unchanged
+
+M1_OPERATIVE_UPDATE §3 (successor/): the scored engine carried USDJPY
+fill cash at par (identity `cash = −(Δ×P) − commission` proven on 100%
+of 2,835 fills) while swaps are rate-converted. Under a mark-time
+quote-CCY conversion, USDJPY par magnitudes shrink ~190–250× (window
+nets 600k/687k par → ~$2.4–3.6k). Consequences:
+
+1. WITHIN-symbol comparisons are invariant (USDJPY harm −87,201 par →
+   −770…−1,051 converted, sign stable; 7/8 folds same-sign) — the docket
+   findings and the gate-type decomposition stand.
+2. The POOLED P1 net leg is NOT convention-invariant: under quote-CCY it
+   flips to POLICY-favorable (+887…+1,168). **The DD-leg ordering is also
+   convention-sensitive** — independent rough replays (skeptic F-C1) give
+   POLICY-DD < B1-DD under conversion; no published converted chain
+   exists, so NO invariance claim is made for either P1 leg.
+3. The recorded terminal verdict therefore stands on its FROZEN par
+   convention applied uniformly to every arm (E-Law 3 comparability),
+   not on convention-invariance. The "−$85,263 pooled harm" headline is
+   a par-convention number and must be quoted as such. Cross-symbol
+   pooled quantities of the closed cycle are convention-limited; the
+   successor MUST restate pooled bars in quote-CCY (plan REQUIRED item).
+   The frozen terminal artifacts are NOT edited (append-only); this
+   section is the disclosure of record.
+4. Successor engine fix (REQUIRED item in the plan): quote-CCY ledger
+   accounting per FILL_ACCOUNTING_SPEC §4, one frozen conversion
+   convention (realization-rate vs end-rate differ ~6% — declared at
+   freeze).

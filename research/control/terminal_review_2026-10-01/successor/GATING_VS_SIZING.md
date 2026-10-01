@@ -244,11 +244,11 @@ alone are larger than the entire net harm — they are offset inside folds.
    harm measured **−$385.5k**. A successor slate should spend its design
    budget on the participation layer, not on re-scaling units of trades it
    already takes.
-2. **The L6 cost guard is the single largest identified harm mechanism:**
+2. **The L6 cost guard carries the single largest attributed harm block (attribution, not ablation):**
    −$352,959 direct (91.4% of USDJPY gate harm; concentrated in folds 1–2:
    −$351.5k of it), consistent with the docket's independent +$274,572 on
    the 29 B1-filled guard defers [M: USDJPY_DOCKET §6]. The guard fires on
-   realized trailing spend ($2,836.97 cap) and skips winners in trends.
+   realized trailing spend ($2,836.97 cap) and skips winners in trends. (all guard numbers are attributions on the realized exposed paths; §8.4's no-counterfactual ban applies — no run changed the gate)
 3. **The E1 activity floor did not hurt on net** (+$17.3k pooled; strongly
    helpful in f5 +$108.8k): thin-leg participation blocks were roughly
    PnL-neutral-to-positive. E-degradation and W-rule gates never fired in

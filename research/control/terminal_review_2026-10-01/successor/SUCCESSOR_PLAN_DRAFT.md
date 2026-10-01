@@ -3,7 +3,8 @@
 **Status: DRAFT, NOT REGISTERED.** Builds on DECISION_PACKET v2.1
 (`615f43f4`), the 3 symbol dockets, GATING_VS_SIZING.md and RULE_SLATE.md
 (this dir). The 8 PC12A test folds are EXPOSED — hypothesis-generation
-only, never validation (owner law). S1 sealed tail untouched. Nothing in
+only, never validation (owner law). S1 sealed tail untouched.
+   Historical ATTRIBUTION ≠ causal ABLATION — cite M1_OPERATIVE_UPDATE §2. Nothing in
 this draft is a GO.
 
 ## 0. Question
@@ -58,21 +59,33 @@ both arms; S017 1-minute stop-outs; S014 negative both arms).
    ≤128 seeds own line], clock-shadow, ×1.5 governing / ×2.0 reporting,
    inverted/lagged if headroom); ≤120 ledger rows (84 scored + 18 LEARN
    grids + margin). STOP at cap.
-4. **Validation calendar**: ≥6×26w folds + 1w embargo, non-overlapping
-   with 2021-01→2025-12 EXPOSED window AND with the LEARN window.
-   M1-track earliest lawful start: **2029-09-26** (recommended; LEARN
-   consumes the 38.6w stock) or 2028-12-23 (max-credit variant). USDCAD/
-   AUDUSD: **NOT_RUN** (no lawful H1/M1 calendar on file). Daily-cohort
-   track (7 candidates, separate rules): feasible TODAY (≈10 folds)
-   conditional on the data lane's gate + owner decisions D-1..D-7 —
-   hosts NEW-DAILY candidates, not this slate.
+4. **Validation calendar (NO-UNSEAL OPERATIVE)**. ≥6×26w folds + 1-week
+   embargo, non-overlapping with the 2021-01-08→2025-12-26 EXPOSED window,
+   the S1 sealed tail (2026-01-02→2026-06-26 — stays SEALED; no unseal is
+   authorized), and the LEARN window. LEARN (no-unseal) = the unsealed
+   never-scored M1 segment 2026-06-27→2026-09-23 (88 d on file) extended
+   by lawful live accumulation to 26 weeks: LEARN 2026-06-27→2026-12-26
+   (the 7-day accumulation hole 2026-09-24→2026-09-30 is typed and
+   disclosed unless lawfully backfilled; any backfill channel must not
+   touch 2026-01-02→2026-06-26). Fold 1 starts 2027-01-02 (LEARN end +
+   7 d), readable 2027-07-03; earliest complete 6×26w evaluation
+   **2029-12-29** (2030-01-05 if 182 full data days are required without
+   backfill). This supersedes RULE_SLATE §4.5's fallback dates and the
+   unseal variants (DEAD by owner directive). USDCAD/AUDUSD: **NOT_RUN**
+   (no lawful H1/M1 calendar on file; §6 decision packet in
+   M1_OPERATIVE_UPDATE.md). Daily-cohort track unchanged (≈10 folds
+   feasible today conditional on data-lane gates + owner D-1..D-7).
+   "Mid-2027" remains unattainable on every lawful variant.
+
 5. **PIT/cost authority**: panel clock PIT (proven engine); spreads
    measured C1–C3; commission/swap/slippage DECLARED bands with
    PROVISIONAL labels; IBKR statement remains the measured unlock;
    stress ×1.5 governing.
 6. **Engine/journal**: PC12A engine lineage (append-only journal_row@1,
    every trade AND blocked signal; add MAE/MFE + per-trade attribution
-   — the docket [NR] items); determinism + truncation replay + leak law
+   — the docket [NR] items; QUOTE-CCY ledger accounting per
+   FILL_ACCOUNTING_SPEC §4 as a REQUIRED item — see the currency-convention
+   erratum in DECISION_PACKET §13); determinism + truncation replay + leak law
    inherited.
 7. **Freeze → A7 → GO**: code/data/selection/cost freeze; fresh-context
    A7 prelaunch; owner GO at the scored gate (phrase registered at

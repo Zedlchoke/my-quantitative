@@ -50,7 +50,7 @@ trigger shape was chosen AFTER looking at the exposed folds.
 | 2 | A-H4 / H-J3 — meanrev family (S014) off | USDJPY | HIGH — RSI2 fade repeatedly sells a macro-trending pair; mid-cross exit realizes the damage (A §3, §7-H4) | family n=53 pooled excursions (thin); S014 negative in both arms every traded fold | MEDIUM-LOW — family selected post-observation but the mechanism (counter-trend fade vs macro trend) is structural; netting-hedge risk must be checked, not assumed | Mechanistically cleanest negative in the docket; family-level OFF, no fitted threshold |
 | 3 | B-H-G1 — retire GBPUSD-S017 | GBPUSD | HIGH — +1σ stop sits inside entry-bar noise at the M1 clock: 20 SL : 6 TP, 15/28 close ≤1 min (B §4) | 28 POLICY / 39 B1 trades; fold cells 1–8 (thin) | MEDIUM — retirement decided after seeing the TEST book, but the stop-geometry argument is instrument-physics, not PnL fitting | Stop-geometry mechanism + negative both arms 6–7/8 folds; smallest parameter count of any rule (zero) |
 | 4 | B-H-E1 — codify E1 activity floor for SIG-exit-only legs | EURUSD | MEDIUM-HIGH — a SIG-only exit leg with <3 decisions/26w has no adaptive information to size against; TRAIN prior did not transfer (B §7-H-E1) | S009 always-on n=50, missed-set n=49; ≤0 in 5/7 traded folds | MEDIUM-LOW — the floor's constants (3/26w) predate scoring (PC12A POLICY layer); "SIG-exit-only" scoping is the only new generalization | The floor was the policy's one measured win (R-E1 avoided ≈ $504); retention, not new fitting |
-| 5 | A-H1 / H-J2 — re-tune/remove L6 cost guard (admit defers) | USDJPY | MEDIUM — guard caps re-entries exactly when the stop-cascade's continuation frequency peaks (A §7-H1) | matched-defer set n=29 only; folds {1,2,3,5,6,7}, min fold 1; one trade = 46% of effect | HIGH — derived attribution on B1's path, n=29, heavy concentration; the ×1.5 cap multiple is a post-hoc free parameter | Large measured leakage (+274.6k journal units) but the weakest evidence base of the top six; enters the slate only with a grid + strict anti-hypothesis |
+| 5 | A-H1 / H-J2 — re-tune/remove L6 cost guard (admit defers) | USDJPY | MEDIUM — guard caps re-entries exactly when the stop-cascade's continuation frequency peaks (A §7-H1) | matched-defer set n=29 only; folds {1,2,3,5,6,7}, min fold 1; one trade = 46% of effect | HIGH — derived attribution on B1's path, n=29, heavy concentration; the ×1.5 cap multiple is a post-hoc free parameter | Large B1-path attribution (+274.6k journal units on the 29 matched defers; not an ablation — the causal effect of relaxing the guard is unmeasured) but the weakest evidence base of the top six; enters the slate only with a grid + strict anti-hypothesis |
 | 6 | B-H-E2 — EURUSD 12:00/16:00 entry gate | EURUSD | MEDIUM-HIGH — H4-clock meanrev vote inside the London/NY handover + NY-open spread widening, cost-visible (B §5, §7-H-E2) | 57/59 suppressed trades (POLICY/B1), 6/8 folds each | **HIGH-RISK — trigger shaped on exposed folds: the hour set {12,16} was picked from the entry-hour table computed on the scored journals (B §3: hour 16 worst on POLICY, hour 12 worst on B1)** | Consistent both arms and halves pair DD, but the specific hours are a fold-shaped choice; admissible only via a preregistered grid re-learned on fresh TRAIN |
 | 7 | B-H-E3 — admit VC2-LVNFAIL-EURUSD | EURUSD | MEDIUM — E1 floor is calibrated for daily/weekly clocks and mis-fires on M1 VOLPROF; cost-light barriers, no O/N swap (B §7-H-E3) | n=26 B1 book / 13 strictly-missed — under-powered (docket's own ranking note) | MEDIUM-HIGH — pair-cherry-pick: EUR admitted vs VC2-GBPUSD TRAIN-negative (B §1, §8); pair specificity chosen after seeing both | Positive 6/8 folds and design-faithful exits, but n cannot carry a rule; benched pending fresh-fold floor |
 | 8 | A-H3 — exempt calendar-sparse legs from E1 | USDJPY | MEDIUM — sparsity ≠ dead signal: monthly/weekly clocks are sparse by design (A §7-H3) | realized entries n=13; paper book only for the rest (154 blocks) | **HIGH-RISK — the exemption list is exactly the exposed blocked set (S002/S003/S023/VC2-USDJPY), named after the folds were seen; benefit rests on the paper book (+428.7k) that ignores netting** | Realized ≪ paper is the docket's own expected failure mode; needs the successor engine's per-leg attribution before it is even testable |
@@ -102,7 +102,10 @@ Summary:
 - **Measured prior (exposed, journal units, both sides):** POLICY NY bucket
   −281,460.12 (n=91) / B1 −83,683.91 (n=74); blocking removes 50 losers
   (−795,805.74 avoided) against 38 winners (+514,369.07 suppressed); maxDD
-  −412,208.31 → −359,621.76; fold counts 13/5/9/12/9/15/15/13 (A §3, §6).
+  −412,208.31 → −359,621.76; fold counts 13/5/9/12/9/15/15/13 [path
+  arithmetic on the realized exposed path, exits unchanged; an
+  interventional re-run would produce different re-entry/netting/sizing
+  paths — attribution only] (A §3, §6).
 - **Anti-hypothesis (refutation on fresh folds):** REFUTED if (i) the
   blocked NY-long set nets ≥ 0 pooled over the fresh folds (suppressed-
   winner net ≥ avoided-loser net), or (ii) the rule's net effect is
@@ -144,11 +147,11 @@ Summary:
   successor's standard vote size; no sizing law is added.
 - **Overfit disclosure:** HIGH — n=29 matched defers, one trade 46% of the
   measured effect, cap multiple chosen post-hoc (§1 row 5). This rule is in
-  the slate because the leakage is the largest single measured block of the
+  the slate because the deferred set's B1-path attribution is the largest single attributed block of the
   USDJPY harm, and it carries the strictest grid + anti-hypothesis.
 - **Measured prior (exposed, derived on B1's path):** 331 guard defers
   (S026 299); the 29 B1 filled netted +274,572.47 (16W/13L); removing them
-  worsens B1 USDJPY maxDD −378,482.09 → −501,493.31 (A §6).
+  worsens B1 USDJPY maxDD −378,482.09 → −501,493.31 [leave-29-out on B1's realized path = attribution; not evidence that relaxing the guard causes these outcomes on any other path] (A §6).
 - **Anti-hypothesis:** REFUTED if at the frozen multiplier (i) ≥ 20 admitted
   defers realize net ≤ 0 pooled (A §7-H1 failure condition), or (ii) any
   fresh fold's admitted-defer set nets below −(the pooled admitted gain)
