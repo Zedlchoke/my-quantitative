@@ -49,11 +49,13 @@ both arms; S017 1-minute stop-outs; S014 negative both arms).
 1. **Hypothesis IDs** SU-H1..H6 = the 6 slate rules + their anti-
    hypotheses; registered BEFORE any fresh data touch.
 2. **Thresholds/grids**: one frozen default per rule + ≤3-node grid,
-   learned ONLY on the LEARN window (the never-scored M1 segment
-   2025-12-27→2026-09-23 incl. the owner-declared sealed tail, per
-   RULE_SLATE §4; fallback 2026-09-24→2027-03-25 if the owner declines
-   to unseal; or the first 20% of the daily-cohort calendar if that
-   track is chosen); no exposure to validation folds.
+   learned ONLY on the LEARN window; no exposure to validation folds.
+   LEARN window per OPERATIVE track (aligned with §3.4): M1-track (N1,
+   no-unseal — owner decision M1-CAL): the unsealed never-scored M1
+   2026-06-27→2026-09-23 extended by accumulation to 2026-12-26 (the S1
+   sealed tail 2026-01-02→2026-06-26 stays SEALED — never a LEARN or
+   validation input). DAILY-track: the first 20% of the admitted daily
+   panels' calendar (2020-10-02→).
 3. **Trial budget**: ≤24 scored identities (battery: slate book, B1S
    always-on, leave-one-rule ×6, random dwell battery [1 identity,
    ≤128 seeds own line], clock-shadow, ×1.5 governing / ×2.0 reporting,
@@ -90,6 +92,14 @@ both arms; S017 1-minute stop-outs; S014 negative both arms).
 7. **Freeze → A7 → GO**: code/data/selection/cost freeze; fresh-context
    A7 prelaunch; owner GO at the scored gate (phrase registered at
    registration, not consumable from this draft).
+7b. **Quote-CCY accounting (REQUIRED, implemented before freeze)**: all
+   PnL and DD computed in quote-CCY then converted at ONE frozen
+   convention — per-fill realization rate for cash events, equity marks
+   at the same bar's conversion rate; USDJPY/USDCHF legs carry an explicit
+   JPY/CHF→USD conversion row per fill (closing the PC12A at-par defect —
+   DECISION_PACKET §13); reconciliation test: per-symbol quote-CCY books
+   must satisfy the §6 identity to 1e-9 AND cross-check against a par-
+   convention replay with the disclosed divergence bound.
 8. **PASS bars**: PASS_BARS_V2 wholesale (net ↑ AND DD ↓ vs B1S etc.)
    + **P-MW** (OFF rules: avoided-loser net must EXCEED suppressed-
    winner net pooled, Δ(rule)>0; winner column mandatory) + **P-FA**
