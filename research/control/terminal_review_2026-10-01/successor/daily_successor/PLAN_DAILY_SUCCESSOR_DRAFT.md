@@ -593,9 +593,13 @@ fail-closed** (JOURNAL_SCHEMA header law + §1). Daily-clock specifics this plan
 ## 7. Registration gate (exact condition; what A1 does then)
 
 **GATE — registration of the scored DAILY successor executes ONLY when
-ALL hold:**
+ALL hold (or, where the owner has elected the EXPLORATORY-ONLY amendment
+— owner election 2026-10-01 verbatim "ĐI TIẾP KHÔNG CÓ SAO KÊ" — G1/G2
+are waived for that amendment's registration: the cycle registers as
+exploratory-only with DECLARED costs, NO after-cost PASS ever, and the
+PASS bars scoped to the prospective surface only):**
 
-1. **OI-2 LANDS:** the IBKR Activity/Flex statement exists in
+1. **OI-2 LANDS (or the exploratory-only election stands in its place):** the IBKR Activity/Flex statement exists in
    `~/.my-quantitative-data/ibkr_statement/` (Trades-with-Commission +
    Interest Accruals sections; covering FX trades + overnights) and its
    measured commission/swap values are frozen into the cost kernel,
