@@ -306,3 +306,115 @@ print("written", out)
 for k in ["overlaps", "triangulation", "energy", "proxies"]:
     print("\n==", k)
     print(json.dumps(report[k], indent=1)[:3000])
+
+# ============================ Amendment-1 evidence blocks ====================
+# Everything the v2 markdowns cite that was not in the original report:
+# per-year basis tables, calendar non-overlap enumerations, mirror value
+# equality at source precision, retrieval staleness, panel volatility.
+import json as _json
+xr = _json.loads((CTL / "XCHECK_REPORT.json").read_text())
+
+xr["amendment1_note"] = ("blocks below added by the owner-directed review "
+                         "2026-10-01; all previously reported numbers unchanged "
+                         "(verified by re-run); new blocks carry the per-year / "
+                         "calendar / equality / staleness / volatility evidence")
+
+# panel daily-return sigma (bps) from IBKR mids - instrument property, NOT a
+# basis-table statistic; input to the volatility-scaled tripwire derivation
+def ret_sigma_bps(mid):
+    ds = sorted(mid)
+    rets = [(mid[b] / mid[a] - 1) * 1e4 for a, b in zip(ds, ds[1:])]
+    return {"n_returns": len(rets),
+            "sigma_bps_full_window": round(st.pstdev(rets), 4)}
+
+xr["panel_volatility"] = {a: ret_sigma_bps(ibkr_mid(a)) for a in ["NZDUSD", "USDCHF"]}
+
+# per-year abs-p50 basis tables
+def yr_p50(ib, src):
+    common = [d for d in ib.keys() & src.keys() if WINDOW[0] <= d <= WINDOW[1]]
+    out = {}
+    for y in ["2020", "2021", "2022", "2023", "2024", "2025", "2026"]:
+        xs = sorted(abs((ib[d] - src[d]) / src[d] * 1e4) for d in common if d[:4] == y)
+        if xs:
+            out[y] = round(xs[len(xs) // 2], 2)
+    return out
+
+xr["per_year_basis_abs_p50_bps"] = {
+    "NZDUSD": {"FRED": yr_p50(ibkr_mid("NZDUSD"), fred_nzdusd),
+               "ECB": yr_p50(ibkr_mid("NZDUSD"), ecb_nzdusd)},
+    "USDCHF": {"FRED": yr_p50(ibkr_mid("USDCHF"), fred_usdchf),
+               "ECB": yr_p50(ibkr_mid("USDCHF"), ecb_usdchf)},
+}
+
+# calendar non-overlap enumerations (FX archive independence)
+def calsets(name_a, series_a, name_b, series_b):
+    A = {d for d in series_a if WINDOW[0] <= d <= WINDOW[1]}
+    B = {d for d in series_b if WINDOW[0] <= d <= WINDOW[1]}
+    only_a, only_b = sorted(A - B), sorted(B - A)
+    return {f"{name_a}_only": {"count": len(only_a), "dates": only_a},
+            f"{name_b}_only": {"count": len(only_b), "dates": only_b},
+            "n_common": len(A & B)}
+
+xr["calendar_non_overlap"] = {
+    "FRED_vs_ECB": calsets("FRED", fred_nzdusd, "ECB", ecb_nzdusd),
+    "note": ("NZDUSD and USDCHF yield identical sets (both archives publish the "
+             "same calendar); enumerated dates are consistent on spot-check with "
+             "US-federal vs TARGET holiday calendars (e.g. 2021-04-02 Good "
+             "Friday, 2022-04-18 Easter Monday FRED-only; 2020-11-11 Veterans "
+             "Day, 2020-11-26 Thanksgiving ECB-only); exhaustive day-by-day "
+             "holiday classification NOT performed - counts and lists are the "
+             "on-file evidence"),
+}
+
+# ECB-vs-FRED value distinctness: nonzero on every common date?
+def distinct(a, b):
+    common = sorted(d for d in a.keys() & b.keys() if WINDOW[0] <= d <= WINDOW[1])
+    nz = sum(1 for d in common if abs(a[d] - b[d]) > 1e-12)
+    return {"n_common": len(common), "nonzero_value_dates": nz,
+            "nonzero_fraction": round(nz / len(common), 6) if common else None}
+
+xr["archive_value_distinctness"] = {
+    "ECB_vs_FRED_NZDUSD": distinct(ecb_nzdusd, fred_nzdusd),
+    "ECB_vs_FRED_USDCHF": distinct(ecb_usdchf, fred_usdchf),
+}
+
+# mirror value equality at source precision (EIA vs FRED energy)
+def mirror_eq(a, b):
+    common = sorted(d for d in a.keys() & b.keys() if WINDOW[0] <= d <= WINDOW[1])
+    eq = sum(1 for d in common if a[d] == b[d])
+    md = max((abs(a[d] - b[d]) for d in common), default=0.0)
+    return {"n_aligned": len(common), "exactly_equal_at_source_precision": eq,
+            "max_abs_diff": md}
+
+xr["mirror_value_equality"] = {
+    "BRENT_EIA_vs_FRED": mirror_eq(eia_brent, fred_brent),
+    "WTI_EIA_vs_FRED": mirror_eq(eia_wti, fred_wti),
+    "HENRYHUB_EIA_vs_FRED": mirror_eq(eia_hh, fred_hh),
+}
+
+# retrieval staleness: series endpoints as served at this session's retrieval
+xr["retrieval_staleness"] = {
+    "retrieved_at_utc": manifest_generated_at if False else datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "ibkr_panel_last": {"NZDUSD": max(ibkr_mid("NZDUSD")), "USDCHF": max(ibkr_mid("USDCHF"))},
+    "ecb_last": {"NZDUSD_cross": max(ecb_nzdusd), "USDCHF_cross": max(ecb_usdchf)},
+    "fred_last": {"DEXUSNZ": max(fred_nzdusd), "DEXSZUS": max(fred_usdchf),
+                  "DCOILBRENTEU": max(fred_brent), "DCOILWTICO": max(fred_wti),
+                  "DHHNGSP": max(fred_hh)},
+    "eia_last": {"RBRTE": max(eia_brent), "RWTC": max(eia_wti), "RNGWHHD": max(eia_hh)},
+    "reading": ("measured serving lag of the fredgraph channel at retrieval: "
+                "H.10 FX series end 2026-09-25 (>=3 business days stale at a "
+                "2026-09-30ET/2026-10-01Z retrieval) while ECB served "
+                "2026-09-30 and FRED energy mirrors served 2026-09-29; single "
+                "observation, cause not analyzed on file - this is channel "
+                "serving lag, NOT the H.10 release schedule, and it qualifies "
+                "any same-day availability premise for the FRED channel"),
+}
+
+(CTL / "XCHECK_REPORT.json").write_text(_json.dumps(xr, indent=1))
+print("\namendment1 evidence blocks written; sample:")
+print(" sigma:", xr["panel_volatility"])
+print(" mirror WTI:", xr["mirror_value_equality"]["WTI_EIA_vs_FRED"])
+print(" distinct NZD:", xr["archive_value_distinctness"]["ECB_vs_FRED_NZDUSD"])
+print(" stale FRED:", xr["retrieval_staleness"]["fred_last"])
+print(" cal FRED_only:", xr["calendar_non_overlap"]["FRED_vs_ECB"]["FRED_only"]["count"],
+      "ECB_only:", xr["calendar_non_overlap"]["FRED_vs_ECB"]["ECB_only"]["count"])
