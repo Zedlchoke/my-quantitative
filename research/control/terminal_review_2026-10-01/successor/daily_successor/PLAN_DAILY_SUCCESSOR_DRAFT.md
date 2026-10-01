@@ -43,6 +43,66 @@ G-PIT-V2 per Matrix B). Executable vehicles: **FX-spot pairs only**.
 
 ---
 
+## 0b. OWNER REVIEW ADDENDUM (2026-10-01, post-3acf085d co-owner review — BINDING; supersedes any conflicting earlier text)
+
+1. **Slate reduced by owner review law** ("nếu phải phát minh rule mới thì
+   park chân đó"): **PARKED at registration** — DS-01 (z-direction tension
+   DS-01-a + S35 coupling cannot fire DS-01-b: two invented choices),
+   DS-02 (gold-hedge re-scope DS-02-a changes the trade shape → new rule),
+   DS-04 (FOMC/NFP calendar gate unevidenced DS-04-b; dropping the gate =
+   modifying the rule), DS-06 (BTP-Bund veto cannot fire DS-06-a), DS-07
+   (corpus has NO stop; adding one = invention). **Admitted slate: DS-03,
+   DS-05 only.** Un-parking requires the owner naming the missing source
+   or approving the specific rule choice at registration.
+2. **Registration gate table (corrects any 'single-gate' phrasing —
+   registration proceeds ONLY when ALL are PASS):**
+
+| # | gate | status today |
+|---|---|---|
+| G1 | OI-2 statement file present | **NOT_RUN — file absent** (owner export) |
+| G2 | Statement components upgraded WHERE MEASURED (law in ¶3) | NOT_RUN (depends on G1) |
+| G3 | VIX span/availability re-verified at freeze | NOT_RUN (freeze-time check) |
+| G4 | σ tripwire 1σ/5σ/0.5σ computed vs each archive (NZD 64.64 / CHF 49.62 measured; XAU at freeze) | NOT_RUN (freeze-time; never loosened) |
+| G5 | Daily-band spread derivation frozen (MEASURED-DERIVED, logged) | NOT_RUN (freeze-time) |
+| G6 | AUD/CAD D1 input completion OR fold-8 truncation typed | NOT_RUN (owner action or typed fallback) |
+| G7 | Vehicle/PARAM-GAP + registration decisions frozen | PARTIAL (DS-03/DS-05 sets complete; parked legs frozen as parked) |
+| G8 | Selection freeze (slate + calendar + budget + grids) | NOT_RUN (freeze-time) |
+| G9 | Quote-CCY accounting implemented + reconciled (§7b of SUCCESSOR_PLAN_DRAFT) | NOT_RUN (engine build) |
+| G10 | Prospective validation calendar + EXPLORATORY labels + ongoing input-collection law frozen (§7 item 7) | NOT_RUN (freeze-time) |
+| G11 | Owner GO phrase registered at registration; GO reserved to the owner at the scored cycle's own gate | NOT_RUN (registration act) |
+| G12 | Fresh-context A7 prelaunch PASS (post-registration, before first scored run) | NOT_RUN (prelaunch) |
+
+3. **Statement attribution law (applies when G1 lands):** IBKR
+   Flex/Activity **Trades** sections carry per-execution time/price/
+   commission — commission upgrades to MEASURED per trade, matched to
+   backtest fills by symbol/side/size within a time window (the G2
+   freeze names window length, multi-match tie-break, partial-size
+   aggregation and symbol normalization; where statement timestamps do
+   not overlap a backtest fold, the frozen commission SCHEDULE applies
+   per fill, labeled SCHEDULE-EXTRAPOLATED). **Interest Accruals** are per-CURRENCY
+   daily balances, NOT per-strategy: swap upgrades to a MEASURED
+   per-currency nightly accrual RATE, attributed per held night n as
+   Σ u(n⁻) × r_ccy(n) — r_ccy(n) = the measured per-currency accrual
+   rate of that calendar night; the weekday/weekend-roll structure comes
+   from the statement itself and replaces the declared calendar whole
+   (frozen formula, reproducible). **Slippage is
+   NOT measured by statements** (fills-vs-contemporaneous-quotes only,
+   at best partial) → stays DECLARED/PROVISIONAL. Only components
+   actually measured upgrade; the rest stay DECLARED/NOT_RUN; **no
+   after-cost PASS is self-granted** — an after-cost claim needs the
+   governing cost lines measured or carries the explicit PROVISIONAL
+   label.
+4. **Calendar exposure honesty (owner correction):** the DAILY 2020–2026
+   exploratory folds share underlying panels already EXPOSED in PC12A (EUR/GBP/
+   JPY/AUD/CAD M1/H1). A new identity does NOT make those folds untouched
+   OOS. Labels: folds on exposed-input legs (DS-03 trades USDJPY; DS-05
+   inputs AUD/CAD) = **EXPLORATORY / hypothesis-generating**;
+   untouched-input series (NZD/CHF/XAU/EIA) do not cure vehicle-side
+   exposure. **Truly prospective validation = data accumulated AFTER the
+   registration date** (post-registration daily bars forward), the same
+   law as the M1-track. PASS bars apply ONLY on the prospective surface;
+   the 2020–2026 battery may run as EXPLORATORY evidence at most.
+
 ## 1. LEG SLATE — scoped to ACTUALLY admitted legs
 
 Candidate pool per dispatch: Matrix B's 7 NEW-DAILY-CANDIDATE rows
@@ -243,6 +303,10 @@ per leg above; Matrix A: "zero triage rows need only XAGUSD").
 
 ## 2. Fold calendar (never-scored daily calendar; exact dates)
 
+**All folds in this section are EXPLORATORY per §0b ¶4** (both surviving
+legs trade PC12A-exposed vehicles; input-level freshness does not cure
+vehicle-side exposure).
+
 ### 2.1 Freshness statement (and its limit, stated honestly)
 
 The daily calendar is FRESH as a scored-cell space: **no scored identity
@@ -264,7 +328,7 @@ inputs are untouched by any scored run at any date.
 - Master daily calendar: **2020-10-02 → 2026-09-30** = 2,190 days =
   312.857 weeks (≈313w; NZDUSD/USDCHF panels 1,553 d/side; XAU 1,544;
   EIA 2020-10-01→2026-09-29).
-- ≥6×26w floor requires ≥156w of test folds; the calendar supports 8×26w
+- ≥6×26w floor requires ≥156w of exploratory folds; the calendar supports 8×26w
   (208w) after warmup + LEARN + embargo — proposed below.
 - **WARMUP 52w = 364d: 2020-10-02 → 2021-09-30.** No decisions scored or
   learned; indicator burn-in (max corpus lookback 60d — margin huge);
@@ -283,7 +347,7 @@ inputs are untouched by any scored run at any date.
   registration; the skeptic must attack it (§8-b).
 - **EMBARGO 1w: 2022-09-23 → 2022-09-29** (LEARN end + 7d; no selection
   contact with post-LEARN data before freeze — inherited law).
-- **8 × 26w test folds (182d each), fold-edge force-flat inherited:**
+- **8 × 26w exploratory folds (182d each), fold-edge force-flat inherited:**
 
 | fold | start | end |
 |---|---|---|
@@ -326,6 +390,14 @@ AUDUSD/USDCAD H1 panels were staged/TRAIN-only in PC12A (never scored); their de
 The ×2.0 reporting-tier deferral is a registered deviation from PB2 P6b (non-governing), recorded at registration.
 
 ## 3. Trial budget (draft; zero rows exist today — OI-2 blocker)
+
+**Rescope (§0b ¶1, binding — supersedes the 7-leg table above):**
+operative slate = {DS-03, DS-05}: SLATE 1×8, B0 1×0, B1S 1×8, B2 1×8,
+B3 1×8, C2 1×8, LORO×{DS-03,DS-05} 16, ×1.5 stress SLATE+B1S 16 →
+**10 identities / 64 scored rows**; LEARN rows = G1 only (2 selectable
+nodes) → **67 total** (10 ≤ 24 ✓, 67 ≤ 120 ✓). ×2.0 reporting rows for
+SLATE and B1S restored (16 rows → 83 ≤ 120 ✓). LORO/P8L is a 2-row
+table; reported with that degeneracy disclosed.
 
 Counting law inherited (PB2 E-Law 8 / CAM §6): baseline IDENTITIES on the
 scored line; the random battery is ONE identity executed as ≤128 seeded
@@ -372,15 +444,22 @@ identity-classified. B0 FLAT is one identity with **zero journal rows**
 
 ## 4. Controls & PASS bars (all NOT_RUN until OI-2 + registration)
 
+**Scope law (§0b ¶4, binding):** every bar in this section reads ONLY on
+the prospective surface (≥6×26w of post-registration accumulated daily
+bars; earliest honest evaluation ≈ 2029-09 for a 2026-10 registration).
+The §2 2020–2026 battery (folds 1–8) is EXPLORATORY reporting at most —
+no PASS, no GO, no after-cost claim is readable from it; "pooled over
+folds 1–8" below means exploratory reporting only.
+
 **Inheritance (wholesale).** PASS_BARS_V2 law: AND-only semantics (net
 PnL strictly higher AND maxDD strictly lower vs the named baseline, ties
-fail — E-Law 4), pooled test folds, E-Laws 1–8 (quantities; fold-edge
+fail — E-Law 4), pooled exploratory folds, E-Laws 1–8 (quantities; fold-edge
 force-flat disclosure; comparability; strictness; ≥6-fold calendar floor
 — met with 8; book-integrity precondition; ordering; budget counting).
 
 1. **PRIMARY BAR — the always-on wall (seven-deaths lesson).**
    `netPnL(SLATE) > netPnL(B1S)` AND `maxDD(SLATE) < maxDD(B1S)`,
-   pooled over folds 1–8, strict both legs. B1S is the same 7 legs with
+   pooled over the prospective folds, strict both legs. B1S is the same 7 legs with
    eligibility pinned ON — the baseline class that killed PC12A is the
    designated primary, not a secondary control.
 2. **P1-B0 sub-bar:** netPnL(SLATE) > 0 pooled (absolute net edge after
@@ -535,8 +614,14 @@ ALL hold:**
 5. **D1 input-completion action resolved** (§2.4): AUDUSD/USDCAD D1
    extension pull landed, or fold-8 truncation typed
    `NOT_RUN_INPUT_END`.
-6. **Selection freeze:** this slate (7 legs), the parked/excluded tables,
+6. **Selection freeze:** the §0b ¶1 operative slate (DS-03, DS-05; parked legs frozen as parked), the parked/excluded tables,
    param declarations, grids G1/G2, calendar §2 and budget §3 frozen.
+
+7. **Prospective validation law frozen:** ≥6×26w folds of
+   post-registration accumulation (warmup served from never-scored
+   pre-registration bars); EXPLORATORY typing of the §2 battery;
+   ongoing-collection law for every consumed input (majors live
+   collector; scheduled HMDS D1 pulls for AUD/CAD/NZD/CHF; EIA channel).
 
 **Then A1 (and ONLY then):** `researchctl register` the successor
 daily-track amendment naming this plan + OWNER_PACKET v2 + GATE_UPDATE v2

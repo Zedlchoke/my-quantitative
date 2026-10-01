@@ -75,8 +75,10 @@ both arms; S017 1-minute stop-outs; S014 negative both arms).
    backfill). This supersedes RULE_SLATE §4.5's fallback dates and the
    unseal variants (DEAD by owner directive). USDCAD/AUDUSD: **NOT_RUN**
    (no lawful H1/M1 calendar on file; §6 decision packet in
-   M1_OPERATIVE_UPDATE.md). Daily-cohort track unchanged (≈10 folds
-   feasible today conditional on data-lane gates + owner D-1..D-7).
+   M1_OPERATIVE_UPDATE.md). Daily-cohort track: per the DAILY
+   plan §0b ¶4, the 2020–2026 daily folds are EXPLORATORY-only —
+   validation is likewise accumulation-based post-registration (earliest
+   honest 6×26w evaluation ≈ 2029-09/10 for a 2026-10 registration).
    "Mid-2027" remains unattainable on every lawful variant.
 
 5. **PIT/cost authority**: panel clock PIT (proven engine); spreads
