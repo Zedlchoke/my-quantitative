@@ -195,3 +195,117 @@ wording corrected (8.02-12.61); rounding nit (12.61) fixed.
 One editorial slip during this amendment cycle (stray text fragment briefly
 in GATE_UPDATE header, removed same session before commit) was already
 disclosed in the rev-1 log entry above.
+
+---
+
+# Session 2 (owner-directed lane continuation, 2026-10-01)
+
+Owner instruction (data lane of the two-direction steer): push the 7 assets
+through as many legal data gates as possible by measurement/acquisition;
+keep v2 corrections; priorities (1) availability/PIT-lag evidence,
+(2) coverage/interior gaps, (3) legal XAG browser path, (4) futures
+chain/roll/entitlement via IBKR 7497 read-only, (5) cost measurables. No
+purchase/orders/keys/S1/scored/GO/eligibility/registry/ledger changes; no
+self-declared PIT PASS or threshold loosening.
+
+## Re-measure at intake (session 2)
+
+Worktree clean @ `8b8c24a5`; heavy lock FREE_PROVEN; registry unchanged
+(84 cycles, no new); root dirty unchanged (sixsource + sandbox/sleeve
+files, untouched); TWS on 7497 LISTENING (pid 913, Trader Workstation).
+
+## What was done (evidence files in parentheses)
+
+1. **IBKR read-only probes** (owner-authorized 7497; clientId 47/51/53;
+   readonly=True; no orders/account/keys; paced; no heavy lock per PC12A
+   precedent):
+   - D2 expired-month outright resolution: **16/16 error 200** with
+     includeExpired=True (CL/NG 2020-2025, COIL) — self-built chain has no
+     IBKR path (d2_expired_month_resolution.json).
+   - D1 availability point-1: energy fronts serve the CURRENT ET-day D1 bar
+     during the session (…_FIXED.json); spot/metals initially empty on
+     TRADES (channel property), re-measured on BID: **forming next-ET-day
+     bar present at 2026-09-30 22:52 ET on all four**
+     (d1b_spot_metals_bid_channel.json).
+   - D3 energy front BID/ASK 30d landed → spreads measured: COIL p50
+     12.60 / CL 3.23 / NG 6.54 bps (d3…, COVERAGE_REPORT) — supersedes
+     gate-table F-3 REPORT_ONLY.
+   - D5 CONTFUT details: no roll/adjustment field (d5…).
+   - **D6 ADJUSTED_LAST (new channel, P-7)**: serves 6Y for all three
+     (d6_full_adjusted_last.json) BUT divergence vs TRADES ≤ $1.73 / 6y →
+     NOT a genuine back-adjusted chain; roll rule still absent
+     (ENERGY_ADJUSTED_ANALYSIS.json) — measured-negative for the chain
+     gate.
+   - D4 entitlement re-probe: first process HUNG indefinitely (my worker,
+     killed); thread-guard failed on asyncio — technical NOT_RUN; prior
+     evidence stands (energy FAIL per PC12A; FX-spot entitlement exists per
+     sixsource erratum, external, labeled).
+2. **FRED serving-lag point-2** (02:40Z): FX ends 2026-09-25 unchanged
+   (≥3bd, 2 obs); energy ends 2026-09-29 (1bd, 2 obs).
+3. **XAG legal browser paths** (real browser, site's own challenge
+   decides): stooq → "Access denied" (13B body); LBMA silver JSON →
+   Cloudflare hard-block page. Both MEASURED-BLOCKED; no bypass attempted
+   (no PoW solving, no CAPTCHA, no ToS violation).
+4. **Coverage scan** (COVERAGE_REPORT.json): FX 96.0/98.7% archive cover,
+   1 isolation day, 1552-day streak; XAU 99.2% TD cover; EIA 97.6-98.0% of
+   CONTFUT days; CONTFUT flat-OHLC by year quantified (BRENT/WTI 100%
+   2020-22 → 0% 2025; NG boundary earlier).
+5. **Deliverables**: GATE_TABLE_V2_7ASSETS.md (7×5 with labels+evidence),
+   AVAILABILITY_EVIDENCE.json (access-time ledger + point-2 protocol
+   PREPARED_NOT_RUN), DRAFT_AMENDMENT_SUCCESSOR.md (preregistration draft,
+   nothing registered).
+
+## Incidents (session 2)
+
+- INC-S2-1: my D4 worker hung indefinitely on ib_insync reqTickers with no
+  entitlement ticks; killed (my own process); thread-guard retry failed
+  (asyncio loop in executor) — D4 recorded technical NOT_RUN honestly.
+- INC-S2-2: intermittent harness/filesystem anomaly — some python
+  processes could not stat the worktree dir (sandbox-class; system python
+  saw it, venv python sometimes not), causing transient FileNotFoundError on
+  writes into the control dir. Worked around by writing reports to the raw
+  data dir and shell-copying into the control dir; all artifacts verified
+  present. One coverage-scan output vanished after a successful write and
+  was regenerated deterministically. No data loss; scripts carry the
+  workaround comment.
+- INC-S2-3: editorial — one draft file briefly created at a mangled path
+  (PC12A-…-2026-01-01.draft) and moved to the correct name in the same
+  session before commit.
+
+## Boundary compliance (session 2)
+
+No registry/eligibility/GO/ledger write; S1 untouched; 0 scored; 0 orders;
+no purchase; no keyed signup; keys never transmitted (IBKR socket needs
+none); heavy lock never contested; sixsource surfaces and root dirty tree
+untouched; IBKR access strictly read-only (owner-authorized 7497).
+
+### Session 2, rev 2 — skeptic round on GATE_TABLE_V2 (owner-ordered independent check)
+
+Fresh-context read-only skeptic: **1 BLOCKING / 4 MAJOR / 11 MINOR / 3 INFO**.
+All accepted and fixed:
+
+1. BLOCKING — FRED "2 obs" was hard-coded prose (the 02:40Z re-pull ran in
+   an ad-hoc shell, bytes never landed). FIXED by landing
+   `fred_*_staleness_p2.csv` + `FRED_STALENESS_POINT2.json` (manifested) and
+   making coverage_scan.py read the landed files; the ≥3bd/1bd conclusions
+   are unchanged and now artifact-backed at both points.
+2. MAJOR — `d1_..._FIXED.json` unmanifested (killed worker never appended);
+   sha pinned retroactively with a late_manifest_note; manifest now 12/12.
+3. MAJOR — energy bars misclassified "forming": d5 session hours prove the
+   09-30 bars were CLOSED (17:00 ET close, probed 22:31 ET) → relabeled
+   SAME_EVENING_CLOSED_BAR_MEASURED (a STRONGER result); COIL forming bar
+   only on ADJUSTED_LAST; FX wording corrected (closed + forming both
+   present). Field-name caveat for d1b documented.
+4. MAJOR — DRAFT CONTFUT boundary contradicted its own flat-by-year table;
+   corrected to 2025-01-01 (BRENT/WTI) / 2024-01-01 (NATGAS).
+5. MAJOR — ENERGY_ADJUSTED_ANALYSIS had no generating script;
+   `energy_adjusted_analysis.py` now on file, artifact regenerated with
+   identical numbers (1.73/1.11/0.0567), flat metric renamed
+   consecutive_equal_closes_pct (close-only pull caveat).
+MINORs fixed: ledger timestamps reconciled to source files; 16/16 reworded
+to "unresolved (empty details)" with the prior error-200 shape named;
+"dollar-scale-small" replaces "cents-level"; XAG price cell PASS-panel-only;
+entitlement scoped to the five measured majors; CEST; DRAFT FRED never-T+1;
+XAG browser negatives landed as XAG_BROWSER_ATTEMPTS_2026-10-01.json
+(TRANSCRIPT_DERIVED_RECORD class, bytes-not-captured disclosed); manifests
+carry append-in-place notes; handoff file counts corrected.
