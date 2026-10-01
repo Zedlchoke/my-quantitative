@@ -21,14 +21,27 @@ state measured this session.
   statement/flex/activity files anywhere.
 - **Consequence (owner law)**: commission/swap/slippage = NOT_RUN ⇒
   **NO after-cost PASS and NO scored run** until the statement lands.
-- Precise export instruction (account IDs/keys excluded by construction):
-  In TWS/Portal: *Performance & Reports → Statements → Activity
-  Statement* (or Flex Queries → Activity Flex Query), period = Last 365
-  Calendar Days (or custom covering any FX trades + overnights), sections
-  MUST include **Trades** (with Commission) and **Interest Accruals**;
-  format XML or CSV; save into `~/.my-quantitative-data/ibkr_statement/`.
-  Paper-account activity qualifies if it contains FX trades + overnight
-  FX lines. The file lands machine-local only — never in chat/git.
+- **ACCESS BLOCKER (owner-measured 2026-10-01 13:45 ICT):**
+  interactivebrokers.com returns **Access Denied BEFORE login** (screenshot
+  seen by owner) — OI-2 is UNAVAILABLE/NOT_RUN; the owner is NOT asked to
+  retry; NO paper trades will be placed to manufacture a statement; NO
+  cost component is inferred MEASURED.
+- Corrected export path (when access returns): *Performance & Reports*
+  lives in the **Client Portal** (website), NOT a TWS menu; Portal can be
+  reached from TWS via *Account → Account Management Home* — but if the
+  website still returns Access Denied, the access blocker stands and the
+  lawful alternatives below are the fallback proposals (owner decides;
+  no law is self-relaxed).
+- Fallback cost-verification PROPOSALS (proposal-level only, none
+  executed, none relax the owner's measured-costs law): (a) resolve the
+  website access path (different network/browser — owner action); (b)
+  IBKR Flex Query via the API/email delivery channel if enabled on the
+  account (owner action; still the same statement content); (c) continue
+  DECLARED-pessimistic bands with PROVISIONAL labels — the DAILY cycle
+  may run EXPLORATORY-only under declared costs, with **no after-cost
+  PASS possible** (current law, unchanged); (d) a future owner-named
+  third-party cost evidence source, judged by the same
+  measured-vs-declared taxonomy.
 
 ## OI-3 — XAU archive pin (EXECUTED, verified)
 - Pinned: `/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng6/integration/research/control/forex_ng6_run/p0/staging/XAUUSD_1day_full.json`
