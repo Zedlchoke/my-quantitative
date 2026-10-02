@@ -32,9 +32,17 @@ hypothesis).
 - Amendment: hypothesis is retained but its predicted-benefit band is
   cut to "recovery of a share of the +274.6k attribution, sign-uncertain";
   it may ONLY be tested with leave-one-rule-out AND leave-one-leg arms
-  live; the ×1.5 multiplier remains a free parameter learned on LEARN
-  (grid {1.5, 2.0, ∞} per RULE_SLATE §4). Overfit risk HIGH (n=29, one
-  trade 46%). POST_OUTCOME_HYPOTHESIS.
+  live (crossed guard-IN ∖ S003/S023); the ×1.5 multiplier remains a free
+  parameter learned on LEARN (grid {1.5, 2.0, ∞} per RULE_SLATE §4).
+  Overfit risk HIGH (n=29, one trade 46%). POST_OUTCOME_HYPOTHESIS.
+  **Sample feasibility (matrix row 5):** node-dependent — ∞ node VAL
+  pooled 248 (safe); m∈{1.5,2.0} NOT ESTIMABLE from committed evidence
+  (no artifact holds the spend distribution between cap and m×cap; if it
+  resembles the matched set: per-fold <3 = 30%, VAL <20 = 32%, LEARN
+  ~100% unmet). BEFORE registration: commit the guard SPEND-BAND HISTOGRAM
+  from the exposed journals (lawful counting exercise) so node feasibility
+  is computed; pre-type NOT_RUN_GRID_THIN on LEARN for every node except
+  ∞.
 - Anti-hypothesis (unchanged, plus): ≥20 admitted defers net ≤ 0 pooled; any
   fold's admitted set nets below −pooled gain; admitted set worsens slate
   DD vs always-on; NEW — solo-S026 evidence suggests the admitted re-entries
@@ -81,7 +89,7 @@ hypothesis).
   REFUTED / NOT_RUN_THIN) — it NEVER selects composition in-cycle, and a
   diagnostic "remove was better" can only inform the NEXT cycle's
   registration. LEARN cannot decide S014 (≈3–6 expected entries on a
-  26–40w LEARN vs ≥20 floor — expected-count arithmetic in protocol §3.4).
+  26–40w LEARN vs ≥20 floor — expected-count arithmetic in SAMPLE_FEASIBILITY_MATRIX rows 4/6 + calendar_variants.json learn_window_decision_counts).
   POST_OUTCOME_HYPOTHESIS (family chosen after seeing folds).
 
 **A-H5 — micro-flip churn is pure friction. KEEP BENCHED (as RULE_SLATE: trigger not decision-time lawful; +2–4k ceiling).**
@@ -126,9 +134,14 @@ hypothesis).
   registration by owner election; anti-hypothesis unchanged
   (TP share ≥40% or pooled >0 on fresh replication refutes). Floor ≥50
   would-be trades per arm book is a VALIDATION-window floor (expected
-  ≈3.5–7.5 on any 26–40w LEARN — LEARN cannot decide this either). A fired
+  ≈3.5–7.5 on any 26–40w LEARN — LEARN cannot decide this either).
+  **Sample feasibility (matrix row 4):** VAL pooled expectation 21.0–29.25
+  vs ≥50 → P(meet) ≈ 0.03%; EXPECTING 50 needs ≈10.3 folds ≈ 5.1y — the
+  refutation arm is STRUCTURALLY UNDERPOWERED on 6×26w and its expected
+  close is pre-registered NOT_RUN_THIN; the retire therefore rests on the
+  registration election + prior evidence, stated as such. A fired
   refutation types the retire claim negative; it may NEVER restore S017
-  in-cycle (protocol §3.3).
+  in-cycle (protocol §2/§3).
 
 **B-H-G2 — widen GBPUSD-S002 stop to ±3 pips (TB-EXIT-OVERLAY node). KEEP DATA-BLOCKED (exit-law change = new identity, needs fresh calendar + TB-LABELS).**
 - Unchanged; dual-side law per RULE_SLATE §2. Explicitly NOT
@@ -181,9 +194,15 @@ profit) — do not re-mine.
 ### HN-1 — Unified handover-session admission family (USDJPY + EURUSD instances)
 - **Corpus/journal basis:** USDJPY NY-longs negative both arms all folds
   (−281k/−84k) `[M]`; EURUSD hours 12/16z suppressed-book negative both
-  arms (−496/−1,037) `[derived]`; both mechanisms are the SAME structural
-  window (London→NY liquidity handover, widening quoted spreads,
-  cost-visible in session medians).
+  arms (−496/−1,037) `[derived]`; the SHARED London→NY handover mechanism
+  joining the two instances is a POSTULATED (POST_OUTCOME) explanation —
+  not a measured causal fact; the placebo-session + clock-shadow controls
+  are what can promote or kill it. **Sample feasibility (matrix rows 1–2):**
+  VAL pooled 55.5–68.3 (JPY, feasible) and 42.75–44.25 (EUR, P(<40) =
+  24–32% — pre-typed NOT_RUN_THIN branch); LEARN grids expected
+  NOT_RUN_GRID_THIN on BOTH instances (P(unmet) 70–100%) → the de-biasing
+  re-learn is expected inoperative; family-level pooled mechanism read
+  (≈99.8 VAL) is the registered rescue, declared at FREEZE-1.
 - **Economic mechanism:** orders routed into the handover window pay the
   widening crossing exactly when continuation probability decays
   (PDH-break longs after London close; H4 meanrev votes inside the
@@ -235,7 +254,12 @@ profit) — do not re-mine.
   realized decision rate < f × the leg's corpus-declared clock expectation
   (e.g., < 1/3 of expected decisions per 26w for its declared clock), with
   f inherited-frozen = the E1 ratio (no retuning); SIG-exit-only legs keep
-  the original strict 3/26w law (B-H-E1 constants frozen).
+  the original strict 3/26w law (B-H-E1 constants frozen). This is an ECO
+  floor under the two-layer law: trailing-only, PIT at decision, with the
+  SEEDING/COLD-START law (may the trailing window read LEARN/prior
+  execution history; the first-decision verdict) frozen at FREEZE-1 and
+  proven by the T1–T4 truncation-replay tests (SAMPLE_FEASIBILITY_MATRIX
+  §floor-causality).
 - **Why it helps:** keeps the measured S009/S002 saves while unblocking the
   S003/S023 class. **Why it fails:** the corpus clock metadata may be wrong
   for some legs; unblocking S002-JPY fully (its rate is low for a
@@ -269,11 +293,15 @@ profit) — do not re-mine.
   maxDD(SLATE∖S014) ≤ maxDD(SLATE) → "hedge-bleed reading supported —
   retire justified for the NEXT cycle's registration"; else → "trig
   attribution declared blend-artifact; keep". Either typing informs only a
-  NEW cycle; it never changes composition in-cycle (protocol §3).
+  NEW cycle; it never changes composition in-cycle (protocol §2).
 - **Refutation/controls:** the LOL arm IS the diagnostic; two-sided table
-  mandatory; VALIDATION-window floor ≥20 would-be S014 entries across the
-  6 folds pooled (per-fold thinness typed honestly — ~30% of folds are
-  expected thin at ~3.6 entries/fold).
+  mandatory. **Sample feasibility (matrix row 6):** entry-unit pooled
+  expectation 18.0–21.75 vs ≥20 → P(floor unmet) 33–65% (coin-flip to
+  likely miss); per-fold thinness ~30%. EXPECTATION MATH (not a forecast):
+  an expected 100 aggregate at 3.6 entries/fold needs ≈27.8 folds ≈ 13.9y.
+  The evaluation UNIT is frozen at FREEZE-1 — decision-unit (144/4y → ~108
+  pooled vs ≥20, comfortable) or entry-unit (coin-flip); choosing the unit
+  after seeing counts is outcome-shaped.
 - **Label:** POST_OUTCOME_HYPOTHESIS.
 
 ### HN-4 — (reserved; HN-1 subsumes the earlier SU-RS-J1/E1 numbering merge)

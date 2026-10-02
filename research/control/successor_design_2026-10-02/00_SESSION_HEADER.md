@@ -32,8 +32,9 @@
   SANDBOX-OVERFIT, SLEEVE-FX5) — untouched by this session.
 - Worktrees measured: PC12A integration `c93123db` (TERMINAL), DAILY prep
   `e1872377` (TERMINAL, matches registry head). Heavy lock `FREE_PROVEN`;
-  no scored/diag workers. Registry: both cycles TERMINAL, S1
-  SEALED_UNTOUCHED.
+  no scored/diag workers. Registry: both cycles TERMINAL; S1 SEALED_UNTOUCHED
+  is the registry assertion — DAILY's own journals contradict it (tail-dated
+  fills; protocol §1.1 recorded lineage defect).
 - Prior-artifact base of this packet:
   `research/control/terminal_review_2026-10-01/` (DECISION_PACKET v2,
   3 symbol dockets, RULE_SLATE, GATING_VS_SIZING, daily_successor/),
@@ -50,12 +51,13 @@
 | `COMPLEMENTARITY_AND_FAILURE_MAP.md` | co-loss weeks, exposure overlap, per-leg solo books, failure modes map |
 | `HYPOTHESIS_REGISTER.md` | every prior hypothesis (incl. benched) → keep / amend / refuted-by-evidence / data-blocked; new hypotheses with anti-hypotheses |
 | `COMPOSITE_POLICY_DESIGN.md` | successor coordination architecture (eligibility, per-symbol on/off, weighting, caps, FLAT law) — DRAFT, not run (v2: budget recomputed, risk caps, cost law) |
-| `SUCCESSOR_PROTOCOL_DRAFT.md` | calendar law (script-computed), exposure ledger, stage law, selection law, owner menu (v2) |
-| `ERRATUM_V2.md` | itemized corrections from the co-owner follow-up (budget, calendar/exposure, selection law, claim scoping, costs) |
-| `SKEPTIC_REVIEW.md` / `SKEPTIC_REVIEW_V2.md` | independent verification records (v1 census claims; v2 revision audit) |
+| `SUCCESSOR_PROTOCOL_DRAFT.md` | exposure-lineage verdicts per axis, two-freeze law, GO-gated illustrative calendar, purge/warmup tables, two-track path, owner menu (v3) |
+| `SAMPLE_FEASIBILITY_MATRIX.md` | per-hypothesis/per-arm sample-power matrix + INF/ECO floor-causality law + T1–T4 test spec (v3, F1) |
+| `ERRATUM_V2.md` / `ERRATUM_V3.md` | itemized corrections (round 2: budget/calendar/selection/claims/costs; round 3: sample-power, freeze timing, sealed lineage, residual contradictions, canonical budget) |
+| `SKEPTIC_REVIEW.md` / `SKEPTIC_REVIEW_V2.md` / `SKEPTIC_REVIEW_V3.md` | independent verification records (v1 census; v2 revision; v3 invariants) |
 | `BAO_CAO_TIENG_VIET.md` | plain-Vietnamese report: what is known / unknown / next |
 | `HANDOFF.json` | structured handoff artifact (schema `zcode_orch_v3_handoff@1`) |
-| `analysis/` | `census_and_complementarity.py` (read-only over committed journals) + `census.json` + `complementarity.json`; `calendar_variants.py` + `calendar_variants.json` (v2 date arithmetic, validated against DAILY fold windows) |
+| `analysis/` | `census_and_complementarity.py` + `census.json` + `complementarity.json`; `calendar_variants.py` + `calendar_variants.json` (anchor_status_v3: PENDING/ILLUSTRATIVE + GO-gate; validated against DAILY fold windows); `arm_manifest.json` + `verify_arm_manifest.py` (canonical budget, machine-verified) |
 
 ## Corrections this packet makes to the prior review record
 

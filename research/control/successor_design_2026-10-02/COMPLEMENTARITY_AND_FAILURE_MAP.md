@@ -59,8 +59,9 @@ friday-equity work covers MTM).
   effectively single-symbol governance.
 - **Calendar/session sharing:** all legs trade the same M1 calendar;
   USDJPY's bad bucket (NY session) and EURUSD's bad hours (12:00/16:00
-  UTC) are the SAME liquidity handover window — the two symbols' worst
-  admission windows coincide (London→NY handover).
+  UTC) overlap in clock time — a POSTULATED shared London→NY handover
+  mechanism (HN-1, POST_OUTCOME; placebo-pending), not a measured causal
+  link.
 
 ## 3. Contribution after costs, per leg — three attribution laws
 

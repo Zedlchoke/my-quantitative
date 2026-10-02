@@ -31,8 +31,14 @@ seven-deaths prior priced in.
    tests) and is the designated lineage; pooled bars restated in quote-CCY
    with one frozen conversion convention.
 2. **Per-leg exposure + MAE/MFE journaling** (docket A §9 unlock iii /
-   B §9): every fill carries its leg attribution and excursion MFE/MAE; kills
-   the trig/pfold/solo ambiguity for future cycles.
+   B §9): every fill carries its leg attribution and excursion MFE/MAE.
+   Scope honesty (F4): these fields support attribution FORENSICS; they do
+   NOT by themselves resolve marginal contribution — the trig/pfold/solo
+   ambiguity is resolved only by FULL-PATH REPLAY arms (LOL/LORO re-run the
+   whole netting/caps/cost path; per-leg PnL arithmetic on a netted book is
+   banned as a marginal-contribution estimate). Proxy statistics (trig /
+   paper_fold_net_by_leg / solo) are DIAGNOSTICS, each naming its source
+   law.
 3. **Per-fill quoted-spread capture** from the M1 panel (replaces C-cell
    DECLARED bands where the bar is present; bands remain for absent-bar
    fallback).
@@ -49,9 +55,12 @@ seven-deaths prior priced in.
    exploratory results; no exploratory number ever becomes an "after-cost
    PASS" or a "measured edge" by virtue of a partial statement.
 5. Journal: `journal_row@1` lineage + rejected-opportunity rows for every
-   blocked/deferred/netted signal (proven in both prior cycles; 73
-   BLOCKED_STALE + 24 BLOCKED_FLOOR rows are the DAILY evidence the law
-   works).
+   blocked/deferred/netted signal (the JOURNALING law is proven — DAILY's
+   73 BLOCKED_STALE + 24 BLOCKED_FLOOR rows evidence it). CAVEAT (F1): the
+   DAILY floor rows were emitted by a FOLD-TOTAL rule (lookahead as
+   suppression — proven, SAMPLE_FEASIBILITY_MATRIX §floor-causality); the
+   successor's floor law is the two-layer INF/ECO law in §1 — only the
+   journaling pattern transfers, not the suppression mechanism.
 
 ## 1. Eligibility layer (per symbol, evidence-gated)
 
@@ -59,13 +68,30 @@ seven-deaths prior priced in.
 |---|---|---|
 | A: journaled M1 majors | EURUSD, GBPUSD, USDJPY | panels + journals on file; costs = measured spread cells C1–C3 + DECLARED U2/U3/U4 (labels kept) |
 | B: TRAIN-only H1 | USDCAD, AUDUSD | BLOCKED until C-H-C1/C2/C3 unlocks AND a changed-mechanism-axis re-attempt (Q-10); same-rule retries banned |
-| C: daily-cohort D1 | NZDUSD, USDCHF, XAUUSD, XAGUSD | slots; each leg needs PIT declaration/threshold freeze + cost statement + plan amendment (owner-only unlocks); XAG additionally has ZERO consumer legs today |
+| C: daily-cohort D1 | NZDUSD, USDCHF, XAUUSD, XAGUSD | slots; each leg needs PIT declaration/threshold freeze + plan amendment (owner-only unlocks); costs run under the same component-wise law as tier A (DECLARED + stress for exploratory; a statement is an OPTIONAL component upgrade, never admission-mandatory); XAG additionally has ZERO consumer legs today |
 | D: futures/index/commodity | NQ, ES, CL, NG, GC, SI, 6E, 6J, 6B, 6A, BRENT, WTI, NATGAS | FLAT-by-authority slots; no spot conclusion transfers to them; no admissible panel exists |
 
-**FLAT law:** any symbol or leg without its tier's evidence is FLAT —
-typed `NOT_RUN_*`, never silently skipped; a leg whose per-fold decision
-floor fails is FLAT for THAT fold (DAILY precedent), and the fold row says
-so.
+**FLAT law (v3, causality-corrected):** any symbol or leg without its
+tier's EVIDENCE is FLAT, typed `NOT_RUN_*`, never silently skipped. Floor
+law is TWO-LAYER (full text + pseudo-code + T1-T4 truncation-replay spec in
+SAMPLE_FEASIBILITY_MATRIX.md): **INF** inference floors are fold-total,
+evaluated at fold close, and only TYPE conclusions (NOT_RUN_THIN) — they
+never suppress, resize, or retroactively zero any trade and never touch the
+order path; **ECO** economic-eligibility floors are trailing-only, PIT at
+each decision (a pure function of journal rows with ts < decision_ts plus
+FREEZE-1-frozen constants incl. the seeding/cold-start law), journaled
+pre-order-emission. v2's "FLAT for THAT fold (DAILY precedent)" is REPEALED
+— the DAILY precedent's suppression was fold-total lookahead (proven;
+bounded impact disclosed). No fold is ever zeroed retrospectively for low
+n; thin folds type NOT_RUN_THIN and their rows stand.
+
+**Sample feasibility is a registration input:** every hypothesis/arm
+carries its feasibility row (SAMPLE_FEASIBILITY_MATRIX.md); cells
+structurally underpowered are PRE-TYPED (S017 refutation expected
+NOT_RUN_THIN, P(meet floor) ~= 0.03%; S023/VC2-JPY LOL pre-typed thin;
+HN-3 pooled coin-flip 33-65% with the evaluation UNIT frozen at FREEZE-1;
+HN-1 LEARN grids expected NOT_RUN_GRID_THIN, family-pooled read is the
+rescue). No floor is loosened to make a cell pass.
 
 ## 2. Rule stack (what actually trades)
 
@@ -102,7 +128,7 @@ validation as diagnostics ONLY):**
 - USDJPY-S014: membership frozen at registration by owner election (LEARN
   cannot decide it: ≈3–6 expected entries on any 26–40w LEARN vs ≥20
   floor); the LOL∖S014 arm reports as a fixed diagnostic under HN-3's
-  typing rule — never a selector (protocol §3).
+  typing rule — never a selector (protocol §2).
 
 **Layer 3 — optional single sizing identity:**
 - HN-5 USD-cluster cap — ONE identity pair (×1.0 + ×1.5), optional, strict
@@ -117,7 +143,7 @@ seven-deaths prior priced in — not re-litigate the measured set.
 
 ## 3. Leg selection and weighting
 
-- **Selection law (protocol §3):** composition and rule nodes freeze at
+- **Selection law (protocol §2):** composition and rule nodes freeze at
   registration; LEARN-side data only for anything learned; validation-fold
   LOL/LORO are diagnostics, never selectors; any composition change
   discovered on validation requires a new cycle.
@@ -149,8 +175,10 @@ be traded off against, any hypothesis's economics.
 - L6 cost guard: default REMOVED from the stack at registration (its
   measured attribution is −352,959 direct; hypothesis A-H1/J3 tests adding
   a re-anchored version back — a hypothesis, not an improvement claim); if
-  any spend-cap is kept, it must be re-anchored to MEASURED capacity
-  (statement-derived), not realized trailing spend.
+  any spend-cap is kept, it must be re-anchored to owner-declared capacity
+  limits or measured EXECUTION history — a brokerage statement provides
+  commission/swap attribution only, NOT a capacity measure — and never to
+  realized trailing spend.
 - Portfolio limits: one net position per symbol (unchanged); fold-edge
   force-flat (unchanged, asymmetry disclosed per PB2 E-Law 2); no leverage
   change, no initial-capital change ($100k book).
@@ -163,90 +191,52 @@ be traded off against, any hypothesis's economics.
 | B1S | always-on same-legs wall | PRIMARY baseline (seven-deaths law; beat it on net AND DD) |
 | B2S | equal-weight | sizing-null |
 | B3S | best-single chosen on LEARN | concentration-null |
-| C2 | random dwell-matched battery (≥100 seeds, ≤128) | cadence-as-value guard (PC12A: 128/128 random patterns beat the policy) |
+| C2 | random dwell-matched battery (≥100 seeds, ≤128, own ledger line; counted in the multiple-testing/compute denominator) | cadence-as-value guard (prior: DP §2.3's 128/128 duty-matched random DIAGNOSTIC beat the frozen policy's objective — a diagnostic, not a scored battery; PC12A's B4 never executed) |
 | C3 | clock-shadow (deterministic every-k-th) | the control DAILY's battery SUBSTITUTED (TF-1) — in THIS battery it runs for real |
 | C-PLAC | placebo-session control (block Tokyo-morning instead of handover hours) | HN-1 mechanism discriminator |
 | LORO | leave-one-RULE-out × every Layer-1 rule | per-rule P-MW/P-FA bars (RULE_SLATE §7) |
 | LOL | leave-one-LEG-out × every leg (12) | NEW, mandatory: resolves attribution conflicts (HN-3) and the one-carrier question |
 | C4 | cost stress ×1.0/×1.5/×2.0 on SLATE + B1S | governing ×1.5; ×2.0 reporting with sign-flip disclosure |
 
-## 6. Trial budget v2 (every trial/grid/control counted; DRAFT, zero rows exist)
+## 6. Trial budget v3 — CANONICAL (machine-verified; one number per option)
 
-Counting law: PB2 E-Law 8 (identities on the scored line; the C2 battery is
-1 identity with ≤128 seed sub-runs on its OWN line — seed sub-runs never
-write per-fold scored rows; stress and leave-one-* re-runs
-identity-classified); PB2 §1 B0 law (B0 = 1 identity, 0 rows); CAM §3
-floors (≥20/window, ≥3/fold, ≥100 aggregate per leg, typed NOT_RUN_THIN).
-Fold count = 6 validation folds (protocol §1.3).
+Machine-readable authority: `analysis/arm_manifest.json` (every arm: id,
+class, composition, tier, folds, rows, option membership) — verified by
+`analysis/verify_arm_manifest.py` (recomputes all totals from the arms
+list; structural checks: no LOL over retired S017, B0 = 1 identity/0 rows,
+exactly one seed battery). **v2's tables (33/192 A, 27/156 B) are superseded
+— their LOL sets included retired/benched legs and undeclared alternatives;
+the v2 numbers survive only in git history and ERRATUM_V3's appendix.**
 
-### Option A — full battery (all 12 LOL, crossed set, HN-5, contingency)
+Canonical resolutions (one law, alternatives in ERRATUM_V3 appendix only):
+LOL is declared over ADMITTED legs (S017 retired at registration → no
+LOL/S017 arm; its two-sided contrast rides LORO(G1)); LORO(J3) is realized
+as the guard-IN arm; C2 fold rows count INSIDE the scored-row budget;
+×2.0 arms identity-classified; seeds on their own ledger line AND in the
+multiple-testing/compute denominator.
 
-| identity class | identities | fold rows |
+| | Option A (full) | Option B (scoped) |
 |---|---:|---:|
-| SLATE (layered book) | 1 | 6 |
-| B0 FLAT (0 rows by construction) | 1 | 0 |
-| B1S always-on same-legs wall (PRIMARY baseline) | 1 | 6 |
-| B2S equal-weight | 1 | 6 |
-| B3S best-single (LEARN-selected) | 1 | 6 |
-| C2 random dwell-matched battery (1 identity; seeds on own line) | 1 | 6 |
-| C3 clock-shadow | 1 | 6 |
-| C-PLAC placebo-session | 1 | 6 |
-| LORO × rules {J1-JPY, J1-EUR, HN-2, G1-retire, J3-guard} | 5 | 30 |
-| LOL × 12 legs {S002j,S003,S014,S023,S026,VC2-JPY; S009,S013,S046,VC2-EUR; S002g,S017} | 12 | 72 |
-| Crossed (SLATE+guard)∖{S003}, (SLATE+guard)∖{S023} — A-H1 mandate | 2 | 12 |
-| C4 ×1.5 stress: SLATE + B1S (governing) | 2 | 12 |
-| C4 ×2.0 stress: SLATE + B1S (reporting, P6b) | 2 | 12 |
-| HN-5 USD-cluster cap ×1.0 | 1 | 6 |
-| HN-5 ×1.5 (anti-hypothesis: must beat B1S on the AND-pair at ×1.5) | 1 | 6 |
-| **committed (scored line)** | **33** | **192** |
-| contingency reserve (3 identities, E-Law 8) | 3 | 18 |
-| **MAX (reserve fully consumed)** | **36** | **210** |
-| LEARN-side grid rows: HN-1-JPY 3 nodes + HN-1-EUR 3 + HN-2 f-ratio 3 (clock-classes; the per-leg reading would be 12 — CHOSEN reading: clock-classes) + J3 {1.5, 2.0, ∞} 3 | — | 12 |
-| **TOTAL rows (committed / max)** | | **204 / 222** |
-| C2 seed line (own line, never scored rows; B3S LEARN-selection journals written, 0-counted per DAILY precedent) | — | ≤128 sub-runs |
+| composition | 8 singletons + 5 LORO + 11 LOL (admitted legs) + 2 crossed + 4 stress | same but LOL = 5 live legs {S014, S002-JPY, S026, S003, S023} |
+| committed identities (core / with HN-5) | **30 / 32** | **24 / 26** |
+| committed scored rows (core / with HN-5) | **174 / 186** | **138 / 150** |
+| max with reserve (3 ids, technical-only) | 35 ids / 204 rows | 29 ids / 168 rows |
+| + LEARN grid rows (12) = TOTAL max | **216** | **180** |
+| caps (max + explicit headroom) | ≤39 ids / ≤228 rows | ≤32 ids / ≤198 rows |
+| seed line | ≤128 sub-runs, own line, in multiple-testing denominator | same |
+| pre-typed thin cells | LOL∖S023, LOL∖VC2-JPY → NOT_RUN_THIN expected; HN-1 LEARN grids → NOT_RUN_GRID_THIN expected; S017 refutation (LORO(G1)) → NOT_RUN_THIN expected (P(meet ≥50) ≈ 0.03%) | same + LOL∖S023 carried as declared-typed |
+| deferred (Option B only) | — | LOL for S009, S013, S046, VC2-EUR, GBP-S002, VC2-JPY typed `NOT_RUN_LOL_DEFERRED` (Option A carries them) |
 
-Caps: **≤40 identities** (36 max + 4 headroom), **≤240 total rows** (222 max
-+ 18 headroom). Precedent reconciliation: within PC12A's 48-identity cap;
-EXCEEDS RULE_SLATE-M1 (24 ids) and DAILY (10 ids) — a registered amendment
-superseding those caps, declared, not hidden.
-
-### Option B — scoped (LOL cut to the 6 live retire/measure legs)
-
-Identical to Option A except LOL = ×6 {S014, S017, USDJPY-S002, S026, S003,
-S023} = 6 identities / 36 rows:
-
-- **Committed (with HN-5): 27 identities / 156 scored rows / 168 total**;
-  without HN-5 (struck by owner): **25 / 144 / 156**.
-- **Max (reserve consumed, with HN-5): 30 identities / 174 fold rows / 186
-  total**; without HN-5: **28 / 162 / 174**.
-- Caps: **≤32 identities** (30 max + 2), **≤204 total rows** (186 max +
-  18). Within PC12A 48; exceeds RULE_SLATE-M1 24 / DAILY 10 (declared
-  supersession).
-
-**DEFERRED under Option B (nothing silently dropped):** LOL for 6 legs —
-VC2-JPY, S009, S013, S046, VC2-EUR, GBPUSD-S002. Reasons: no live
-retire/measure question registered (S009/S013 questions are rule-level and
-carried by LORO×{HN-2, HN-1-EUR}; VC2 legs benched/not admitted;
-GBPUSD-S002's open question is exit-law, DATA-BLOCKED as B-H-G2). Their
-P-LOL cells are typed `NOT_RUN_LOL_DEFERRED`, and the P-LOL bar is scoped
-to the 6 live legs.
-
-**Disclosed degeneracies (dedup law):** (a) LORO(J3) with the guard's
-default node REMOVED is byte-identical to SLATE — that identity is realized
-as the guard-IN arm (SLATE+guard at the LEARN-frozen multiplier); (b)
-LOL∖S017 ≡ SLATE once G1 retires S017 at registration — S017's two-sided
-contrast is carried by LORO(G1); declaring LOL over ADMITTED legs (11)
-saves 1 identity + 6 rows and is the cleaner law (−1/−6 from either
-option); (c) crossed(J3)∖S026 ≡ LOL∖S026 (the guard acts only on S026) — no
-extra arm. **Convention choice:** C2 fold rows counted INSIDE the row
-budget (RULE_SLATE §5, stricter); the DAILY convention (outside) reads
-186/150 committed (A/B). ×2.0 arms identity-classified (RULE_SLATE/E-Law 8);
-the DAILY convention (rows-only, −2 identities) is a declared alternative.
-
-**Arithmetic provenance:** computed by the budget/accounting lane and
-re-verified by the controller (the lane's Option B prose said 29/168
-with-HN-5; table-consistent arithmetic is 27/156 — corrected here; see
-ERRATUM_V2 §1).
+Registration-time elections (FREEZE-1, all declare-or-pre-type, none a
+floor change): the campaign aggregate floor's READING (per-leg: 8–9 of 12
+legs expected NOT_RUN_THIN_AGGREGATE on 6×26w; battery-pooled: trivially
+passes) — opposite verdicts, must be pinned; the HN-3 evaluation UNIT
+(decision-unit 108 pooled vs ≥20 comfortable; entry-unit coin-flip 33–65%);
+the decisions→trades conversion law (≈2.5:1) for every trade-denominated
+P-MW/P-FA bar. Reserve = TECHNICAL re-runs only (TECHABORT twins, integrity
+re-runs): never new hypotheses after FREEZE-2, never PnL search; headroom
+spendable only by registered amendment before FREEZE-2. Selection is
+deterministic TRAIN-only with frozen tie-breaks.
 
 ## 7. Acceptance bars (inherited wholesale + additions)
 
@@ -271,7 +261,7 @@ honest thesis is narrower — **hygiene-level rules (session admission,
 clock-aware floors, stop-geometry retirement) may improve the blend's
 risk-adjusted profile where governance-level rules failed, and the battery
 will measure that claim or kill it.** The final portfolio freezes at
-registration (protocol §3); validation folds measure the frozen artifact;
+registration (protocol §2); validation folds measure the frozen artifact;
 any composition change they motivate requires a new cycle.
 
 — end design v2 —

@@ -39,7 +39,9 @@ gate thông minh.**
 **Hai bucket admission duy nhất nhất quán ở cả hai arm:** lệnh LONG USDJPY
 phiên New York (16–21z) âm ở cả 8 fold cả hai arm (−281k/−84k) trong khi
 London long +972k; giờ vào 12:00/16:00 UTC của EURUSD âm cả hai arm. Hai cái
-này cùng một cơ chế: cửa sổ chuyển giao thanh khoản London→NY.
+này trùng khung giờ nhau — cơ chế chuyển giao London→NY CHUNG cho hai
+symbol là giả thuyết POST_OUTCOME (HN-1), chưa phải nhân quả đã đo; control
+placebo-session + clock-shadow mới là thứ chứng minh hay bác nó.
 
 **Hình học exit:** cả GBPUSD S017 (20 stop : 6 take-profit, 15/28 lần đóng
 trong 1 phút) và S002 (toàn bộ edge = "sống đến 16:00"; stop ±2 pip ăn −2.9k
@@ -91,44 +93,58 @@ Hai điều thiết kế cố tình KHÔNG làm: không re-weight (equal-weight 
 thua, verdict gõ `POLICY_NO_INCREMENTAL_VALUE` lần 8 và chương trình quay
 sang cost-authority + mở khóa cohort khác.
 
-## 4. Bước kế tiếp cụ thể (v2 — đã sửa theo phản biện co-owner, xem ERRATUM_V2.md)
+## 4. Bước kế tiếp cụ thể (v3 — vòng sửa thứ ba theo F1–F5, xem ERRATUM_V3.md)
 
-Thứ tự đúng, mỗi bước một hành động:
+**Hai đường song song (protocol §5):**
 
-1. **Owner D-1 — chọn cửa sổ lịch học** (ngày là OUTPUT của script
-   `analysis/calendar_variants.py`, không phải con số dán): biến thể A
-   (LEARN 27-12-2025→01-10-2026, fold 1 từ 02-10-2026, hết fold 6
-   **27-09-2029**) — nhưng A tiêu thụ sealed tail, mà directive owner
-   ngày 01-10 đã ghi "stays SEALED, unseal DEAD" nên A chỉ chạy nếu owner
-   ra quyết định mới ghi đè; hoặc B (LEARN 02-10-2026→01-04-2027 hoàn toàn
-   sau đăng ký, fold 1 08-04-2027, hết **03-04-2030**, không cần unseal,
-   warmup cắt còn 26 tuần). Biến thể A′ rút khỏi bàn — nó dùng đúp dữ liệu.
-   Lưu ý: đoạn M1 "chưa scored" 27-12-2025→23-09-2026 đã bị DAILY folds 7-8
-   đọc & tính PnL exploratory — không phải untouched, chỉ hợp pháp làm
-   LEARN.
-2. **Owner D-2 (tùy chọn, theo từng cấu phần)** — xuất statement IBKR:
-   chỉ nâng được commission + swap/accrual (khi attribution hợp lệ); KHÔNG
-   đo được slippage/spread-beyond-cells/capacity; DECLARED + stress
-   ×1.5/×2.0 vẫn là luật cho exploratory; không có con số exploratory nào
-   thành "after-cost PASS" nhờ statement một phần.
-3. **Owner D-3 — đăng ký cycle kế nhiệm** theo budget v2 đã tính đúng
-   (Option A 33 committed/36 max identities, 192/210 scored rows, 204/222
-   tổng; Option B 27/30 identities, 156/174 scored, 168/186 tổng — LOL cắt
-   còn 6 chân có câu hỏi sống, 6 chân còn lại typed NOT_RUN_LOL_DEFERRED).
-   Tại đăng ký: đóng băng danh sách thành phần (composition) + rule nodes;
-   membership S014/S017 do owner quyết (LEARN quá mỏng để quyết: ~3–6
-   entries vs floor ≥20); LOL/LORO trên validation chỉ là diagnostics,
-   không bao giờ được dùng để chọn thành phần.
-4. **Trước fold 1:** chạy HN-6 TB-LABELS (chỉ phân tích) và implement
-   journal per-leg exposure + MAE/MFE + quote-CCY (kế thừa engine DAILY).
-5. **Không có gì chạy scored** trước khi A7 prelaunch PASS + GO mới của
-   owner tại gate của cycle mới (đúng thứ tự giai đoạn: draft → đăng ký →
-   implementation → LEARN → freeze → A7 → GO → execution → terminal).
-   Budget cũ không tái sử dụng; fold cũ đã exposed không bao giờ làm
-   validation lại.
+**Đường 1 — nghiên cứu EXPLORATORY trên dữ liệu đã exposed, bắt đầu NGAY:**
+(i) chạy TB-LABELS trên các panel M1 đã commit (mở khóa câu hỏi hình học
+exit: thứ tự chạm stop/target, MAE/MFE); (ii) forensics journal: histogram
+dải chi phí của guard (đầu vào cần THIẾT trước đăng ký cho J3), đối chiếu
+session/DST của các bucket NY/handover; (iii) replay toàn-path LOL/LORO
+trên fold đã exposed như một identity exploratory đăng ký riêng — cách duy
+nhất hợp pháp định giá "bỏ chân X" (cấm cộng trừ PnL từng chân trên sách
+netted). Mọi score mới vẫn cần cycle + gate + GO riêng; kết quả chỉ sinh
+giả thuyết, không bao giờ là validation độc lập.
 
-Nếu owner từ chối mọi giả thuyết trong register: hành động rỗng (D-5) cũng
-hợp pháp — chương trình giữ FLAT, và hai đường duy nhất còn mở là cost
-authority (D-2, từng cấu phần) và mở khóa dữ liệu cohort daily/futures (D-4).
+**Đường 2 — thu thập bằng chứng PROSPECTIVE sau khi đóng băng:** battery
+6×26w chỉ chạy sau FREEZE-2 + A7 + GO; fold 1 bắt đầu SAU ngày GO
+(`fold1 = max(LEARN+1+purge, GO+1)`); mọi ngày là ILLUSTRATIVE cho tới khi
+có mốc đăng ký thật: biến thể A (cần owner phê chuẩn lại tail + bầu cử
+tail-as-LEARN) hết ≈ 2029-10-05 (δ=1w) hoặc 2029-10-26 (δ=4w); biến thể B
+(không unseal) hết ≈ 2030-04-04 (δ=1w) hoặc 2030-04-25 (δ=4w). Các mốc
+mẫu và ô mỏng đã khai báo sẵn trong SAMPLE_FEASIBILITY_MATRIX.md; các bar
+acceptance KHÔNG đổi để có kết quả sớm.
 
-— hết báo cáo v2 —
+**Ba điều v3 sửa so với v2 (owner cần biết):** (1) luật floor tách hai lớp
+INF/ECO — count tổng của fold CHỈ được điền kiểu NOT_RUN_THIN khi đóng
+fold, tuyệt đối không chặn lệnh trong fold (bằng chứng: floor của DAILY là
+fold-total lookahead — đã chứng minh, tác động giới hạn 3 lệnh); (2) lịch
+học tách FREEZE-1 (tại đăng ký: không gian tìm kiếm/bầu cử) vs FREEZE-2
+(sau LEARN: giá trị học được + code SHA); với biến thể B, 4 chân
+(S002-JPY, S003, S014, S009) cần warmup 46–58 tuần nên fold 1 phải đọc
+sealed tail — owner chọn: cho đọc tail làm FEATURE, hoặc các chân này vào
+từ fold 2 (typed NOT_RUN_WARMUP), hoặc loại; KHÔNG cắt warmup để lọt lịch;
+(3) budget canonical một số duy nhất mỗi option, kiểm bằng máy: Option A
+30/32 identities, 174/186 scored rows, tối đa 35/204, tổng 216; Option B
+24/26 identities, 138/150 rows, tối đa 29/168, tổng 180 (LOL chỉ trên chân
+còn admited — S017 nghỉ hưu trước nên không có arm LOL∖S017).
+
+**Owner quyết (mỗi mục một hành động):** D-1 chọn biến thể A/B (+ kỳ vọng
+δ); D-1a (chỉ A) phê chuẩn lại tail-for-exploratory + bầu cử
+tail-as-LEARN — lưu ý khuyết điểm lineage: ba artifact của DAILY ghi "S1
+SEALED_UNTOUCHED" trong khi journal của chính nó có fill trong khoảng tail
+(cần ratify hoặc erratum); D-1b (chỉ B) bầu cử warmup cho 4 chân; D-2
+(không bắt buộc) xuất statement IBKR — chỉ nâng được commission/swap,
+không đo được slippage/spread/capacity; D-3 đăng ký (gói FREEZE-1: budget
+theo manifest, luật floor INF/ECO + cách đọc aggregate floor, bầu cử
+membership, pin warmup, risk caps, grids); D-4 lộ trình cohort khác; D-5
+hành động rỗng (giữ FLAT) cũng hợp pháp.
+
+**Khuyến nghị ưu tiên (có lý do):** Đường 1 mục (i)+(ii) TRƯỚC — TB-LABELS
+và histogram guard là đầu vào bắt buộc của chính đăng ký Đường 2 (chúng
+cung cấp MAE/MFE cho engine kế nhiệm và độ khả thi node J3); sau đó mục
+(iii) replay exploratory làm bằng chứng bầu cử membership; Đường 2 đăng ký
+khi nào owner sẵn sàng — không có gì trong Đường 1 phải chờ 2029/2030.
+
+— hết báo cáo v3 —
