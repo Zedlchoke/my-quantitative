@@ -64,24 +64,25 @@ hypothesis).
   exemption" would have re-admitted a solo-disaster. The exemption must be
   leg-conditional on something other than sparsity. Merged into HN-2.
 
-**A-H4 / SU-RS-J2 — retire USDJPY meanrev (S014). AMEND — evidence weakened, test-law changed.**
+**A-H4 / SU-RS-J2 — retire USDJPY meanrev (S014). AMEND (v2) — evidence weakened, SELECTION-LAW corrected.**
 - Prior basis: S014-triggered excursions −222,301/−319,604 `[trig]`;
   RSI2_MID_CROSS family −470,442 (n=33); "mechanistically cleanest
   negative."
-- **New evidence this session (material): S014 solo = +109,448 (DD 58,494)
-  in BOTH solo arms; pfold attribution +34,984.** Two of three attribution
+- **Evidence this session (material): S014 solo = +109,448 (DD 58,494) in
+  BOTH solo arms; pfold attribution +34,984.** Two of three attribution
   laws say S014 is POSITIVE. The retire hypothesis now rests on ONE law
   (entry-trigger) and is directly contradicted by the leg's standalone
   economics. The honest position: S014 is either (a) a positive leg whose
   entries get mistimed inside the blend, or (b) a hedge whose removal
   worsens the blend — undecidable without portfolio-minus-S014 `[NR]`.
-- Amendment: demoted from "retire" to "MEASURE FIRST": S014's fate is
-  decided by the leave-one-leg arm on the fresh calendar, not by a
-  preregistered retire. If a retire is still desired by the owner, its
-  anti-hypothesis gains: REFUTED if LORO-without-S014 nets ≤ slate AND DD
-  worse (the netting-hedge channel, docket A §7-H4, now the PRIMARY risk,
-  not a footnote). POST_OUTCOME_HYPOTHESIS (family chosen after seeing
-  folds).
+- Amendment v2: **membership is FROZEN AT REGISTRATION by owner election**
+  (keep or retire on prior evidence); the LOL∖S014 arm on validation folds
+  is a FIXED DIAGNOSTIC that types the HN-3 hypothesis (REFUTED / NOT
+  REFUTED / NOT_RUN_THIN) — it NEVER selects composition in-cycle, and a
+  diagnostic "remove was better" can only inform the NEXT cycle's
+  registration. LEARN cannot decide S014 (≈3–6 expected entries on a
+  26–40w LEARN vs ≥20 floor — expected-count arithmetic in protocol §3.4).
+  POST_OUTCOME_HYPOTHESIS (family chosen after seeing folds).
 
 **A-H5 — micro-flip churn is pure friction. KEEP BENCHED (as RULE_SLATE: trigger not decision-time lawful; +2–4k ceiling).**
 - Re-entry condition unchanged (TB-LABELS shows friction-dominance
@@ -103,25 +104,31 @@ hypothesis).
   prior-transfer-checked floor (HN-2). B-H-E1 survives as ONE INSTANCE of
   HN-2 with its constants inherited frozen (3/26w, no retuning).
 
-**B-H-E2 / SU-RS-E1 — EURUSD 12:00/16:00 entry gate. KEEP with unchanged HIGH-RISK flag, folded into HN-4.**
+**B-H-E2 / SU-RS-E1 — EURUSD 12:00/16:00 entry gate. KEEP with unchanged HIGH-RISK flag, folded into HN-1 (instance HN-1-EUR).**
 - Hour set was scanned on exposed journals (POST_OUTCOME); mechanism
   (handover spread widening + H4-clock meanrev votes) independently named
   and cost-visible; admissible only via preregistered per-symbol grid
   re-learned on fresh LEARN. Folded into the unified session-admission
-  family HN-4 to cut multiple-testing count. Anti-hypothesis unchanged:
+  family HN-1 (instance HN-1-EUR) to cut multiple-testing count. Anti-hypothesis unchanged:
   REFUTED if suppressed-hour book nets >0 pooled or in ≥3 folds, or DD
   reduction fails to reproduce.
 
 **B-H-E3 — admit VC2-LVNFAIL-EURUSD. KEEP BENCHED (under-powered n=26/13; pair-cherry-pick risk).**
-- Unchanged: re-entry if first fresh-fold review shows blocked set ≥50
-  trades with positive net → register as amendment, never mid-cycle. Solo
+- Unchanged: re-entry if a FIRST-CYCLE diagnostic (the next cycle's
+  registration review, not an in-cycle fold read) shows the blocked set ≥50
+  trades with positive net → registration of a NEW cycle (amendments clarify execution law only). Solo
   +75.30 `[M]` adds nothing at this n.
 
 **B-H-G1 / SU-RS-G1 — retire GBPUSD-S017. KEEP (stop-geometry mechanism, zero parameters).**
 - Basis unchanged: both arms negative, 20SL:6TP, 15/28 ≤1-minute stop-outs;
   solo −318.71/−95.02 `[M, new]` — all three attribution laws now agree →
-  strongest retire candidate in the register. Anti-hypothesis unchanged
-  (TP share ≥40% or pooled >0 on fresh replication refutes). Floor ≥50.
+  strongest retire candidate in the register. Retire is FROZEN at
+  registration by owner election; anti-hypothesis unchanged
+  (TP share ≥40% or pooled >0 on fresh replication refutes). Floor ≥50
+  would-be trades per arm book is a VALIDATION-window floor (expected
+  ≈3.5–7.5 on any 26–40w LEARN — LEARN cannot decide this either). A fired
+  refutation types the retire claim negative; it may NEVER restore S017
+  in-cycle (protocol §3.3).
 
 **B-H-G2 — widen GBPUSD-S002 stop to ±3 pips (TB-EXIT-OVERLAY node). KEEP DATA-BLOCKED (exit-law change = new identity, needs fresh calendar + TB-LABELS).**
 - Unchanged; dual-side law per RULE_SLATE §2. Explicitly NOT
@@ -156,11 +163,14 @@ profit) — do not re-mine.
 ### Additional measured nulls to carry as dead (do not re-mine)
 - **Decision-density (dct) deferral**: null-to-harmful (δ=0.028; defers cut
   −580k of net at dct>100) — REFUTED-BY-EVIDENCE (docket A §6).
-- **Portfolio-level gating/overlay classes** (7 terminal deaths + B8 oracle
-  −300k vs always-on + B5 clock −92% + B2 equal-weight −332k + B6 inverted
-  −256k): REFUTED-BY-EVIDENCE **as a class on this calendar** — the
-  successor may only propose per-symbol/per-entry rules or leg retirement,
-  never portfolio-level participation gates over the blend.
+- **Portfolio-level gating/overlay mechanisms MEASURED on this calendar**
+  (7 terminal overlay programs + B8 oracle −300k vs always-on + B5 clock
+  −92% + B2 equal-weight −332k + B6 inverted −256k): REFUTED-BY-EVIDENCE
+  **for the measured set of mechanisms on this calendar** — this does not
+  prove every conceivable portfolio gate is refuted; the successor may only
+  propose per-symbol/per-entry rules or leg retirement, and any
+  portfolio-level gate re-opening requires a NEW mechanism + explicit
+  multiple-testing budget + this prior priced in.
 - **DS-03/DS-05 legs** (xasset_energy_lng, usdbasket_rank at daily clock):
   EXECUTED-NEGATIVE, family failure CLOSED (DEV1-DAILY-EXPLORATORY-DS03-DS05).
 
@@ -198,8 +208,16 @@ profit) — do not re-mine.
 - **Controls & refutation:** dwell-matched random battery + clock-shadow +
   PLACEBO-SESSION (block the symmetric Tokyo-morning hours as a null —
   if the placebo "works" too, the mechanism is cadence, not the handover);
-  REFUTED per symbol if suppressed book nets ≥0 pooled, or ≥2 fresh folds
-  negative-effect, or placebo passes equally. Floors ≥3/fold ≥20/window
+  DST/session alignment is part of the trigger law (session marks computed
+  from the calendar's London-close EVENT time each day — UTC hour bounds
+  drift with DST and must be derived, never hardcoded; the LEARN-learned
+  hour-sets are validated against the DST-shifted boundary); the shared
+  London→NY mechanism joining the two symbol instances is itself a
+  POST_OUTCOME hypothesis — the placebo + clock-shadow + per-symbol
+  refutations are what can promote or kill it, no causal claim is
+  pre-asserted. REFUTED per symbol if suppressed book nets ≥0 pooled, or
+  ≥2 fresh folds negative-effect, or placebo passes equally. Floors ≥3/fold
+  ≥20/window
   (USDJPY), ≥40/window (EURUSD).
 - **Label:** POST_OUTCOME_HYPOTHESIS (both instances).
 
@@ -235,7 +253,7 @@ profit) — do not re-mine.
 - **Label:** POST_OUTCOME_HYPOTHESIS (generalization shaped by the S003/
   S023/S009/S002 outcomes).
 
-### HN-3 — S014 netting-hedge measurement (replaces "retire S014")
+### HN-3 — S014 netting-hedge measurement (diagnostic typing of a frozen membership decision)
 - **Basis:** attribution conflict (trig −222k/−320k vs solo +109k vs pfold
   +35k) `[M]` — the only leg in the corpus whose sign flips by attribution
   law. No minus-one artifact exists.
@@ -243,13 +261,19 @@ profit) — do not re-mine.
   overnight inventory opposite the trend core may be paying the blend as a
   hedge (its losses are the trend core's insurance) or bleeding it
   (fighting the macro trend with a mid-cross exit).
-- **Design:** NOT a strategy rule. A leave-one-leg identity (SLATE∖S014 vs
-  SLATE) on the fresh calendar answers it; decide S014's fate by
-  preregistered rule: if net(SLATE∖S014) ≥ net(SLATE) AND maxDD(SLATE∖S014)
-  ≤ maxDD(SLATE) → retire is justified on fresh data; else keep (and the
-  trig attribution is declared blend-artifact).
-- **Refutation/controls:** the LORO arm IS the test; two-sided table
-  mandatory; floor ≥20 would-be S014 entries per window in the LORO arm.
+- **Design (v2, selection-law corrected):** NOT a strategy rule and NOT a
+  selector. S014's membership is frozen at registration by owner election
+  (LEARN is under-powered: ≈3–6 expected entries on any 26–40w LEARN). The
+  LOL∖S014 identity on validation folds runs as a FIXED DIAGNOSTIC and
+  types this hypothesis at terminal: if net(SLATE∖S014) ≥ net(SLATE) AND
+  maxDD(SLATE∖S014) ≤ maxDD(SLATE) → "hedge-bleed reading supported —
+  retire justified for the NEXT cycle's registration"; else → "trig
+  attribution declared blend-artifact; keep". Either typing informs only a
+  NEW cycle; it never changes composition in-cycle (protocol §3).
+- **Refutation/controls:** the LOL arm IS the diagnostic; two-sided table
+  mandatory; VALIDATION-window floor ≥20 would-be S014 entries across the
+  6 folds pooled (per-fold thinness typed honestly — ~30% of folds are
+  expected thin at ~3.6 entries/fold).
 - **Label:** POST_OUTCOME_HYPOTHESIS.
 
 ### HN-4 — (reserved; HN-1 subsumes the earlier SU-RS-J1/E1 numbering merge)
@@ -299,15 +323,15 @@ profit) — do not re-mine.
 | SU-RS-E1 / HN-1-EUR | EURUSD | OFF entry (hour set) | preregister (family HN-1) |
 | SU-RS-E2 / HN-2 | EURUSD + all legs | floor (clock-aware) | preregister (HN-2; E1 constants frozen) |
 | SU-RS-G1 | GBPUSD-S017 | retire | preregister (three-law agreement) |
-| SU-RS-J3 / A-H1 | USDJPY-S026 | ON admission (guard) | preregister ONLY with LORO×LORO arms (HIGH overfit) |
-| SU-RS-J2 / HN-3 | USDJPY-S014 | retire→measure | preregister as LORO-decided rule |
+| SU-RS-J3 / A-H1 | USDJPY-S026 | ON admission (guard) | preregister ONLY with crossed LORO×LOL arms live (HIGH overfit) |
+| SU-RS-J2 / HN-3 | USDJPY-S014 | membership frozen at registration (owner election) | LOL∖S014 runs as fixed diagnostic; typing informs next cycle only |
 | HN-5 | portfolio | USD-cluster cap | optional single identity, strict anti-hypothesis |
 | B-H-E3 | EURUSD VC2 | admit | benched (floor-gated re-entry) |
 | A-H5 | USDJPY | churn filter | benched (needs HN-6) |
 | B-H-G2 | GBPUSD-S002 | exit overlay | data-blocked (HN-6 + fresh calendar) |
 | C-H-C1/C2/C3 | USDCAD/AUDUSD | cost family | data-blocked (named owner unlocks) |
 | DP paths 2/3/4 | — | analysis/new-identity | HN-6 now; others blocked |
-| gating-overlay class | portfolio | — | REFUTED-BY-EVIDENCE (class) |
+| gating-overlay (measured set) | portfolio | — | REFUTED-BY-EVIDENCE (measured set, this calendar) |
 | dct-density deferral | USDJPY | — | REFUTED-BY-EVIDENCE |
 | direction gates, hour-8-only | EUR/GBP | — | REFUTED-BY-EVIDENCE |
 | DS-03/DS-05 | daily | — | EXECUTED-NEGATIVE (closed) |

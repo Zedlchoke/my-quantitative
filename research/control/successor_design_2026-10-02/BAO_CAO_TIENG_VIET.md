@@ -31,7 +31,9 @@ giao dịch) · SIZE −7.3k (đổi cỡ) · PONLY +65.7k · CARRY +241.9k. T�
 sau khi phần vị thế kế thừa (+242k) hoàn lại 79%. L6 cost guard một mình
 chiếm −353k; E1 floor lại là lớp duy nhất DƯƠNG (+17.3k). Điều khiển
 "oracle" (biết trước kết quả eligibility) còn thua always-on ~300k — kết
-luận cấu trúc: **mọi lớp gate портfolio đều phá giá trị của trộn, kể cả
+luận cấu trúc (giới hạn trong tập cơ chế ĐÃ ĐO trên lịch này, không phải
+mọi gate có thể tưởng tượng được): mọi cơ chế gate portfolio đã thử đều
+phá giá trị của trộn, kể cả
 gate thông minh.**
 
 **Hai bucket admission duy nhất nhất quán ở cả hai arm:** lệnh LONG USDJPY
@@ -78,9 +80,10 @@ symbol/leg:
    floor theo tốc độ quyết định kỳ vọng của từng chân (chân monthly thưa là
    thiết kế, không phải chết; nhưng SIG-exit-only giữ nguyên luật cũ đóng
    băng).
-3. **Nghỉ hưu/chỉ đo:** S017 nghỉ hưu ngay (cả ba cách quy đều âm, cơ chế
-   stop-trong-nhiễu, không tham số); S014 không nghỉ vội — để arm
-   leave-one-leg quyết theo luật đăng ký trước; cost guard mặc định GỠ BỎ.
+3. **Nghỉ hưu/chỉ đo:** S017 nghỉ hưu theo quyết định của owner tại đăng
+   ký (cả ba cách quy đều âm, cơ chế stop-trong-nhiễu, không tham số); S014
+   cũng do owner quyết tại đăng ký — arm leave-one-leg chỉ là diagnostic
+   cho cycle sau, không quyết trong chu kỳ; cost guard mặc định GỠ BỎ.
 
 Hai điều thiết kế cố tình KHÔNG làm: không re-weight (equal-weight thua
 −332k; lớp size đo được ≈ 0), không router/regime/breadth gate (7 cái chết
@@ -88,29 +91,44 @@ Hai điều thiết kế cố tình KHÔNG làm: không re-weight (equal-weight 
 thua, verdict gõ `POLICY_NO_INCREMENTAL_VALUE` lần 8 và chương trình quay
 sang cost-authority + mở khóa cohort khác.
 
-## 4. Bước kế tiếp cụ thể
+## 4. Bước kế tiếp cụ thể (v2 — đã sửa theo phản biện co-owner, xem ERRATUM_V2.md)
 
 Thứ tự đúng, mỗi bước một hành động:
 
-1. **Owner D-1 — chọn cửa sổ lịch học**: biến thể A (mở 26 tuần sealed làm
-   LEARN, fold 1 chạy từ 2026-09-24, đủ 6 fold ≈ 2029-09) hoặc B (giữ
-   sealed, LEARN là 26 tuần tích lũy tới, ≈ 2029-10). Không có đường sớm
-   hơn hợp pháp cho M1 pairs.
-2. **Owner D-2 (song song, không phụ thuộc) — xuất statement IBKR** vào
-   `~/.my-quantitative-data/ibkr_statement/`: nâng chi phí DECLARED→đo
-   được, mở khóa phân tích AUDUSD/USDCAD và tái neo guard nếu giữ.
-3. **A1 dựng plan + register cycle kế nhiệm** theo budget 29 identity /
-   ~140 row trong COMPOSITE_POLICY_DESIGN §6 (SLATE, 6 baseline/control,
-   5 leave-one-rule, 12 leave-one-leg, 4 stress, ~9 hàng LEARN-grid).
-4. **Trước fold 1:** chạy HN-6 TB-LABELS (chỉ phân tích, không claim) và
-   implement journal per-leg exposure + MAE/MFE + quote-CCY (kế thừa engine
-   DAILY).
+1. **Owner D-1 — chọn cửa sổ lịch học** (ngày là OUTPUT của script
+   `analysis/calendar_variants.py`, không phải con số dán): biến thể A
+   (LEARN 27-12-2025→01-10-2026, fold 1 từ 02-10-2026, hết fold 6
+   **27-09-2029**) — nhưng A tiêu thụ sealed tail, mà directive owner
+   ngày 01-10 đã ghi "stays SEALED, unseal DEAD" nên A chỉ chạy nếu owner
+   ra quyết định mới ghi đè; hoặc B (LEARN 02-10-2026→01-04-2027 hoàn toàn
+   sau đăng ký, fold 1 08-04-2027, hết **03-04-2030**, không cần unseal,
+   warmup cắt còn 26 tuần). Biến thể A′ rút khỏi bàn — nó dùng đúp dữ liệu.
+   Lưu ý: đoạn M1 "chưa scored" 27-12-2025→23-09-2026 đã bị DAILY folds 7-8
+   đọc & tính PnL exploratory — không phải untouched, chỉ hợp pháp làm
+   LEARN.
+2. **Owner D-2 (tùy chọn, theo từng cấu phần)** — xuất statement IBKR:
+   chỉ nâng được commission + swap/accrual (khi attribution hợp lệ); KHÔNG
+   đo được slippage/spread-beyond-cells/capacity; DECLARED + stress
+   ×1.5/×2.0 vẫn là luật cho exploratory; không có con số exploratory nào
+   thành "after-cost PASS" nhờ statement một phần.
+3. **Owner D-3 — đăng ký cycle kế nhiệm** theo budget v2 đã tính đúng
+   (Option A 33 committed/36 max identities, 192/210 scored rows, 204/222
+   tổng; Option B 27/30 identities, 156/174 scored, 168/186 tổng — LOL cắt
+   còn 6 chân có câu hỏi sống, 6 chân còn lại typed NOT_RUN_LOL_DEFERRED).
+   Tại đăng ký: đóng băng danh sách thành phần (composition) + rule nodes;
+   membership S014/S017 do owner quyết (LEARN quá mỏng để quyết: ~3–6
+   entries vs floor ≥20); LOL/LORO trên validation chỉ là diagnostics,
+   không bao giờ được dùng để chọn thành phần.
+4. **Trước fold 1:** chạy HN-6 TB-LABELS (chỉ phân tích) và implement
+   journal per-leg exposure + MAE/MFE + quote-CCY (kế thừa engine DAILY).
 5. **Không có gì chạy scored** trước khi A7 prelaunch PASS + GO mới của
-   owner tại gate của cycle mới. Budget cũ không tái sử dụng; fold cũ đã
-   exposed không bao giờ làm validation lại.
+   owner tại gate của cycle mới (đúng thứ tự giai đoạn: draft → đăng ký →
+   implementation → LEARN → freeze → A7 → GO → execution → terminal).
+   Budget cũ không tái sử dụng; fold cũ đã exposed không bao giờ làm
+   validation lại.
 
 Nếu owner từ chối mọi giả thuyết trong register: hành động rỗng (D-5) cũng
 hợp pháp — chương trình giữ FLAT, và hai đường duy nhất còn mở là cost
-authority (D-2) và mở khóa dữ liệu cohort daily/futures (D-4).
+authority (D-2, từng cấu phần) và mở khóa dữ liệu cohort daily/futures (D-4).
 
-— hết báo cáo —
+— hết báo cáo v2 —

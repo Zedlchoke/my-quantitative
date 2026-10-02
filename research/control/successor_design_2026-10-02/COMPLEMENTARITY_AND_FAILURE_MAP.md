@@ -130,21 +130,24 @@ CARRY +241,865 · net ΔW −85,263.**
 | B3 best-single (S013, TRAIN-chosen) | +1,731 | the only positive control besides always-on variants; best weekly SR (0.13) but trivially small |
 | POLICY | +603,341 | −85k vs B1 pooled (the terminal verdict) |
 
-**Structural lesson for the successor:** every overlay class that removed
-participation (gates, clocks, oracles, inversions, lag, re-weighting)
-underperformed the always-on blend on these folds. The ONLY layers with
-measured positive contribution are E1-floor-on-bleeding-legs (+504 EUR,
-+138k on S002-JPY floored book vs solo-negative always-on) and the
-NY-long/session admission buckets (retrospective). The successor's design
-budget belongs in (a) per-symbol admission hygiene (session/entry-quality),
-(b) retiring structurally-broken exit geometry, (c) cost-authority upgrades
-— NOT in portfolio-level gating over the blend.
+**Structural lesson for the successor (scoped to the measured set):** on
+these folds, every participation-gate mechanism actually tested — 7
+terminal overlay programs plus the clock/oracle/inverted/lag/equal-weight
+controls — underperformed the always-on blend. This is evidence against
+that measured set on this calendar, not a proof over all possible gates.
+The ONLY layers with measured positive contribution are E1-floor-on-
+bleeding-legs (+504 EUR, +138k on S002-JPY floored book vs solo-negative
+always-on) and the NY-long/session admission buckets (retrospective). The
+successor's design budget belongs in (a) per-symbol admission hygiene
+(session/entry-quality), (b) retiring structurally-broken exit geometry,
+(c) cost-authority upgrades — NOT in re-testing portfolio-level gating of
+the blend without a new mechanism and an explicit budget for it.
 
 ## 7. Failure map (mechanism → evidence → successor implication)
 
 | # | failure mode | evidence | implication |
 |---|---|---|---|
-| F1 | Overlay gating harms the blend | 7 terminal deaths; GATE −385.5k; B8 oracle also loses | never portfolio-level always-gates over a netted blend; test per-symbol, per-leg |
+| F1 | Overlay gating harmed the blend (measured set) | 7 terminal overlay programs; GATE −385.5k; B8 oracle also loses | prior against that measured gate set; prefer per-symbol/per-leg rules; any portfolio gate re-test needs a NEW mechanism + budget |
 | F2 | Cost guard keyed to trailing spend skips the cascade's profitable re-entries | −352,959 direct; +274,572 B1-path on 29 matched defers; DD-worsening without them | guard, if kept, must be re-anchored to measured capacity, not realized spend; treat as hypothesis J3 with strict anti-hypothesis |
 | F3 | Calendar-sparse legs mis-read as dead by activity floors | E1 blocked S003/S023/S002 (B1 entries +187k realized; paper +428.7k) BUT saved S009 (−504) and S002-JPY (solo −249k vs floored +138k) | floors must be CLOCK-AWARE (per-leg decision-rate expectations), not one global 3/26w |
 | F4 | Session/handover admission losses | USDJPY NY-longs negative both arms all folds; EURUSD 12/16z both arms | the only rule family consistent on both arms/quantities |

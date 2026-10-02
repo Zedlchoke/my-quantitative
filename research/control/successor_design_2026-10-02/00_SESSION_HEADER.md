@@ -49,10 +49,13 @@
 | `SYMBOL_DOSSIERS.md` | per-symbol win/loss/breakeven/blocked dossiers (3 journaled symbols + thin/blocked classes) |
 | `COMPLEMENTARITY_AND_FAILURE_MAP.md` | co-loss weeks, exposure overlap, per-leg solo books, failure modes map |
 | `HYPOTHESIS_REGISTER.md` | every prior hypothesis (incl. benched) → keep / amend / refuted-by-evidence / data-blocked; new hypotheses with anti-hypotheses |
-| `COMPOSITE_POLICY_DESIGN.md` | successor coordination architecture (eligibility, per-symbol on/off, weighting, caps, FLAT law) — DRAFT, not run |
-| `SUCCESSOR_PROTOCOL_DRAFT.md` | LEARN/validation calendar law, baselines, PASS bars, trial budget skeleton |
+| `COMPOSITE_POLICY_DESIGN.md` | successor coordination architecture (eligibility, per-symbol on/off, weighting, caps, FLAT law) — DRAFT, not run (v2: budget recomputed, risk caps, cost law) |
+| `SUCCESSOR_PROTOCOL_DRAFT.md` | calendar law (script-computed), exposure ledger, stage law, selection law, owner menu (v2) |
+| `ERRATUM_V2.md` | itemized corrections from the co-owner follow-up (budget, calendar/exposure, selection law, claim scoping, costs) |
+| `SKEPTIC_REVIEW.md` / `SKEPTIC_REVIEW_V2.md` | independent verification records (v1 census claims; v2 revision audit) |
 | `BAO_CAO_TIENG_VIET.md` | plain-Vietnamese report: what is known / unknown / next |
-| `analysis/` | `census_and_complementarity.py` (read-only over committed journals) + `census.json` + `complementarity.json` |
+| `HANDOFF.json` | structured handoff artifact (schema `zcode_orch_v3_handoff@1`) |
+| `analysis/` | `census_and_complementarity.py` (read-only over committed journals) + `census.json` + `complementarity.json`; `calendar_variants.py` + `calendar_variants.json` (v2 date arithmetic, validated against DAILY fold windows) |
 
 ## Corrections this packet makes to the prior review record
 
