@@ -1556,3 +1556,6 @@ Amended-law portfolio program (owner 2026-09-29: novelty-label không phải gat
 
 ### ETHUSDT-OPEN-SEARCH-V2 (TERMINAL 2026-10-01, NO_INCREMENTAL_VALUE)
 STOP-1 breadth-gate overlay: 8/8 cells, G3 wall fails 4/4, G10 fails 4/4; references reproduce V1 terminal 28/28 cent-exact; G8 repro ALL_MATCH; G9 A7 CONFIRM_WITH_CONDITIONS (r1 remediation lawful). First co-owner GO transmission (delegation 2026-09-30, auth record verbatim). §8 branch: tranche V3 pending owner decisions (new tuples / redirection / end). Worktree .worktrees/ethusdt-open-search-v2/integration @ 857af951. Lesson P-34.
+
+### DAILY-EXPLORATORY-V1 (TERMINAL 2026-10-02, EXPLORATORY_COMPLETE_NEGATIVE_NO_PASS)
+First exploratory-only cycle under the owner's no-statement election: 10 ids / 83 rows, quote-CCY engine, DECLARED costs x1.0/1.5/2.0, every trade + blocked signal journaled. All arms negative; NOT_RUN_THIN floors. Durable: engine + 32 tests, 85 journals, frozen input sets, envelope law, OI-1 framework, prospective-surface law (~2029-09). Worktree @e1872377.

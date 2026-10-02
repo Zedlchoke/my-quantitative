@@ -1169,3 +1169,6 @@ chứng minh được CẤU TRÚC (thứ tự code: crash trước write) lẫn 
 (stderr của lock FAILED-release) — nhưng vẫn phải có A7 terminal xét xử,
 không tự absolve; (3) co-owner GO transmission hoạt động đúng: auth
 record verbatim + two-key + không tiêu trùng.
+
+## P-35 — DAILY-EXPLORATORY-V1 (TERMINAL 2026-10-02): dong ho daily qua thua cho corpus rules nay — floor geometry la rang buoc thiet ke
+Su kien: hai chan corpus (DS-03 EIA + DS-05 7-pair rank) chay tren dong ho daily voi journal day du — chi 61 quyet dinh trong 4 nam (< floor 100); moi arm am; FLAT thong tri. Bai hoc: (1) co che can toc do quyet dinh hoac tin hieu phong phu hon de vuot floor 20/3/100 — rang buoc thiet ke, khong phai ly do noi floor; (2) exploratory-only duoi DECLARED costs hoat dong dung muc dich; (3) quote-CCY book + bar-side-difference law dong dung hai loi cua PC12A; (4) chu ky tham do am van de lai tai san ben.
