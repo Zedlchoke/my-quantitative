@@ -26,17 +26,23 @@ committed authorization chain asserts what its journals disprove —
 untouched", `TERMINAL_DECISION.md` "S1 SEALED throughout" — while folds 7–8
 filled on tail dates. The frozen DAILY artifacts are append-only and are
 NOT edited; this section is the disclosure of record. **Owner action
-needed:** ratify the tail-for-exploratory read retroactively, or file a
-DAILY-side erratum; until then the tail's authorization status stays
-NOT_RUN_UNPROVEN even though its statistical exposure is proven.
+needed:** ratify the tail-for-exploratory read retroactively, declare the
+directive's scope, or file a DAILY-side APPEND-ONLY incident erratum
+(proposed here, not executed); until then the tail's PERMISSION status
+stays NOT_RUN_UNPROVEN even though its STATISTICAL EXPOSURE is proven (the
+two axes are never merged).
 
 **Standing-directive timeline `[M]`:** the "stays SEALED" directive was
 typed 2026-10-01 ~04:31–05:39Z; DAILY's tail-opening fills executed ~09:24Z
 the same morning — the directive predates the fills by ~4h and did not stop
-them because nothing in the DAILY chain connected the two. The only
-coherent reading of the directive is forward-looking (no successor
-LEARN/validation consumption without a fresh election); its premise
-("stays" sealed in fact) is false as of 2026-10-01 09:24Z.
+them because nothing in the DAILY chain connected the two. **This packet
+does NOT interpret the directive's intended scope and does NOT ratify the
+historical read** — what it covers (successor use? all future reads?
+retroactive?) is an OWNER question (D-1a: explicit ratification, a scoping
+declaration, or a DAILY-side append-only incident erratum — proposed, not
+executed; frozen artifacts and registry untouched). Two axes stay separate
+everywhere: PERMISSION (who may read what — owner-decided only) vs
+STATISTICAL EXPOSURE (what has been read — measured above).
 
 **Sealed-tail length discrepancy (pin at registration):** CAM §3 says
 "26-week sealed tail"; the owner-typed window 2026-01-02→2026-06-26 is 176

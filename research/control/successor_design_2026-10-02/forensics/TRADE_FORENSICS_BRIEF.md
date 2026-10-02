@@ -153,7 +153,7 @@ Docket A §0 states: "POLICY 393 trades, Σnet = +602,943.11 = journal symbol
 net (fills 601,513.02 **+ swap** 1,430.10)" and explains the 2,860.19 gap to
 the engine fold records (600,082.92) as "fold-edge mark convention in the
 rollup; 0.48%". **Measured: the gap is exactly 2 × Σswap in both arms**
-(POLICY 2,860.19 = 2×1,430.10; B1 2,429.28 = 2×1,214.64) and the correct
+(POLICY 2,860.19 = 2×Σswap (raw ≈1,430.095; display-cent rounding); B1 2,429.28 = 2×1,214.64) and the correct
 identity fills − swap reconciles to the engine at $0.000 (§2.1). The docket
 added a positive-cost swap into its excursion net convention; there is no
 fold-edge residual. Consequences:
