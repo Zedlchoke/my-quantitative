@@ -5,10 +5,10 @@ f2 rest_diff = rest_days(home) − rest_days(away); rest_days = min(20, days
    since team's most recent completed game with kickoff strictly before);
    none -> 20 (cap; byes 13-14d stay uncapped)
 f3/f4 short_week_{home,away} = 1{rest_days <= 6}
-f5/f6 form_{home,away} = (win_rate − 0.5) over last <=4 completed REGULAR-
-   season games of the current season strictly before kickoff; none -> 0
-Ties count as non-wins in form (0.5 credit would require a tie model —
-protocol excludes ties from scoring; form uses plain win rate).
+f5/f6 form_{home,away} = ((wins + 0.5*ties)/games − 0.5) over last <=4 completed
+REGULAR-season games of the current season strictly before kickoff; none -> 0
+(REMEDIATION 2026-10-04: ties now count half a win per PROTOCOL_EVAL_NFL §2
+f5 — the old code credited 0).
 """
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ def _ts(s):
 def compute_features(games, elo_results):
     games = sorted(games, key=lambda g: (g["kickoff_utc"], g["game_id"]))
     elo_pre = {r["game_id"]: r for r in elo_results}
-    history: dict[str, list] = defaultdict(list)  # (kickoff_ts, season, is_playoffs, win)
+    history: dict[str, list] = defaultdict(list)  # (kickoff_ts, season, is_playoffs, win, tie)
     out = []
     for g in games:
         row = elo_pre[g["game_id"]]
@@ -44,17 +44,17 @@ def compute_features(games, elo_results):
 
         def form(lineage: str, season) -> float:
             h = history.get(lineage) or []
-            wins = n = 0
+            credit = games_n = 0.0
             k = len(h) - 1
-            while k >= 0 and n < FORM_WINDOW:
-                t, s, po, win = h[k]
+            while k >= 0 and games_n < FORM_WINDOW:
+                t, s, po, win, tie = h[k]
                 if s < season:
                     break
                 if t < ko and s == season and not po:
-                    wins += 1 if win else 0
-                    n += 1
+                    credit += 1.0 if win else (0.5 if tie else 0.0)
+                    games_n += 1
                 k -= 1
-            return (wins / n - 0.5) if n else 0.0
+            return (credit / games_n - 0.5) if games_n else 0.0
 
         rh, ra = row["r_home_pre"], row["r_away_pre"]
         rest_h, rest_a = rest_days(g["home_lineage"]), rest_days(g["away_lineage"])
@@ -69,8 +69,8 @@ def compute_features(games, elo_results):
             "form_home": form(g["home_lineage"], g["season"]),
             "form_away": form(g["away_lineage"], g["season"]),
         })
-        history[g["home_lineage"]].append((ko, g["season"], bool(g.get("is_playoffs", False)), bool(g["home_win"])))
-        history[g["away_lineage"]].append((ko, g["season"], bool(g.get("is_playoffs", False)), (not bool(g["home_win"])) and not bool(g.get("tie"))))
+        history[g["home_lineage"]].append((ko, g["season"], bool(g.get("is_playoffs", False)), bool(g["home_win"]), bool(g.get("tie", False))))
+        history[g["away_lineage"]].append((ko, g["season"], bool(g.get("is_playoffs", False)), (not bool(g["home_win"])), bool(g.get("tie", False))))
     return out
 
 

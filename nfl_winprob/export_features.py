@@ -51,8 +51,10 @@ def main() -> int:
     feats = compute_features(games, list(elo_by_arm[b1[0].arm_id].values()))
 
     fields = ["game_id", "kickoff_utc", "season", "is_playoffs",
-              "home_lineage", "away_lineage", "rest_diff", "short_week_home",
-              "short_week_away", "form_home", "form_away", "rest_home", "rest_away"]
+              "home_lineage", "away_lineage",
+              "elo_diff",  # AMENDMENT (pre-scored): unsuffixed f1 = B1-a stream (K=20, HCA=0)
+              "rest_diff", "short_week_home", "short_week_away",
+              "form_home", "form_away", "rest_home", "rest_away"]
     for arm in b1:
         fields += [f"elo_diff_{arm.arm_id}", f"p_home_{arm.arm_id}"]
     os.makedirs(args.out, exist_ok=True)
@@ -62,6 +64,8 @@ def main() -> int:
         w.writeheader()
         for ft in feats:
             row = {k: ft[k] for k in fields if k in ft}
+            er_a = elo_by_arm["B1-a"][ft["game_id"]]
+            row["elo_diff"] = er_a["r_home_pre"] - er_a["r_away_pre"]
             for arm in b1:
                 er = elo_by_arm[arm.arm_id][ft["game_id"]]
                 row[f"elo_diff_{arm.arm_id}"] = er["r_home_pre"] - er["r_away_pre"]

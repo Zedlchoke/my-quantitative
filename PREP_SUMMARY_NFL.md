@@ -44,3 +44,19 @@ features in v1 (post-game compilation + retro corrections); keyed/paid sources.
 Register NFL-WINPROB-SCORED-V1 inheriting PROTOCOL_EVAL_NFL.md + frozen split + this
 summary's decisions; freeze; A7; owner types at that cycle's own gate:
     GO NFL WINPROB SCORED V1 EVALUATION
+
+## ERRATUM 2026-10-04 (round 3, owner-independent rejection — remediated)
+Old G4/G5 PASS verdicts are REOPENED and SUPERSEDED: three defects confirmed
+by controller re-measurement: (1) build compared game_type to 'reg' while the
+raw domain is UPPERCASE {REG,WC,DIV,CON,SB} -> ALL 7,066 games were flagged
+playoffs (form degenerated, primary RS empty). FIXED via GAME_TYPE_MAP
+normalization; rebuild now measures n_reg=6,768 / n_post=298 / other=0, test
+window 2019-2025 = 1,871 reg + 89 post (= lane B's 1,960). (2) features
+credited ties 0 in form instead of 0.5 per PROTOCOL_EVAL_NFL sec2 f5. FIXED
+(= now (wins + 0.5*ties)/games − 0.5, both sides). (3) Elo engine updated
+sequentially, violating the identical-kickoff exclusion law. FIXED: kickoff-
+batched predictions (adversarial fixtures added: same-kickoff doubleheader,
+same-kickoff mutation isolation, tie-half-win form, REG normalization).
+Features rebuilt twice (REG fix then elo_diff column per the scored-cycle
+amendment); 15/15 tests PASS. Raw untouched. The old verifier PASS (lane D
+round 1) remains as history; new verification + A7 happen in the scored cycle.

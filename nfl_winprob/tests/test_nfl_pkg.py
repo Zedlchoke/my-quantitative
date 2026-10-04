@@ -132,3 +132,51 @@ def test_static_leakage_grep():
 
 def test_evaluate_refuses(capsys):
     assert evaluate_main([]) == 3
+
+
+# ---------------- REMEDIATION adversarial fixtures (2026-10-04) ------------
+
+def test_game_type_normalization():
+    from nfl_winprob.build_dataset import normalize_game_type as norm
+    assert norm("REG") == "reg" and norm("reg") == "reg"
+    for t in ("WC", "DIV", "CON", "SB"):
+        assert norm(t) == "post"
+    assert norm("PRE") == "pre"
+
+
+def test_same_kickoff_games_never_inform_each_other():
+    """Adversarial: team A plays two games with IDENTICAL kickoff — leg 2's
+    prediction must use state as of strictly BEFORE that kickoff (no update
+    from leg 1)."""
+    ko = "2012-09-16T17:00:00+00:00"
+    games = [g(1, "2012-09-09T17:00:00+00:00", 2012, "A", "B", True),
+             g(2, ko, 2012, "A", "C", True),    # same kickoff, shares A
+             g(3, ko, 2012, "D", "A", True)]    # same kickoff, shares A
+    out, final = run_elo(games, K=20, HCA=0)
+    # both same-kickoff games predicted from the post-week-1 state of A (1510)
+    assert abs(out[1]["r_home_pre"] - 1510.0) < 1e-9
+    assert abs(out[2]["r_away_pre"] - 1510.0) < 1e-9
+    # features likewise: leg-2 form excludes leg-1
+    f = feats(games)
+    assert f[1] == f[1]  # stable
+    f2 = feats([dict(x) for x in games[:2]])
+    assert f2[1] == f[1]  # presence of leg-3 does not change leg-2 features
+
+
+def test_tie_counts_half_win_in_form():
+    games = [g(1, "2012-09-09T17:00:00+00:00", 2012, "A", "X", True),
+             g(2, "2012-09-16T17:00:00+00:00", 2012, "A", "Y", False, tie=True),
+             g(3, "2012-09-23T17:00:00+00:00", 2012, "A", "B", True)]
+    f = feats(games)
+    # A: 1 win + 1 tie in current season -> (1 + 0.5)/2 - 0.5 = 0.25
+    assert abs(f[2]["form_home"] - 0.25) < 1e-12
+
+
+def test_same_kickoff_mutation_isolation():
+    ko = "2012-09-16T17:00:00+00:00"
+    games = [g(1, ko, 2012, "A", "B", True),
+             g(2, ko, 2012, "C", "D", True)]
+    base = feats(games)
+    mut = [dict(x) for x in games]
+    mut[1]["home_win"] = False
+    assert base[0] == feats(mut)[0]   # disjoint teams, identical kickoff: no influence

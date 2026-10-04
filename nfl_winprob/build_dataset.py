@@ -38,6 +38,16 @@ QUARANTINED_COLUMNS = ("away_moneyline", "home_moneyline", "spread_line",
                        "away_spread_odds", "home_spread_odds", "total_line",
                        "under_odds", "over_odds")
 
+# REMEDIATION 2026-10-04 (owner-independent check): raw game_type domain is
+# UPPERCASE {REG, WC, DIV, CON, SB} (measured: 7239 REG / 120 WC / 108 DIV /
+# 54 CON / 27 SB). The old `!= "reg"` test marked EVERY game a playoff.
+GAME_TYPE_MAP = {"REG": "reg", "WC": "post", "DIV": "post", "CON": "post", "SB": "post",
+                 "PRE": "pre", "PRO": "pro"}
+
+
+def normalize_game_type(raw: str) -> str:
+    return GAME_TYPE_MAP.get(raw.strip().upper(), raw.strip().lower())
+
 
 def sha256_file(path: str) -> str:
     h = hashlib.sha256()
@@ -89,12 +99,14 @@ def main() -> int:
             skipped["bad_time"] += 1
             continue
         home_pts, away_pts = int(float(hs)), int(float(as_))
+        gtype = normalize_game_type(r["game_type"])
         games.append({
             "game_id": r["game_id"],
             "season": season,
             "week": int(r["week"]) if r["week"] else 0,
-            "game_type": r["game_type"],
-            "is_playoffs": r["game_type"] != "reg",
+            "game_type": gtype,
+            "game_type_raw": r["game_type"],
+            "is_playoffs": gtype not in ("reg",),
             "kickoff_utc": kickoff.isoformat(),
             "home_lineage": RENAME_MAP.get(r["home_team"], r["home_team"]),
             "away_lineage": RENAME_MAP.get(r["away_team"], r["away_team"]),
@@ -117,6 +129,9 @@ def main() -> int:
     lineages = {g["home_lineage"] for g in games} | {g["away_lineage"] for g in games}
     n_ties = sum(1 for g in games if g["tie"])
     n_neutral = sum(1 for g in games if g["neutral"])
+    n_reg = sum(1 for g in games if g["game_type"] == "reg")
+    n_post = sum(1 for g in games if g["game_type"] == "post")
+    n_other_type = len(games) - n_reg - n_post
     # quarantine proof: this script never touches betting columns
     src = open(__file__, encoding="utf-8").read()
     for col in QUARANTINED_COLUMNS:
@@ -124,7 +139,7 @@ def main() -> int:
 
     os.makedirs(args.out, exist_ok=True)
     out_path = os.path.join(args.out, "games_nfl.csv")
-    fields = ["game_id", "season", "week", "game_type", "is_playoffs", "kickoff_utc",
+    fields = ["game_id", "season", "week", "game_type", "game_type_raw", "is_playoffs", "kickoff_utc",
               "home_lineage", "away_lineage", "home_team", "away_team",
               "home_pts", "away_pts", "home_win", "tie", "neutral"]
     with open(out_path, "w", newline="", encoding="utf-8") as f:
@@ -156,6 +171,9 @@ def main() -> int:
         "n_lineages": len(lin_rows),
         "n_ties": n_ties,
         "n_neutral": n_neutral,
+        "n_reg": n_reg,
+        "n_post": n_post,
+        "n_other_type": n_other_type,
         "expected_lineage_count": EXPECTED_LINEAGE_COUNT,
         "lineage_count_ok": len(lin_rows) == EXPECTED_LINEAGE_COUNT,
         "quarantined_columns": list(QUARANTINED_COLUMNS),
