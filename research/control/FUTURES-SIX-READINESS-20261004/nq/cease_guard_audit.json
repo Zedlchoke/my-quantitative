@@ -1,0 +1,38 @@
+{
+ "schema": "nq_cease_guard_audit@1",
+ "lane": "NQ-ALIAS-REPAIR",
+ "law_cross_reference": {
+  "source": "6J_DEEP_v2.md section 8 ERRATUM M-5 (FUTURES-DEEPRESEARCH-V2-20261003/dossiers_v2/)",
+  "proven_failure": "6J 2022-09-20: plain k-window rule held ceased U2 while Z2 traded 125,303 lots; baseline weak guard NQ_deep_lib.py:266-267 switches only after the ceased contract is absent a FULL k-window"
+ },
+ "cessation_derivation": "DECLARED DERIVATION: cessation(contract) = last session_date with any session row (bars present) for that contract in the respective rebuild's session table \u2014 NOT exchange metadata; cross-checked against registry last_bar below",
+ "violation_definition": "a hold segment VIOLATES if its last held session has no bars for the held contract (last_held_day_has_bars=False) or any held session is past the held contract's bars-present cessation (dead_held_sessions>0) \u2014 the 6J held-a-dead-contract failure mode",
+ "v3_plain_k5": {
+  "n_segments": 67,
+  "n_violations": 0,
+  "violations": []
+ },
+ "v3_k5_cease_guard": {
+  "n_segments": 67,
+  "n_violations": 0,
+  "violations": []
+ },
+ "baseline_before_k5": {
+  "n_segments": 67,
+  "n_violations": 1,
+  "violations": [
+   {
+    "contract": "NQH0_2020",
+    "first_held": "2019-12-18 00:00:00",
+    "last_held": "2020-05-29 00:00:00",
+    "n_sessions": 115,
+    "cessation_bars_present_last_session": "2020-03-20 00:00:00",
+    "last_held_day_has_bars": false,
+    "dead_held_sessions": 49,
+    "violation": true
+   }
+  ],
+  "note": "BEFORE chain: 1 expected violation \u2014 NQH0_2020 held through the alias hole (2020-03-23..2020-05-29) after its 03-20 expiry; dead-handoff roll fired 2020-06-01 (dte -73)"
+ },
+ "cessation_vs_registry_last_bar_mismatches": []
+}
