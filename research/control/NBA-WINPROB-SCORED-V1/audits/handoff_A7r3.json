@@ -1,0 +1,48 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nws-a7r3",
+  "cycle_id": "NBA-WINPROB-SCORED-V1",
+  "role": "quant-auditor",
+  "lane": "A7_prelaunch_round3",
+  "dispatch_sha": "3c2731f1aee41f7711a301baa177ec9f307d3d4b",
+  "actual_start_sha": "3c2731f1aee41f7711a301baa177ec9f307d3d4b",
+  "commit_sha": "NOT_COMMITTED_CONTROLLER_LANDED",
+  "changed_paths": [
+    "research/control/NBA-WINPROB-SCORED-V1/audits/AUDIT_PRELAUNCH_ROUND3.md",
+    "research/control/NBA-WINPROB-SCORED-V1/audits/handoff_A7r3.json"
+  ],
+  "tests": [
+    "pytest nba_winprob/tests/ -q -> 33 passed (55.91s)",
+    "run_evaluation --synthetic-selftest -> SELFTEST PASS v2 (9 arms, 11 pooled comparisons asserted, no real data)",
+    "check_launch_gates end-to-end with valid /tmp GO record -> False with EXACTLY ONE reason: A7 report does not carry A7_PRELAUNCH_AUTHORIZED (pinned ROUND2 is a REFUSAL doc — correct fail-safe)",
+    "L1: --ledger /tmp divergent -> REFUSED exit 3 before gates, nothing written",
+    "L2: missing data entry -> refusal reason 'data missing: games ...'; missing pinned_games -> 'pinned games missing: ...'",
+    "L3: typed_at 'October 4th 2026' -> 'not ISO-8601'; absent typed_at -> 'missing typed_at'; valid ISO -> no reason; wrong phrase -> 'phrase mismatch'",
+    "independent shasum recompute: features c86f104d / games e24d9a3b / raw d46ed354 all == manifest; protocol digest c058760d and amendment digest e7531c7e recompute exactly",
+    "git: blob-identity 685f10ef vs HEAD for run_evaluation.py (b899c34b) and make_freeze_manifest.py (754fb2a1); diff 685f10ef..HEAD = FREEZE_MANIFEST.json only (allowlisted); ancestry 39b11156 < 2c64b6f3 < 685f10ef verified"
+  ],
+  "authority_claims": [
+    "C1 (round-2 CRITICAL) FIXED: freeze v3 pins 685f10ef which CONTAINS both run_evaluation.py and make_freeze_manifest.py, byte-identical to HEAD; post-freeze drift is the manifest itself only, inside post_freeze_allowlist; live gate run produced zero drift reasons",
+    "M1 FIXED: run_evaluation.py:232 'REJECT': all(not arm_favors(f\"{a}_vs_B0\") for a in B1_ARMS) — exact registered rule, protocol sec1 line 20 verbatim; the r2 extra-OR term is deleted (delta diff quoted)",
+    "M2 FIXED: run_evaluation.py:225-228 INCONCLUSIVE = all decision CIs include 0 AND 0.85<=slope_b2a<=1.15 (byte-identical to T2 PASS predicate line 209) AND not PROGRAM_PASS — protocol sec6 line 114 verbatim",
+    "L1/L2/L3 FIXED: divergent --ledger refused exit 3 pre-gates (lines 439-442); missing pinned/data files are refusal reasons (lines 297-304); typed_at ISO-parsed via fromisoformat (lines 349-355); all three adversarially executed with measured refusal outputs",
+    "Hygiene re-measured: ledger 9 PREREGISTERED / 0 COMPUTED / observed:false; results/ empty; no scored_summary.json repo-wide; no GO record for this cycle anywhere; registry budget 0/9; lock FREE_PROVEN; clean tree at audit start",
+    "Manifest pin F1: a7_report_path still names AUDIT_PRELAUNCH_ROUND2.md (REFUSAL doc, zero authorization tokens). Gate refusing on it at launch is CORRECT behavior. Manifest-pin update alone keeps C1 fixed (manifest-only edit is allowlist-covered; live-measured manifest-only delta passes drift gates). Condition is self-enforcing: pin at ROUND2 -> refuse; pin at ROUND3 (this report carries the token) -> pass"
+  ],
+  "known_limitations": [
+    "VERDICT: A7_PRELAUNCH_AUTHORIZED — conditional on ONE controller action: update a7_report_path in FREEZE_MANIFEST.json line 16 from AUDIT_PRELAUNCH_ROUND2.md to AUDIT_PRELAUNCH_ROUND3.md in a manifest-only allowlisted commit, then re-run the gate. 0 unresolved HIGH/CRITICAL.",
+    "F1 LOW(launch-relevant pin): as above — the only remaining gate refusal reason, by design; controller action required before owner GO",
+    "F2 LOW cosmetic (carried r2-L4): selftest banner says '7 comparisons', actual pooled = 11 (assertions correct)",
+    "F3 LOW informational: INCONCLUSIVE uses literal T2 band expression instead of dict reference — byte-identical predicate, two-site edit hazard noted",
+    "F4 LOW (carried r2-L6): A7-artifact gate is substring-token match; owner identity rests on typed_by + mission law (accepted two-key design)",
+    "This audit's 2 files are uncommitted by design (write scope = audits/ only); clean-tree launch precondition holds once controller lands them + the F1 pin commit"
+  ],
+  "incidents": [
+    "None. All gate executions were read-only against the repo; /tmp scratch only; no writes outside the assigned audits/ directory; heavy lock FREE_PROVEN before and during the audit"
+  ],
+  "tree_status": "dirty_allowlisted_control_paths_only (clean at audit start; this audit's 2 files uncommitted; code tree clean)",
+  "workers": 0,
+  "outputs": [
+    "research/control/NBA-WINPROB-SCORED-V1/audits/AUDIT_PRELAUNCH_ROUND3.md"
+  ]
+}
