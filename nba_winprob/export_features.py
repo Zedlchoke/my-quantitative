@@ -11,8 +11,17 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
+
+
+def _sha256_file(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 from .elo import run_elo
 from .features import compute_features
@@ -81,6 +90,7 @@ def main() -> int:
         "b1_arms": [{"arm_id": a.arm_id, "K": a.K, "HCA": a.HCA} for a in b1_arms],
         "mechanics_only": "no outcome metric computed by design (PREP cycle budget 0)",
         "note": "is_playoffs/home_win booleans serialized as True/False strings",
+        "features_csv_sha256": _sha256_file(out_path),
     }
     with open(os.path.join(args.out, "FEATURES_MANIFEST.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=1)
