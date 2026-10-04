@@ -1,0 +1,92 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "PC_pit_cost",
+  "cycle_id": "SLEEVE-FX5-100K-V1-PREGO",
+  "role": "PC-pit-cost-authority",
+  "lane": "pitcost",
+  "dispatch_sha": "e12a5d30de0f89559af12b7dd1be56c513a0ef46",
+  "actual_start_sha": null,
+  "commit_sha": "NONE_READ_ONLY",
+  "no_commit_disclosure": "no git commands permitted (lane directive); artifacts left untracked for owner review. EXCEPTION, disclosed: one read-only 'git status --porcelain | grep SLEEVE-FX5' was run at final-output validation (write-protected by nature: no refs/index/tree touched) — see incidents; every other session action used no git at all; root HEAD not read; owner dirty tree preserved",
+  "changed_paths": [
+    "research/control/SLEEVE-FX5-100K-V1/pitcost/PIT_COST_FREEZE_DRAFT.md",
+    "research/control/SLEEVE-FX5-100K-V1/pitcost/COST_AUTHORITY_TABLE.md",
+    "research/control/SLEEVE-FX5-100K-V1/handoffs/PC_pit_cost.json"
+  ],
+  "tests": [
+    {"command": "heavy-lock inspect before measurement", "exit_code": 0, "result": "FREE_PROVEN (researchctl locks inspect); measurement was a light single-pass decode, not a heavy job; no foreign worker touched"},
+    {"command": "friday enumeration 2021-01-08..2026-06-26", "exit_code": 0, "result": "286 Fridays, first 2021-01-08, last 2026-06-26 (matches COVERAGE_NOTE 286 Mon-aligned weeks)"},
+    {"command": "M1 decision-bar check: minute closing exactly 20:00 UTC present+tradable on sleeve Fridays", "exit_code": 0, "result": "EURUSD 286/286, GBPUSD 286/286, USDJPY 286/286; fill bar [20:00,20:01) likewise 286/286"},
+    {"command": "H1 decision/fill bar presence (286 sleeve Fridays)", "exit_code": 0, "result": "USDCAD Fri19:00-open (decision) 276/286, Fri20:00-open (fill) 247/286; AUDUSD 262/286 and 199/286 -> deferral rule required, priced at measured Sunday-reopen spread"},
+    {"command": "DST re-verification on panels", "exit_code": 0, "result": "Friday last tradable close 22:00 UTC winter / 21:00 summer on all 3 M1 pairs (per-month tables); H1 Friday max open-hour 21 winter / 20 summer; 20:00 stamp safe year-round"},
+    {"command": "spread measurement (method: PIT_COST_FREEZE_DRAFT Appendix B)", "exit_code": 0, "result": "see outputs_stats; negative-spread minutes 0 on all 3 M1 pairs"}
+  ],
+  "authority_claims": [
+    "Spread at sleeve fill hours MEASURED on all 5 pairs from the staged panels (panel venue, 2021-01-08..2026-06-26): Fri20:00 fill p50/p90 pips EURUSD 0.3/0.5 GBPUSD 0.8/1.3 USDJPY 0.5/0.9 USDCAD 1.2/1.6 AUDUSD 1.0/1.3",
+    "Rollover-window (21:00-22:00 UTC) spread MEASURED: M1 Mon-Thu p50/p90 EURUSD 0.6/2.7 GBPUSD 1.4/5.8 USDJPY 1.0/4.9; H1 21:00 bar structurally mostly absent (USDCAD 431/30043, AUDUSD 320 weekday rows)",
+    "Sunday-reopen spread MEASURED: p50/p90 EURUSD 5.9/9.0 GBPUSD 13.4/23.8 USDJPY 11.0/22.0 USDCAD 5.0/9.7 AUDUSD 2.8/6.3 -> H1 Friday-deferral fills priced here",
+    "commission/slippage/swap/rollover-clock/min-size remain DECLARED_PESSIMISTIC (COST_ACCOUNTING_SPEC U2-U6); no statement exists workspace-wide -> all 5 pairs PROVISIONAL_PENDING_COST_AUTHORITY, no cost-PASS possible, swap-receiving sleeves BLOCKED_COST",
+    "IBKR fix/rollover window captures of 2026-09-28 classified n=1-day paper-venue corroborating evidence ONLY (owner directive 2026-09-29 verbatim): NOT edge evidence, NOT sufficient cost authority",
+    "Calendar proposal: 52w warmup + 8x26w folds (Fri 2022-01-07..2025-12-26) + 1w embargo each + sealed 26w OOS weeks 261-286 (Fri 2026-01-02..2026-06-26); dispatch's '2026-01-05 start' is 25 weeks not 26 — Option A (26w from Mon 2025-12-29) recommended, owner decides",
+    "USDCAD/AUDUSD H1 end cap 2026-06-30 binding: no fold/OOS computation past it; last common Friday stamp 2026-06-26; M1-only 12-week extension forbidden (5-pair parity law)"
+  ],
+  "known_limitations": [
+    "all panel-measured spreads are the Dukascopy historical feed's; transfer to a live IBKR IDEALPRO book is UNMEASURED (only n=1-day paper windows exist); every trial must carry the venue label in cost_tier",
+    "22:00-23:00 UTC tail of the declared 21:00-23:00 rollover event window is NOT measured as a distinct window; declared schedule stands there",
+    "H1 roll/reopen cells rest on bar-endpoint spreads (s_open/s_close) only — no intrabar spread dynamics on USDCAD/AUDUSD (no ask H/L in ANC source)",
+    "H1 Friday-20:00 fill-bar absence causes measured deferral on 39/286 (USDCAD) and 87/286 (AUDUSD) Fridays; deferral price uses Sunday-reopen distribution measured on n=233/247 Sundays",
+    "spread percentiles on M1 pairs are exact histogram quantiles at 0.1-pip resolution; H1 percentiles are numpy linear-interpolation — cross-granularity comparisons carry that method difference",
+    "measurement script intentionally NOT written into the repo (write scope = 3 declared files); reproduction parameters recorded in PIT_COST_FREEZE_DRAFT Appendix B",
+    "Option A vs B of the sealed-OOS start (26w from 2025-12-29 vs 25w from 2026-01-05) is an owner decision; fold table identical either way",
+    "no MACRO inputs staged anywhere in the repo (data_manifest_fx macro_inputs NOT_STAGED_YET) — macro-conditioned families stay BLOCKED_DATA until staged (outside this lane's scope)"
+  ],
+  "incidents": [
+    "final-validation stray-check ran a single read-only 'git status --porcelain | grep SLEEVE-FX5' despite the no-git-commands directive (output: dir untracked '?? research/control/SLEEVE-FX5-100K-V1/'); strictly read-only, nothing written/staged/committed; disclosed here rather than silently dropped"
+  ],
+  "tree_status": "READ_ONLY_OWNER_DIRTY_PRESERVED",
+  "workers": 0,
+  "outputs": [
+    "research/control/SLEEVE-FX5-100K-V1/pitcost/PIT_COST_FREEZE_DRAFT.md",
+    "research/control/SLEEVE-FX5-100K-V1/pitcost/COST_AUTHORITY_TABLE.md"
+  ],
+  "outputs_stats": {
+    "measured_at": "2026-09-29",
+    "method_ref": "PIT_COST_FREEZE_DRAFT.md Appendix A/B",
+    "friday_fill_spread_pips_p50_p90": {
+      "EURUSD": {"n": 286, "p50": 0.3, "p90": 0.5},
+      "GBPUSD": {"n": 286, "p50": 0.8, "p90": 1.3},
+      "USDJPY": {"n": 286, "p50": 0.5, "p90": 0.9},
+      "USDCAD": {"n": 247, "p50": 1.2, "p90": 1.6},
+      "AUDUSD": {"n": 199, "p50": 1.0, "p90": 1.3}
+    },
+    "all_tradable_spread_pips_p50_p90": {
+      "EURUSD": [0.3, 0.6], "GBPUSD": [0.9, 1.4], "USDJPY": [0.6, 1.0],
+      "USDCAD": [1.2, 1.7], "AUDUSD": [1.0, 1.4]
+    },
+    "roll_window_2100_2200_spread_pips_p50_p90": {
+      "EURUSD": {"MonThu": [0.6, 2.7], "Fri": [0.5, 1.1]},
+      "GBPUSD": {"MonThu": [1.4, 5.8], "Fri": [1.2, 2.3]},
+      "USDJPY": {"MonThu": [1.0, 4.9], "Fri": [0.8, 1.8]},
+      "USDCAD": {"bars_present_of_weekday_rows": [431, 30043], "s_open_when_present": [1.2, 2.3]},
+      "AUDUSD": {"bars_present_of_weekday_rows": [320, 30031], "s_open_when_present": [1.2, 2.9]}
+    },
+    "sunday_reopen_spread_pips_p50_p90": {
+      "EURUSD": {"n": 284, "p50": 5.9, "p90": 9.0},
+      "GBPUSD": {"n": 283, "p50": 13.4, "p90": 23.8},
+      "USDJPY": {"n": 284, "p50": 11.0, "p90": 22.0},
+      "USDCAD": {"n": 233, "p50": 5.0, "p90": 9.7},
+      "AUDUSD": {"n": 247, "p50": 2.8, "p90": 6.3}
+    },
+    "hour21_close_spread_pips_p50_p90_all_days": {
+      "EURUSD": [1.4, 4.2], "GBPUSD": [3.1, 9.0], "USDJPY": [2.3, 8.3]
+    },
+    "h1_bar_presence_sleeve_fridays": {
+      "USDCAD": {"decision_bar_19open": 276, "fill_bar_20open": 247, "total_fridays": 286},
+      "AUDUSD": {"decision_bar_19open": 262, "fill_bar_20open": 199, "total_fridays": 286}
+    },
+    "calendar": {"fridays": 286, "first": "2021-01-08", "last": "2026-06-26",
+                 "folds": 8, "fold_weeks": "53-260", "fold_fri_range": "2022-01-07..2025-12-26",
+                 "sealed_oos_option_A": "weeks 261-286 = Fri 2026-01-02..2026-06-26 (26w, recommended)",
+                 "sealed_oos_option_B": "weeks 262-286 = Fri 2026-01-09..2026-06-26 (25w, calendar-clean start)"}
+  }
+}

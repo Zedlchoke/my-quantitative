@@ -1,0 +1,64 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "futures-data-10syms-v1",
+  "cycle_id": "FUTURES-DATA-10SYMS-V1",
+  "role": "data-lane (owner-directed read-only reconnaissance, no cycle registration per SIXSOURCE precedent)",
+  "lane": "futures-10syms",
+  "dispatch_sha": null,
+  "actual_start_sha": "6770d790863d25c77a13b66967964433110a80fd",
+  "actual_end_sha_observed": "cfb7ae5724f116d59e62ea68397f647ba718af10 (owner committed in parallel during session; session artifacts untracked throughout)",
+  "commit_sha": null,
+  "no_commit_disclosure": "no-commit session per controller decision (owner reviews and commits; registry untouched)",
+  "changed_paths": [
+    "research/control/FUTURES-DATA-10SYMS-V1/ (entire new untracked control dir)",
+    "~/.my-quantitative-data/futures-10syms-v1/raw/ (1150 raw JSON files, 36,085,503 B, outside git)"
+  ],
+  "tests": [
+    "S1 identity: 10/10 symbols resolved as FUT with conId/localSymbol/multiplier/minTick/tz (SI=5000oz tradingClass fix; FX requires tradingClass)",
+    "S2 quotes: 10/10 no live/delayed streaming (empty tickers; CL/NG errors 10168/300)",
+    "S3 histprobe: 10/10 pass 7/7 (TRADES/BID/ASK daily+hourly+1min)",
+    "S4 samples: 150/150 ok",
+    "S5 bulk: 1150 files checkpointed, byte cap 2.0GB untouched (36MB used), pacing 3s",
+    "S6 validation + S7 depth probe + S9 independent verifier report"
+  ],
+  "authority_claims": [
+    "No cycle registered; no GO phrase; no scored cells; no orders; no subscriptions; no purchases; S1 untouched; no push/merge",
+    "Heavy lock never taken (FREE_PROVEN at intake and close); single download worker throughout",
+    "CME direct re-measured: DNS/TLS open (changed vs FX-FUTURES-FRONTIER-V1), HTTP 403 persists; not circumvented"
+  ],
+  "known_limitations": [
+    "Expired FUT secdef resolves only ~1 year back -> real-volume front chain ~2025-08..2026-10 (~14 months) for all 10 symbols",
+    "Intraday (H1/M1) vintage wall ~10 months (NG ~2.2y); deeper intraday NOT_RUN-unavailable on this entitlement",
+    "Per-contract bars before the liquid window are close-only volume-0 (settlement-derived) - flagged, separated, not treated as tradable",
+    "Exchange fees per-product NOT_FETCHED (only ES official example 1.38); slippage NOT_RUN_NO_DECLARED_VALUE; roll cost observable but NOT_COMPUTED",
+    "Bulk corpus bounded: daily 6Y per contract (deeper listing truncated), hourly 30D, 1-min 2D per contract"
+  ],
+  "incidents": [
+    "Two client-side script bugs (wap->average, lastTradeDate name) fixed same-session, reran stages; first bulk round filtered out active contracts due to 8-digit month comparison - rerun with fix, checkpoint preserved",
+    "Session interrupted once by app close during bulk round 2; resumed from checkpoint with zero duplicate cost",
+    "Mid-session conclusion 'expired has no intraday' corrected after endDateTime discovery: request window must overlap contract life; error 162 was window mismatch",
+    "S9 verifier found CLV6/NGV26 (delivery 2026-10, stopped trading late Sep) fell through the walk-back crack (contract month == current calendar month); gap-filled same-session with daily 6Y + H1 30D + BID/ASK 1Y; final manifest sha256 5e8e2b77, 1160 files, 36,463,541 B"
+  ],
+  "tree_status": "new untracked files only; owner dirty tree preserved (owner committed own files in parallel; HEAD moved 6770d790 -> cfb7ae57)",
+  "workers": 0,
+  "outputs": [
+    "research/control/FUTURES-DATA-10SYMS-V1/FINAL_REPORT.md",
+    "research/control/FUTURES-DATA-10SYMS-V1/INTAKE.md",
+    "research/control/FUTURES-DATA-10SYMS-V1/S1_IDENTITY.json",
+    "research/control/FUTURES-DATA-10SYMS-V1/S2_QUOTES.json",
+    "research/control/FUTURES-DATA-10SYMS-V1/S3_HISTPROBE.json",
+    "research/control/FUTURES-DATA-10SYMS-V1/S4_SAMPLES.json",
+    "research/control/FUTURES-DATA-10SYMS-V1/S5_BULK_LOG.json",
+    "research/control/FUTURES-DATA-10SYMS-V1/S6_VALIDATION.json",
+    "research/control/FUTURES-DATA-10SYMS-V1/S6_FRONT_SPREADS.json",
+    "research/control/FUTURES-DATA-10SYMS-V1/S7_DEPTH_ACTIVE.json",
+    "research/control/FUTURES-DATA-10SYMS-V1/S8_MANIFEST_DIGEST.json",
+    "research/control/FUTURES-DATA-10SYMS-V1/S9_INDEPENDENT_VERIFY.md",
+    "research/control/FUTURES-DATA-10SYMS-V1/raw_manifest.jsonl",
+    "research/control/FUTURES-DATA-10SYMS-V1/fut10_probe.py",
+    "research/control/FUTURES-DATA-10SYMS-V1/fut10_validate.py",
+    "research/control/FUTURES-DATA-10SYMS-V1/fut10_depth.py",
+    "research/control/FUTURES-DATA-10SYMS-V1/cme_check/",
+    "research/control/FUTURES-DATA-10SYMS-V1/costs/"
+  ]
+}
