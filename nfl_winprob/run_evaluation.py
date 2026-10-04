@@ -281,6 +281,19 @@ def _allowed_path(p, allow):
     return False
 
 
+def _code_drift_reasons(changed, allowlist):
+    """Pure helper: given changed paths (post-freeze diff) + allowlist, return
+    drift reasons. Immutable code prefix is nfl_winprob/ (NBA remnant fixed)."""
+    reasons = []
+    code = [p for p in changed if p.startswith("nfl_winprob/")]
+    if code:
+        reasons.append(f"CODE DRIFT (nfl_winprob/ immutable): {code[:5]}")
+    bad = [p for p in changed if not _allowed_path(p, allowlist)]
+    if bad:
+        reasons.append(f"post-freeze drift outside allowlist: {bad[:5]}")
+    return reasons
+
+
 def check_launch_gates(worktree, manifest_path, go_record_path, games=None, features=None):
     reasons = []
     try:
@@ -312,11 +325,7 @@ def check_launch_gates(worktree, manifest_path, go_record_path, games=None, feat
     else:
         try:
             changed = [p for p in _git(["diff", "--name-only", base, "HEAD"], worktree).splitlines() if p]
-            if any(p.startswith("nba_winprob/") for p in changed):
-                reasons.append(f"CODE DRIFT (nba_winprob/ immutable): {[p for p in changed if p.startswith('nba_winprob/')][:3]}")
-            bad = [p for p in changed if not _allowed_path(p, m.get("post_freeze_allowlist", []))]
-            if bad:
-                reasons.append(f"post-freeze drift outside allowlist: {bad[:5]}")
+            reasons.extend(_code_drift_reasons(changed, m.get("post_freeze_allowlist", [])))
             if _git(["status", "--porcelain"], worktree):
                 reasons.append("worktree dirty at launch")
         except RuntimeError as e:
@@ -404,7 +413,7 @@ def append_trial_rows(ledger_path, summary, repro=False):
             if arm_id in computed and not repro:
                 continue
             f.write(json.dumps({
-                "schema": "nba_winprob_trial_ledger@1", "cycle_id": CYCLE_ID,
+                "schema": "nfl_winprob_trial_ledger@1", "cycle_id": CYCLE_ID,
                 "arm_id": arm_id, "status": "COMPUTED",
                 "computed_at_utc": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
                 "pooled_rs_log_loss": entry["pooled_rs"]["log_loss"],

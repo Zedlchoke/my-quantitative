@@ -86,6 +86,42 @@ def test_ledger(tmp_path):
     assert len(rows) == 9
 
 
+def test_ledger_schema_consistency_amendment1(tmp_path):
+    """AMENDMENT_1 L1': every appended row (PRIMARY + REPRO) must carry the
+    NFL schema; the NBA-schema string must not exist in the runner source."""
+    import nfl_winprob.run_evaluation as mod
+    ledger = tmp_path / "LEDGER.jsonl"
+    s = run_evaluation(make_rows(), n_boot=50)
+    append_trial_rows(str(ledger), s)
+    append_trial_rows(str(ledger), s, repro=True)
+    rows = [json.loads(l) for l in ledger.read_text().splitlines() if l.strip()]
+    assert len(rows) == 18
+    assert all(r["schema"] == "nfl_winprob_trial_ledger@1" for r in rows)
+    assert all(r["cycle_id"] == "NFL-WINPROB-SCORED-V1" for r in rows)
+    src = open(mod.__file__, encoding="utf-8").read()
+    assert "nba_winprob_trial_ledger" not in src
+
+
+def test_code_drift_helper_positive_negative():
+    """AMENDMENT_1 L2': immutable prefix is nfl_winprob/ (NBA remnant dead)."""
+    from nfl_winprob.run_evaluation import _code_drift_reasons
+    allow = ["research/control/NFL-WINPROB-SCORED-V1/**"]
+    # positive: a code change is flagged
+    r = _code_drift_reasons(["nfl_winprob/run_evaluation.py"], allow)
+    assert any("CODE DRIFT" in x for x in r)
+    # negative: allowlisted control file is NOT flagged
+    r2 = _code_drift_reasons(["research/control/NFL-WINPROB-SCORED-V1/FREEZE_MANIFEST.json"], allow)
+    assert r2 == []
+    # negative: an NBA-prefixed path is no longer the immutable prefix (and,
+    # absent from the allowlist, it surfaces only as an allowlist reason)
+    r3 = _code_drift_reasons(["nba_winprob/whatever.py"], allow)
+    assert not any("CODE DRIFT" in x for x in r3)
+    assert any("allowlist" in x for x in r3)
+    # non-allowlisted other path -> allowlist reason only
+    r4 = _code_drift_reasons(["docs/x.md"], allow)
+    assert len(r4) == 1 and "allowlist" in r4[0]
+
+
 def test_go_phrase_form():
     assert GO_PHRASE == "GO NFL WINPROB SCORED V1 EVALUATION"
     assert CYCLE_ID == "NFL-WINPROB-SCORED-V1"
