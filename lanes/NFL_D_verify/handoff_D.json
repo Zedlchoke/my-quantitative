@@ -1,0 +1,85 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "nfl-d-verify",
+ "cycle_id": "NFL-WINPROB-PREP-V1",
+ "role": "quant-auditor",
+ "lane": "NFL_D_verify",
+ "dispatch_sha": "bd08489507ce20f4d58d5a5aa9bef9d772520b2d",
+ "actual_start_sha": "bd08489507ce20f4d58d5a5aa9bef9d772520b2d",
+ "commit_sha": "NOT_COMMITTED_CONTROLLER_LANDED",
+ "changed_paths": [
+  "lanes/NFL_D_verify/VERIFICATION_REPORT_NFL.md",
+  "lanes/NFL_D_verify/handoff_D.json"
+ ],
+ "tests": [
+  {
+   "name": "worktree/branch/HEAD/tree + commit-path audit + root registry row",
+   "command": "git -C <worktree> status/rev-parse/show --stat; git -C <root> show ad7baeed; plans/CYCLE_REGISTRY.json read",
+   "result": "PASS",
+   "evidence": "HEAD bd08489507ce20f4d58d5a5aa9bef9d772520b2d == expected; tree clean; 4 commits on parent 8deb036d; each commit touches only its claimed lane paths; root main at ad7baeed with NFL row ACTIVE_LIGHT budget 0/0, go_phrase empty; no other cycle row touched"
+  },
+  {
+   "name": "raw downloads integrity",
+   "command": "ls raw dir; shasum -a 256 games.csv play_by_play_2023.parquet; read ATTRIBUTION.md + timestamp_*.json + lanes/NFL_B_dataset/DATA_MANIFEST.md",
+   "result": "PASS",
+   "evidence": "games.csv sha256 f1e8fe78…248e and pbp_2023 sha256 bd348473…7676 match manifest; exactly 5 pbp parquets 2021-2025; all 8 recorded URLs github.com/nflverse/nflverse-data/releases/download/…; as-of markers match ATTRIBUTION.md"
+  },
+  {
+   "name": "derived rebuild determinism (temp dir /tmp/nfl_verify_derived)",
+   "command": ".venv/bin/python -m nfl_winprob.build_dataset --raw <raw>/games.csv --out /tmp/nfl_verify_derived && .venv/bin/python -m nfl_winprob.export_features --games /tmp/nfl_verify_derived/games_nfl.csv --out /tmp/nfl_verify_derived",
+   "result": "PASS",
+   "evidence": "features_nfl.csv sha256 1f411034d04572cab1f6847eb52f639f14fb4f85723e6b869937d873d813744f == pinned; cmp byte-identical for features/games/lineages CSVs vs real derived; real derived dir untouched"
+  },
+  {
+   "name": "census spot-checks (own python on real games_nfl.csv)",
+   "command": "python csv census script",
+   "result": "PASS",
+   "evidence": "7066 rows; seasons 2000..2026 contiguous; 32 lineages; 15 ties; 95 neutral; TEST 2019..2025 all present; zero betting-column names in derived header; CLE and BAL rows present in lineages_nfl.csv"
+  },
+  {
+   "name": "pytest synthetic suite",
+   "command": ".venv/bin/python -m pytest nfl_winprob/tests -q",
+   "result": "PASS",
+   "evidence": "11 passed in 0.16s"
+  },
+  {
+   "name": "evaluate refusal",
+   "command": ".venv/bin/python -m nfl_winprob.evaluate; echo EXIT_CODE=$?",
+   "result": "PASS",
+   "evidence": "REFUSED message on stderr; exit code 3"
+  },
+  {
+   "name": "no-metric sweep",
+   "command": "grep -rniE 'brier|log_?loss|auc|roc|cross.entropy|accuracy|calibration' across worktree; caller grep excluding defs; read export_features.py + tests",
+   "result": "PASS",
+   "evidence": "metric functions defined in protocol.py for successor cycle with ZERO callers; no metric values on real outcomes anywhere in the 4 commits' paths; export is pure mechanics transform; tests synthetic-only"
+  },
+  {
+   "name": "plan/protocol consistency",
+   "command": "read plans/PLAN_nfl_winprob_prep_v1.md, PROTOCOL_EVAL_NFL.md §2/§5, protocol.py, PREP_SUMMARY_NFL.md, BUILD_MANIFEST_NFL.json",
+   "result": "PASS",
+   "evidence": "9-arm table identical to protocol.py ARMS (ids/K/HCA/features); TEST_SEASONS 2019-2025 consistent in protocol.py + PREP_SUMMARY + BUILD manifest + protocol doc; CLE/BAL 32-lineage correction documented in build_dataset.py comment + PREP_SUMMARY decision 1 and confirmed in lineages_nfl.csv; plan boundaries (no S1/push/keys/purchases, raw outside git) match practice"
+  },
+  {
+   "name": "rights memo + attribution",
+   "command": "read lanes/NFL_A_rights/RIGHTS_MEMO_NFL.md §4 + raw/ATTRIBUTION.md",
+   "result": "PASS",
+   "evidence": "VERDICT: DATA_RIGHTS_OK verbatim; attribution string 'Data: nflverse/nflverse-data releases (CC BY 4.0), https://github.com/nflverse/nflverse-data' present in raw/ATTRIBUTION.md"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "No file literally named timestamp.json in raw/; the two release as-of markers timestamp_schedules.json + timestamp_pbp.json are the timestamp.json downloads (LOW, matches lane B manifest + rights memo)",
+  "protocol.py ships successor-cycle metric implementations (log_loss/brier/calibration_slope/bootstrap) with zero callers this cycle — frozen preregistration code, verified never run on real outcomes (LOW)",
+  "lineage_id naming mixes abbrevs and relocated full names (Rams/Chargers/Raiders) per frozen rename map — cosmetic only",
+  "derived census includes finished 2026 games while TEST ends 2025 — consistent with plan (finished-only) and frozen split; noted for successor fold construction"
+ ],
+ "incidents": [],
+ "tree_status": "clean",
+ "workers": 0,
+ "outputs": [
+  "lanes/NFL_D_verify/VERIFICATION_REPORT_NFL.md"
+ ],
+ "verdict": "VERIFICATION_PASS",
+ "defects_high_critical": 0
+}
