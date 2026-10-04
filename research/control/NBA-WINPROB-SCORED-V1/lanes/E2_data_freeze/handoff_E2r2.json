@@ -1,0 +1,45 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nws-e2r2",
+  "cycle_id": "NBA-WINPROB-SCORED-V1",
+  "role": "quant-explorer",
+  "lane": "E2_data_freeze",
+  "dispatch_sha": "227e3faa81c1cb3d8a458c6d5d47a32a104a7f4d",
+  "actual_start_sha": "227e3faa81c1cb3d8a458c6d5d47a32a104a7f4d",
+  "commit_sha": "NOT_COMMITTED_CONTROLLER_LANDED",
+  "changed_paths": [
+    "research/control/NBA-WINPROB-SCORED-V1/lanes/E2_data_freeze/E2_REPORT_ROUND2.md",
+    "research/control/NBA-WINPROB-SCORED-V1/lanes/E2_data_freeze/handoff_E2r2.json"
+  ],
+  "tests": [
+    {"name": "manifest_v2_supersedes_block", "result": "PASS", "evidence": "schema nba_winprob_scored_freeze@2; supersedes.old_manifest FREEZE_MANIFEST.SUPERSEDED_BLOCKED.json exists (schema @1, code 39b11156, features 644cd740a500...); SUPERSEDED_NOTE.md present; ledger 9 PREREGISTERED / 0 COMPUTED"},
+    {"name": "code_freeze_sha_in_history", "result": "PASS", "evidence": "2c64b6f34b0b2cf46db7243418f5b929a6a5b4c8 is commit HEAD~1 of 227e3faa (AMENDMENT_1 remediation commit)"},
+    {"name": "diff_scope_strict", "result": "FAIL", "evidence": "git diff --name-only 2c64b6f3..HEAD = [nba_winprob/make_freeze_manifest.py, research/control/NBA-WINPROB-SCORED-V1/FREEZE_MANIFEST.json]; nba_winprob/ NOT byte-unchanged — ONLY the manifest generator changed (HEAD commit 227e3faa is the freeze-v2 commit that updated it to emit schema @2); all evaluation-path files byte-identical to freeze sha; runner gate check_launch_gates L307-312 flags CODE DRIFT at HEAD (measured live, exit 3) -> launch BLOCKED as landed"},
+    {"name": "data_hashes_recompute", "result": "PASS", "evidence": "6/6 match (raw_nbaallelo d46ed354..., games e24d9a3b..., lineages c8cdd58a..., participants fd7cb539..., features c86f104d..., ATTRIBUTION.md e134e20c...)"},
+    {"name": "features_key_delta", "result": "PASS", "evidence": "features.csv sha256 = c86f104d9c30a67f4735592d31308dab3c95d55998d80d51822d2679e50fc86b (matches pin); old 644cd740... does NOT match on-disk file -> freeze pins the rebuilt CSV"},
+    {"name": "real_csv_header", "result": "PASS", "evidence": "features.csv col 8 = plain elo_diff; cols 16-23 = elo_diff_B1-a..d / p_home_B1-a..d; 63,157 data rows"},
+    {"name": "pytest_suite", "result": "PASS", "evidence": "33 passed in 40.51s (nba_winprob/tests -q; includes test_real_csv_path.py, no outcome metrics)"},
+    {"name": "synthetic_selftest_v2", "result": "PASS", "evidence": "SELFTEST PASS v2 banner (9 arms, 7 comparisons pooled+per-fold, verdicts, fold reliability/slope, deterministic bootstrap), exit 0"},
+    {"name": "refusal_evaluate_no_manifest", "result": "PASS", "evidence": "python -m nba_winprob.evaluate -> exit 3, REFUSED no --freeze-manifest"},
+    {"name": "refusal_no_go_record", "result": "FAIL_AS_SPECIFIED_PASS_AS_INTENT", "evidence": "run_evaluation --freeze-manifest <real v2> without --go-record -> exit 2 (argparse required=True intercepts before gate), not exit 3; refusal still absolute; no evaluation ran"},
+    {"name": "refusal_wrong_phrase_go", "result": "PASS", "evidence": "exit 3 with 'GO record phrase mismatch' (plus expected CODE DRIFT and A7 AUDIT_PRELAUNCH_ROUND2.md missing reasons); ledger untouched"},
+    {"name": "rights_two_fetches", "result": "PASS", "evidence": "DATA_RIGHTS_OK: 538 root README CC BY 4.0 sentence verbatim intact; nba-elo README 'Game information is from Basketball-Reference.com.' verbatim intact (fetched 2026-10-04)"},
+    {"name": "plan_unchanged_since_g0", "result": "PASS", "evidence": "root repo: blob a92e16eb:plans/PLAN_nba_winprob_scored_v1.md = d6bd9a2437556e689225b50f52a4057480ff1ad7 = git hash-object of current file; root status clean for path; a92e16eb sole commit touching plan, ancestor of root main"},
+    {"name": "amendment_digest", "result": "PASS", "evidence": "recomputed sha256 of AMENDMENT_1.md = e7531c7e47f2e6e92235e3ccd5f4078365346e78518d0a10217a9d3f343e53bc == manifest.amendment_digest"}
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "LAUNCH-BLOCKING (controller action): freeze-v2 commit 227e3faa changed nba_winprob/make_freeze_manifest.py after pinned code_freeze_sha 2c64b6f3; manifest drift law + run_evaluation gate treat this as CODE DRIFT -> evaluation refuses at current HEAD. Fix = re-pin code_freeze_sha to a commit already containing the v2 generator (regenerate manifest) or revert the generator delta. Evaluation-path code unaffected (byte-identical to freeze sha).",
+    "Minor spec delta: missing --go-record exits 2 (argparse) not the gate's exit 3; refusal semantics intact.",
+    "Pending-by-design launch conditions restated for A7 round 2: audits/AUDIT_PRELAUNCH_ROUND2.md (A7_PRELAUNCH_AUTHORIZED), structured owner GO record, FREE_PROVEN heavy lock.",
+    "Round-1 artifacts (E2_REPORT.md, handoff_E2.json, AUDIT_PRELAUNCH.md) left untouched; this is a DELTA round."
+  ],
+  "incidents": [
+    "CODE DRIFT finding: diff 2c64b6f3..HEAD includes nba_winprob/make_freeze_manifest.py (+30/-23); check_launch_gates refuses with CODE DRIFT + allowlist drift at HEAD (measured via wrong-phrase-GO refusal run, exit 3). No outcomes computed; TRIAL_LEDGER still 9 PREREGISTERED / 0 COMPUTED; results/ empty."
+  ],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "research/control/NBA-WINPROB-SCORED-V1/lanes/E2_data_freeze/E2_REPORT_ROUND2.md"
+  ]
+}

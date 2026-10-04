@@ -221,13 +221,15 @@ def run_evaluation(rows, n_boot: int = 10_000):
     verdicts["REJECT"] = {"R1_no_elo_gain_vs_B0": r1, "R2_candidate_worse_than_B0": r2,
                           "R3_degradation_and_miscalibration": r3, "ANY": r1 or r2 or r3}
     decisive = [k for k in comparisons["pooled"] if arm_favors(k) or ref_favors(k)]
-    verdicts["INCONCLUSIVE"] = (not verdicts["PROGRAM_PASS"] and not verdicts["REJECT"]["ANY"]
-                                and 0.85 <= slope_b2a <= 1.15)
+    decision_keys = list(comparisons["pooled"].keys())
+    all_cis_include_zero = all(not (arm_favors(k) or ref_favors(k)) for k in decision_keys)
+    verdicts["INCONCLUSIVE"] = (all_cis_include_zero
+                                and 0.85 <= slope_b2a <= 1.15
+                                and not verdicts["PROGRAM_PASS"])
     verdicts["hypotheses"] = {
         "H1_dynamic_strength": {
-            "rule": "REJECT iff no B1 arm beats B0 (all 4 CIs include 0 or favor B0)",
-            "REJECT": all(not arm_favors(f"{a}_vs_B0") for a in B1_ARMS if a == b1star) or
-                      all(not arm_favors(f"{a}_vs_B0") for a in B1_ARMS),
+            "rule": "REJECT iff all four 95% CIs of pooled DL(B1-arm, B0) include 0 or lie entirely > 0",
+            "REJECT": all(not arm_favors(f"{a}_vs_B0") for a in B1_ARMS),
             "evidence": {f"{a}_vs_B0": {"ci": [ci(f'{a}_vs_B0')['ci95_lo'], ci(f'{a}_vs_B0')['ci95_hi']],
                                         "favors_arm": arm_favors(f"{a}_vs_B0")} for a in B1_ARMS}},
         "H2_home_court": {
@@ -296,7 +298,9 @@ def check_launch_gates(worktree, manifest_path, go_record_path, games=None, feat
             if not os.path.exists(p):
                 reasons.append(f"pinned {name} missing: {p}")
     for name, meta in m.get("data", {}).items():
-        if os.path.exists(meta["path"]) and _sha256_file(meta["path"]) != meta["sha256"]:
+        if not os.path.exists(meta["path"]):
+            reasons.append(f"data missing: {name} {meta['path']}")
+        elif _sha256_file(meta["path"]) != meta["sha256"]:
             reasons.append(f"data hash mismatch: {name}")
     # code immutability since freeze
     base = m.get("code_freeze_sha")
@@ -344,6 +348,11 @@ def check_launch_gates(worktree, manifest_path, go_record_path, games=None, feat
                 reasons.append("GO record typed_by != owner")
             if not rec.get("typed_at"):
                 reasons.append("GO record missing typed_at")
+            else:
+                try:
+                    dt.datetime.fromisoformat(str(rec["typed_at"]).replace("Z", "+00:00"))
+                except ValueError:
+                    reasons.append("GO record typed_at not ISO-8601")
         except Exception as e:  # noqa: BLE001
             reasons.append(f"GO record not valid structured JSON: {e}")
     return (not reasons), reasons
@@ -427,7 +436,10 @@ def main() -> int:
 
     with open(args.freeze_manifest, encoding="utf-8") as f:
         m = json.load(f)
-    ledger = args.ledger or m.get("ledger_path")
+    ledger = m.get("ledger_path")
+    if args.ledger and os.path.abspath(args.ledger) != os.path.abspath(ledger):
+        print(f"REFUSED — --ledger {args.ledger} != pinned {ledger}", file=sys.stderr)
+        return 3
     out_dir = m.get("results_dir")
     ok, reasons = check_launch_gates(args.worktree, args.freeze_manifest, args.go_record,
                                      games=args.games, features=args.features)
