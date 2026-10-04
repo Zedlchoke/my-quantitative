@@ -1,0 +1,60 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nfl-b-dataset",
+  "cycle_id": "NFL-WINPROB-PREP-V1",
+  "role": "quant-explorer",
+  "lane": "NFL_B_dataset",
+  "dispatch_sha": "8deb036d9ebb74e24de99e8c3461e7cea9b9dc43",
+  "actual_start_sha": "8deb036d9ebb74e24de99e8c3461e7cea9b9dc43",
+  "commit_sha": "NOT_COMMITTED_CONTROLLER_LANDED",
+  "changed_paths": [
+    "lanes/NFL_B_dataset/DATA_MANIFEST.md",
+    "lanes/NFL_B_dataset/DATASET_AUDIT.md",
+    "lanes/NFL_B_dataset/audit_script.py",
+    "lanes/NFL_B_dataset/handoff_B.json"
+  ],
+  "external_outputs": [
+    "~/.my-quantitative-data/nfl-nflverse-v1/raw/games.csv",
+    "~/.my-quantitative-data/nfl-nflverse-v1/raw/timestamp_schedules.json",
+    "~/.my-quantitative-data/nfl-nflverse-v1/raw/timestamp_pbp.json",
+    "~/.my-quantitative-data/nfl-nflverse-v1/raw/play_by_play_2021.parquet",
+    "~/.my-quantitative-data/nfl-nflverse-v1/raw/play_by_play_2022.parquet",
+    "~/.my-quantitative-data/nfl-nflverse-v1/raw/play_by_play_2023.parquet",
+    "~/.my-quantitative-data/nfl-nflverse-v1/raw/play_by_play_2024.parquet",
+    "~/.my-quantitative-data/nfl-nflverse-v1/raw/play_by_play_2025.parquet",
+    "~/.my-quantitative-data/nfl-nflverse-v1/raw/ATTRIBUTION.md"
+  ],
+  "tests": [
+    "downloads: 8 files, all from github.com/nflverse/nflverse-data release browser_download_urls; local byte sizes == GitHub API asset sizes; sha256 recorded (ATTRIBUTION.md)",
+    "games.csv: 7548 rows, 46 cols, seasons 1999-2026; 0 duplicate game_id; gsis 7340 non-null all distinct (208 nulls all in 2026 future games)",
+    "era REG counts: 248 (31 teams, 1999-2001), 256 (2002-2020), 272 (2021+); 2022=271 explained (cancelled BUF@CIN absent; 2022_17_BUF_CIN not in file); 0 unexplained anomalies",
+    "renames verified via transition census: STL->LA 2016, SD->LAC 2017, OAK->LV 2020; HOU expansion 2002; 35 abbrevs, 31 proposed lineages",
+    "gametime: documented US Eastern (DATASETS.md + nflreadr dictionary quoted); 100% HH:MM parse; 259 missing ALL in 1999; 2000+ 0 missing -> kickoff-grain boundary season 2000",
+    "quality: 0 result/total arithmetic violations in 7325 finished games; finished filter isolates exactly the 223 unfinished 2026 rows",
+    "neutral site: location Home/Neutral flag exists; 102 neutral games incl. 27 SB + 49 international-stadium games; 10-game known-neutral sample verified",
+    "rest: team-game gap p50=7d p95=14d max=21d; away_rest/home_rest 0% null all seasons",
+    "pbp 2021-2025: 247284 rows total (pyarrow 25.0.1); 100% game_id join into games.csv; each parquet single labeled season"
+  ],
+  "authority_claims": [
+    "measured coverage end: last finished game 2026-10-01 (2026 wk4); last complete season 2025",
+    "games.csv release coverage is 1999-2026, NOT 1920s-2026 as dispatch expected; strike seasons 1982/1987 NOT_IN_RELEASE",
+    "finished games 7325/7548 (97.05%); unfinished 223 all 2026 (49/272 played)",
+    "gametime safe from season 2000 (1999 is 100% missing kickoff times); timezone documented US Eastern",
+    "TEST proposal 2019-2025 (7 complete seasons, 1960 games incl. postseason); TRAIN proposal 2000-2018 (19 seasons)",
+    "pbp subset 2021-2025 = 102.1 MB, 247284 plays, under 600MB cap, no cut applied"
+  ],
+  "known_limitations": [
+    "source has no data before 1999 (no 1920s coverage; strike-era checks impossible)",
+    "1999 kickoff times 100% missing -> PIT features NOT_RUN for 1999",
+    "gametime stored naive; DST-aware America/New_York conversion required (fixed-EST fallback shifts 42.5% of games by 1h)",
+    "Washington abbrev is WAS (not WSH) throughout this release",
+    "2022 REG = 271 games (cancelled BUF@CIN absent) - schedule-shape features must tolerate it",
+    "2026 in progress: finished-filter required (49/272 played as of pull)"
+  ],
+  "incidents": [],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "lanes/NFL_B_dataset/DATASET_AUDIT.md"
+  ]
+}
