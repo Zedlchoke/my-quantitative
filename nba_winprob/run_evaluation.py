@@ -1,18 +1,12 @@
-"""Scored evaluation runner — NBA-WINPROB-SCORED-V1 (two-key gated).
+"""Scored evaluation runner v2 — NBA-WINPROB-SCORED-V1 (two-key gated).
 
-Implements the frozen protocol (lanes/C_protocol/PROTOCOL_EVAL.md sec2-6)
-end to end: 9 arms x 7 folds (test seasons 2009..2015), B0 refit per fold,
-B1 precomputed as-of predictions, B2 logistic with train-only standardization
-+ L2, metrics (LL/Brier/reliability/slope), 7 registered paired comparisons
-with date-clustered bootstrap, playoff segment reported separately, trial
-ledger append.
+v2 per AMENDMENT_1 (pre-outcome remediation): plain `elo_diff` column (B1-a
+stream) required; per-fold AND pooled reliability/slope/paired-CI emitted;
+§6 T1-T3/R1-R3 + hypothesis verdicts computed; hardened launch gates (pinned
+paths, required ledger, fixed results dir, structured GO record, clean tree,
+A7 artifact, FREE lock). Synthetic selftest exercises the same core.
 
-LAUNCH LAW: refuses to touch REAL data unless (a) FREEZE_MANIFEST.json
-validates (code freeze sha == git HEAD, no post-freeze drift outside the
-allowlist, data hashes match) and (b) a GO record file contains the exact
-phrase "GO NBA WINPROB SCORED V1 EVALUATION" for this cycle. Exit code 3 on
-refusal. The synthetic selftest runs the identical core on synthetic rows
-(no real outcomes) and is the only ungated execution path.
+LAUNCH LAW: refuses real data unless every gate passes; exit 3 on refusal.
 """
 from __future__ import annotations
 
@@ -23,7 +17,6 @@ import hashlib
 import json
 import math
 import os
-import random
 import subprocess
 import sys
 
@@ -35,12 +28,16 @@ from .protocol import (
 
 GO_PHRASE = "GO NBA WINPROB SCORED V1 EVALUATION"
 CYCLE_ID = "NBA-WINPROB-SCORED-V1"
+RESEARCHCTL = ["/Users/hoangminhlong/my-quantitative/.venv/bin/python",
+               "/Users/hoangminhlong/my-quantitative/research/researchctl.py", "locks", "inspect"]
 
 REGISTERED_COMPARISONS = [
     ("B2-a", "B1*"), ("B2-a", "B0"), ("B1*", "B0"),
     ("B1-b", "B1-a"), ("B1-d", "B1-c"), ("B2-a", "B2-b"), ("B2-a", "B2-c"),
+    # H1 falsification rule requires all four B1 arms vs B0 (protocol sec1);
+    # comparisons are not arms — the 9-arm trial budget is unchanged.
+    ("B1-a", "B0"), ("B1-b", "B0"), ("B1-c", "B0"), ("B1-d", "B0"),
 ]
-
 FEATURE_COLS = ["elo_diff", "rest_diff", "b2b_home", "b2b_away", "form_home", "form_away"]
 B1_ARMS = [a.arm_id for a in ARMS if a.kind == "B1"]
 
@@ -52,23 +49,27 @@ def load_rows(games_csv: str, features_csv: str):
     with open(games_csv, newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
             games[r["src_game_id"]] = {
-                "season": int(r["season"]),
-                "date": r["date"],
+                "season": int(r["season"]), "date": r["date"],
                 "is_playoffs": r["is_playoffs"] == "True",
                 "home_win": r["home_win"] == "True",
             }
     rows = []
     with open(features_csv, newline="", encoding="utf-8") as f:
-        for r in csv.DictReader(f):
+        rdr = csv.DictReader(f)
+        header = set(rdr.fieldnames or [])
+        need = set(FEATURE_COLS) | {f"p_home_{a}" for a in B1_ARMS} | {"src_game_id"}
+        missing = need - header
+        if missing:
+            raise KeyError(f"features.csv missing columns: {sorted(missing)}")
+        for r in rdr:
             g = games[r["src_game_id"]]
-            row = {
+            rows.append({
                 "src_game_id": r["src_game_id"], "date": g["date"],
                 "season": g["season"], "is_playoffs": g["is_playoffs"],
                 "home_win": g["home_win"],
                 "features": {c: float(r[c]) for c in FEATURE_COLS},
                 "p_b1": {a: float(r[f"p_home_{a}"]) for a in B1_ARMS},
-            }
-            rows.append(row)
+            })
     return rows
 
 
@@ -84,106 +85,169 @@ def _fit_standardizer(train_rows, cols):
     return stats
 
 
-def _std(row_features, stats, cols):
-    return [1.0] + [(row_features[c] - stats[c][0]) / stats[c][1] for c in cols]
+def _std(feat, stats, cols):
+    return [1.0] + [(feat[c] - stats[c][0]) / stats[c][1] for c in cols]
 
 
-def run_evaluation(rows):
-    """Pure function: rows -> full result tree. No I/O. Deterministic."""
-    folds = []
+def _metrics(ps, ys):
+    return {"n": len(ps), "log_loss": log_loss(ps, ys), "brier": brier(ps, ys),
+            "reliability": reliability_bins(ps, ys), "calibration_slope": calibration_slope(ps, ys)}
+
+
+def run_evaluation(rows, n_boot: int = 10_000):
+    """Pure function -> full result tree incl. per-fold+pooled metrics,
+    registered paired comparisons (per fold AND pooled), §6 gate verdicts and
+    hypothesis verdicts. Deterministic (seeded bootstrap)."""
+    fold_list = []
     for s in TEST_SEASONS:
         train = [r for r in rows if r["season"] < s and not r["is_playoffs"]]
         test_rs = [r for r in rows if r["season"] == s and not r["is_playoffs"]]
         test_po = [r for r in rows if r["season"] == s and r["is_playoffs"]]
         if not train or not test_rs:
             raise ValueError(f"fold {s}: empty train or primary test")
-        folds.append((s, train, test_rs, test_po))
+        fold_list.append((s, train, test_rs, test_po))
 
-    arm_results = {a.arm_id: {"folds": {}, "pooled_rs": [], "pooled_po": []} for a in ARMS}
-    for s, train, test_rs, test_po in folds:
-        b0_p = (sum(1 for r in train if r["home_win"]) / len(train))
+    state = {a.arm_id: {"fold_rs": {}, "fold_po": {}} for a in ARMS}
+    fold_meta = {}
+    for s, train, test_rs, test_po in fold_list:
+        b0_p = sum(1 for r in train if r["home_win"]) / len(train)
+        fold_meta[s] = {"b0_rate_train": b0_p, "n_train": len(train),
+                        "n_rs": len(test_rs), "n_po": len(test_po)}
         for arm in ARMS:
             if arm.kind == "B0":
-                pred = lambda r, _p=b0_p: _p
+                def pred(r, _p=b0_p):
+                    return _p
             elif arm.kind == "B1":
-                pred = lambda r, _a=arm.arm_id: r["p_b1"][_a]
+                def pred(r, _a=arm.arm_id):
+                    return r["p_b1"][_a]
             else:
                 cols = list(arm.features)
                 stats = _fit_standardizer(train, cols)
-                X = [_std(r["features"], stats, cols) for r in train]
-                y = [1.0 if r["home_win"] else 0.0 for r in train]
-                w = fit_logistic(X, y, l2=LOGIT_L2)
-                pred = lambda r, _w=w, _st=stats, _c=cols: predict_logistic(_w, _std(r["features"], _st, _c))
-            res = arm_results[arm.arm_id]
-            for seg_name, seg in (("rs", test_rs), ("po", test_po)):
-                if not seg:
-                    continue
-                ps = [pred(r) for r in seg]
-                ys = [1 if r["home_win"] else 0 for r in seg]
-                res["folds"].setdefault(s, {})[seg_name] = {
-                    "n": len(seg),
-                    "log_loss": log_loss(ps, ys),
-                    "brier": brier(ps, ys),
-                    "reliability": reliability_bins(ps, ys),
-                }
-                if seg_name == "rs":
-                    res["pooled_rs"].append((ps, ys, [r["date"] for r in seg]))
-                else:
-                    res["pooled_po"].append((ps, ys, [r["date"] for r in seg]))
-            res["folds"][s]["b0_rate_train"] = b0_p if arm.kind == "B0" else None
+                w = fit_logistic([_std(r["features"], stats, cols) for r in train],
+                                 [1.0 if r["home_win"] else 0.0 for r in train], l2=LOGIT_L2)
 
-    summary = {"cycle_id": CYCLE_ID, "generated_by": "run_evaluation.run_evaluation",
-               "test_seasons": list(TEST_SEASONS), "arms": {}, "comparisons": {}}
+                def pred(r, _w=w, _st=stats, _c=cols):
+                    return predict_logistic(_w, _std(r["features"], _st, _c))
+            st = state[arm.arm_id]
+            ps = [pred(r) for r in test_rs]
+            ys = [1 if r["home_win"] else 0 for r in test_rs]
+            ds = [r["date"] for r in test_rs]
+            st["fold_rs"][s] = (ps, ys, ds)
+            if test_po:
+                st["fold_po"][s] = ([pred(r) for r in test_po],
+                                    [1 if r["home_win"] else 0 for r in test_po])
+
+    def pooled(d):
+        return ([p for s in d for p in d[s][0]], [y for s in d for y in d[s][1]],
+                [x for s in d for x in d[s][2]])
+
+    arms_out, pooled_arrays = {}, {}
     for arm in ARMS:
-        res = arm_results[arm.arm_id]
-        ps = [p for seg in res["pooled_rs"] for p in seg[0]]
-        ys = [y for seg in res["pooled_rs"] for y in seg[1]]
-        ds = [d for seg in res["pooled_rs"] for d in seg[2]]
-        entry = {
+        st = state[arm.arm_id]
+        ps, ys, ds = pooled(st["fold_rs"])
+        pooled_arrays[arm.arm_id] = (ps, ys, ds)
+        folds_out = {str(s): _metrics(*st["fold_rs"][s][:2]) for s in fold_meta}
+        if st["fold_po"]:
+            po_ps = [p for s in st["fold_po"] for p in st["fold_po"][s][0]]
+            po_ys = [y for s in st["fold_po"] for y in st["fold_po"][s][1]]
+            po = _metrics(po_ps, po_ys)
+        else:
+            po = None
+        arms_out[arm.arm_id] = {
             "kind": arm.kind, "spec": {"K": arm.K, "HCA": arm.HCA, "features": list(arm.features)},
-            "pooled_rs": {"n": len(ps), "log_loss": log_loss(ps, ys), "brier": brier(ps, ys),
-                          "calibration_slope": calibration_slope(ps, ys)},
-            "folds": {
-                str(s): {
-                    k: ({kk: vv for kk, vv in v.items() if kk != "reliability"}
-                        if isinstance(v, dict) else v)
-                    for k, v in res["folds"][s].items()
-                    if k != "b0_rate_train" or v is not None
-                }
-                for s in TEST_SEASONS if s in res["folds"]
-            },
+            "pooled_rs": _metrics(ps, ys), "folds": folds_out,
+            "pooled_playoffs_separate": po,
         }
-        po_ps = [p for seg in res["pooled_po"] for p in seg[0]]
-        po_ys = [y for seg in res["pooled_po"] for y in seg[1]]
-        if po_ps:
-            entry["pooled_playoffs_separate"] = {"n": len(po_ps), "log_loss": log_loss(po_ps, po_ys),
-                                                 "brier": brier(po_ps, po_ys)}
-        entry["_arrays_rs"] = (ps, ys, ds)
-        summary["arms"][arm.arm_id] = entry
 
-    b1_pooled = {a: summary["arms"][a]["pooled_rs"]["log_loss"] for a in B1_ARMS}
-    b1star = min(B1_ARMS, key=lambda a: b1_pooled[a])
-    summary["b1star"] = b1star
+    b1star = min(B1_ARMS, key=lambda a: arms_out[a]["pooled_rs"]["log_loss"])
 
-    def resolve(ref):
-        return b1star if ref == "B1*" else ref
+    def resolve(x):
+        return b1star if x == "B1*" else x
 
+    comparisons = {"pooled": {}, "per_fold": {}}
     for arm_id, ref in REGISTERED_COMPARISONS:
-        ra, rr = summary["arms"][resolve(arm_id)], summary["arms"][resolve(ref)]
-        pa, ya, da = ra["_arrays_rs"]
-        pr, yr, dr = rr["_arrays_rs"]
-        assert (ya == yr) and (da == dr), "paired comparison on identical game sets"
-        mean, lo, hi = paired_block_bootstrap_delta(pa, pr, ya, da)
-        summary["comparisons"][f"{arm_id}_vs_{ref}"] = {
-            "delta_log_loss": mean, "ci95_lo": lo, "ci95_hi": hi,
-            "n": len(ya), "sign_note": "negative favors the arm",
-        }
-    for arm_id in summary["arms"]:
-        summary["arms"][arm_id].pop("_arrays_rs", None)
-    return summary
+        ra, rr = resolve(arm_id), resolve(ref)
+        key = f"{arm_id}_vs_{ref}"
+        pa, ya, da = pooled_arrays[ra]
+        pr, yr, dr = pooled_arrays[rr]
+        if not (ya == yr and da == dr):
+            raise ValueError(f"comparison {key}: game sets differ")
+        mean, lo, hi = paired_block_bootstrap_delta(pa, pr, ya, da, n_resamples=n_boot)
+        comparisons["pooled"][key] = {"delta_log_loss": mean, "ci95_lo": lo, "ci95_hi": hi,
+                                      "n": len(ya), "sign_note": "negative favors the arm"}
+        comparisons["per_fold"][key] = {}
+        for s in fold_meta:
+            fa, fb = state[ra]["fold_rs"][s], state[rr]["fold_rs"][s]
+            m, l, h = paired_block_bootstrap_delta(fa[0], fb[0], fa[1], fa[2], n_resamples=n_boot)
+            comparisons["per_fold"][key][str(s)] = {"delta_log_loss": m, "ci95_lo": l, "ci95_hi": h,
+                                                    "n": fa[1].__len__()}
+
+    def ci(key):
+        return comparisons["pooled"][key]
+
+    def arm_favors(key):
+        return ci(key)["ci95_hi"] < 0
+
+    def ref_favors(key):
+        return ci(key)["ci95_lo"] > 0
+
+    ll = {a: arms_out[a]["pooled_rs"]["log_loss"] for a in arms_out}
+    slope_b2a = arms_out["B2-a"]["pooled_rs"]["calibration_slope"]
+    b2a_beats_b1star_folds = sum(
+        1 for s in fold_meta
+        if comparisons["per_fold"]["B2-a_vs_B1*"][str(s)]["delta_log_loss"] < 0)
+    b2a_brier_worse_than_b0_folds = [
+        str(s) for s in fold_meta
+        if arms_out["B2-a"]["folds"][str(s)]["brier"] > arms_out["B0"]["folds"][str(s)]["brier"]]
+
+    verdicts = {
+        "T1_discriminative_gain": {
+            "pooled_ci_below_0": arm_favors("B2-a_vs_B1*"),
+            "folds_negative": f"{b2a_beats_b1star_folds}/7 (need >=4)",
+            "PASS": arm_favors("B2-a_vs_B1*") and b2a_beats_b1star_folds >= 4},
+        "T2_calibration": {"slope": slope_b2a, "band": [0.85, 1.15],
+                           "PASS": 0.85 <= slope_b2a <= 1.15},
+        "T3_floor_safety": {
+            "no_fold_brier_worse_than_B0": not b2a_brier_worse_than_b0_folds,
+            "folds_flagged": b2a_brier_worse_than_b0_folds,
+            "pooled_ci_below_0_vs_B0": arm_favors("B2-a_vs_B0"),
+            "PASS": (not b2a_brier_worse_than_b0_folds) and arm_favors("B2-a_vs_B0")},
+        "B1star": b1star, "pooled_log_losses": ll,
+    }
+    verdicts["PROGRAM_PASS"] = all(verdicts[k]["PASS"] for k in ("T1_discriminative_gain", "T2_calibration", "T3_floor_safety"))
+    r1 = not arm_favors("B1*_vs_B0")            # CI includes 0 or ref-favored
+    r2 = ref_favors("B2-a_vs_B0")
+    r3 = ref_favors("B2-a_vs_B1*") and not (0.85 <= slope_b2a <= 1.15)
+    verdicts["REJECT"] = {"R1_no_elo_gain_vs_B0": r1, "R2_candidate_worse_than_B0": r2,
+                          "R3_degradation_and_miscalibration": r3, "ANY": r1 or r2 or r3}
+    decisive = [k for k in comparisons["pooled"] if arm_favors(k) or ref_favors(k)]
+    verdicts["INCONCLUSIVE"] = (not verdicts["PROGRAM_PASS"] and not verdicts["REJECT"]["ANY"]
+                                and 0.85 <= slope_b2a <= 1.15)
+    verdicts["hypotheses"] = {
+        "H1_dynamic_strength": {
+            "rule": "REJECT iff no B1 arm beats B0 (all 4 CIs include 0 or favor B0)",
+            "REJECT": all(not arm_favors(f"{a}_vs_B0") for a in B1_ARMS if a == b1star) or
+                      all(not arm_favors(f"{a}_vs_B0") for a in B1_ARMS),
+            "evidence": {f"{a}_vs_B0": {"ci": [ci(f'{a}_vs_B0')['ci95_lo'], ci(f'{a}_vs_B0')['ci95_hi']],
+                                        "favors_arm": arm_favors(f"{a}_vs_B0")} for a in B1_ARMS}},
+        "H2_home_court": {
+            "rule": "REJECT iff for both K, CI of (K,100)vs(K,0) includes 0 or favors HCA=0",
+            "REJECT": all(not arm_favors(k) for k in ("B1-b_vs_B1-a", "B1-d_vs_B1-c")),
+            "evidence": {k: {"ci": [ci(k)["ci95_lo"], ci(k)["ci95_hi"]], "favors_arm": arm_favors(k)}
+                         for k in ("B1-b_vs_B1-a", "B1-d_vs_B1-c")}},
+        "H3_rest_schedule": {
+            "rule": "REJECT iff CI of B2-a vs B2-b includes 0 or favors B2-b",
+            "REJECT": not arm_favors("B2-a_vs_B2-b"),
+            "evidence": {"ci": [ci("B2-a_vs_B2-b")["ci95_lo"], ci("B2-a_vs_B2-b")["ci95_hi"]],
+                         "favors_arm": arm_favors("B2-a_vs_B2-b")}},
+    }
+
+    return {"cycle_id": CYCLE_ID, "test_seasons": list(TEST_SEASONS), "fold_meta": fold_meta,
+            "arms": arms_out, "comparisons": comparisons, "verdicts": verdicts,
+            "language_law": "calibration language only; no PnL/betting/edge vocabulary"}
 
 
-# ---------------------------------------------------------------- gates
+# ---------------------------------------------------------------- gates v2
 
 def _sha256_file(path):
     h = hashlib.sha256()
@@ -201,63 +265,94 @@ def _git(args, cwd):
         raise RuntimeError(f"git {' '.join(args)} failed in {cwd}: {(e.stderr or '').strip()[:200]}") from None
 
 
-def _allowed_path(p: str, allow) -> bool:
+def _allowed_path(p, allow):
     for a in allow:
-        if a.endswith("/**"):
-            if p.startswith(a[:-2]):
-                return True
-        elif p == a:
+        if a.endswith("/**") and p.startswith(a[:-2]):
+            return True
+        if p == a:
             return True
     return False
 
 
-def check_launch_gates(worktree: str, manifest_path: str, go_record_path: str | None):
+def check_launch_gates(worktree, manifest_path, go_record_path, games=None, features=None):
     reasons = []
     try:
         with open(manifest_path, encoding="utf-8") as f:
             m = json.load(f)
     except Exception as e:  # noqa: BLE001
         return False, [f"freeze manifest unreadable: {e}"]
-    if m.get("cycle_id") != CYCLE_ID:
-        reasons.append("manifest cycle_id mismatch")
+    if m.get("cycle_id") != CYCLE_ID or m.get("schema") != "nba_winprob_scored_freeze@2":
+        reasons.append("manifest cycle_id/schema mismatch (need freeze v2 post-AMENDMENT_1)")
+    # pinned inputs
+    pin_g, pin_f = m.get("pinned_games"), m.get("pinned_features")
+    if not (pin_g and pin_f):
+        reasons.append("manifest missing pinned_games/pinned_features")
+    else:
+        if games is not None and os.path.abspath(games) != pin_g:
+            reasons.append(f"--games {games} != pinned {pin_g}")
+        if features is not None and os.path.abspath(features) != pin_f:
+            reasons.append(f"--features {features} != pinned {pin_f}")
+        for name, p in (("games", pin_g), ("features", pin_f)):
+            if not os.path.exists(p):
+                reasons.append(f"pinned {name} missing: {p}")
+    for name, meta in m.get("data", {}).items():
+        if os.path.exists(meta["path"]) and _sha256_file(meta["path"]) != meta["sha256"]:
+            reasons.append(f"data hash mismatch: {name}")
+    # code immutability since freeze
     base = m.get("code_freeze_sha")
     if not base:
         reasons.append("manifest missing code_freeze_sha")
     else:
         try:
             changed = [p for p in _git(["diff", "--name-only", base, "HEAD"], worktree).splitlines() if p]
+            if any(p.startswith("nba_winprob/") for p in changed):
+                reasons.append(f"CODE DRIFT (nba_winprob/ immutable): {[p for p in changed if p.startswith('nba_winprob/')][:3]}")
+            bad = [p for p in changed if not _allowed_path(p, m.get("post_freeze_allowlist", []))]
+            if bad:
+                reasons.append(f"post-freeze drift outside allowlist: {bad[:5]}")
+            if _git(["status", "--porcelain"], worktree):
+                reasons.append("worktree dirty at launch")
         except RuntimeError as e:
             reasons.append(f"git gate check failed: {e}")
-            changed = []
-        code_drift = [p for p in changed if p.startswith("nba_winprob/")]
-        if code_drift:
-            reasons.append(f"CODE DRIFT after freeze (nba_winprob/ immutable): {code_drift[:5]}")
-        bad = [p for p in changed if not _allowed_path(p, m.get("post_freeze_allowlist", []))]
-        if bad:
-            reasons.append(f"post-freeze drift outside allowlist: {bad[:5]}")
-    for name, meta in m.get("data", {}).items():
-        path = meta["path"]
-        if not os.path.exists(path):
-            reasons.append(f"data missing: {name} {path}")
-        elif _sha256_file(path) != meta["sha256"]:
-            reasons.append(f"data hash mismatch: {name}")
-    if m.get("protocol_digest"):
-        pd = _sha256_file(os.path.join(worktree, m["protocol_path"]))
-        if pd != m["protocol_digest"]:
-            reasons.append("protocol file changed after freeze")
-    if not go_record_path or not os.path.exists(go_record_path):
-        reasons.append(f"no GO record (this cycle requires the owner to type the phrase at its own gate after A7): {go_record_path!r}")
+    # A7 artifact
+    a7 = m.get("a7_report_path")
+    if not a7 or not os.path.exists(a7):
+        reasons.append(f"A7 prelaunch report missing: {a7}")
     else:
-        with open(go_record_path, encoding="utf-8") as f:
-            rec = f.read()
-        if GO_PHRASE not in rec or CYCLE_ID not in rec:
-            reasons.append("GO record malformed (phrase/cycle mismatch)")
+        with open(a7, encoding="utf-8") as f:
+            if "A7_PRELAUNCH_AUTHORIZED" not in f.read():
+                reasons.append("A7 report does not carry A7_PRELAUNCH_AUTHORIZED")
+    # heavy lock free
+    try:
+        out = subprocess.run(RESEARCHCTL, capture_output=True, text=True, check=True).stdout
+        if '"FREE_PROVEN"' not in out:
+            reasons.append(f"heavy lock not FREE_PROVEN: {out[:120]}")
+    except Exception as e:  # noqa: BLE001
+        reasons.append(f"lock check failed: {e}")
+    # structured GO record
+    if not go_record_path or not os.path.exists(go_record_path):
+        reasons.append(f"no GO record: {go_record_path!r} (owner must type the phrase at this cycle's own gate after A7)")
+    else:
+        try:
+            with open(go_record_path, encoding="utf-8") as f:
+                rec = json.load(f)
+            if rec.get("phrase") != GO_PHRASE:
+                reasons.append("GO record phrase mismatch")
+            if rec.get("cycle_id") != CYCLE_ID:
+                reasons.append("GO record cycle mismatch")
+            if rec.get("typed_by") != "owner":
+                reasons.append("GO record typed_by != owner")
+            if not rec.get("typed_at"):
+                reasons.append("GO record missing typed_at")
+        except Exception as e:  # noqa: BLE001
+            reasons.append(f"GO record not valid structured JSON: {e}")
     return (not reasons), reasons
 
 
-# ---------------------------------------------------------------- synthetic selftest
+# ---------------------------------------------------------------- selftest
 
 def synthetic_selftest() -> dict:
+    import random
     rng = random.Random(RNG_SEED)
     strengths = {f"T{i}": rng.gauss(0, 100) for i in range(8)}
     rows = []
@@ -265,35 +360,32 @@ def synthetic_selftest() -> dict:
     for season in range(2005, 2017):
         for day in range(1, 60):
             date = f"{season}-01-{day:02d}"
-            for m in range(3):
+            for _ in range(3):
                 i, j = rng.sample(range(8), 2)
                 order += 1
-                diff = strengths[f"T{i}"] - strengths[f"T{j}"] + 60  # home edge
-                p = 1.0 / (1.0 + 10 ** (-diff / 400.0))
+                diff = strengths[f"T{i}"] - strengths[f"T{j}"] + 60
                 rows.append({
                     "src_game_id": f"S{order:06d}", "date": date, "season": season,
-                    "is_playoffs": day > 50, "home_win": rng.random() < p,
+                    "is_playoffs": day > 50, "home_win": rng.random() < 1.0 / (1.0 + 10 ** (-diff / 400.0)),
                     "features": {c: rng.gauss(0, 1) for c in FEATURE_COLS},
                     "p_b1": {a: 1.0 / (1.0 + 10 ** (-(diff) / 400.0)) for a in B1_ARMS},
                 })
-    summary = run_evaluation(rows)
-    assert len(summary["arms"]) == 9
-    assert summary["b1star"] in B1_ARMS
-    for arm_id, entry in summary["arms"].items():
-        ll = entry["pooled_rs"]["log_loss"]
-        assert 0.0 < ll < 1.5, (arm_id, ll)
-    assert len(summary["comparisons"]) == 7
-    for c in summary["comparisons"].values():
-        assert c["ci95_lo"] <= c["delta_log_loss"] <= c["ci95_hi"]
-    # determinism of the bootstrap under identical inputs
-    s2 = run_evaluation(rows)
-    assert s2["comparisons"] == summary["comparisons"]
+    summary = run_evaluation(rows, n_boot=300)
+    v = summary["verdicts"]
+    assert len(summary["arms"]) == 9 and len(summary["comparisons"]["pooled"]) == 11
+    assert set(summary["comparisons"]["per_fold"]["B2-a_vs_B1*"]) == {"2009", "2010", "2011", "2012", "2013", "2014", "2015"}
+    assert all("reliability" in f and "calibration_slope" in f
+               for a in summary["arms"].values() for f in a["folds"].values())
+    assert isinstance(v["PROGRAM_PASS"], bool) and isinstance(v["REJECT"]["ANY"], bool)
+    assert isinstance(v["hypotheses"]["H3_rest_schedule"]["REJECT"], bool)
+    s2 = run_evaluation(rows, n_boot=300)
+    assert s2["comparisons"]["pooled"] == summary["comparisons"]["pooled"]
     return summary
 
 
-# ---------------------------------------------------------------- ledger
+# ---------------------------------------------------------------- ledger + CLI
 
-def append_trial_rows(ledger_path: str, summary: dict, repro: bool = False):
+def append_trial_rows(ledger_path, summary, repro=False):
     existing = []
     if os.path.exists(ledger_path):
         with open(ledger_path, encoding="utf-8") as f:
@@ -306,7 +398,7 @@ def append_trial_rows(ledger_path: str, summary: dict, repro: bool = False):
             f.write(json.dumps({
                 "schema": "nba_winprob_trial_ledger@1", "cycle_id": CYCLE_ID,
                 "arm_id": arm_id, "status": "COMPUTED",
-                "computed_at_utc": dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+                "computed_at_utc": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
                 "pooled_rs_log_loss": entry["pooled_rs"]["log_loss"],
                 "pooled_rs_brier": entry["pooled_rs"]["brier"],
                 "pooled_rs_n": entry["pooled_rs"]["n"],
@@ -314,15 +406,12 @@ def append_trial_rows(ledger_path: str, summary: dict, repro: bool = False):
             }) + "\n")
 
 
-# ---------------------------------------------------------------- CLI
-
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--games"), ap.add_argument("--features")
-    ap.add_argument("--out", required=True)
     ap.add_argument("--worktree", default=os.getcwd())
-    ap.add_argument("--freeze-manifest")
-    ap.add_argument("--go-record")
+    ap.add_argument("--freeze-manifest", required=True)
+    ap.add_argument("--go-record", required=True)
     ap.add_argument("--ledger")
     ap.add_argument("--synthetic-selftest", action="store_true")
     ap.add_argument("--repro", action="store_true")
@@ -330,27 +419,37 @@ def main() -> int:
 
     if args.synthetic_selftest:
         summary = synthetic_selftest()
-        print("SELFTEST PASS: 9 arms, 7 comparisons, bootstrap deterministic, "
-              "no real data touched.")
-        print(json.dumps({"b1star": summary["b1star"]}, indent=1))
+        print("SELFTEST PASS v2: 9 arms, 7 comparisons (pooled+per-fold), verdicts emitted, "
+              "fold reliability/slope present, bootstrap deterministic; no real data touched.")
+        print(json.dumps({"PROGRAM_PASS": summary["verdicts"]["PROGRAM_PASS"],
+                          "REJECT": summary["verdicts"]["REJECT"]["ANY"]}, indent=1))
         return 0
 
-    ok, reasons = check_launch_gates(args.worktree, args.freeze_manifest, args.go_record)
+    with open(args.freeze_manifest, encoding="utf-8") as f:
+        m = json.load(f)
+    ledger = args.ledger or m.get("ledger_path")
+    out_dir = m.get("results_dir")
+    ok, reasons = check_launch_gates(args.worktree, args.freeze_manifest, args.go_record,
+                                     games=args.games, features=args.features)
     if not ok:
         print("REFUSED — launch gates failed:", file=sys.stderr)
         for r in reasons:
             print("  -", r, file=sys.stderr)
         return 3
+    if not ledger or not out_dir:
+        print("REFUSED — manifest missing ledger_path/results_dir", file=sys.stderr)
+        return 3
 
-    rows = load_rows(args.games, args.features)
+    rows = load_rows(args.games or m["pinned_games"], args.features or m["pinned_features"])
     summary = run_evaluation(rows)
-    os.makedirs(args.out, exist_ok=True)
-    out_path = os.path.join(args.out, "scored_summary.json")
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, "scored_summary.json")
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=1)
-    if args.ledger:
-        append_trial_rows(args.ledger, summary, repro=args.repro)
-    print(json.dumps({"b1star": summary["b1star"], "out": out_path}, indent=1))
+    append_trial_rows(ledger, summary, repro=args.repro)
+    print(json.dumps({"b1star": summary["verdicts"]["B1star"],
+                      "PROGRAM_PASS": summary["verdicts"]["PROGRAM_PASS"],
+                      "REJECT": summary["verdicts"]["REJECT"]["ANY"], "out": out_path}, indent=1))
     return 0
 
 

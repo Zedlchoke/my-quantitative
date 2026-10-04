@@ -64,6 +64,7 @@ def main() -> int:
 
     fields = ["src_game_id", "gameorder", "date", "season", "is_playoffs",
               "home_lineage", "away_lineage",
+              "elo_diff",  # AMENDMENT_1 A1: unsuffixed f1 = B1-a stream (K=16, HCA=0)
               "rest_diff", "b2b_home", "b2b_away", "form_home", "form_away",
               "rest_home", "rest_away"]
     for arm in b1_arms:
@@ -77,6 +78,8 @@ def main() -> int:
         w.writeheader()
         for feat in base_feats:
             row = {k: feat[k] for k in fields if k in feat}
+            er_a = elo_by_arm["B1-a"][feat["src_game_id"]]
+            row["elo_diff"] = er_a["r_home_pre"] - er_a["r_away_pre"]
             for arm in b1_arms:
                 er = elo_by_arm[arm.arm_id][feat["src_game_id"]]
                 row[f"elo_diff_{arm.arm_id}"] = er["r_home_pre"] - er["r_away_pre"]

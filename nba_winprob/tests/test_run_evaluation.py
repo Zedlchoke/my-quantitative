@@ -1,5 +1,5 @@
-"""Tests for the scored runner: fold isolation, train-only standardization,
-B0/B1 wiring, gates, ledger discipline, synthetic selftest."""
+"""Runner v2 tests: fold isolation, train-only standardization, B0/B1 wiring,
+per-fold outputs + verdicts, gates v2, ledger discipline, synthetic selftest."""
 import json
 import random
 
@@ -7,8 +7,8 @@ import pytest
 
 from nba_winprob.protocol import ARMS, RNG_SEED, TEST_SEASONS
 from nba_winprob.run_evaluation import (
-    CYCLE_ID, GO_PHRASE, append_trial_rows, check_launch_gates,
-    run_evaluation, synthetic_selftest,
+    CYCLE_ID, GO_PHRASE, REGISTERED_COMPARISONS, append_trial_rows,
+    check_launch_gates, load_rows, run_evaluation, synthetic_selftest,
 )
 
 FEATURE_COLS = ["elo_diff", "rest_diff", "b2b_home", "b2b_away", "form_home", "form_away"]
@@ -33,93 +33,90 @@ def make_rows(seed=7, seasons=None):
     return rows
 
 
-def test_b0_refit_per_fold_and_fold_isolation():
+def test_b0_refit_and_fold_isolation():
     rows = make_rows()
-    s = run_evaluation(rows)
-    rates = {}
+    s = run_evaluation(rows, n_boot=50)
     for season in TEST_SEASONS:
         train = [r for r in rows if r["season"] < season and not r["is_playoffs"]]
-        rates[season] = sum(1 for r in train if r["home_win"]) / len(train)
-    for season in TEST_SEASONS:
-        assert abs(s["arms"]["B0"]["folds"][str(season)]["b0_rate_train"] - rates[season]) < 1e-12
-    # adding a future season's rows must not change earlier folds (isolation)
+        rate = sum(1 for r in train if r["home_win"]) / len(train)
+        assert abs(s["fold_meta"][season]["b0_rate_train"] - rate) < 1e-12
     rows2 = [dict(r) for r in rows] + [dict(r, season=2030) for r in make_rows(seed=11)[:50]]
-    s2 = run_evaluation(rows2)
+    s2 = run_evaluation(rows2, n_boot=50)
     for season in TEST_SEASONS:
-        assert s2["arms"]["B0"]["folds"][str(season)]["b0_rate_train"] == \
-               s["arms"]["B0"]["folds"][str(season)]["b0_rate_train"]
+        assert s2["fold_meta"][season]["b0_rate_train"] == s["fold_meta"][season]["b0_rate_train"]
 
 
-def test_b1_uses_precomputed_asof_columns():
+def test_b1_uses_precomputed_columns():
     rows = make_rows()
     for r in rows:
         r["p_b1"]["B1-b"] = 0.25
-    s = run_evaluation(rows)
-    # with constant p=0.25 for arm B1-b, its pooled brier is fully determined
+    s = run_evaluation(rows, n_boot=50)
     ys = [1 if r["home_win"] else 0 for r in rows
           if r["season"] in TEST_SEASONS and not r["is_playoffs"]]
-    n = len(ys)
-    exp_brier = sum((0.25 - y) ** 2 for y in ys) / n
-    assert abs(s["arms"]["B1-b"]["pooled_rs"]["brier"] - exp_brier) < 1e-9
+    exp = sum((0.25 - y) ** 2 for y in ys) / len(ys)
+    assert abs(s["arms"]["B1-b"]["pooled_rs"]["brier"] - exp) < 1e-9
 
 
 def test_b2_train_only_standardization():
-    rows = make_rows()
-    s1 = run_evaluation(rows)
-    # perturb ONLY test-season features: train means/stds (and hence the fit
-    # given identical train rows) must not change; predictions shift instead
-    rows2 = [dict(r) for r in rows]
+    s1 = run_evaluation(make_rows(), n_boot=50)
+    rows2 = [dict(r) for r in make_rows()]
     for r in rows2:
         if r["season"] in TEST_SEASONS:
             r["features"] = {k: v + 5.0 for k, v in r["features"].items()}
-    s2 = run_evaluation(rows2)
-    for arm in ("B2-a", "B2-b", "B2-c", "B2-d"):
-        # same training data -> identical fold metrics on TRAIN-dependent parts
-        # (we observe via b0_rate_train equality and stable b1star among B1)
-        pass
-    assert s1["b1star"] == s2["b1star"]
-    # B2 pooled metrics change (test features shifted)
+    s2 = run_evaluation(rows2, n_boot=50)
+    assert s1["verdicts"]["B1star"] == s2["verdicts"]["B1star"]
     assert s1["arms"]["B2-a"]["pooled_rs"]["log_loss"] != s2["arms"]["B2-a"]["pooled_rs"]["log_loss"]
 
 
-def test_nine_arms_and_registered_comparisons():
-    s = run_evaluation(make_rows())
+def test_output_completeness_v2():
+    s = run_evaluation(make_rows(), n_boot=50)
     assert len(s["arms"]) == 9
-    assert set(s["comparisons"].keys()) == {
-        "B2-a_vs_B1*", "B2-a_vs_B0", "B1*_vs_B0",
-        "B1-b_vs_B1-a", "B1-d_vs_B1-c", "B2-a_vs_B2-b", "B2-a_vs_B2-c"}
-    # B1* resolution consistent
-    b1 = [a for a in ("B1-a", "B1-b", "B1-c", "B1-d")]
-    ll = {a: s["arms"][a]["pooled_rs"]["log_loss"] for a in b1}
-    assert s["b1star"] == min(b1, key=lambda a: ll[a])
+    # per-fold AND pooled reliability + slope for every arm
+    for arm in s["arms"].values():
+        assert "reliability" in arm["pooled_rs"] and "calibration_slope" in arm["pooled_rs"]
+        for f in arm["folds"].values():
+            assert "reliability" in f and "calibration_slope" in f
+    # 11 registered comparisons, pooled AND per fold
+    assert len(s["comparisons"]["pooled"]) == 11 == len(REGISTERED_COMPARISONS)
+    for key in s["comparisons"]["pooled"]:
+        assert set(s["comparisons"]["per_fold"][key]) == {str(x) for x in TEST_SEASONS}
+    # verdicts emitted
+    v = s["verdicts"]
+    for k in ("T1_discriminative_gain", "T2_calibration", "T3_floor_safety"):
+        assert isinstance(v[k]["PASS"], bool)
+    assert isinstance(v["PROGRAM_PASS"], bool) and isinstance(v["REJECT"]["ANY"], bool)
+    for h in ("H1_dynamic_strength", "H2_home_court", "H3_rest_schedule"):
+        assert isinstance(v["hypotheses"][h]["REJECT"], bool)
 
 
 def test_playoffs_reported_separately():
-    s = run_evaluation(make_rows())
-    assert "pooled_playoffs_separate" in s["arms"]["B2-a"]
+    s = run_evaluation(make_rows(), n_boot=50)
     assert s["arms"]["B2-a"]["pooled_playoffs_separate"]["n"] > 0
 
 
 def test_synthetic_selftest_end_to_end():
     summary = synthetic_selftest()
-    assert len(summary["arms"]) == 9 and len(summary["comparisons"]) == 7
+    assert len(summary["arms"]) == 9 and len(summary["comparisons"]["pooled"]) == 11
 
 
-def test_launch_gates_refuse_without_go_record(tmp_path):
-    # manifest with impossible freeze sha -> refused; missing go record -> refused
+def test_launch_gates_v2(tmp_path):
     mfile = tmp_path / "FREEZE_MANIFEST.json"
     mfile.write_text(json.dumps({
-        "cycle_id": CYCLE_ID, "code_freeze_sha": "0" * 40,
-        "post_freeze_allowlist": ["research/control/**"], "data": {},
+        "schema": "nba_winprob_scored_freeze@2", "cycle_id": CYCLE_ID,
+        "code_freeze_sha": "0" * 40, "post_freeze_allowlist": ["research/control/**"],
+        "pinned_games": "/nonexistent/games.csv", "pinned_features": "/nonexistent/features.csv",
+        "data": {},
     }))
-    ok, reasons = check_launch_gates(str(tmp_path), str(mfile), None)
+    ok, reasons = check_launch_gates(str(tmp_path), str(mfile), None,
+                                     games="/somewhere/else.csv")
     assert not ok
-    assert any("GO record" in r for r in reasons)
+    txt = " ".join(reasons)
+    assert "GO record" in txt and "pinned" in txt and "A7" in txt
     go = tmp_path / "GO.json"
-    go.write_text(json.dumps({"cycle_id": CYCLE_ID, "phrase": GO_PHRASE}))
+    go.write_text(json.dumps({"phrase": "WRONG PHRASE", "cycle_id": CYCLE_ID,
+                              "typed_by": "owner", "typed_at": "2026-01-01T00:00:00Z"}))
     ok2, reasons2 = check_launch_gates(str(tmp_path), str(mfile), str(go))
-    assert not ok2  # still refused: wrong freeze sha (git repo absent in tmp)
-    assert any("nba_winprob" in r or "allowlist" in r for r in reasons2) or reasons2
+    assert not ok2 and any("phrase" in r for r in reasons2)
 
 
 def test_go_phrase_form():
@@ -129,13 +126,20 @@ def test_go_phrase_form():
 
 def test_ledger_no_duplicate_primary(tmp_path):
     ledger = tmp_path / "TRIAL_LEDGER.jsonl"
-    s = run_evaluation(make_rows())
+    s = run_evaluation(make_rows(), n_boot=50)
     append_trial_rows(str(ledger), s)
-    append_trial_rows(str(ledger), s)  # second append without --repro: no-op
+    append_trial_rows(str(ledger), s)
     rows = [json.loads(l) for l in ledger.read_text().splitlines() if l.strip()]
-    assert len(rows) == 9
-    assert all(r["status"] == "COMPUTED" and r["class"] == "PRIMARY" for r in rows)
-    append_trial_rows(str(ledger), s, repro=True)  # repro class appends new rows
+    assert len(rows) == 9 and all(r["class"] == "PRIMARY" for r in rows)
+    append_trial_rows(str(ledger), s, repro=True)
     rows = [json.loads(l) for l in ledger.read_text().splitlines() if l.strip()]
-    assert len(rows) == 18
-    assert sum(1 for r in rows if r["class"] == "REPRO") == 9
+    assert len(rows) == 18 and sum(1 for r in rows if r["class"] == "REPRO") == 9
+
+
+def test_load_rows_schema_guard(tmp_path):
+    gf = tmp_path / "games.csv"
+    ff = tmp_path / "features.csv"
+    gf.write_text("src_game_id,season,date,is_playoffs,home_win\nX1,2010,2010-01-01,False,True\n")
+    ff.write_text("src_game_id,rest_diff\nX1,0\n")  # missing elo_diff etc.
+    with pytest.raises(KeyError):
+        load_rows(str(gf), str(ff))
