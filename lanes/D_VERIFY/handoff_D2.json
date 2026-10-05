@@ -1,0 +1,86 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nflng-d2-verify",
+  "cycle_id": "NFL-WINPROB-NG-PREP-V1",
+  "role": "quant-auditor",
+  "lane": "D_VERIFY",
+  "date_utc": "2026-10-05",
+  "dispatch_sha": "1ea82df8eb276e5e8a96b1dfde9d1f02ffe454ba",
+  "actual_start_sha": "1ea82df8eb276e5e8a96b1dfde9d1f02ffe454ba",
+  "commit_sha": "PENDING_BACKFILL",
+  "commit_sha_note": "commit_sha = the r2 artifacts commit 'NFL-NG-PREP lane D r2: independent delta verification R2-1..R2-6 (PASS 6/6, 0 blocking) + handoff'; this handoff file itself is backfilled and committed by the subsequent tiny commit 'NFL-NG-PREP lane D r2: handoff commit_sha backfill' per the cycle's accepted two-commit practice (VERIFICATION.md observation 2, PROTOCOL §11.5 precedent).",
+  "branch": "orca/nfl-ngprep-d2-verify",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-prep-v1/lane-d2-verify",
+  "changed_paths": [
+    "lanes/D_VERIFY/VERIFICATION_R2.md",
+    "lanes/D_VERIFY/handoff_D2.json"
+  ],
+  "tests": [
+    {
+      "command": "git -C <worktree> rev-parse HEAD && git branch --show-current && git status --porcelain",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "intake: HEAD 1ea82df8eb276e5e8a96b1dfde9d1f02ffe454ba == dispatch/base SHA, branch orca/nfl-ngprep-d2-verify, tree porcelain-clean before any lane D r2 write"
+    },
+    {
+      "command": "git diff 447559be..HEAD -- lanes/A_DATA/DATA_AUDIT_NFL_NG.md; shasum -a 256 ~/.my-quantitative-data/nfl-ng-prep-v1/rights/nflverse-data_LICENSE.md; python whitespace-normalized verbatim search of 8 quote fragments vs held bytes; grep 'perform, Display' and 'creator(s)'",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "R2-1: diff shows EXACTLY two hunks (two-quote replacement in §1 + ERRATUM(r1) append); LICENSE re-hash 2a82ac9bbc3e3ee066908381e8d373896db5a6025d083fbd59692fe9ccfb9111 (18,651 B) == pin; all 8 quote fragments (grant sentence incl 'exercise the Licensed Rights', items a/b, §3 head/a/i/ii incl 'creator(s)', §4 Sui Generis) verbatim-found in license and doc, grant+items and §3 block contiguous; old paraphrase text 'perform, Display' 0 hits in license"
+    },
+    {
+      "command": "shasum -a 256 raw_schedules_r1 games.csv; .venv/bin/python read-only recount (kickoff = gameday+gametime America/New_York -> UTC; Lane D own instant 2026-10-05T07:23:28Z)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "R2-2: r1 snapshot re-hash 486d72273c0d9650756176fc016a0852c65ad6f030f443805c20cb35e387a9fc 2,182,513 B == manifest r1-1; recount: file 7,548 rows; 2026 = 272 all REG wk1-18; kickoff<=now = 63 ALL with final scores (zero exceptions); future = 209; scored among future = 0; earliest future 2026-10-06T00:15:00Z 2026_04_ATL_NO (next 2026_05_TB_DAL 2026-10-09T00:15Z, 2026_05_PHI_JAX 2026-10-11T13:30Z); 63+209=272; GAMES_2026_CLASSIFICATION.md '## Recount r1' states every played game NOT_RUN prospective forever and forbids retrospective predictions; epoch unchanged 2026-10-05T03:13:51Z"
+    },
+    {
+      "command": ".venv/bin/python -m pytest research/control/NFL-WINPROB-NG-PREP-V1/ledger/test_ledger_synthetic.py -v (exit captured); code read of nfl_ng_ledger.py; python adversarial probe in tempfile dir (recorded>=kickoff; outcome keys; mid-file byte flip + same-length game_id swap + restore; module introspection + static open-mode grep); tempdir removed",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "R2-3: 42 passed / 0 failed / 0 skipped, exit code 0 (matches handoff_E claim); (a) recorded==kickoff and recorded>kickoff both raise LedgerValidationError 'timestamp law (R2)'; (b) home_score/away_score/Result/winner_id rows all refused (closed-field-set law, R8 blocklist independently flags every outcome-style key incl total_line/final_flag/spread_close/pts_for/margin_victory); (c) mid-file byte flip -> verify_chain broken=[0], game_id swap -> [0], restore -> []; (d) only open() is 'r+' under flock, writes only seek-END append + fsync, write_text only on create-once genesis sidecar, ZERO remove/unlink/truncate, no rewrite/delete API in __all__"
+    },
+    {
+      "command": "grep -rnE '\\b(ARZ|ATL|BAL|BUF|CAR|CHI|CIN|CLE|DAL|DEN|DET|GB|HOU|IND|JAX|KC|LAC|LAR|LV|MIA|MIN|NE|NO|NYG|NYJ|PHI|PIT|SEA|SF|TB|TEN|WAS)\\b' ledger dir (case-sensitive, word-bounded) + naive case-insensitive grep for contrast",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "R2-4: 0 case-sensitive word-boundary team-code hits in all 3 ledger files (stronger than required — not even README prose has codes); 683 case-insensitive raw hits are all substring artifacts (NE in genesis/None/line, NO in notice, IND in index, WAS in was); fixtures use only TEAM_X/TEAM_Y/TEAM_Z (13 occurrences); no real game/prediction/metric anywhere"
+    },
+    {
+      "command": "researchctl.py cycle list; researchctl.py locks inspect; git -C integration rev-parse HEAD + status --porcelain; python json.load + field assertions on handoff_A_r1.json and handoff_E.json; git log -1 + merge-base --is-ancestor on their dispatch/commit SHAs",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "R2-5: registry row NFL-WINPROB-NG-PREP-V1 ACTIVE_LIGHT budget 0/0 branch orca/nfl-winprob-ng-prep-v1-integration (head column 03c8c87 = last CAS, pre-A-r1/E landings — observation O-1, non-blocking); locks FREE_PROVEN flock free pid null; integration CLEAN at 1ea82df8eb276e5e8a96b1dfde9d1f02ffe454ba == dispatch SHA; handoff_A_r1 (task nflng-a-data-r1) and handoff_E (task nflng-e-ledger) both schema zcode_orch_v3_handoff@1, cycle_id correct, dispatch_sha==actual_start_sha (b0750891… = lane A round-1 tip; 03c8c87d… = controller synthesis), commit_shas 9b03bb2d…/177fa4ef… resolve as lane-branch artifacts commits, ancestor checks YES, all required fields present; state.json budget 0/0, go_phrase null NOT_REGISTERED"
+    },
+    {
+      "command": "read LEDGER_SCHEMA.md + nfl_ng_ledger.py + ledger README.md; programmatic FIELD_ORDER == schema §2 list assertion; grep PROTOCOL section anchors (§4/§6.3/§7.3/§8)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "R2-6: 17-field FIELD_ORDER exact-order match True; filename law, GENESIS anchor, canonical form (,/:, ensure_ascii=false, UTF-8), row_hash over row-minus-row_hash incl prev_row_hash, R2 append+scoring, R4 registry, R5 dup, R6 6-dp p_home strict (0,1) with 0.000001/0.999999 accepted and 0.000000/1.000000 rejected, R7 enums, R8 blocklist = schema list ∪ dispatch extras (stronger), R9 append-only, R10 classifications — all MATCH; postponement/cancellation semantics faithful (later-valid/earlier-INVALID/cancel-NOT_SCORED_CANCELLED) with documented notice-row mechanism (schema-silent); lane E's 6 schema-silent decisions (genesis sidecar, notice rows, NOT_SCORED_NO_ACTUAL_DATA, structural-only digests at append, §2 canonical order over dispatch shorthand, flock discipline) each confirmed FAITHFUL, none a silent semantic change; cited PROTOCOL anchors exist (lines 185/309/342)"
+    }
+  ],
+  "authority_claims": [
+    "SUMMARY VERDICT: PASS — R2-1..R2-6 all PASS, 0 blocking defects, 0 non-blocking defects; 3 non-blocking observations (O-1 registry head column staleness vs integration tip — controller housekeeping; O-2 lane E's two conservative R10 vocabulary widenings already disclosed, must be restated in the successor freeze packet; O-3 round-2 dispatch packets are in-chat, handoff paths verified against the landed tree).",
+    "R2-1 PASS: D2-a remediation verified against held LICENSE bytes — sha256 2a82ac9bbc3e3ee066908381e8d373896db5a6025d083fbd59692fe9ccfb9111 (18,651 B) unchanged and equal to the pin; both replacement quotes byte-verbatim modulo the disclosed line-wrap collapse (grant sentence with 'exercise the Licensed Rights', items a/b lowercase, §3 attribution with full 'creator(s)' clause); old paraphrase text absent from the license; git diff 447559be..HEAD on DATA_AUDIT_NFL_NG.md contains ONLY the two-quote replacement + ERRATUM(r1) — no collateral edits; rights verdict unaffected.",
+    "R2-2 PASS: independent recount from the r1 snapshot (sha 486d7227…, verified before use) at Lane D's OWN instant 2026-10-05T07:23:28Z reproduces every claim: 272 scheduled (all REG wk1-18); 63 kickoff<=now, ALL with final scores; 209 future; 0 scored among future; earliest future 2026-10-06T00:15:00Z = 2026_04_ATL_NO; 63+209=272. GAMES_2026_CLASSIFICATION.md '## Recount r1' declares every played game NOT_RUN prospective forever and forbids retrospective predictions; the cycle prospective epoch is unchanged (2026-10-05T03:13:51Z) and the recount 'now' is a measurement instant only. Schema/coverage/chronology counts only — no metric on outcomes.",
+    "R2-3 PASS: test suite re-run by the verifier — 42 passed / 0 failed / 0 skipped, exit 0. Adversarial live probe (SYNTHETIC rows, tempfile dir, removed; nothing committed): (a) recorded_at >= kickoff raises R2; (b) outcome-key rows refused (field-set closure + R8 blocklist as independent second layer); (c) mid-file single-byte and same-length-swap tampers flagged by verify_chain, restore intact; (d) only ledger-file open mode is 'r+' under exclusive flock with EOF-only writes, genesis sidecar is create-once, zero remove/unlink/truncate, no rewrite/delete API exists.",
+    "R2-4 PASS: zero case-sensitive word-boundary hits for any of the 32 NFL team codes across the three ledger-dir files; the 683 case-insensitive raw hits are substring artifacts (documented); test fixtures use only TEAM_X/TEAM_Y/TEAM_Z; README successor-usage prose is team-agnostic and declares no real games/predictions/metrics/ledger file.",
+    "R2-5 PASS: registry row ACTIVE_LIGHT budget 0/0 (0 scored); locks FREE_PROVEN; integration worktree clean at the dispatch SHA 1ea82df8eb276e5e8a96b1dfde9d1f02ffe454ba; handoff_A_r1.json (nflng-a-data-r1, dispatch b0750891…, commit 9b03bb2d…) and handoff_E.json (nflng-e-ledger, dispatch 03c8c87d…, commit 177fa4ef…) both schema-valid with correct task_ids, all required fields, resolving SHAs, and verified branch ancestry; state.json go_phrase null/NOT_REGISTERED.",
+    "R2-6 PASS: nfl_ng_ledger.py conforms to LEDGER_SCHEMA.md — 17 fields exact order, filename law, GENESIS anchor, canonical serialization, row_hash definition, R2/R4/R5/R6/R7/R8/R9/R10 all matching (R8 strictly stronger: schema list ∪ dispatch extras); postponement/cancellation classification semantics identical with a disclosed hash-chained notice mechanism; lane E's 6 schema-silent decisions verified FAITHFUL one by one (no silent semantic change); successor freeze packet must restate them (lane E already requires this).",
+    "PREP invariants held by this verification lane: read-only outside lanes/D_VERIFY/**; verify-only (nothing repaired — nothing needed repair); no downloads, no credentials, no push/merge/rebase, no git add -A; no metric computed on any outcome; no real-game prediction made; adversarial probes on SYNTHETIC rows only, tempdir removed."
+  ],
+  "known_limitations": [
+    "R2-2 recount is frozen to the held r1 release compile 2026-10-05T05:46:22Z / Lane D instant 2026-10-05T07:23:28Z; games kicking off after that instant remain 'future' in this snapshot; the NOT_RUN-prospective classification of the 63 pre-instant games is unaffected by later score arrivals.",
+    "R2-1 verbatim-ness is verified against the sha-pinned HELD license bytes (Lane D performed no downloads); whitespace-normalized matching is the same standard the ERRATUM itself discloses (hard line-wrapping collapsed, nothing else altered).",
+    "R2-3 adversarial probe (b): the append refusal for outcome keys surfaces first via the closed-17-field-set law; the R8 blocklist was independently confirmed by direct probe since a schema-valid row cannot carry an extra key — defense in depth, both layers verified.",
+    "commit_sha backfill: per the cycle's accepted two-commit practice, commit_sha points at the r2 artifacts commit; this handoff file lands in the second tiny commit."
+  ],
+  "incidents": [],
+  "tree_status": "clean (two-commit procedure: artifacts commit + handoff commit_sha backfill commit); no writes outside lanes/D_VERIFY/**; read-only elsewhere; no push/merge/rebase; no git add -A; no downloads; no metric computed on any outcome",
+  "workers": 0,
+  "outputs": [
+    "lanes/D_VERIFY/VERIFICATION_R2.md",
+    "lanes/D_VERIFY/handoff_D2.json"
+  ],
+  "recommended_next_action": "Controller may treat the owner follow-up round (lane A r1 + lane E) as VERIFIED with 0 blocking defects: D2-a is faithfully remediated, the 2026 recount reproduces from fresher bytes, the ledger tool's real behavior matches its claims under adversarial probing, no real team/game/prediction contaminates the ledger dir, trial accounting and the control plane are coherent (0 scored), and the implementation conforms to Lane C's schema. The registry head column (O-1) may be refreshed by the controller at the next CAS touch. Any scored successor still requires its own fresh registration, freeze packet (restating lane E's 6 schema-silent decisions), A7-equivalent gate, and owner typed GO; this PREP cycle registers and consumes no GO."
+}
