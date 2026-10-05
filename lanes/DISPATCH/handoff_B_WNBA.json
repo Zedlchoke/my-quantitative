@@ -1,0 +1,64 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "winprob-playerdata-prep-v1-B-WNBA",
+  "cycle_id": "WINPROB-PLAYERDATA-PREP-V1",
+  "role": "data-lane",
+  "lane": "B_WNBA",
+  "dispatch_sha": "a025a5d2aabf65f4019ca5168f94efc3208738d5",
+  "actual_start_sha": "a025a5d2aabf65f4019ca5168f94efc3208738d5",
+  "commit_sha": null,
+  "changed_paths": [
+    "lanes/B_WNBA/INVENTORY.md",
+    "lanes/B_WNBA/RIGHTS.md",
+    "lanes/B_WNBA/COVERAGE_SCHEMA.md",
+    "lanes/B_WNBA/PIT_AUDIT.md",
+    "lanes/B_WNBA/FEATURE_PROPOSALS.md",
+    "lanes/B_WNBA/VERDICT_TABLE.md",
+    "lanes/B_WNBA/measure_b.py (re-runnable, read-only over corpora)",
+    "lanes/B_WNBA/measurements_b.json (machine output of measure_b.py)",
+    "lanes/DISPATCH/handoff_B_WNBA.json"
+  ],
+  "tests": [
+    "integrity: 50/50 corpus files (player_box_2002..2026.csv + game_rosters_2002..2026.csv at ~/.my-quantitative-data/wnba-prep-v1/roster_audit/, READ-ONLY) re-hashed and matched download_manifest_r2.json sha256 exactly; 0 mismatches, 0 size mismatches, 0 missing; total 86,572,091 bytes; 0 files downloaded this session ($0) per dispatch expectation",
+    "universe re-derivation: ESPN-side filter law re-applied to espn_schedules 2002-2026 reproduces 5,988 games exactly (cross-check match=true); dropped rows re-measured: forfeit 401018942 (2018), postponed 401507167 (2023) + 401857072 (2026), 21 All-Star alias rows (0 in Olympic years 2008/2012/2016/2020)",
+    "player_box coverage vs universe (ESPN game_id join): 5,624/5,988 = 93.92% overall; per-season 100% in every season 2013-2026; backfill holes 2002 = 16/271 games (5.9%, file is a 344-row stub with minutes 100% null '--'), 2003 = 194/255 (76.1%), 2004 = 214/237 (90.3%), 2005 = 229/238 (96.2%), scattered 1-7 missing 2006-2016; 19 extra file games = the season All-Star games (excluded from universe by alias law)",
+    "game_rosters coverage: 5,983/5,988 = 99.92% (missing: 1 game 2002, 2 games 2006, 1 in 2008, 1 in 2016); 14 extra = 13 ASG + the forfeited game 401018942 (rosters of the forfeit exist, its player_box does not)",
+    "quality: distinct team_id per game == 2 in 5,643/5,643 player_box games (0 violations); duplicates (game_id,athlete_id) = exactly 1 key in 129,617 rows (250521017/athlete 30 double-listed HOU+SAS, 2005 trade artifact); players/game median 22-25, p95 23-27 across all seasons",
+    "roster sanity: starters == exactly 5 per team-game in 11,969/12,005 (99.70%); 33 team-games with 0 starter flags (2002x12, 2003x1, 2005x4, 2006x2, 2008x2, 2009x4, 2011x2, 2012x4, 2018x2); 3 anomalies (6 starters 2016, 4 starters 2017 and 2020); 2021-2026 perfect",
+    "schema drift: player_box 3 eras (2002=35 cols short-name/string-stats, 2003-2011=56 cols long names + opponent block, 2012-2026=57 cols +reason); game_rosters 22 cols schema-identical 2002-2026 (re-verified); DNP flag never populated before 2012 (null minutes are the only pre-2012 non-player marker); minutes 100% null in 2002",
+    "semantics findings: 'reason' is defaulted (COACH'S DECISION on ~91% of 2013 roster rows including 100% of the 2,220 starter rows - only injury-specific strings informative, from 2012+); 'active' is NOT an availability flag in any era (crosstabs 2002/2005/2010/2013/2020/2026: active=True covers ~half of both starters and bench; starters who played carry active=False); player_box (game_id,athlete_id) keys are a strict subset of game_rosters keys in all 25 seasons",
+    "era gap: player-level data covers max 5,988 of the 7,017-game union (85.3%); the 1,022 games of 1997-2001 + 7 stats-only 2002-2004 rows have no ESPN game_id and no player-level source exists in the release store before 2002; the 9 ESPN-only rows (3 regular + 6 Commissioner's Cup finals 2021-2026) ARE present in player_box",
+    "PIT worked example: Connecticut Sun (team_id 18) 2013, target game 400445816 tip 2013-07-06T23:00Z, prior-5 games selected strictly by tip_utc (2013-06-14..07-02), per-game team minutes 199-202, per-player minutes extracted - as-of join constructible (PASS_CONSTRUCTIBLE); prior-cycle ESPN schedule tip times verified present for all seasons"
+  ],
+  "authority_claims": [
+    "hash law: corpus integrity is re-verifiable by anyone via shasum -a 256 over the 50 files vs ~/.my-quantitative-data/wnba-prep-v1/roster_audit/download_manifest_r2.json (50/50 match measured 2026-10-05)",
+    "coverage law: player_box is total 2013+, >=96% 2004-2012 (except 2008 97.3%), degraded 2003 (76.1%), stub 2002 (5.9%); any frozen feature table must carry a per-season coverage floor (lane recommendation: game-level features 2004+, minutes/DNP-quality features 2013+)",
+    "availability semantics law (measured, successor-binding): 'active' and 'reason' in either file are NOT availability fields; availability may only be encoded from prior-game null minutes (all eras) or did_not_play=True (2012+); target-game availability fields are NOT_RUN_PIT (no pre-game publish timestamps on snapshot assets)",
+    "as-of law restated: prior-game aggregates enter features only via strictly-prior tip_utc join (proven by worked example); season-opening roster usable only from game 2 onward (W-H2 variant v2); variant v1 = NOT_RUN_PIT; same-game player stats of the target game banned",
+    "rights statement: release store README badge = CC BY 4.0 (data), root LICENSE = MIT Copyright (c) 2023 SportsDataverse (code); underlying statistics originate from ESPN WNBA API and stats.wnba.com scraped by SportsDataverse pipelines; no ESPN/WNBA grant held - publication/commercial redistribution remains UNCLEAR (fail-closed), internal research OK per store license; NOT legal advice",
+    "this lane consumed 0 scored budget, ran no win-prob metrics, made no purchases, touched no registry/ledger, committed nothing"
+  ],
+  "known_limitations": [
+    "player_box 2002-2003 backfill holes are properties of the current release assets (asset updated_at 2026-07-16 suggests active upstream backfilling; a successor should re-check the store before freezing history)",
+    "minutes are 100% null in player_box_2002 and the DNP flag does not exist before 2012 - early-era features are structurally limited, not just sparsely covered",
+    "the 33 zero-starter-flag team-games (2002-2018) and 3 starter-count anomalies (6/4/4) make 'starter'-based features fragile pre-2021",
+    "no publish timestamps exist on any release asset: PIT safety of prior-game aggregates is by-construction (strictly-prior tip join), not as-of-audited against publication times",
+    "rights: CC BY 4.0 is a README badge with no separate data-license file; maintainer confirmation required before external redistribution or commercial use",
+    "2026 counts are as-of-corpus-snapshot (season in progress at prior cycle's pull)",
+    "one self-inflicted code error during ad-hoc checking (usecols column-order artifact producing a false 2002 subset violation) was caught and corrected by re-measurement with ordered selection; the authoritative script (measure_b.py) and its output were never affected; measure_b.py itself had one pandas groupby API fix between runs, caught by the interpreter before any output was written"
+  ],
+  "incidents": [],
+  "tree_status": "clean-except-listed-lane-files",
+  "workers": 0,
+  "outputs": [
+    "lanes/B_WNBA/INVENTORY.md",
+    "lanes/B_WNBA/RIGHTS.md",
+    "lanes/B_WNBA/COVERAGE_SCHEMA.md",
+    "lanes/B_WNBA/PIT_AUDIT.md",
+    "lanes/B_WNBA/FEATURE_PROPOSALS.md",
+    "lanes/B_WNBA/VERDICT_TABLE.md",
+    "lanes/B_WNBA/measure_b.py",
+    "lanes/B_WNBA/measurements_b.json",
+    "lanes/DISPATCH/handoff_B_WNBA.json"
+  ]
+}
