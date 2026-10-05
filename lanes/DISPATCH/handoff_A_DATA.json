@@ -1,0 +1,60 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nfl-winprob-ng-scored-v1-A-DATA",
+  "cycle_id": "NFL-WINPROB-NG-SCORED-V1",
+  "role": "data-lane",
+  "lane": "A_DATA",
+  "branch": "orca/nfl-winprob-ng-scored-v1-integration",
+  "dispatch_sha": "832f6956b9afb82f3e7f14b0fcbd01688c049f5f",
+  "actual_start_sha": "832f6956b9afb82f3e7f14b0fcbd01688c049f5f",
+  "commit_sha": null,
+  "changed_paths": [
+    "lanes/A_DATA/DOWNLOAD_MANIFEST.md",
+    "lanes/A_DATA/DOWNLOAD_MANIFEST.json",
+    "lanes/A_DATA/PBP_COVERAGE_AUDIT.md",
+    "lanes/A_DATA/SUCCESSOR_DATA_AUDIT.md",
+    "lanes/A_DATA/VERDICT_TABLE.md"
+  ],
+  "tests": [
+    "download integrity: 18/18 pbp parquets HTTP 200 + PAR1 magic verified; sizes match cached GitHub release-API asset metadata for 18/18; API-provided digests (2000/2001/2002) match local sha256 exactly; spot re-download of play_by_play_2011.parquet byte-identical (sha256 c54753b8137b88dab260489b1462cbf1309c3d11741eb8d10e5f1b0a9b8795b1, 19,117,830 bytes, identical=YES)",
+    "rights gate: live re-fetch of https://raw.githubusercontent.com/nflverse/nflverse-data/HEAD/LICENSE.md = 18,651 bytes, sha256 2a82ac9bbc3e3ee066908381e8d373896db5a6025d083fbd59692fe9ccfb9111 = pinned value (no BLOCKED_DATA_RIGHTS); CC BY 4.0 title line verbatim at line 57",
+    "join test: pbp game_id vs games.csv per season 2000-2017 = 0 orphans in all 18 seasons; 17/18 seasons exact; 2000 = 257/259 games (missing: 2000_03_SD_KC, 2000_06_BUF_MIA, both finished REG in games.csv)",
+    "abbrev domain test: pbp 2000-2017 union = 32 current lineage codes + blank posteam (SD/STL/OAK absent in every season, LAC/LA/LV present in every season); 2000 role-aligned check vs games.csv under map {SD->LAC, STL->LA, OAK->LV}: 257/257 games, 0 home mismatches, 0 away mismatches",
+    "EPA availability test: epa non-null on 99.37-100.0% of posteam-set rows per season; posteam/defteam non-null sets identical per season; per-lineage-season REG EPA plays measured min 1,197 / median ~1,300-1,400 / max 1,535",
+    "schema test: identical 372-column parquet schema in all 18 files; all C3 columns (game_id, season, season_type, week, posteam, defteam, epa, play_type, down, home_team, away_team) present everywhere; play_type = same 9 values in 2000-2005 vs 2006-2017 (no measurable era vocabulary gap)",
+    "freeze-fact tests on fresh snapshot 486d7227...: gametime empty 259/259 rows in 1999 and 0 rows in every season 2000-2026 (fallback X = NOT ACTIVATED); TRAIN 2000-2018 = 5,057 rows, 0 missing scores, 2022 = 271 REG (canceled game omitted); location values {Home, Neutral} only, 2000-2018 = 5,006 Home / 51 Neutral; season-boundary margin (last prior-season kickoff vs first new-season kickoff) = 213.0-223.7 days at every boundary 2001-2017",
+    "2026 recount test (measured 2026-10-05T09:06:07Z on snapshot 486d7227..., compile 2026-10-05T05:46:22Z): 272 REG scheduled / 63 played all-final / 0 started-without-score / 209 future / future-with-scores = 0 (law holds) / earliest future kickoff 2026-10-06T00:15:00Z 2026_04_ATL_NO / week-5 opener 2026_05_TB_DAL 2026-10-09T00:15:00Z (measured, matches expected)"
+  ],
+  "authority_claims": [
+    "LICENSE: https://raw.githubusercontent.com/nflverse/nflverse-data/HEAD/LICENSE.md fetched 2026-10-05T09:01:18Z HTTP 200, 18,651 bytes, sha256 2a82ac9bbc3e3ee066908381e8d373896db5a6025d083fbd59692fe9ccfb9111 (equals pinned 2a82ac9bbc3e3ee066908381e8d373896db5a6025d083fbd59692fe9ccfb9111); held at ~/.my-quantitative-data/nfl-ng-scored-v1/rights/nflverse-data_LICENSE.md; underlying league/ESPN publication-commercial rights remain UNVERIFIED (fail-closed, internal research only)",
+    "PBP FILES: 18 assets https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_YYYY.parquet (YYYY=2000..2017), all HTTP 200, downloaded_utc 2026-10-05T09:02:02Z..09:02:41Z, total 315,021,834 bytes; full sha256 list in lanes/A_DATA/DOWNLOAD_MANIFEST.json (e.g. 2000 = 595c3b0eefeb91afd6f08c629669823b31e63c34304c98faed09adf4fbd54706); held at ~/.my-quantitative-data/nfl-ng-scored-v1/raw_pbp_2000_2017/",
+    "PBP RELEASE MARKERS: release tag pbp updated_at 2026-10-05T05:28:24Z driven solely by the in-season play_by_play_2026.parquet re-cut (asset updated_at 2026-10-05T05:28:23Z); completed-season assets 2000-2017 last updated 2024-08-25 (2013/2014) through 2026-08-13 (2001/2002) - none touched today; release timestamp.json {\"last_updated\":\"2026-10-05 01:28:21 EDT\"} sha256 7ad032c1b829f7220c5578c07ae55b28046618d7e6cff2850f3f87fb575aca87",
+    "FRESH SCHEDULES: https://github.com/nflverse/nflverse-data/releases/download/schedules/games.csv downloaded 2026-10-05T09:03:26Z HTTP 200, 2,182,513 bytes, sha256 486d72273c0d9650756176fc016a0852c65ad6f030f443805c20cb35e387a9fc = byte-identical to predecessor r1 snapshot (~/.my-quantitative-data/nfl-ng-prep-v1/raw_schedules_r1_20261005/games.csv); timestamp.json {\"last_updated\":\"2026-10-05 01:46:22 EDT\"}; snapshot mtime 2026-10-05T09:03:27Z vs measured-at 2026-10-05T09:06:07Z disclosed",
+    "C3 VERDICT: PASS_PIT_SEASON_GRAIN, offseason-prior role ONLY - (a) snapshot story: completed seasons finalize after the Super Bowl and are stable for months-to-years while only the current-season asset re-cuts weekly; (b) season-boundary margin measured 213.0-223.7 days (~7 months) at every boundary 2001-2017, input set fully determined months before first consuming prediction; (c) coverage: pbp 2000-2017 covers prior-season needs of every TRAIN season (priors for 2001-2018; 17/18 exact joins, 2000 at 99.2% with both gaps named); (d) restrictions per spec: season-start prior from prior completed-season REG plays only, never in-season/within-season, snapshot frozen + sha-disclosed at registration (18 sha256s already pinned), retro-corrections after freeze out of scope and disclosed, theta=0 designed null reproduces B1*; disclosed residuals: 2 missing 2000 games, ~5% blank-posteam rows dropped from aggregates, 2000 play_type blankness 8.8%",
+    "C3 COVERAGE FACTS (operational for Lane T): pbp abbreviation domain = 32 current lineage codes only (lineage-normalized upstream; SD/STL/OAK never appear); games.csv side MUST apply the frozen lineage map {SD->LAC, STL->LA, OAK->LV} for pre-2017 labels (2000 role-aligned verification 257/257, 0 mismatches); blank-posteam rows (~2,000/season REG carrying epa) must be excluded from C3 aggregates; play_by_play_2018.parquet NOT downloaded (not needed for TRAIN priors) - present at same release URL if a successor requires it",
+    "LAWS HELD: writes only lanes/A_DATA/** + ~/.my-quantitative-data/nfl-ng-scored-v1/**; no git commands, artifacts uncommitted, controller commits; $0 anonymous public URLs; exactly 2 unauthenticated GitHub API calls (releases/tags/pbp, releases/tags/schedules) both cached to provenance/; no scored computation, no win-prob/calibration metric, no 2019-2025 outcome reads (archive 2021-2025 pbp untouched); calibration/forecasting vocabulary only; no existing bytes overwritten or deleted"
+  ],
+  "known_limitations": [
+    "2026 recount frozen to schedules compile 2026-10-05T05:46:22Z (sha 486d7227...) at measurement instant 09:06:07Z: the 2026-10-06T00:15Z ATL@NO game and all later games are future in this snapshot; the cycle prospective epoch remains 2026-10-05T03:13:51Z (controller bootstrap) - the recount instant is not a new epoch",
+    "play_by_play_2000.parquet is missing 2 finished REG games (2000_03_SD_KC, 2000_06_BUF_MIA - upstream gap, not a download defect): affects at most one game's plays for four lineages in the 2000 season EPA aggregate",
+    "blank-posteam rows (~2,000/season REG, ~5%; 1.3% in 2000) cannot be attributed to a team and are excluded from per-team counts; ~81 of them in 2000 and ~2,000 in later seasons still carry non-null epa - C3 aggregators must drop them",
+    "dispatch expected old abbreviations (SD/STL/OAK) in old pbp seasons - measured FALSE: nflverse pbp lineage-normalizes to current codes across all history (role alignment verified 257/257 in 2000); documented as normalization, not data loss",
+    "the 'pre-2006 different pipeline' caveat is NOT measurable as a play_type vocabulary gap (identical 9 values all eras); remaining measurable era caveats: 2000 play_type blankness 8.8% vs ~3% and down non-null 84-86% everywhere",
+    "pbp release API metadata carries asset digests for only 3 of the 18 downloaded files (2000/2001/2002); integrity for the other 15 rests on size match + PAR1 magic + byte-identical spot re-download",
+    "play_by_play_2018.parquet not downloaded: C3 priors for TRAIN 2000-2018 need pbp 2000-2017 only; if the freeze packet or Lane T ever needs 2018 pbp it exists at the same release URL (asset updated_at 2025-04-30T06:39:20Z, metadata cached in provenance/release_api_pbp.json)"
+  ],
+  "incidents": [],
+  "tree_status": "uncommitted-by-design",
+  "workers": 0,
+  "outputs": [
+    "lanes/A_DATA/DOWNLOAD_MANIFEST.md",
+    "lanes/A_DATA/DOWNLOAD_MANIFEST.json",
+    "lanes/A_DATA/PBP_COVERAGE_AUDIT.md",
+    "lanes/A_DATA/SUCCESSOR_DATA_AUDIT.md",
+    "lanes/A_DATA/VERDICT_TABLE.md",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/raw_pbp_2000_2017/ (18 parquets + timestamp.json + ATTRIBUTION.md)",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/raw_schedules_fresh/ (games.csv + timestamp.json)",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/rights/nflverse-data_LICENSE.md",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/provenance/ (pbp_download_log.tsv, pbp_spot_recheck_2011.txt, release_api_pbp.json, release_api_schedules.json, audit_coverage.py, audit_measures.json, pbp_blanks_playtype_2000_2017.json, download_pbp.sh)"
+  ]
+}
