@@ -1,0 +1,44 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "wbap-d-verify-r1",
+  "cycle_id": "WNBA-WINPROB-PREP-V1",
+  "role": "quant-auditor",
+  "lane": "D_VERIFY",
+  "dispatch_sha": "f3098d95e72deb809c072f2b83cf08e20d13020e",
+  "actual_start_sha": "f3098d95e72deb809c072f2b83cf08e20d13020e",
+  "commit_sha": "NOT_COMMITTED_CONTROLLER_LANDED",
+  "changed_paths": [
+    "lanes/D_VERIFY/DELTA_REVERIFY_R1.md (new: per-check delta re-verification, verdict VERIFICATION_PASS)",
+    "lanes/D_VERIFY/handoff_D_r1.json (this file)",
+    "lanes/D_VERIFY/delta_verify_r1.py (new: independent read-only re-measurement script for the R1 delta pass; schema/coverage counting only)"
+  ],
+  "tests": [
+    "CHECK 1 PASS (D-1 MAJOR lineage rebranch, re-measured from stats schedule bytes): UTA 1997-2002 (193 rows) / SAN 2003-2017 (536 rows; San Antonio Silver Stars 2003-2013 + San Antonio Stars 2014-2017, contiguous) / LVA 2018-2026 (384 rows); DET 1998-2009 (445) / TUL 2010-2015 (206) / DAL 2016-2026 (408); LAS 1997-2026 continuous (1,111). SAN and DAL coexist as 2 of 12 distinct abbrs in BOTH 2016 (SAN 34/DAL 34) and 2017 (SAN 34/DAL 35); TUL last 2015 -> DAL first 2016; SAN last 2017 -> LVA first 2018. team_key_table.csv: 20 keys (was 21); LVA row {LVA,SAN,UTA} 1997-2026; DAL row {DAL,DET,TUL} 1998-2026; LAS {LAS} 1997-2026; tokens SAN_DAL/DET_TUL absent from every column. SPEC sec2: SAN_DAL/DET_TUL/merger wording absent; corrected lineage rows + 20-keys statement + coexistence evidence present. measurements_a2.json: team_key_table_rows=20, LVA eras [1997,2026], DAL eras [1998,2026]",
+    "CHECK 2 PASS (MINORs): D-2 - all 318 ESPN Detroit Shock rows (2002-2009; 32/42/37/36/44/45/43/39) carry TUL home AND away, 0 exceptions; DET appears 0 times on ESPN; stats DET per-season equals ESPN Detroit per-season. D-3 - 21 alias rows, 13 tokens, per-token slots EAST 11, WEST 11, USA 4, WIL 3 (2019/2022/2023), ALL 3, STE 2 (2022/2023), DEL 2, PAR/COL/CLA/SPO/COOP/WNBASTARS 1 each; stats side 0; SPEC sec4 item 3 carries the measured breakdown. D-4 - Cup finals = 6, one per Cup season 2021-2026, each the last-scheduled Cup game of its season (2021 SEA-CON neutral plain-headline; 2022 CHI-LVA, 2023 LVA-NYL, 2024 NYL-MIN, 2025 MIN-IND, 2026 NYL-LVA 'Cup Championship'; ET dates match erratum sec4d); 401620271 WAS-CHI 2024-06-06 confirmed a neutral Cup GROUP game; measurements_a2.json rows_championship 7->6, championship_by_season 2024 2->1 (now 1 per season), championship_neutral_site_rows 2->1",
+    "CHECK 3 PASS (NO-REGRESSION, independent recompute): ESPN 6,029/6,029 unique/25 seasons; stats 7,009/7,009/30; filter law 17 pre (all 2026, all 0-0, 0 null) / 1 forfeit 401018942 / 2 postponed (401507167, 401857072) / 21 alias / 7 TBD / 16 neutral / stats 0-0 = 1 (1021800162) / 0 null-pts; census ESPN real 5,988 = 5,230 + 301 + 457, stats real 7,008 = 6,493 + 515, pre-2002 1,022, union 7,017; timestamps date==game_date_time 6,029/6,029 and date==start_date 6,029/6,029; join totals 5,979 matched / 9 ESPN-only (3 regular + 6 Cup finals, same ids) / 1,029 stats-only (1,022 pre-2002 + 7 extras, same by-season 2/2/3 and leading ids); ET-offset law 0 matches at +-1 in both lane A's on-disk distribution ({0:5954, score:25, +-1:0}) and my pass; measurements_a2.json moved blocks ONLY team_key_table/team_key_table_rows/espn_commissioners_cup as claimed, every other block consistent with my recomputation",
+    "CHECK 4 PASS (scope discipline): git diff 18fa135b..f3098d95 touches only lanes/A_DATA (ERRATUM new, SPEC + measure_a2 modified, handoff_A_r1 new), lanes/D_VERIFY (controller landing of R0 verifier outputs in 448710a6), and research/control event_log.jsonl (controller D_VERIFY_LANDED + REMEDIATION_R1_LANDED events); lanes/B_MECHANISMS and lanes/C_PROTOCOL zero diff bytes; handoff_A.json + measure_a.py untouched; credential grep 0 hits; scored-computation grep = ban statements only; registry budget 0/0, go_phrase NOT_REGISTERED; corpus 8/8 spot sha256+byte match vs raw/audit_results.json (99 entries, digest_mismatches []); locks FREE_PROVEN; tree clean (only intended lanes/D_VERIFY outputs untracked)",
+    "CHECK 5 PASS (former D-5 recorded, not silently dropped): ERRATUM_TEAM_KEY_R1.md sec5 'Lane C (D-5) - deliberately untouched' + handoff_A_r1.json known_limitations[0] both record the stale lane C counts (15 neutral vs 16; 14 All-Star rows/incomplete alias set vs 21 rows/13 tokens; 11-row leak list) and route reconciliation to the successor; the hook is intact and byte-unchanged in lanes/C_PROTOCOL/PROTOCOL_DRAFT_WNBA.md sec12 item 4 (successor must re-verify season completeness, 1-forfeit, alias rows, neutral-site rows, Cup-flag completeness)"
+  ],
+  "authority_claims": [
+    "DELTA VERDICT: VERIFICATION_PASS over task wbap-a-data-r1 (commit f3098d95e72deb809c072f2b83cf08e20d13020e). Former defects D-1 (MAJOR) and D-2/D-3/D-4 (MINOR) are CLOSED, each verified from corpus bytes by an independent implementation; 0 MAJOR / 0 MINOR / 0 BLOCKER / 0 CRITICAL open on lane A/D artifacts",
+    "NORMATIVE LINEAGE now data-verified and canonical: franchise_key LVA = UTA Utah Starzz 1997-2002 -> SAN San Antonio Silver Stars 2003-2013 / San Antonio Stars 2014-2017 -> LVA Las Vegas Aces 2018-2026; franchise_key DAL = DET Detroit Shock 1998-2009 -> TUL Tulsa Shock 2010-2015 -> DAL Dallas Wings 2016-2026; LAS continuous 1997-2026; encoded consistently in team_key_table.csv (20 keys), SPEC sec2, measure_a2.py, and measurements_a2.json; the successor's B1 stream map must use this branch or W-H2 continuity pairs the wrong franchise histories",
+    "Commissioner's Cup finals = 6 (one per Cup season 2021-2026, each the last-scheduled Cup game of its season); identification law: headline 'Cup Championship' (2022-2026) plus the single neutral-site Cup row of 2021; the 2024-06-06 WAS-CHI neutral Cup GROUP game is inside the 301 Cup rows and 16 neutral rows, never a final",
+    "The R0 no-regression surface reproduces byte-for-byte after the remediation: identity, filter law, census 5,988/7,008/union 7,017, timestamp laws 6,029/6,029, join residuals 5,979/9/1,029 - the regeneration moved only the three declared measurement blocks"
+  ],
+  "known_limitations": [
+    "Former D-5 (lane C stale verbatim-inherit counts) remains OPEN BY DESIGN: lanes/C_PROTOCOL sec2.1/sec2.3/sec8.6 still carry 15 neutral / 14 All-Star rows / incomplete alias set vs measured 16 / 21 / 13 tokens (11 rows would leak: USAx4, WILx3, STEx2, COLx1, SPOx1); recorded in ERRATUM_TEAM_KEY_R1.md sec5 and handoff_A_r1.json known_limitations; successor must reconcile at the B1 freeze per lane C sec12 item 4 re-verify clause",
+    "Join window/score classification split is implementation-order-dependent: my order-insensitive name-pair key classifies 5,918 window + 61 score vs lane A's 5,954 + 25 (flip-flop home-and-home back-to-backs alias into pass-1 ambiguity, resolved by exact score); totals (5,979), offset law (0 at +-1), and residual identities are identical - bookkeeping note, not a data difference",
+    "Registry head field is currently the all-zeros placeholder 0000...0000 (was stale-but-nonzero 673b4f27... at R0, recorded expected-pending); measured branch HEAD is f3098d95e72deb809c072f2b83cf08e20d13020e; controller-owned field, normalized at the controller's next landing - lanes never write the registry",
+    "W-H2 per-season roster-coverage census remains NOT_RUN (never lane A/D-owned; gate honestly pending under lane B's gate law, unchanged by this erratum)",
+    "2026 counts remain as-of-corpus-snapshot (season in progress); R0 cosmetic observations (home@away ordering, UTC-vs-ET date labels, 2002 outlier in the sec5 summary) remain no-action per R0",
+    "handoff_A.json retains its original (wrong-branch) lineage authority text as the historical record; handoff_A_r1.json claims supersede it for lineage and Cup-final counts"
+  ],
+  "incidents": [],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "lanes/D_VERIFY/DELTA_REVERIFY_R1.md",
+    "lanes/D_VERIFY/handoff_D_r1.json",
+    "lanes/D_VERIFY/delta_verify_r1.py"
+  ]
+}
