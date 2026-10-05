@@ -1,0 +1,117 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "wnba-playerfeat-scored-v1-S-SYNTH",
+  "cycle_id": "WNBA-PLAYERFEAT-SCORED-V1",
+  "role": "test-dryrun-lane",
+  "lane": "S_SYNTH",
+  "branch": "orca/wnba-playerfeat-scored-v1-integration",
+  "dispatch_sha": "5a1d0618e344844303d282923979cd949768368e",
+  "actual_start_sha": "5a1d0618e344844303d282923979cd949768368e",
+  "commit_sha": null,
+  "changed_paths": [
+    ".worktrees/wnba-playerfeat-scored-v1/integration/lanes/S_SYNTH/dryrun.py",
+    ".worktrees/wnba-playerfeat-scored-v1/integration/lanes/S_SYNTH/lock_probe.py",
+    ".worktrees/wnba-playerfeat-scored-v1/integration/lanes/S_SYNTH/DRYRUN_REPORT.md",
+    ".worktrees/wnba-playerfeat-scored-v1/integration/lanes/S_SYNTH/VERDICT_TABLE.md",
+    ".worktrees/wnba-playerfeat-scored-v1/integration/lanes/S_SYNTH/fixtures/expected_hand_fixture.json",
+    ".worktrees/wnba-playerfeat-scored-v1/integration/lanes/S_SYNTH/fixtures/hand_fixture_predictions.csv",
+    ".worktrees/wnba-playerfeat-scored-v1/integration/lanes/DISPATCH/handoff_S_SYNTH.json",
+    "~/.my-quantitative-data/wnba-playerfeat-scored-v1/sandbox/rehearsal_run1/",
+    "~/.my-quantitative-data/wnba-playerfeat-scored-v1/sandbox/rehearsal_run2/",
+    "~/.my-quantitative-data/wnba-playerfeat-scored-v1/sandbox/lock_probes/",
+    "~/.my-quantitative-data/wnba-playerfeat-scored-v1/sandbox/fake_go_token.txt"
+  ],
+  "tests": [
+    {
+      "command": "cd lanes/T_SELECT && /Users/hoangminhlong/my-quantitative/.venv/bin/python harness.py --selftest (frozen tree re-run)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "14/14 PASS (SELFTEST 14/14 PASS on stdout); harness.py sha b9446f7699ce2e29c8ce66490fc0f9941cc38dda0ed02e8e7fc108e65373485e and arms.py sha 82263eab713258b09ef920500a56d1fbf36ef9b9b8ea20965c6b4fd99b04cdd3 unchanged vs handoff_T_SELECT"
+    },
+    {
+      "command": "cd lanes/S_SYNTH && /Users/hoangminhlong/my-quantitative/.venv/bin/python dryrun.py --out ~/.my-quantitative-data/wnba-playerfeat-scored-v1/sandbox/rehearsal_run1 (full 2-arm synthetic OOS-like rehearsal: B0 0.603755 + B1-WNBA K=32/HCA=50/gamma=0.65)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "REHEARSAL ok: scored=112 (seasons [2029, 2030]) warmup=56 | B0 LL 0.696354 | B1 LL 0.661815 | dLL -0.034538 [-0.082936, 0.011913] | slope 1.0974 | null_ok=True fixture_ok=True"
+    },
+    {
+      "command": "determinism twin: second independent dryrun.py run into sandbox/rehearsal_run2; diff -r rehearsal_run1 rehearsal_run2",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "diff -r BYTE-IDENTICAL; rehearsal.json sha256 51a513b78f7b2905720ce7624634da52d4485386f640c741dbf85a4e04b8f73a equal across runs (all 10 files equal)"
+    },
+    {
+      "command": "cd lanes/S_SYNTH && /Users/hoangminhlong/my-quantitative/.venv/bin/python lock_probe.py (OOS lock: pre-read refusal with audit hook + CLI refusals + fabricated-token rejections)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "PROBE A/B/C/D1-D5 ALL PASS; probe_results.json sha256 d70f2b91d272c1cf2804a4e65bc0adbeb9604f009d37a36ed12f17a9b395bd08; 0 real-data read events at refusal time"
+    },
+    {
+      "command": "hand-fixture cross-check (inside dryrun.py): 3-game fixture vs independent pure-math derivation from the frozen engine-law text",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "14/14 values agree to 1e-12 (per-game p_home/LL/Brier both arms, mean LL/Brier, 3 paired dLL); tip-batch no-leak byte-identical under outcome flip"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "SYNTHETIC ONLY: nothing real was scored. All scored rows carry SYNTH_-prefixed ids and seasons 2027-2030; the real OOS window [2020..2026] was never read in this lane. Bootstrap/slope numbers on synthetic data are machinery-smoke evidence, not performance claims.",
+    "The frozen harness CLI 'evaluate-oos --source synthetic' is a rehearsal-shape stub (prints and returns by design), so the full path runs in this lane's driver through the SAME frozen engine/metrics/bootstrap functions (arms.run_stream, arms.log_loss/mean_ll/ll_delta/calibration_slope/date_cluster_bootstrap_ci, harness.make_x_fn/make_c_fn/tip_date_clusters/fold_predictions/build_full_games) with the frozen B0 scalar 0.603755 and frozen B1 config K=32/HCA=50/gamma=0.65 consumed verbatim.",
+    "Synthetic corpus loaders mirror (do not reuse) the real-corpus loaders: the frozen loaders (load_feature_rows/load_espn_universe/compute_moments) are hardwired to real paths and the season<=2018 cap law, and modifying them is forbidden. The driver recomputes synthetic standardization moments with the identical population-sd (ddof=0) formula and uses the frozen make_x_fn factory on them.",
+    "Post-GO unlock law documented in DRYRUN_REPORT.md section 3 and probe_results.json: owner types the phrase verbatim at the cycle gate; operator passes it INLINE via --go-token in that owner-authorized session; no file-based token input exists (a fabricated token file is rejected by construction); altered phrases fail exact match; even the exact registered phrase only opens the gate check because the frozen tree refuses real execution ('real-data OOS execution lives POST-GO').",
+    "B0 calibration slope is the honest frozen nan on synthetic folds (constant predictor leaves the slope unidentifiable) — same behavior the frozen selftest asserts.",
+    "Synthetic corpus signal was planted at +/-250 Elo strength spread with a 60-point home edge so the rehearsal demonstrates the frozen engine TRACKING planted signal (rating-vs-strength corr 0.89, B1 pooled slope 1.0974 in band); a first generator draft with +/-80 spread was replaced after a sanity probe showed weak-signal noise (slope -0.13, corr 0.42) — generator change only, frozen arms/constants untouched.",
+    "One environmental slip during lane work: VERDICT_TABLE.md was briefly written to a stray path ~/.worktrees/... ; moved to the correct worktree lane path and the stray tree removed. No repo files affected.",
+    "No git commands were run (dispatch forbids); commit_sha null and tree_status uncommitted-by-design; all lane writes are untracked files under lanes/S_SYNTH/ plus the sandbox."
+  ],
+  "incidents": [
+    "INCIDENT 0 (self-disclosed): during handoff validation a read-only `git status --porcelain` was inadvertently included in one shell pipeline (piped to head, no output consumed, no staging/branch/commit operation); the dispatch forbids git commands outright. Disclosed for transparency; no repository state was modified by this lane.",
+    "INCIDENT 1 (caught by the driver's own metric cross-check before any output was consumed): the first Brier decomposition identity used the classical REL-RES+UNC form, which is inexact when p varies within bins (residual 0.0042 on a 112-row fold); corrected to the exact identity BS = spread_p + REL - RES + UNC - 2*cov_uv, now satisfied to <1e-9 on every fold. Synthetic-data incident only; no frozen code touched.",
+    "INCIDENT 2 (probe-script bug, caught by fail-loud KeyError): an eager dict-literal lookup pattern in lock_probe.py evaluated keys belonging to other probes; replaced with explicit per-key assertions. Probes A/B/C had already passed and were unaffected."
+  ],
+  "tree_status": "uncommitted-by-design",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/wnba-playerfeat-scored-v1/integration/lanes/S_SYNTH/dryrun.py",
+      "sha256": "262da56843d879ccbe844e358654893d5cc6ea15d3b08aa8a7ff76c7455b54b5"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/wnba-playerfeat-scored-v1/integration/lanes/S_SYNTH/lock_probe.py",
+      "sha256": "b7aaf5ae838acfa4512f2849d280543a55632e980a4127056570234c785e92ea"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/wnba-playerfeat-scored-v1/integration/lanes/S_SYNTH/DRYRUN_REPORT.md",
+      "sha256": "6bd02f1d0ce8aae705297d377530f8ef772185d4a6c210575f76ae2297e25476"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/wnba-playerfeat-scored-v1/integration/lanes/S_SYNTH/VERDICT_TABLE.md",
+      "sha256": "8a4de56c68ade979f4085543315a3372b182dc1468aadda3752ea636e2d50355"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/wnba-playerfeat-scored-v1/integration/lanes/S_SYNTH/fixtures/expected_hand_fixture.json",
+      "sha256": "c4d59b6317c19a5e36ff8a58d57c165ff8caf5bed0bd2948074fe2fbbacca9de"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/wnba-playerfeat-scored-v1/integration/lanes/S_SYNTH/fixtures/hand_fixture_predictions.csv",
+      "sha256": "3291a6c2d8e7ff6f2cc939b1acc684d189598c82bcea11d16be1b4f07ddfa18d"
+    },
+    {
+      "path": "/Users/hoangminhlong/.my-quantitative-data/wnba-playerfeat-scored-v1/sandbox/rehearsal_run1/rehearsal.json",
+      "sha256": "51a513b78f7b2905720ce7624634da52d4485386f640c741dbf85a4e04b8f73a"
+    },
+    {
+      "path": "/Users/hoangminhlong/.my-quantitative-data/wnba-playerfeat-scored-v1/sandbox/rehearsal_run1/predictions_b0_scored.csv",
+      "sha256": "9c5fe001c4e5ce72d65c3f36d1b2c01b11c4dce463e47ff14fc7a47fbdeb6e16"
+    },
+    {
+      "path": "/Users/hoangminhlong/.my-quantitative-data/wnba-playerfeat-scored-v1/sandbox/rehearsal_run1/predictions_b1_scored.csv",
+      "sha256": "01abf9c20ced82ec62e57102d94da2c1651b70c8ffe895f7af054e54d07bba8c"
+    },
+    {
+      "path": "/Users/hoangminhlong/.my-quantitative-data/wnba-playerfeat-scored-v1/sandbox/lock_probes/probe_results.json",
+      "sha256": "d70f2b91d272c1cf2804a4e65bc0adbeb9604f009d37a36ed12f17a9b395bd08"
+    }
+  ],
+  "recommended_next_action": "Controller: consume this handoff together with handoff_T_SELECT.json and route the cycle to Lane A7 independent prelaunch audit ( OWNER_GATE_BRIEF.md ). The dry-run lane is DRYRUN_PASS: frozen 2-arm evaluation (B0 0.603755 + B1-WNBA K=32/HCA=50/gamma=0.65) proven end-to-end on synthetic OOS-like streams (identical game sets, exact-arm distinct ids, designed-null byte identity, hand-computed fixtures to 1e-12, bootstrap machinery smoke 10k resamples seed 20261005, determinism byte-identical double-run) with the OOS lock holding (pre-read refusal proven with an audit hook over all real data roots, fabricated token files rejected, real execution structurally impossible pre-GO). OOS [2020..2026] stays sealed until the owner types GO verbatim at this cycle's own gate."
+}
