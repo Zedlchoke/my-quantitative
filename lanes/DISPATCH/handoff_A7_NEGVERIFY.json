@@ -1,0 +1,61 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nba-playerfeat-scored-v1-A7-NEGVERIFY",
+  "cycle_id": "NBA-PLAYERFEAT-SCORED-V1",
+  "role": "independent-verifier",
+  "lane": "A7_PRELAUNCH",
+  "branch": "orca/nba-playerfeat-scored-v1-integration",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/nba-playerfeat-scored-v1/integration",
+  "dispatch_sha": "bf86afce88ebe6ac16cafb6a81af5dc1f824ad0d",
+  "actual_start_sha": "bf86afce88ebe6ac16cafb6a81af5dc1f824ad0d",
+  "commit_sha": null,
+  "tree_status": "uncommitted-by-design",
+  "workers": 0,
+  "changed_paths": [
+    "lanes/A7_PRELAUNCH/A7_VERIFICATION_REPORT.md",
+    "lanes/A7_PRELAUNCH/VERDICT_TABLE.md",
+    "lanes/A7_PRELAUNCH/OWNER_NOTE.md",
+    "lanes/A7_PRELAUNCH/verify/a7_recompute.py",
+    "lanes/A7_PRELAUNCH/verify/a7_recompute_results.json",
+    "lanes/A7_PRELAUNCH/verify/a7_cap_probes.py",
+    "lanes/A7_PRELAUNCH/verify/a7_cap_probe_results.json",
+    "lanes/A7_PRELAUNCH/verify/a7_ledger_check.py",
+    "lanes/A7_PRELAUNCH/verify/a7_ledger_check_results.json",
+    "lanes/DISPATCH/handoff_A7_NEGVERIFY.json"
+  ],
+  "tests": [
+    "Task 1 B1* replay, OWN code (own loader 2016-2021 only, own date-grain replay K=32 HCA=100 gamma=0.75): pooled fold LL 0.6383266072624096 abs err 0.0 (req <=1e-9); calibration slope 0.780102170044627 abs err 0.0; corpus counts reproduced (7616 loaded / 7572 played / 44 postponed / 7556 stream updates / 180 reversions / 7 play-in / 9 exhibitions / folds 1230+1230+1059+1080=4599 / 332 playoff rows / 9 neutral_site fold rows); B0 pooled LL 0.684339489926359 err 0.0; B1-HCA0 0.6428161170449253 err 0.0",
+    "Task 2 grid points, OWN code + OWN bootstrap (10k, seed 20261005, tip-date clusters, independent RNG pattern + bincount aggregation): PF-A phi=-25 dLL point +0.005038373917038531 (err 8.7e-19), CI [0.0017099725811,0.0083745509797] err <=8.7e-19 (tolerance 5e-4); PF-B phi=+25 point +0.004247277631594098 (err 8.7e-19), CI [0.0014798661131,0.0071180060209] err <=8.7e-19; full 3x5 grid recomputed, max abs err vs ledger 1.1102e-16; pooled-LL grid minimum at phi=0 for all three arms in BOTH ledger and own recompute; every non-zero phi increases pooled LL vs B1*; pinned standardization moments reproduced to last ulp (n=14118 team-side rows, tip<2021-08-01Z, ddof=0)",
+    "Task 3 designed-null independent re-run: real fold rows max|dp|=0.0 exactly (PF-A/PF-B/PF-C); 3 A7-OWN synthetic streams (own generator, seeds 101/202/303) max|dp|=0.0 exactly",
+    "Task 4 cap audit: code-read SEASON_MAX_REAL=2021 (harness.py:72) enforced in load_schedule (per-file assertion + future files never opened) and load_features (sha + 28374 + future per-season accounting {2648,2642,2640,2648,2652} + 15144 capped slice); OWN tmp doctored-2022-row probe on a full-range copy ABORTS SEASON_CAP_VIOLATION; healthy copy max season 2021, 7616 rows; evaluate-oos --real exits 1 OOS_REFUSED_NO_GO_TOKEN raised before any data read; GO token absent; lane selftest 39/39 PASS exit 0",
+    "Task 5 ledger completeness: 18 rows = 15 pre-registered grid configs + B0 + B1* + B1-HCA0, zero unexpected rows; code constants asserted equal to dispatch packet (PHI_GRID {-50,-25,0,25,50}, 3 arms, K=32, HCA=100, gamma=0.75, mu=1500, seed 20261005, 10k resamples, slope band [0.85,1.15], group columns); no un-counted fits (15 candidate rows + 2 references + 1 diagnostic; 4 B0 refits; 2 Elo replays; 6 twin evaluations declared outside budget; playoff n=332 frozen-model scores reported separately); feature-table sha256 recomputed b3ca0e3b...59885cb == FEATURE_TABLE_MANIFEST (csv.gz 9368ad76...ce458ab too)",
+    "Task 6 honesty: twins-winning diagnostics DISCLOSED (report Diagnostics: PF-A phi=-25 parent 0.643365 vs twin 0.641190 WINS; PF-B phi=25 0.642574 vs 0.641048 WINS; PF-C no win; ledger twin_wins:true rows; handoff known_limitations) as machinery/noise, verdict-neutral; B1* slope 0.7801 disclosed; determinism corroborated: lane SELECTION_LEDGER.jsonl sha256 0ede824fb0de4d4dde6a711e17cbc2668bcce5325732b6996150192882152492 == data-dir copy == handoff claim, VERDICT_TABLE 72b6a4e8... == claim",
+    "VERDICT: NEGATIVE_VERIFIED - the T_SELECT negative (all three PF arms NOT_ADMITTED, no phi frozen, slot release) is evidence-hardened by independent recompute; no defect found"
+  ],
+  "authority_claims": [
+    "A7 never repaired and never edited T_SELECT files; all writes confined to lanes/A7_PRELAUNCH/** (+tmp) and lanes/DISPATCH/handoff_A7_NEGVERIFY.json",
+    "No git commands; interpreter /Users/hoangminhlong/my-quantitative/.venv/bin/python only",
+    "No scored computation beyond ledger-contained train-internal numbers (folds 2018-2021; warm-up 2016-2017 stream-only); no OOS season, no GO token, no betting vocabulary in A7 artifacts",
+    "Own code independence: a7_recompute.py implements its own loader, Elo replay, log-loss (log1p), IRLS calibration slope, clustered bootstrap (different RNG consumption + bincount aggregation), and synthetic stream generator; it imports no T_SELECT module; cap probes import the lane's harness solely to TEST its enforcement, with doctoring only on tmp copies",
+    "The lane claim 0.638327 matches within 1e-9 (in fact err 0.0); slope claim 0.7801 confirmed; both requested grid-point CIs reproduce within last-ulp of the pinned seed/scheme"
+  ],
+  "known_limitations": [
+    "CI bounds agree to ~1e-18, not bit-exact: A7's LL uses log1p(-pc) vs the lane's log(1-pc); conclusions unaffected (lower bounds >= +0.0015 from zero, MC tolerance 5e-4 not binding)",
+    "A7 did not re-run the lane's select mode; the independent recompute of every ledger number supersedes it",
+    "Moment population includes some season-2021-labeled rows with tip before the 2021-08-01 cutoff; A7's independent construction reproduces the pinned moments exactly, so lane and verifier used the same effective population",
+    "Verification scope is the train-internal selection evidence only; OOS 2022-2026 remains untouched by design (post-GO only)"
+  ],
+  "incidents": [],
+  "outputs": [
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nba-playerfeat-scored-v1/integration/lanes/A7_PRELAUNCH/A7_VERIFICATION_REPORT.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nba-playerfeat-scored-v1/integration/lanes/A7_PRELAUNCH/VERDICT_TABLE.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nba-playerfeat-scored-v1/integration/lanes/A7_PRELAUNCH/OWNER_NOTE.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nba-playerfeat-scored-v1/integration/lanes/A7_PRELAUNCH/verify/a7_recompute.py",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nba-playerfeat-scored-v1/integration/lanes/A7_PRELAUNCH/verify/a7_recompute_results.json",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nba-playerfeat-scored-v1/integration/lanes/A7_PRELAUNCH/verify/a7_cap_probes.py",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nba-playerfeat-scored-v1/integration/lanes/A7_PRELAUNCH/verify/a7_cap_probe_results.json",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nba-playerfeat-scored-v1/integration/lanes/A7_PRELAUNCH/verify/a7_ledger_check.py",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nba-playerfeat-scored-v1/integration/lanes/A7_PRELAUNCH/verify/a7_ledger_check_results.json",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nba-playerfeat-scored-v1/integration/lanes/DISPATCH/handoff_A7_NEGVERIFY.json"
+  ]
+}
