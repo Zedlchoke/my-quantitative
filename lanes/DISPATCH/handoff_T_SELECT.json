@@ -1,0 +1,91 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "wnba-playerfeat-scored-v1-T-SELECT",
+  "cycle_id": "WNBA-PLAYERFEAT-SCORED-V1",
+  "role": "selection-lane",
+  "lane": "T_SELECT",
+  "branch": "orca/wnba-playerfeat-scored-v1-integration",
+  "dispatch_sha": "8130de5af6c05dcf8e67efdfd2f5bc6f575ca92d",
+  "actual_start_sha": "8130de5af6c05dcf8e67efdfd2f5bc6f575ca92d",
+  "commit_sha": null,
+  "changed_paths": [
+    ".worktrees/wnba-playerfeat-scored-v1/integration/lanes/T_SELECT/harness.py",
+    ".worktrees/wnba-playerfeat-scored-v1/integration/lanes/T_SELECT/arms.py",
+    ".worktrees/wnba-playerfeat-scored-v1/integration/lanes/T_SELECT/SELECTION_REPORT.md",
+    ".worktrees/wnba-playerfeat-scored-v1/integration/lanes/T_SELECT/VERDICT_TABLE.md",
+    ".worktrees/wnba-playerfeat-scored-v1/integration/lanes/DISPATCH/handoff_T_SELECT.json",
+    "~/.my-quantitative-data/wnba-playerfeat-scored-v1/selection/SELECTION_LEDGER.jsonl",
+    "~/.my-quantitative-data/wnba-playerfeat-scored-v1/selection/SELECTION_SUMMARY.json",
+    "~/.my-quantitative-data/wnba-playerfeat-scored-v1/selection/b1_frozen_p_stream_train.parquet"
+  ],
+  "tests": [
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python harness.py --selftest (cwd lanes/T_SELECT)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "d58291e1eac7d58febbac10100faffd6712ad06ec3637e312014e3142d73301a"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python harness.py --mode select (cwd lanes/T_SELECT; TRAIN-INTERNAL, real data hard-capped season<=2018)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "e4fa8843e4c0264228c46c318d403a3bae0580b16b5a36fa8187617da69d6f40"
+    },
+    {
+      "command": "determinism twin: second independent --mode select run reproduced SELECTION_LEDGER.jsonl sha256 603aa4126e22af8f7c9b8e492638ded60991db307dc3167ad660930c3fde58df and SELECTION_SUMMARY.json sha256 bf62d37a37260f3d2ea2fc543c1881b8219156512ee0ab643f7422341236ac08 byte-for-byte",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "603aa4126e22af8f7c9b8e492638ded60991db307dc3167ad660930c3fde58df"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "WF-A (continuity carryover) verdict MACHINERY_SUSPECT, arm UN-SCORED: its time-shuffled twin beat its OWN parent by dLL -0.000968 on the shuffled corpus; per the adjudication refinement the miscalibrated-parent exemption does NOT apply (parent real-data fold slope 0.9047 is INSIDE [0.85,1.15]). Real-data effect was itself inconclusive (+0.000420, CI [-0.002750,+0.003621], inside the +/-0.003 inconclusive scale). Machinery audit owed before any WF-A re-proposal.",
+    "WF-B (x=b5_minutes_hhi) and WF-C (x=c_absence_share) RELEASED: every nonzero phi in the immutable grid {-50,-25,0,25,50} was worse than the designed null on pooled folds 2014-2018, so selection returned phi=0 which is byte-identical to the frozen parent (dLL +0.000000). No train-internal signal at any pre-registered strength.",
+    "Feature-construction choices pre-registered a priori before any scored look: WF-B uses k=5 HHI (k-selection stays deferred per FEATURE_SPEC section 3; the k=3 variant was NOT scored); WF-C uses the uniform null-minutes absence proxy. Standardization moments pinned on train computed rows 2013-2018 (n=2292 each).",
+    "Warm-up uses ALL stats-side 1997-2001 rows (1,022 rows incl. 56 playoffs rows) as rating-stream warm-up only; gamma reversion applied at every season boundary incl. inside the warm-up. Stats-side corpus carries no neutral-site flag (disclosed); ESPN side carries the flag (2 train-window rows, HCA=0 applied).",
+    "B1-WNBA selection is TRAIN-INTERNAL ONLY (4 expanding-origin 2-season validation blocks 2011-2018, 1,774 games): K=32, HCA=50, gamma=0.65, pooled validation LL 0.623498, dLL vs B0 -0.054386 [-0.070150,-0.038275], slope 0.9530 (in band). OOS [2020..2026] NEVER read; evaluate-oos mode refuses real data without the owner GO token (which does not exist pre-gate); feature-table rows >2018 filtered out at read time and a doctored 2019-row probe aborts loud.",
+    "Feature folds (2014-2018, 1,106 games) are the plan's disclosed era-floor adaptation of the packet's 4x2-season blocks; fold-game flags: neutral_x0 165, neutral_hca0 2.",
+    "A malformed pre-existing directory 'lanes/T_SELECT lanes/' (with nested 'S_SYNTH lanes/A7_PRELAUNCH', empty of files) exists in the integration lanes dir from an earlier process; left untouched as outside this lane's write scope.",
+    "No git commands were run (dispatch forbids); commit_sha null and tree_status uncommitted-by-design; all lane writes are untracked files in lanes/T_SELECT/ plus the data-dir outputs."
+  ],
+  "incidents": [
+    "INCIDENT 1 (caught pre-scoring by --selftest, fixed before any scored ledger run): the engine update hardcoded the home outcome to 1.0 / away to 0.0, ignoring the actual game outcome; regression fixture added (a home LOSS must move the home rating down).",
+    "INCIDENT 2 (caught pre-scoring by --selftest + ledger cross-check, fixed): the away side's expectation was p_home instead of 1-p_home, so the pair update was not zero-sum; hand-computed Elo fixture corrected accordingly.",
+    "INCIDENT 3 (caught by per-phi ledger cross-check against the designed null): arms.select_best inverted the log-loss direction (min over -ll selected the WORST config), which had frozen the worst grid cell (K=8,HCA=0,gamma=0.85) and picked the worst phi per arm; fixed to min(ll, tie-break) and the grid + feature arms were re-run. The corrupted intermediate run never touched OOS (cap enforced at read time in all runs) and its ledger was overwritten by the corrected deterministic rerun.",
+    "INCIDENT 4 (environmental, benign): harness briefly compared the <=2018 universe against the full 2002-2026 feature-table game set (1,993 spurious 'missing'), fixed by filtering feature rows to <=SEASON_MAX_REAL at read time."
+  ],
+  "tree_status": "uncommitted-by-design",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/wnba-playerfeat-scored-v1/integration/lanes/T_SELECT/harness.py",
+      "sha256": "b9446f7699ce2e29c8ce66490fc0f9941cc38dda0ed02e8e7fc108e65373485e"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/wnba-playerfeat-scored-v1/integration/lanes/T_SELECT/arms.py",
+      "sha256": "82263eab713258b09ef920500a56d1fbf36ef9b9b8ea20965c6b4fd99b04cdd3"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/wnba-playerfeat-scored-v1/integration/lanes/T_SELECT/SELECTION_REPORT.md",
+      "sha256": "283165ff443eecafc1d44481a0ace68763f10afaa1e2a79f3a3de29a7376e3ab"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/wnba-playerfeat-scored-v1/integration/lanes/T_SELECT/VERDICT_TABLE.md",
+      "sha256": "221dec244ce217c83ac9145d40986c33188ded6ca78ecb25f698a79b7ed5fe03"
+    },
+    {
+      "path": "/Users/hoangminhlong/.my-quantitative-data/wnba-playerfeat-scored-v1/selection/SELECTION_LEDGER.jsonl",
+      "sha256": "603aa4126e22af8f7c9b8e492638ded60991db307dc3167ad660930c3fde58df"
+    },
+    {
+      "path": "/Users/hoangminhlong/.my-quantitative-data/wnba-playerfeat-scored-v1/selection/SELECTION_SUMMARY.json",
+      "sha256": "bf62d37a37260f3d2ea2fc543c1881b8219156512ee0ab643f7422341236ac08"
+    },
+    {
+      "path": "/Users/hoangminhlong/.my-quantitative-data/wnba-playerfeat-scored-v1/selection/b1_frozen_p_stream_train.parquet",
+      "sha256": "6a5404beffa453140ac104ad19dfbb636e78d80f4dcb09325069434a426aef5f"
+    }
+  ],
+  "recommended_next_action": "Controller: consume this handoff; pin the frozen B1-WNBA config (K=32, HCA=50, gamma=0.65; warm-up 1997-2001 stats-side; B0 p_home 0.603755) and the pinned standardization moments into the cycle freeze; route WF-A MACHINERY_SUSPECT to a machinery audit (twin-beats-own-parent, -0.000968) before any re-proposal; record WF-B/WF-C slots as RELEASED; proceed to Lane S synthetic fixtures/exact-arm dry-run and Lane A7 independent prelaunch audit. OOS [2020..2026] stays sealed until the owner types GO verbatim at this cycle's own gate."
+}
