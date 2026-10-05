@@ -1,0 +1,49 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nflng-e-ledger",
+  "cycle_id": "NFL-WINPROB-NG-PREP-V1",
+  "role": "quant-implementer",
+  "lane": "E_LEDGER",
+  "dispatch_sha": "03c8c87dd8a25b67c402c56d273c3460326b39f9",
+  "actual_start_sha": "03c8c87dd8a25b67c402c56d273c3460326b39f9",
+  "commit_sha": "177fa4ef7a0b7066dd0c806fc31d6258b0b97d44",
+  "changed_paths": [
+    "research/control/NFL-WINPROB-NG-PREP-V1/ledger/nfl_ng_ledger.py",
+    "research/control/NFL-WINPROB-NG-PREP-V1/ledger/test_ledger_synthetic.py",
+    "research/control/NFL-WINPROB-NG-PREP-V1/ledger/README.md",
+    "lanes/E_LEDGER/handoff_E.json"
+  ],
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-prep-v1/lane-e-ledger && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/NFL-WINPROB-NG-PREP-V1/ledger/test_ledger_synthetic.py -v",
+      "exit_code": 0,
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "notes": "pytest 9.1.1 on Python 3.12.14 (workspace venv, absolute path). SYNTHETIC-only: fabricated teams TEAM_X/TEAM_Y/TEAM_Z, game ids 2026_W01_TEAMX_TEAMY-style, digests aa..../bb..., no NFL team names, no real games, no metrics on outcomes. Coverage: happy-path chain + verify; canonical row_hash recompute (field-order canonical, key-order independent, byte-deterministic batches); recorded_at ==/> kickoff rejected; 6 malformed timestamp forms rejected; outcome-vocabulary key injection rejected (extra-key closed set + case-insensitive blocklist matcher); duplicate (game_id, arm_id) rejected; wrong chain parent rejected; wrong GENESIS anchor rejected; 9 p_home format/domain rejects + strict open-boundary accepts (0.000001/0.999999); arm outside frozen registry rejected (R4); PRE/season/schema_version enums rejected; supplied row_hash mismatch rejected; tampered line flagged [1] and validate_for_scoring raises; competent tamper with recomputed hash flagged at child [2] and further appends refused (fail-closed linkage check); genesis anchor tamper flagged [0,1] and expected-digest mismatch raises; blank line and foreign outcome-key line flagged; create refuses existing + filename law; append fails closed without genesis binding; tampered genesis sidecar refused (self_hash); postpone-later keeps rows VALID_PROSPECTIVE with notice emitted; postpone-earlier-past-record marks INVALID_PROSPECTIVE; cancel gives NOT_SCORED_CANCELLED (notice-derived and input-derived); game-level NOT_RUN disclosure; freeze write-off NOT_RUN; missing actual data class; full 3-game weekly-batch end-to-end."
+    }
+  ],
+  "authority_claims": [
+    "Schema conformance: implements lanes/C_PROTOCOL/LEDGER_SCHEMA.md exactly — closed 17-field rows in the §2 binding field order; row_hash = sha256 over canonical JSON (separators ,/:, ensure_ascii=false, UTF-8) of the row without row_hash including prev_row_hash (§3); line 1 anchors prev_row_hash = 'GENESIS:' + sha256(freeze_packet_bytes) (§1); R1 chain full re-hash walk; R2 strict recorded_at_utc < kickoff_utc at append re-checked at scoring vs ACTUAL kickoff (actual > recorded AND actual >= freeze); R4 arm registry enforcement when a registry is bound; R5 duplicate (game_id, arm_id); R6 p_home string with exactly 6 fractional digits in strict (0,1); R7 game_type REG/POST and season >= 2026; R8 no-outcome blocklist (schema list ∪ dispatch list: score/pts/result/winner/outcome/final/margin/total/spread, case-insensitive substring); R9 append-only by construction (only write path is a locked end-append, no rewrite/delete API); R10 scoring classes VALID_PROSPECTIVE / INVALID_PROSPECTIVE / NOT_SCORED_CANCELLED / NOT_RUN plus game-level not_run_games (played games with no rows), only VALID_PROSPECTIVE aggregate-eligible, nothing inferred PASS from absence.",
+    "Canonical-order decision: LEDGER_SCHEMA.md §2/§3 declare the §2 field order binding for canonical serialization; the dispatch packet's 'sorted keys' shorthand is superseded by the schema (named design authority). Written lines and hashes both use §2 field order; hash is independent of caller dict insertion order (tested).",
+    "Append-time fail-closed posture: every append re-parses the whole file under fcntl.flock, re-hashes every stored row, and verifies full linkage (genesis anchor + prev-row continuity) before writing; any doubt raises LedgerIntegrityError and the ledger refuses extension. fsync after each append.",
+    "Postponement/cancellation mechanism (schema-silent, documented for the freeze packet): hash-chained notice rows POSTPONEMENT_NOTICE / CANCELLATION_NOTICE inside the same append-only file (fixed field order, own §3-style hashing) so disclosure is tamper-evident and nothing is edited in place; postponed-later rows stay VALID (re-confirmed vs actual kickoff at scoring), moved-earlier-past-record rows classify INVALID_PROSPECTIVE at scoring with affected_row_indices disclosed in the notice; cancel classifies NOT_SCORED_CANCELLED with no outcome join, honored from the notice OR the scoring-time cancelled_games input.",
+    "PREP invariant honored: no real games, no real predictions, no metrics on outcomes, no GO; the ledger file does not exist by construction (create_ledger refuses to overwrite; nothing was created outside tmp_path test fixtures)."
+  ],
+  "known_limitations": [
+    "Schema-silent mechanisms adopted by the tool and needing successor freeze-packet restatement: (1) genesis-record sidecar <ledger>.genesis.json (self-hashed; binds genesis digest, cycle id, season, optional arm registry, optional freeze timestamp); (2) notice row types POSTPONEMENT_NOTICE/CANCELLATION_NOTICE; (3) fifth scoring class NOT_SCORED_NO_ACTUAL_DATA for rows whose game has no entry in the actual-kickoff input (excluded, disclosed).",
+    "validate_for_scoring with freeze_utc=None (and none genesis-bound) skips the NOT_RUN freeze gate and reports freeze_check SKIPPED; the successor must bind a freeze timestamp for the full R2 gate.",
+    "A full-file rewrite that recomputes every hash and keeps the correct line-1 GENESIS anchor is undetectable by chain mechanics alone; detection relies on the freeze packet pinning the GENESIS digest (R1) plus operational per-batch publication of the tail hash (PROTOCOL §8).",
+    "R3 semantic digest law (arm_config_digest/inputs_digest match the freeze registry, model_version commit resolves, inputs manifest recomputes) is a scoring-time check against the freeze packet — out of scope for this module, which enforces only the 64-hex structural form at append.",
+    "Two-commit backfill procedure (authorized by the task instruction, same precedent as Lane C PROTOCOL §11.5): commit_sha 177fa4ef7a0b7066dd0c806fc31d6258b0b97d44 is the artifacts commit; this handoff was backfilled and committed in a second tiny commit, so the handoff file itself postdates that sha.",
+    "Concurrency posture: fcntl.flock protects module-cooperating writers only; non-cooperating filesystem tampering is caught by verify_chain, not prevented (documented in README)."
+  ],
+  "incidents": [],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "research/control/NFL-WINPROB-NG-PREP-V1/ledger/nfl_ng_ledger.py",
+    "research/control/NFL-WINPROB-NG-PREP-V1/ledger/test_ledger_synthetic.py",
+    "research/control/NFL-WINPROB-NG-PREP-V1/ledger/README.md"
+  ]
+}
