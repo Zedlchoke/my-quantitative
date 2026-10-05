@@ -1,0 +1,57 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nfl-winprob-ng-scored-v1-F-FREEZE",
+  "cycle_id": "NFL-WINPROB-NG-SCORED-V1",
+  "role": "freeze-lane",
+  "lane": "F_FREEZE",
+  "branch": "orca/nfl-winprob-ng-scored-v1-integration",
+  "dispatch_sha": "69798a8389f9992d7f59adc170890013423610e8",
+  "actual_start_sha": "69798a8389f9992d7f59adc170890013423610e8",
+  "commit_sha": null,
+  "changed_paths": [
+    "lanes/F_FREEZE/FREEZE_PACKET.md",
+    "lanes/F_FREEZE/freeze_digests.json",
+    "lanes/DISPATCH/handoff_F_FREEZE.json"
+  ],
+  "tests": [
+    {
+      "command": "digest-arithmetic verification pass (sha256 recompute of every cited file vs its artifact claim; internal consistency of freeze_digests.json: freeze_packet.sha256 == actual packet bytes; genesis payload sha256 recompute == pinned value)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "notes": "Interpreter /Users/hoangminhlong/my-quantitative/.venv/bin/python only. No metrics, no ledger writes, no git commands, no writes outside lanes/F_FREEZE/** + this handoff. Zero mismatches: games.csv 486d7227...cb35e387a9fc, LICENSE 2a82ac9b...cfb9111, schedules timestamp.json e7710608..., all 13 lane-T handoff output sha256 claims, and all predecessor artifact digests recompute MATCH from disk."
+    }
+  ],
+  "authority_claims": [
+    "All 10 dispatch items bound in lanes/F_FREEZE/FREEZE_PACKET.md from landed bytes: (1) final arm table — fielded 3 arms B0 (p=0.571399049390 = 2765/4839, re-verified by arithmetic), B1_STAR (K=40/HCA=0/gamma=2/3/mu=1500, frozen, selection-exempt), C3 (theta=50, config C3_T050, pooled inner LL 0.648348, dLL −0.004149 [−0.009944, +0.001837], slope 1.0788 in band, clean shuffled control) + diagnostic-only C3_TWIN; released slots 3 (C1 kill, slope 1.6260, point dLL >= 0), 4 (C2 kill + MACHINERY_SUSPECT — venue_label_permutation control won, evidence retained, does NOT un-kill), 6 (C4 G-INT fail, wrong direction, slice CIs exclude 0 on the wrong side), 7 (reserve — owner named none), 8–9; per-arm arm_config_digest computed over canonical JSON (sorted keys, separators ,/:, no whitespace, ensure_ascii=false) — B0 bea17ae4..., B1_STAR 5c97475c..., C3 f7cde498..., C3_TWIN c86b3710....",
+    "(2) Selection ledger frozen: lanes/T_SELECT/SELECTION_LEDGER.jsonl sha256 ff698d5d... (byte-identical copy in ~/.my-quantitative-data/nfl-ng-scored-v1/selection/), 38 rows counted by this lane = 28 config + 6 control + 4 arm_verdict; tie-break rule stated (fewer active params, then lexicographic config id; no tie among gate-eligible winners).",
+    "(3) Data freeze: games.csv sha 486d7227... (re-hashed from disk, 2,182,513 bytes, compile 2026-10-05T05:46:22Z, byte-identical to predecessor r1 snapshot); pbp 2000-2017 pinned via DOWNLOAD_MANIFEST.json sha bd53215d... (manifest cited instead of re-hashing 315 MB, per dispatch); LICENSE sha 2a82ac9b... = pin; TRAIN 2000-2018 (5,057 rows, 9 ties, 2022=271 REG); 1999 excluded (259/259 gametime empty); fallback X NOT ACTIVATED; neutral-site = location column, 51 Neutral 2000-2018, HCA=0 law; 32-lineage map restated (renames SD->LAC 2017, STL->LA 2016, OAK->LV 2020; pbp already lineage-normalized, games.csv side applies the map).",
+    "(4) Windows: SPENT 2019-2025 cite-only; 2026+ prospective ledger-only; 63 played NOT_RUN forever (count frozen, epoch 2026-10-05T03:13:51Z); 209 future at registration (recount instant 2026-10-05T09:06:07Z); earliest future kickoff 2026-10-06T00:15:00Z 2026_04_ATL_NO; Option B first prospective TARGET = week-5 opener 2026_05_TB_DAL 2026-10-09T00:15:00Z; capture rule mechanical (week capturable iff after owner GO a batch records >=6h before that week's first kickoff; no backfill, no retrospective rows ever).",
+    "(5) Ledger law: nfl_ng_ledger@1 with predecessor provenance (implementation on-disk sha256 6fb0a1d4... in NFL-WINPROB-NG-PREP-V1 control tree; handoff_E.json records artifact commit 177fa4ef... and 42/42 synthetic tests); recorder = this cycle's controller (single writer, recorded_by per row); cadence weekly batch + playoff rounds; margin >=6h; O-2 row classes (VALID_PROSPECTIVE / INVALID_PROSPECTIVE / NOT_SCORED_CANCELLED / NOT_RUN + lane-E fifth class NOT_SCORED_NO_ACTUAL_DATA); postponement/flex/cancel laws quoted verbatim from PROTOCOL §4.",
+    "(6) GENESIS: canonical payload spec defined (schema nfl_ng_scored_v1_genesis@1, cycle_id, freeze_digest = sha256 of FREEZE_PACKET.md file bytes = 9978a950cfa52f531c6cc1ccf650ca46cfcecb5a0d38c8468f6a66381ef70f6e, arm_set_ids [B0, B1_STAR, C3], diagnostic_arm_ids [C3_TWIN], code_freeze_sha placeholder PENDING_CONTROLLER_ADDENDUM, created_at placeholder POST_GO_TIMESTAMP); canonical payload sha256 PINNED = ae99a803dfcc280e85d46bdc192a5b1a042320af127f688d66481ba3f1aaa3e7 (first 16: ae99a803dfcc280e); real GENESIS written only after owner GO; only the two placeholder fields may be substituted at GO — any other change invalidates the pin (program stop).",
+    "(7) Metrics/gates verbatim from PROTOCOL §5 (LL primary; Brier + reliability + slope band [0.85,1.15]; kickoff-date-cluster bootstrap 10,000 resamples seed 20261005; T1-T3; R1-R3; playoffs separate; >=2-season rule; no outcome-based early stopping); candidate-ranking rule REGISTERED: C = lowest pooled prospective LL among fielded candidate slots = C3 by uniqueness.",
+    "(8) Power disclosure quoted verbatim from predecessor FREEZE_PACKET_DRAFT §6 (MDD 0.026-0.056 @1 season; 0.019-0.039 @2; effects 0.002-0.010 starved; >=2 completed prospective seasons for strong conclusions).",
+    "(9) Code freeze: on-disk sha256s recorded for lanes/T_SELECT/arms.py (19dddd3f...), select.py (8f733d45...), boot.py (0674b95f...); CODE_FREEZE_SHA (integration HEAD containing this packet) is measured and appended by the controller in the immediately-following control commit (two-step procedure, precedent-authorized per PROTOCOL §11.5 and handoff_E).",
+    "(10) Boundaries restated: GO phrase verbatim 'GO NFL WINPROB NG SCORED V1 PROSPECTIVE', owner-only at this cycle's gate after the A7 verdict, never typed/consumed by agents; internal-research-only rights posture, fail-closed on publication/commercial."
+  ],
+  "known_limitations": [
+    "This lane assembles evidence only; the freeze packet is not a GO and does not open the prospective window. Nothing here consumes trial budget or records a ledger row.",
+    "CODE_FREEZE_SHA and the real GENESIS (with real created_at) are deliberately absent — they are controller addendum items by the registered two-step procedure; the GENESIS pin covers the placeholder-form payload, and only created_at/code_freeze_sha substitution is legal at GO.",
+    "Predecessor branch head 14f28d62... (dispatch-supplied) was NOT verified — git commands are prohibited in this lane; the wave-4 ledger port must reproduce nfl_ng_ledger.py at sha256 6fb0a1d4... or disclose the delta and reconcile the head value.",
+    "pbp 2000-2017 per-file sha256s are pinned via DOWNLOAD_MANIFEST.json (bd53215d...) and were intentionally NOT re-hashed here (315 MB; dispatch directs manifest citation).",
+    "freeze_digests.json contains the packet sha and genesis pin but necessarily cannot contain its own sha; handoff_F_FREEZE.json (this file) is the first artifact that may cite it (1e9a9d9ce23501c6bd90660dd30cac5061164401831893fd80acfe9ad2cef631).",
+    "changed_paths/commit_sha: tree_status uncommitted-by-design — the cycle's integration commit (and thus CODE_FREEZE_SHA) does not exist until the controller's control commit."
+  ],
+  "incidents": [],
+  "tree_status": "uncommitted-by-design",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/F_FREEZE/FREEZE_PACKET.md",
+      "sha256": "9978a950cfa52f531c6cc1ccf650ca46cfcecb5a0d38c8468f6a66381ef70f6e"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/F_FREEZE/freeze_digests.json",
+      "sha256": "1e9a9d9ce23501c6bd90660dd30cac5061164401831893fd80acfe9ad2cef631"
+    }
+  ]
+}
