@@ -1,0 +1,47 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "wbap-d-verify",
+  "cycle_id": "WNBA-WINPROB-PREP-V1",
+  "role": "quant-auditor",
+  "lane": "D_VERIFY",
+  "dispatch_sha": "18fa135b69fb75b346f0e8a0298d624bc1879598",
+  "actual_start_sha": "18fa135b69fb75b346f0e8a0298d624bc1879598",
+  "commit_sha": "NOT_COMMITTED_CONTROLLER_LANDED",
+  "changed_paths": [
+    "lanes/D_VERIFY/VERIFICATION_REPORT.md",
+    "lanes/D_VERIFY/handoff_D.json",
+    "lanes/D_VERIFY/verify_d.py (independent read-only recomputation script, kept for reproduction)"
+  ],
+  "tests": [],
+  "authority_claims": [
+    "VERDICT VERIFICATION_FAIL (scoped): 1 MAJOR + 4 MINOR defects, 0 BLOCKER/CRITICAL; every byte-level count, hash, rights statement, PIT verdict, mechanism/protocol freeze and boundary check reproduced exactly - the failure is confined to the franchise-lineage resolution (D-1) and its documentation ripples",
+    "CHECK 1a-1d PASS (independent recompute from corpus bytes, script lanes/D_VERIFY/verify_d.py): ESPN 6,029 rows/6,029 unique ids/25 seasons; stats 7,009/7,009/30 seasons with game_id '10'+type+YY structure perfect (2->RS 6,494, 4->PO 515); census per season identical (ESPN real 5,988 = 5,230 RS-excl-Cup + 301 Cup + 457 PO; stats real 7,008 = 6,493 RS + 515 PO; 1997=115 (112+3); 2020 Wubble 147/147; 2021 210/209; 2022 240/239; 2023 261/260; 2024 263/262; 2025 311/310; 2026 ESPN 360 = 341 played + 17 pre + 2 postponed vs stats 340; rowdiff +-3 for 2002-2025, +20 in 2026); filter law exact (17 non-post rows all 2026 all pre-filled 0-0 with 0 null scores; exactly 1 forfeit 401018942/stats 1021800162 2018-08-03 ET WAS-LVA 0-0 blank wl; exactly 2 postponed 401507167 + 401857072; 21 All-Star alias rows ESPN / 0 stats; 7 TBD pre rows 2026-10-17..2026-11-01; 16 neutral = 10 ASG + 6 real; 301 Cup rows all season_type=2)",
+    "CHECK 1c PASS: independent two-pass join reproduces lane A exactly - 5,954 window matches all at ET-date offset 0 (0 at +-1), 24 ambiguous pairs + 25 score fallbacks (24 b2b series + 2019 suspended 401156333<->1021900079 identical 70-99), 9 ESPN-only rows (3 regular 270620018/290709009/400182104 + 6 Cup finals 2021-2026), 1,029 stats-only (1,022 pre-2002 + 7 extras 1040200103/1040200133/1020300043/1020300141/1020400001/1020400002/1020400014), union 7,017",
+    "CHECK 1d PASS: timestamp law VERIFIED incl. the venue-local correction - ESPN schedule date==game_date_time 6,029/6,029 and date==start_date 6,029/6,029 (per-file ISO8601); 2026 renders fixed -0400 on all 360 rows incl. Vegas/Phoenix/Seattle homes (cosmetic); box instant==schedule instant 312/312 with 624/624 fixed -0400 rows, box game_date==ET date 100.0% vs UTC 53.53%; pbp wallclock 100% Z, first event median +3.15 min; stats game_date==ET date 5,954/5,954; attempt-1 superseded values confirmed on disk in measurements_a.json (94.03%, 360 unequal, 151/1,170 residuals)",
+    "CHECK 1e SPLIT: rename boundaries PASS (UTA 1997-2002/SAN 2003-2017/DAL 2016+/LVA 2018+; DET 1998-2009/TUL 2010-2015; ORL 1999-2002/CON 2003+; PHO->PHX 2025; POR 2000-2002 vs PDX 2026; defunct CHA 2006/CLE 2003/HOU 2008/SAC 2009/MIA 2002; expansion CHI 2006/ATL 2008/GSV 2025/TOR 2026) - but the LINEAGE sub-check FAILS as D-1 (MAJOR): team_key_table.csv encodes UTA->SAN->DAL 2016 'merger' with DET_TUL terminated 2015 and LVA a fresh stream; bytes refute it (SAN rows exist 2016 AND 2017; SAN+DAL coexist as 2 of 12 teams both seasons, so SAN->DAL-2016 is impossible in-data) and it contradicts the flagged real history TUL->DAL 2016 + SAN->LVA 2018 and the spec's own LVA row; per Lane C 8.3 B1 stays blocked until the table is rebranched (fix is narrow and data-driven: DAL into the DET/TUL lineage, LVA as modern key of UTA/SAN)",
+    "CHECK 1f PASS: re-hashed 5 corpus files byte-exact vs raw/audit_results.json manifest (99 entries, digest_mismatches []) and 5 new artifacts (team_box_2013 e2f7510a..., game_rosters_2013 49571374... match DOWNLOAD_MANIFEST + GitHub digests; release_depth_census.json adf01fec... matches manifest sentence)",
+    "CHECK 2 PASS (rights): CC BY 4.0 badge + MIT code license verbatim in raw/ATTRIBUTION.md (sportsdataverse-data release store, nflverse-family pattern); extensions pulled as public GitHub release assets only; lane A scripts and my verifier contain zero network code (no scraping of wnba.com/stats.wnba.com/ESPN/SR); SR FAIL 5(11) + balldontlie BLOCKED_NO_KEY recorded; maintainer-confirmation caveat honestly recorded",
+    "CHECK 3 PASS (PIT): 12 feature classes adjudicated (4 PIT_SAFE-by-construction, 1 with-conditions, 2 POST_GAME_FACT, 1 strictly-prior-aggregates-only, 2 NOT_RUN_PIT, 1 identity-only, 1 out-of-scope, 1 standings) with 5 measured hazards; player_box active/DNP/starter/reason banned as pre-game features consistently in A/B/C; injury/lineup NOT_RUN_PIT; strictly-prior ROLLING LAW in all three lanes; W-H2 per-season roster census honestly still NOT_RUN (gate pending under lane B's gate law)",
+    "CHECK 4 PASS (independence): NBA/NFL numbers appear only as labeled cross-league context; no NBA parameter imported as a WNBA value (HCA grid forced to include 0, brackets [0,150]); T1/T2/T3 + fold/bootstrap machinery inherited as shapes, referenced NBA terminal machinery file exists; no NBA splits imported",
+    "CHECK 5 PASS (mechanisms/protocol): CI-based frozen falsifiers with designed-null parents; negative controls per hypothesis (twins never wins); banned sources appear only as ban statements; arm budget 9 ceiling / 5 allocated incl. B0 + fresh WNBA B1; era 1997-2001 frozen warm-up-only (1,022 rows, all score-populated); GO law quoted verbatim; prospective append-only ledger law present",
+    "CHECK 6 PASS (trial accounting): zero sklearn/log_loss/fit/predict hits in lanes/; registry budget 0/0; go_phrase empty/NOT_REGISTERED; no GO registered or consumed",
+    "CHECK 7 PASS (boundaries): no S1-access references (only C's unrelated S1-S4 selection-block labels); no credentials; no push/commit by lanes; foreign worktrees nfl-winprob-ng-prep-v1, winprob-ng-prep-v1, nba-winprob-ng-prep-v1 (+ terminal nba-winprob-scored-v1) present and clean, untouched; registry row coherent (ACTIVE_LIGHT, budget 0/0, worktree/branch match, s1 SEALED_UNTOUCHED); registry head still 673b4f27 recorded as EXPECTED-PENDING controller update, not a defect",
+    "MINOR defects D-2..D-5 recorded with numbers: DET/TUL ESPN mislabel spans all ESPN seasons 2002-2009 (318 rows), not just the 2002 file; spec alias list omits WIL/STE (5 of 21 rows); spec says 7 Cup finals (6 per bytes/section 6; detector double-counts one 2024 neutral Cup group game); Lane C inherits stale prior-memo counts (15 neutral vs 16; 14 All-Star + incomplete alias set vs 21/13-token) in verbatim-inherit sections - must be reconciled at successor freeze"
+  ],
+  "known_limitations": [
+    "Lineage real-history branch (TUL->DAL 2016, SAN->LVA 2018, Sparks never move) is taken from the plan/task facts and Lane C's flagged conflict; name-multiset bytes alone cannot pick the license holder - but the table ALSO contradicts bytes outright (SAN present 2016-2017 vs the table's SAN ending 2015), so the FAIL does not rest on external history alone",
+    "Verification is against the corpus snapshot as archived (ESPN files built 2026-10-01, stats 2026-10-04); 2026 counts are as-of-snapshot by design",
+    "Lane A's measure_a2.py was audited but deliberately NOT re-executed (it rewrites measurements_a2.json + team_key_table.csv); an independent implementation was used instead so lane outputs were never modified by the verifier",
+    "NBA terminal machinery file (PROTOCOL_EVAL.md) existence verified and machinery restated in Lane C's own text; its contents were not deep-read",
+    "Lane B's W-H2 hard gate (per-season roster coverage >=90% team-seasons 2003+) was not adjudicated by lane A (asset-level census + 2013 sample only) - remains NOT_RUN/PENDING by design; recorded, not repaired",
+    "Attempt-1 provenance: two of the four superseded corrections verified numerically on disk (94.03% equality, 151/1,170 residuals); the season-type-zeros and empty-DST-sample corrections verified structurally (markers present in measurements_a.json)"
+  ],
+  "incidents": [],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "lanes/D_VERIFY/VERIFICATION_REPORT.md",
+    "lanes/D_VERIFY/handoff_D.json",
+    "lanes/D_VERIFY/verify_d.py"
+  ]
+}
