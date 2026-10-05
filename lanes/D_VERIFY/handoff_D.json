@@ -1,0 +1,106 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nflng-d-verify",
+  "cycle_id": "NFL-WINPROB-NG-PREP-V1",
+  "role": "quant-auditor",
+  "lane": "D_VERIFY",
+  "date_utc": "2026-10-05",
+  "dispatch_sha": "71c04cf58f357b7aa50e854471aaa2223296cabd",
+  "actual_start_sha": "71c04cf58f357b7aa50e854471aaa2223296cabd",
+  "commit_sha": "COMMIT_SHA_PLACEHOLDER_BACKFILL_IN_SECOND_COMMIT",
+  "branch": "orca/nfl-ngprep-d-verify",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-prep-v1/lane-d-verify",
+  "changed_paths": [
+    "lanes/D_VERIFY/VERIFICATION.md",
+    "lanes/D_VERIFY/handoff_D.json"
+  ],
+  "tests": [
+    {
+      "command": "git -C <worktree> rev-parse --abbrev-ref HEAD && git -C <worktree> rev-parse HEAD && git -C <worktree> status --porcelain",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "intake: branch orca/nfl-ngprep-d-verify, HEAD == 71c04cf58f357b7aa50e854471aaa2223296cabd == dispatch/base SHA, tree porcelain-clean before any lane D write"
+    },
+    {
+      "command": "shasum -a 256 + stat -f %z on 4 DOWNLOAD_MANIFEST.md files (play_by_play_2024.parquet, games.csv, nflverse-data_LICENSE.md, injuries_2026.csv)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "D-1: 4/4 sha256 and byte-size matches incl. largest recorded file (20,597,560 B pbp 2024)"
+    },
+    {
+      "command": "python whitespace-normalized verbatim search of held LICENSE.md + DATASETS.md quotes; shasum of DATASETS.md + schedules/injuries timestamp.json",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "D-2: license sha matches pin; CC BY 4.0 title + grant language present; section-4 quote verbatim; DEFECT D2-a (minor): two DATA_AUDIT 'verbatim' quotes are paraphrases; provenance spot-check hashes+contents match"
+    },
+    {
+      "command": ".venv/bin/python csv recount of 2026 season in raw_schedules_20261005/games.csv (kickoff_utc = gameday+gametime in America/New_York -> UTC)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "D-3: 272 REG rows; 62 scored; 63 pre-epoch (incl. 2026_04_DET_CAR @2026-10-05T00:20:00Z, unscored); 209 post-epoch, 0 scored; earliest future 2026-10-06T00:15:00Z = 2026_04_ATL_NO; all GAMES_2026_CLASSIFICATION.md numbers reproduced exactly"
+    },
+    {
+      "command": "head -1 injuries_2026.csv injuries_2025.csv + header grep for date/time/modif/publish",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "D-4: 16-column header identical to INJURY_PIT_VERDICT claim in both seasons; zero timestamp-like columns; no source cleared PIT; consistent with PROTOCOL section-9 quarantine"
+    },
+    {
+      "command": "grep -rniE 'log.?loss|brier' lanes/A_DATA lanes/B_MECHANISMS lanes/C_PROTOCOL ~/.my-quantitative-data/nfl-ng-prep-v1/",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "D-5: 0 hits in downloads; 7 hits all design-spec language in Lane C; historical values (0.6407/0.6935/-0.0528) traced to terminal scored_summary.json bytes; no newly computed metric on 2026 outcomes"
+    },
+    {
+      "command": "grep structural assertions on MECHANISMS_NFL_NG.md / PROTOCOL_NFL_NG.md / LEDGER_SCHEMA.md (full-text reads)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "D-6: 3 candidates + 1 conditional (C1/C2/C3 + C4 gated, starved-by-design); no re-grid of rejected mains (update laws frozen at B1*); falsifier+negative control+power on all four; REJECT section with 8 entries incl. MOV. D-7: R2 recorded_at_utc < kickoff_utc enforced append+scoring; no-outcome fields + R8 vocabulary guard; 9-slot arms incl. B0 + B1* K=40 HCA=0 gamma=2/3, slots 8-9 released; playoffs separate; >=2-season rule section 7; seed INHERIT 20261005; examples SYNTHETIC"
+    },
+    {
+      "command": "python json.load + field assertions on handoff_A/B/C.json",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "D-8: 3/3 valid JSON, schema zcode_orch_v3_handoff@1, task_ids nflng-a-data/nflng-b-mech/nflng-c-proto, dispatch_sha = actual_start_sha = fce0b14febcaec6e924cb1bf6629ccdeeb47c5e3, commit_shas resolve as lane-branch tip commits, paths match dispatch packets + state.json"
+    },
+    {
+      "command": "researchctl.py cycle list; researchctl.py locks inspect; git status/rev-parse integration worktree; git merge-base fce0b14f <lane branches>; git diff --name-only fce0b14f <branches>",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "D-9: registry row NFL-WINPROB-NG-PREP-V1 ACTIVE_LIGHT 0/0 head 71c04cf branch orca/nfl-winprob-ng-prep-v1-integration; locks FREE_PROVEN; integration clean at 71c04cf; all lane branches based on fce0b14f; lane diffs contain only their own lane-dir files"
+    },
+    {
+      "command": "find lanes/ research/control/NFL-WINPROB-NG-PREP-V1/ for trial/ledger files; read event_log.jsonl; budget fields",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "D-10: 0 scored; no TRIAL_LEDGER written by this cycle anywhere (full-tree ledger hits are frozen artifacts of historical cycles); control dir = state.json + single G0_BOOTSTRAP event; budget 0/0 in registry and state.json; no GO phrase registered/consumed"
+    }
+  ],
+  "authority_claims": [
+    "SUMMARY VERDICT: PASS — 0 blocking defects across D-1..D-10; all claims of lanes A/B/C verified against bytes (hashes, headers, counts, JSON fields, registry state).",
+    "D-1 PASS: 4/4 re-hashes (shasum -a 256) + byte sizes match DOWNLOAD_MANIFEST.md exactly, incl. the largest recorded file play_by_play_2024.parquet (20,597,560 B, sha 3fd2896b…8ef8af6a3b) and the fresh schedules games.csv (338d7fe0…71d5b594f) that underpins the 2026 classification.",
+    "D-2 PASS w/ defect D2-a (MINOR, non-blocking): held nflverse-data_LICENSE.md sha256 2a82ac9b…cfb9111 matches pin; 'Creative Commons Attribution 4.0 International Public License' title + genuine grant vocabulary present in held bytes; section-4 Sui Generis quote verbatim. DEFECT (reported, NOT repaired): DATA_AUDIT section-1 labels two 'verbatim' quotes that are paraphrases of the held text (grant sentence and capitalized 'to produce, Reproduce, and Share Adapted Material'; 'perform, Display, and communicate' appears nowhere in the file); attribution quote elided with dropped '(s)'. Rights conclusion unaffected (license is genuinely CC BY 4.0). Provenance spot-check: nfldata_DATASETS.md sha 8835ca9c…03bf4 matches manifest; schedules timestamp.json sha fa921041…4bd119 and content {\"last_updated\":\"2026-10-04 23:16:28 EDT\"} match manifest verbatim; DATASETS.md quoted semantics (gametime ET, Home/Neutral, 'Data begins with the 2006 NFL season') verbatim-found.",
+    "D-3 PASS: independent python recount of 2026 from the held fresh games.csv reproduces every GAMES_2026_CLASSIFICATION.md number: 272 REG scheduled (weeks 1-18); 62 with final scores; 63 kickoff_utc <= epoch 2026-10-05T03:13:51Z (62 scored + boundary 2026_04_DET_CAR kickoff 2026-10-05T00:20:00Z, unscored); 209 post-epoch with 0 scores; 63+209=272; earliest future kickoff 2026-10-06T00:15:00Z = 2026_04_ATL_NO (next 2026_05_TB_DAL 2026-10-09T00:15Z, 2026_05_PHI_JAX 2026-10-11T13:30Z); all 63 played-before-epoch games NOT_RUN prospective per the prospective law (epoch lower bound; per-row recorded_at_utc < kickoff_utc is the real authority). Schema/coverage counts only — no win-prob metric computed.",
+    "D-4 PASS: INJURY_PIT_VERDICT.md clears NO source as PIT (all NOT_RUN_PIT); its claimed 16-column schema matches the actual headers of held injuries_2026.csv and injuries_2025.csv character-for-character; zero date/time/modif/publish columns (grep exit 1); consistent with quarantine law (PROTOCOL section 9: injuries NOT_RUN_PIT unless Lane A clears — Lane A did not clear; odds QUARANTINED — audit measures presence only; pbp current-game features NOT_RUN_PIT).",
+    "D-5 PASS: grep -rniE 'log.?loss|brier' = 7 hits, ALL design-specification language in Lane C (metric definitions and gate shapes for the successor cycle); 0 hits in downloads; Lane B's 0.6407/0.6935/-0.0528/CI-half-width values traced to the TERMINAL cycle scored_summary.json bytes (0.6407092590929282, 0.6935481570681993 present). No newly computed value on 2026 outcomes anywhere.",
+    "D-6 PASS: exactly 3 candidates (C1 SOS-Elo, C2 home/away split, C3 offseason EPA prior) + 1 conditional (C4 short-week x away, gated, starved by design); no re-grid of rejected K/HCA/rest mains (update laws frozen at B1*, ancestry vetoes explicit); every candidate carries frozen falsifier + negative control (time-shuffled twins; venue-label permutation for C2) + power estimates; REJECT section present with 8 entries incl. MOV/blowout-weighted Elo OUT per ancestry.",
+    "D-7 PASS: LEDGER_SCHEMA R2 forbids retrospective rows (recorded_at_utc < kickoff_utc strictly, append-time enforcement + scoring-time revalidation vs actual kickoff); no outcome fields + R8 outcome-vocabulary guard; 9-slot arm enumeration incl. B0 (slot 1) and B1* = own-Elo K=40 HCA=0 gamma=2/3 (slot 2), slots 8-9 released; playoffs scored separately, never pooled into RS headline; >=2-new-season rule section 7; seed INHERIT 20261005; all examples SYNTHETIC-labelled with fabricated teams/ids/digests.",
+    "D-8 PASS: handoff_A/B/C all valid JSON, schema zcode_orch_v3_handoff@1, correct task_ids (nflng-a-data / nflng-b-mech / nflng-c-proto), lanes, cycle_id, dispatch_sha = actual_start_sha = fce0b14febcaec6e924cb1bf6629ccdeeb47c5e3, at the exact handoff paths of their dispatch packets and state.json; commit_shas f2e800c8/3810e2c4/02fc0434 resolve as tip commits of their lane branches with 'NFL-NG-PREP lane X:' subjects.",
+    "D-9 PASS: registry row NFL-WINPROB-NG-PREP-V1 ACTIVE_LIGHT budget 0/0 head 71c04cf branch orca/nfl-winprob-ng-prep-v1-integration; locks inspect FREE_PROVEN (flock free); integration worktree clean at 71c04cf58f357b7aa50e854471aaa2223296cabd; git merge-base confirms all lane branches (a-data, b-mech, c-proto, d-verify) based on fce0b14f; lane branch diffs vs fce0b14f contain ONLY their own lane-dir files (5+3+3); integration adds exactly those 11 files.",
+    "D-10 PASS: 0 scored outcomes this cycle; no TRIAL_LEDGER write under any lanes/ dir or the cycle control dir (cycle writes = 11 lane artifact files total); control dir holds only state.json + event_log.jsonl (single G0_BOOTSTRAP event, 'budget 0/0; no GO phrase'); budget 0/0 in registry and state.json; go_phrase null / NOT_REGISTERED. Full-tree ledger files belong to frozen historical cycles and were untouched."
+  ],
+  "known_limitations": [
+    "D-2 verification is against the sha-pinned HELD license bytes ( Lane D performed no downloads per dispatch); upstream liveness of the quoted URL is inherited from the manifest's pull-time record, whose hash matches the held bytes.",
+    "DEFECT D2-a (minor, non-blocking) reported, never repaired, per verify-only law: DATA_AUDIT_NFL_NG.md section-1 'verbatim' quote labeling is inaccurate for two quotes; rights verdict unaffected.",
+    "Lane D recomputation of kickoff UTC uses the documented ET->UTC rule; stored gametime values are naive ET times, consistent with the audited semantics.",
+    "Lane D commit_sha follows the task-authorized two-commit backfill procedure (artifacts commit, then this file's commit_sha backfill commit); first commit carries the placeholder string."
+  ],
+  "incidents": [],
+  "tree_status": "clean (two-commit procedure: artifacts commit + handoff commit_sha backfill commit); no writes outside lanes/D_VERIFY/**; read-only elsewhere; no push/merge/rebase; no git add -A; no downloads; no metric computed on any outcome",
+  "workers": 0,
+  "outputs": [
+    "lanes/D_VERIFY/VERIFICATION.md",
+    "lanes/D_VERIFY/handoff_D.json"
+  ],
+  "recommended_next_action": "Controller may treat lanes A/B/C as verified with 0 blocking defects; the single minor defect D2-a (verbatim-quote labeling in DATA_AUDIT section 1) stands as reported for the successor cycle to note — the rights verdict, sha pins, and all downstream claims are unaffected. Successor scored cycle still requires its own fresh registration, freeze packet, A7-equivalent gate, and owner typed GO; this PREP cycle registers and consumes no GO."
+}
