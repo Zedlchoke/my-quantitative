@@ -1,0 +1,110 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nbang-a-data",
+  "cycle_id": "NBA-WINPROB-NG-PREP-V1",
+  "role": "quant-explorer",
+  "lane": "A_DATA",
+  "dispatch_sha": "01e747e74303f06e5432b68b5a19180b5635501f",
+  "actual_start_sha": "01e747e74303f06e5432b68b5a19180b5635501f",
+  "commit_sha": "NOT_COMMITTED_CONTROLLER_LANDED",
+  "changed_paths": [
+    "lanes/A_DATA/GAME_UNIVERSE_SPEC_NBA_2016PLUS.md",
+    "lanes/A_DATA/BDL_CROSSCHECK_NBA.md",
+    "lanes/A_DATA/PIT_AUDIT_NBA.md",
+    "lanes/A_DATA/DOWNLOAD_MANIFEST.md",
+    "lanes/A_DATA/handoff_A.json",
+    "lanes/A_DATA/measure_schedule_corpus.py",
+    "lanes/A_DATA/measure_schedule_corpus.json",
+    "lanes/A_DATA/spread_census.json",
+    "lanes/A_DATA/bdl_crosscheck_a_data.py",
+    "lanes/A_DATA/BDL_CROSSCHECK_A_DATA.json",
+    "lanes/A_DATA/bdl_adapter.py",
+    "~/.my-quantitative-data/nba-ng-prep-v1/pbp_2016_2025/ (10 pbp parquets, outside git)",
+    "~/.my-quantitative-data/nba-ng-prep-v1/bdl_spotcheck/ (11 redacted BDL responses, outside git)"
+  ],
+  "tests": [
+    {
+      "command": ".venv/bin/python lanes/A_DATA/measure_schedule_corpus.py",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "69a03bc23ad70f80b109b7caf5444ee428185c58d509af09b5d6100f8ebb8cb9"
+    },
+    {
+      "command": ".venv/bin/python lanes/A_DATA/bdl_crosscheck_a_data.py",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "5a9c75fc512150a559f83d263a9bbd91d7155e01d11be8e4d23b2f420e09408e"
+    },
+    {
+      "command": "inline pandas spread-census over pbp 2016-2026 parquets (reads only)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "437678f50a6991fd77b32874ca65ee1859b2bf7fd375334ddfa66fdb47575f9c"
+    }
+  ],
+  "authority_claims": [
+    "MEASURED VERDICT (data, not control authority): schedule corpus = 14,254 rows / 14,254 unique ESPN game_id across 11 season files 2016-2026; game_id==id on all rows; zero cross-file collisions.",
+    "MEASURED VERDICT: tip law - game_date_time parses on 14,254/14,254; parsed UTC == start_date == date on ALL rows; offset ALWAYS Eastern (-0400/-0500 only), correcting the prior memo's 'venue-local' wording; DST-correct on 6,632/6,632 ET-home rows; 77.3% of rows have UTC calendar date != local game_date.",
+    "MEASURED VERDICT: dedupe/exclusion law reconciles to zero residue: 14,254 raw = 14,168 played + 19 All-Star/Rising-Stars exhibitions + 67 postponed listings; played per season: RS standings-embedded 1,230 x9 seasons / 1,059 (2020) / 1,080 (2021); play-in 37 total (1 in 2020, 6 x6 seasons 2021-2026); playoffs 919 total; Cup finals 3 (2024/2025/2026, flagged extra-83rd-game).",
+    "MEASURED VERDICT: NBA Cup = 67 rows/season 2024-2026 (60 group + 4 QF + 2 SF + 1 final); group/QF/SF are standings-embedded (per-team census = exactly 82 for all 30 teams in 2024); the final is the extra game; flag-and-report-separately law written into the spec.",
+    "MEASURED VERDICT: spread features (game_spread, home_favorite, home_team_spread) are 100% non-null on unique pbp games in EVERY season 2016-2026, superseding the prior memo's 99.7%-on-2026-sample; line timing remains UNVERIFIED_PIT (rides in final payload).",
+    "MEASURED VERDICT: crosswalk re-verified - nba_schedule_crosswalk_2026 joins 1,330/1,330 schedule-2026 rows on espn_game_id with 100% game_date agreement; 538-era join law re-verified (4/126,314 game_id-date shifts incl. known 201506170CLE pair; clean seam 2015-06-16 -> 2015-10-27).",
+    "MEASURED VERDICT: BDL spot cross-check FINAL RUN 22/22 MATCH (date/home/away/score/tip_utc), tip delta 0.0 s on all 22, 11 seasons incl. 2016/2020/2026, 11 requests all HTTP 200; BDL per-date game counts equal hoopR completed counts on all 11 probed dates; NO data-contract blocker.",
+    "PIT VERDICTS: results-derived ratings / schedule-derived rest-travel / box-pbp priors = PIT_PASS conditional on strict tip_utc freeze law (written down); spread line = UNVERIFIED_PIT (diagnostic only, banned as mechanism); injury/roster = NOT_RUN_PIT (no $0 source meets the rights+timestamps bar; candidates and failure reasons listed).",
+    "BUDGET VERDICT: 0 scored computations performed; schema/coverage counting and PIT audits only."
+  ],
+  "known_limitations": [
+    "BDL cross-check is a spot sample (22 games / 11 dates), not a full-population audit; free-tier quota makes more out of scope for PREP.",
+    "ESPN spread semantics (opening vs closing vs snapshot, freeze instant) undocumented upstream - UNVERIFIED_PIT; cannot be cured from this corpus.",
+    "Injury/roster features have no qualifying $0 source this cycle (NOT_RUN_PIT); successor must prove an archive against the PIT bar in PIT_AUDIT_NBA.md.",
+    "4 played games lack pbp (2016: 400828893, 400828600, 400828393; 2026: 401810469) - feature code must tolerate, never silently impute.",
+    "Crosswalk exists only for the 2026 file; fox_game_id/yahoo_game_id are 0/1,416 populated; 86 crosswalk rows (preseason/All-Star/etc.) fall outside the game universe by design.",
+    "All-Star exclusion law is headline-based ('all-star'/'rising stars' in notes_headline); pseudo-team NAMES are era-dependent (EAST/WEST, Team LeBron/Stephen/Giannis/Durant/Chuck/Kenny/Shaq/Candace, Team Stars/Stripes/World, USA/World) and must not be used as the exclusion key.",
+    "Exhibition rows DO carry pbp in some seasons (2016/2021/2022: 1; 2025: 3; 2026: 4) - apply the exclusion law to pbp-derived game lists too.",
+    "ESPN tip time is always Eastern-offset regardless of venue; consumers must canonicalize via the embedded offset and never re-localize by venue.",
+    "2020/2021 seasons are structurally different (COVID/bubble, 72-game): played counts 1,059/1,080 RS; 12 and 32 postponed listings; protocol lane must report these seasons' composition separately if needed.",
+    "This lane makes NO commits (controller lands files); lane artifacts are untracked by design.",
+    "Prior-cycle memo corrections carried: hoopR game_date_time is ET-always (not venue-local); spread coverage re-measured 100% across all seasons."
+  ],
+  "incidents": [
+    "BDL run 1: lane script URL defect doubled the /v1 prefix -> 11x HTTP 404. Root-caused (BDLClient.base already ends /v1), fixed, re-run; NOT a BDL/API failure. 16 diagnostic/failed requests consumed, all >=13 s apart.",
+    "BDL run 2: two protocol defects - 25-game cap consumed budget before the required 2026 season was queried, and 9 abbreviation false-negatives (hoopR NY/NO/WSH/GS/UTAH/SA vs BDL NYK/NOP/WAS/GSW/UTA/SAS) scored as UNMATCHED. Fixed via abbreviation map + 2 games/date; superseded by final run 22/22 MATCH. No mismatch was ever silently absorbed; both defects documented in BDL_CROSSCHECK_NBA.md.",
+    "No quota exhaustion, no rights doubt, no plan conflict encountered; STOP CONDITIONS never triggered."
+  ],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    {"path": "lanes/A_DATA/GAME_UNIVERSE_SPEC_NBA_2016PLUS.md", "sha256": "956917567ef990d12c519b8d598c3963bfa6a1a3c51d0530a677d9de1d881568"},
+    {"path": "lanes/A_DATA/BDL_CROSSCHECK_NBA.md", "sha256": "9c9d67a2aa1b248440eababb5d5625718f500c2c9dabaabdd9512c2cdf19e990"},
+    {"path": "lanes/A_DATA/PIT_AUDIT_NBA.md", "sha256": "7c717f22f4728c4839e00d2099e11f12ed564423759658ec96924121ec651d68"},
+    {"path": "lanes/A_DATA/DOWNLOAD_MANIFEST.md", "sha256": "74cd4c14362201616964b2a0af2095171455962f63bbe0b4d92ac8a8a62b38ae"},
+    {"path": "lanes/A_DATA/measure_schedule_corpus.py", "sha256": "65a751c8dd7a9abe24529726385514a1489310a7dae435d160e8ffd8b95abf79"},
+    {"path": "lanes/A_DATA/measure_schedule_corpus.json", "sha256": "69a03bc23ad70f80b109b7caf5444ee428185c58d509af09b5d6100f8ebb8cb9"},
+    {"path": "lanes/A_DATA/spread_census.json", "sha256": "437678f50a6991fd77b32874ca65ee1859b2bf7fd375334ddfa66fdb47575f9c"},
+    {"path": "lanes/A_DATA/bdl_crosscheck_a_data.py", "sha256": "ecdfb713998abd7fde1a17a343180c1847f2f973d5a0fe1332fc30afeb04f5d0"},
+    {"path": "lanes/A_DATA/BDL_CROSSCHECK_A_DATA.json", "sha256": "5a9c75fc512150a559f83d263a9bbd91d7155e01d11be8e4d23b2f420e09408e"},
+    {"path": "lanes/A_DATA/bdl_adapter.py", "sha256": "8f13cc409129a4aa120b0e6aae37ad44cd33f3149dc3c1d2c6f7df0edac03ce2"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/pbp_2016_2025/play_by_play_2016.parquet", "sha256": "70f594cf09ed2a3d157e91aa433206854ad6b58f403802a1f5679936f9adb151"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/pbp_2016_2025/play_by_play_2017.parquet", "sha256": "06a0426af80e58d50b532aab2334e1f8d84fdf4e3b152a4c5fbbe526612c5aa6"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/pbp_2016_2025/play_by_play_2018.parquet", "sha256": "75ce3720fd3c53e33619ff0309eed3df7e9a8d26447470a9927ebe08229544c6"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/pbp_2016_2025/play_by_play_2019.parquet", "sha256": "8580ff36b58665c43e05beebd78d830e4ef69694cfb7fcf4c284bfa0b9bc8507"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/pbp_2016_2025/play_by_play_2020.parquet", "sha256": "b6413e4c9d0bfd0d57b3b8b4f23c0dfef9487022c5e02da87adb77ff6ac127b5"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/pbp_2016_2025/play_by_play_2021.parquet", "sha256": "1aa4b333bed1c43dfb457f6ff1542f0a47d9e1b6c10461b40e456ed646b5f700"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/pbp_2016_2025/play_by_play_2022.parquet", "sha256": "c7269c55787a43952e071cae9364de378e79f55e956a14d8846b83051ff66537"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/pbp_2016_2025/play_by_play_2023.parquet", "sha256": "4714c6b0c9bad84e2a0579f13474ba6ffb6fdb0a1923f7c890020c5e55373738"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/pbp_2016_2025/play_by_play_2024.parquet", "sha256": "62b609ea487d23aec11e6756d7477a8b1df3a1e57e97fc90c7230b62a5835af1"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/pbp_2016_2025/play_by_play_2025.parquet", "sha256": "e3a61b57e491b71379abd1ad4c0b2617500a3921deadd3319ee9362d49d2a9dc"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/bdl_spotcheck/resp_2016_2015-12-18.json", "sha256": "bac6301a69de62266dadb9becfb81cdbb74d0c80824069ac30215eefed89bc9d"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/bdl_spotcheck/resp_2017_2016-12-23.json", "sha256": "866707d4b6c854de68358144f90415ab6bd259afdaff04f0f8231ce96f5a4df8"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/bdl_spotcheck/resp_2018_2017-12-22.json", "sha256": "c4567088c9a5a98130e93041a50cc26d03abdac533fe064131c66c1bc334b1ed"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/bdl_spotcheck/resp_2019_2018-11-16.json", "sha256": "c493d542fcc50d2816ce8ee0853ba06f3cbe235526c9edce8800f78e28966edb"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/bdl_spotcheck/resp_2020_2019-12-20.json", "sha256": "05897d2276341717f1ec1ae7dc82a6c1e32d2f17667df03f360bca75c1818931"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/bdl_spotcheck/resp_2021_2021-01-08.json", "sha256": "1474dd70244fce577d154afed0d445a3e352da0bf49b994db6164f764c28e78f"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/bdl_spotcheck/resp_2022_2021-12-18.json", "sha256": "69695e0337f3874c25f3df7bc5fbecceeda42d7f14efb3e3ad7608b4d74c765f"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/bdl_spotcheck/resp_2023_2022-11-25.json", "sha256": "40f80795a0c8097cc230cff430ed9f850a7598b33abf30dd1b2d97c198773efa"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/bdl_spotcheck/resp_2024_2023-12-18.json", "sha256": "cc954ce7f7c7ed9c181498adc470a71c24acab1962c6dbcb568a06e17acc2a88"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/bdl_spotcheck/resp_2025_2024-12-23.json", "sha256": "ccf1b9583ea7a6b9da8e745026d6492f0ae20596531b25bbfc79c2fbe5166c09"},
+    {"path": "~/.my-quantitative-data/nba-ng-prep-v1/bdl_spotcheck/resp_2026_2025-12-20.json", "sha256": "26ab4bbe69cb579826aa3ebedfbaa40e60d0a75bb5446396ebf6d486ef2e68a1"}
+  ],
+  "recommended_next_action": "Controller: land lanes/A_DATA/** untracked files as-is (no edits needed), then hand the game-universe spec + PIT verdicts to lanes B_MECHANISMS (mechanism adjudication against B1*) and C_PROTOCOL (successor scored-cycle draft); lane D_VERIFY should re-measure the dedupe reconciliation (14,254 = 14,168 + 19 + 67) and the BDL 22/22 artifact before synthesis."
+}
