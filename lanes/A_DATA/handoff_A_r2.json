@@ -1,0 +1,51 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "wbap-a-data-r2",
+  "cycle_id": "WNBA-WINPROB-PREP-V1",
+  "role": "quant-explorer",
+  "lane": "A_DATA",
+  "dispatch_sha": "6681486d356d04690873f25badf05500ed22f430",
+  "actual_start_sha": "6681486d356d04690873f25badf05500ed22f430",
+  "commit_sha": "NOT_COMMITTED_CONTROLLER_LANDED",
+  "changed_paths": [
+    "lanes/A_DATA/ROSTER_PIT_AUDIT_WNBA.md (new: download manifest, per-season coverage 2002-2026, computable-continuity table, retro-fill checks, PIT verdict + binding as-of law, W-H2 keep recommendation)",
+    "lanes/A_DATA/measure_r2_download.py (new: parameterized rights-cleared GitHub-release downloader, sha256 vs GitHub digest verification, accumulating manifest)",
+    "lanes/A_DATA/measure_r2_roster.py (new: read-only measurement of roster/box coverage vs the lane A filter-law universe, opening-roster availability, per-franchise prior-box ratios, retro-fill/first-appearance probes, 2025 starter cross-check)",
+    "lanes/A_DATA/handoff_A_r2.json (this file)",
+    "~/.my-quantitative-data/wnba-prep-v1/roster_audit/ (downloads OUTSIDE git: 25 game_rosters_*.csv + 25 player_box_*.csv, 86,572,091 bytes, download_manifest_r2.json, release_meta_r2.json, measurements_r2.json)"
+  ],
+  "tests": [],
+  "authority_claims": [
+    "PIT VERDICT for the W-H2 roster/lineup question: PIT_PASS_BY_CONSTRUCTION for the game-linked prior-season continuity construction, under the binding as-of law in lanes/A_DATA/ROSTER_PIT_AUDIT_WNBA.md sec8 - with a measured eligibility-window constraint the successor MUST carry: minutes-weighted continuity computable for 100% of non-expansion teams only from T=2006 onward; roster-membership continuity from T=2003; T=2003-2004 excluded or structural-missing for the minutes-weighted variant",
+    "W-H2 keep-or-drop: KEEP in the scored-successor proposal (does NOT leave as NOT_RUN_PIT); continuity-arm eligible window fixed by measurement at T>=2006 (minutes-weighted) or T>=2003 (roster-share variant); Lane C freezes the variant at protocol registration; train-internal kill test and falsifier unchanged from MECHANISMS_WNBA",
+    "game linkage measured: roster schema identical 2002-2026 (22 cols); every row carries game_id and NO date column in any season; 0 roster game_ids absent from the ESPN schedule (deterministic join to the canonical tip_utc law); per-game rows verified by distribution (rows/game median 22-25, exactly-10-starter games 99.6%, 5,963/5,984 covered games) - these are game-day lists, not undated season aggregates",
+    "coverage measured vs the lane A filter-law universe: 5,988 universe games, 5,983 with roster rows; only 5 universe games lack rosters in 25 seasons (2002 UTA-CHA, 2006 CHI x2, 2008 ATL-DET, 2016 LAS-CHI playoff G1) - none is a team's game 1; duplicate (game,team,athlete) rows = 0 across all 25 seasons; opening (game-1) roster present for 100% of team-seasons 2002-2026 with >=10 rows",
+    "B-lane W-H2 gate (>= ~90% of team-seasons 2003+ roster coverage): PASS 23/23 seasons (roster coverage 100% every season 2003-2025); the minutes side is the binding constraint: prior-season box coverage is complete only from 2009 onward, giving minutes-weighted continuity 0% (2003), 38.5% (2004), 92.3% (2005), 100% (2006+), all-teams-1.0 from 2010",
+    "2002 player_box asset is a STUB (measured): 344 rows, 16 of 271 games, minutes column 100% '--' -> no 2002 minutes exist in any rights-cleared ESPN-side asset measured; T=2003 minutes-weighted continuity is structurally NOT_RUN, never inferred",
+    "retro-fill probes measured: roster rows with no same-team-season box row = 1,061 (2002, fully explained by the box stub) / 10 (2003) / 1 (2004) / 9 (2005) / 0 (2006-2026) -> no measurable retro-addition; box-earlier-than-roster >10-game clusters only 2013 (5 players) and 2016 (18 players), direction = roster under-inclusion, bounded structural missingness; starter-flag anomalies 20 games (~0.33%) listed by id",
+    "2025 roster-vs-player_box starter identity (full season, dispatch threshold >=20 games): 311/311 games, 622/622 team-games derive exactly 5v5 with IDENTICAL 5-name sets, 7,115/7,115 row-level starter flags agree, 0 disagreements",
+    "raw roster assets contain rows for All-Star games (20 of 21 ASG seasons) and the 2018-08-03 forfeited game 401018942 - all removed by the mandatory filter-law inner join; ESPN Detroit=TUL abbreviation artifact reproduces in roster files 2002-2009 (e.g. 2002: 356/356) - join via team_display_name only",
+    "downloads recorded: sportsdataverse/sportsdataverse-data tags espn_wnba_game_rosters (25 csv, 28,162,804 bytes, pull 2026-10-05T06:57:52Z) and espn_wnba_player_boxscores (25 csv, 58,409,287 bytes, pull 2026-10-05T06:58:28-29Z); 48/50 sha256 == GitHub API digest, 2 pre-digest assets size-verified vs API metadata, 0 mismatches; CC BY 4.0 data badge, no wnba.com/stats.wnba.com/ESPN/SR access, no auth"
+  ],
+  "known_limitations": [
+    "assets carry no publication timestamps; the PASS rests on the by-construction strictly-prior-game argument (audit sec8 law), not on row-level publish times - the law is written narrowly accordingly",
+    "T=2003-2005 minutes-weighted continuity gap (2002 box stub; 2003-2008 partial box) is measured and bound into the eligibility window; if a successor ever needs T=2003 minutes it needs a different source - none identified in-corpus (NOT_RUN, not inferred)",
+    "1997-2001 has no rosters and no box on the ESPN side - continuity structurally impossible there (unchanged from GAME_UNIVERSE_SPEC sec8)",
+    "2026 files are an in-progress-season snapshot (asset updated_at 2026-10-04); all 2026 counts as-of-snapshot",
+    "minor roster under-inclusion clusters 2013 (5 players) and 2016 (18 players) documented at game level; successor should carry them as structural missingness, not zeros",
+    "20 starter-flag anomaly games (~0.33%) identified by game_id; starter-set derivation impossible for exactly those games (membership derivation unaffected)",
+    "git status shows concurrent untracked/modified files under lanes/C_PROTOCOL from another worker - not touched by this lane; this lane's writes are confined to lanes/A_DATA + roster_audit downloads"
+  ],
+  "incidents": [],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "lanes/A_DATA/ROSTER_PIT_AUDIT_WNBA.md",
+    "lanes/A_DATA/measure_r2_download.py",
+    "lanes/A_DATA/measure_r2_roster.py",
+    "lanes/A_DATA/handoff_A_r2.json",
+    "~/.my-quantitative-data/wnba-prep-v1/roster_audit/measurements_r2.json",
+    "~/.my-quantitative-data/wnba-prep-v1/roster_audit/download_manifest_r2.json",
+    "~/.my-quantitative-data/wnba-prep-v1/roster_audit/release_meta_r2.json"
+  ]
+}

@@ -110,7 +110,11 @@ rejection were WNBA evidence — WNBA rejections happen only under this protocol
   1997–2026; ESPN box/pbp 2002/2003+). No direct scraping of wnba.com / stats.wnba.com / ESPN.
 - Scoring rows: exactly one row per game_id; keep only `status_type_state=='post'`; drop
   `status_type_detail ∈ {Forfeit, Postponed}` (exactly 1 forfeit: 2018-08-03, recorded 0–0);
-  drop All-Star rows (alias teams EAST/WEST/ALL/DEL/PAR/CLA/COOP/WNBASTARS);
+  drop All-Star rows (alias teams EAST/WEST/ALL/USA/DEL/PAR/WIL/STE/CLA/COL/SPO/COOP/
+  WNBASTARS — 13 tokens, 21 rows, 2002–2026; stats side 0) [ERRATUM_COUNTS_R1: prior
+  8-token list here missed USA/WIL/STE/COL/SPO, under which 11 alias rows would leak —
+  measured per lanes/A_DATA/ERRATUM_TEAM_KEY_R1.md §4c + lanes/D_VERIFY/DELTA_REVERIFY_R1.md
+  Check 2/D-3];
   drop TBD/if-necessary placeholders; NEVER filter on score presence (unplayed rows are
   pre-filled 0–0). Assertion: every scored row has y ∈ {0,1} from team scores; WNBA has no ties.
 - Identity: join teams via display_name / the `wnba_crosswalk` release, NEVER raw ESPN
@@ -165,10 +169,11 @@ form of rating-stream warm-up ONLY.**
   rating stream and appear in training rows (completed-games law; they are real competitive
   games; training-row law in Section 3.1).
 - All-Star rows: excluded from everything (exhibition; alias rosters); count reported.
-- Neutral-site rows (15 rows, 2013–2026, flag exists in this data — better than the NBA
+- Neutral-site rows (16 rows, 2013–2026, flag exists in this data — better than the NBA
   situation): B1-family predictions for neutral-site rows use HCA = 0 (and the same expected
   score inside the update); a with-HCA-everywhere variant is reported as a diagnostic, both ways
-  shown, nothing hidden.
+  shown, nothing hidden. [ERRATUM_COUNTS_R1: prior memo said 15; measured 16 per
+  lanes/A_DATA/ERRATUM_TEAM_KEY_R1.md §4b + lanes/D_VERIFY/DELTA_REVERIFY_R1.md Check 3.]
 
 ## 3. Split design (FROZEN shapes; exact lists frozen by the controller after Lane A)
 
@@ -365,15 +370,22 @@ no "edge" vocabulary anywhere in outputs.
    by Lane A's verified map; the other line terminates and is NOT averaged in (a
    mean-of-merging-streams variant may be reported as a diagnostic only). B1 cannot be frozen
    before this map is resolved.
-4. **Neutral-site rows** (15 rows, flagged in-data): predicted with HCA = 0 by default
+4. **Neutral-site rows** (16 rows, flagged in-data): predicted with HCA = 0 by default
    (Section 2.3); with/without-HCA diagnostic reported; never silently pooled either way.
+   [ERRATUM_COUNTS_R1: prior count 15; measured 16 per lanes/A_DATA/ERRATUM_TEAM_KEY_R1.md
+   §4b + lanes/D_VERIFY/DELTA_REVERIFY_R1.md Check 3.]
 5. **Forfeits / postponements / 0–0 prefills**: filter law (Section 2.1); tests: (a) zero rows
    with `status_type_state != 'post'` in any scored set; (b) zero Forfeit/Postponed rows
    (exactly the 1 known forfeit excluded and counted); (c) no scored row with 0–0; (d) no
    feature references an unplayed row; (e) 2026 TBD placeholders absent everywhere.
 6. **All-Star alias contamination**: assertion that no scored/training row carries an alias
-   team key (EAST/WEST/ALL/DEL/PAR/CLA/COOP/WNBASTARS); the 14 All-Star rows are counted and
-   excluded everywhere.
+   team key (EAST/WEST/ALL/USA/DEL/PAR/WIL/STE/CLA/COL/SPO/COOP/WNBASTARS — 13 tokens); the
+   21 All-Star/exhibition alias rows are counted and excluded everywhere (per-token slots of
+   the 21 rows: EAST 11, WEST 11, USA 4, WIL 3 (2019/2022/2023), ALL 3, STE 2 (2022/2023),
+   DEL 2, PAR 1, COL 1, CLA 1, SPO 1, COOP 1, WNBASTARS 1; stats side 0)
+   [ERRATUM_COUNTS_R1: prior count 14 with an 8-token list — measured 21 rows / 13 tokens
+   per lanes/A_DATA/ERRATUM_TEAM_KEY_R1.md §4c + lanes/D_VERIFY/DELTA_REVERIFY_R1.md
+   Check 2/D-3].
 7. **Cup segmentation leakage**: assertion that Cup-flagged rows appear in the Cup table and
    the with/without sensitivity columns but NOT in the primary headline aggregates; and that
    they DO update streams and appear in training rows (completed-games law) — both directions
@@ -463,8 +475,12 @@ verbatim into the successor's plan before any outcome is observed.
    dispatch/plan; Lane A's census is authoritative for all counts. Game-level season counts in
    this draft (e.g., ~440 per selection block) are capacity sketches, not measurements.
 4. The successor must re-verify (not assume): season completeness, the 1-forfeit count, alias
-   row counts, neutral-site row count, and Cup-flag completeness — all measurable from Lane A's
-   normalized universe.
+   row counts (corrected reference: 21 rows / 13 tokens, Section 2.1), neutral-site row count
+   (corrected reference: 16, Section 2.3), and Cup-flag completeness — all measurable from
+   Lane A's normalized universe. [ERRATUM_COUNTS_R1: the re-verify law is unchanged; this
+   draft's prior memo figures of 14 alias rows (§8 test 6) / 15 neutral rows (§2.3, §8 test 4)
+   are corrected above per lanes/A_DATA/ERRATUM_TEAM_KEY_R1.md +
+   lanes/D_VERIFY/DELTA_REVERIFY_R1.md.]
 5. No outcome was computed and no data was downloaded in this lane. Every number herein is
    either an inherited machinery constant, a frozen design constant, or a planning sketch
    explicitly marked as such.
