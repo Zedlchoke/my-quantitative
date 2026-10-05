@@ -1,0 +1,53 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "wbap-a-data-r1",
+  "cycle_id": "WNBA-WINPROB-PREP-V1",
+  "role": "quant-implementer",
+  "lane": "A_DATA",
+  "dispatch_sha": "448710a659263e2b9ecda693224c8ab8d577fdba",
+  "actual_start_sha": "448710a659263e2b9ecda693224c8ab8d577fdba",
+  "commit_sha": "NOT_COMMITTED_CONTROLLER_LANDED",
+  "changed_paths": [
+    "lanes/A_DATA/ERRATUM_TEAM_KEY_R1.md (new: defect-by-defect evidence, before/after CSV rows, moved numbers)",
+    "lanes/A_DATA/GAME_UNIVERSE_SPEC_WNBA_1997PLUS.md (surgical: sec2 lineage rebranch + 21->20 keys + DET/TUL mislabel span 2002-2009; sec4 alias per-token breakdown + Cup finals 7->6 + neutral-finals clause; ERRATUM pointers at top of sec2/sec4; no other sections touched)",
+    "lanes/A_DATA/measure_a2.py (FRANCHISE_OF_NAME/FRANCHISE_KEY_OUT rebranched to data-verified lineage; Cup-final detector fixed; header note; re-runnable read-only)",
+    "lanes/A_DATA/handoff_A_r1.json (this file)",
+    "~/.my-quantitative-data/wnba-prep-v1/team_key_table.csv (regenerated: SAN_DAL/DET_TUL/LVA rows replaced by LVA-lineage + DAL-lineage rows; 21 -> 20 franchise keys)",
+    "~/.my-quantitative-data/wnba-prep-v1/measurements_a2.json (regenerated via re-run; diff-verified: ONLY team_key_table, team_key_table_rows (21->20), espn_commissioners_cup (7->6 finals, 2024: 2->1, neutral finals 2->1) moved; every other block reproduces unchanged)"
+  ],
+  "tests": [
+    "D-1 lineage re-measured from stats schedule bytes: UTA 1997-2002 (193 rows) / SAN 2003-2017 (536 rows; San Antonio Silver Stars 2003-2013, San Antonio Stars 2014-2017) / LVA 2018-2026 (384 rows); DET 1998-2009 (445 rows) / TUL 2010-2015 (206 rows) / DAL 2016-2026 (408 rows); LAS 1997-2026 continuous (1,111 rows)",
+    "D-1 coexistence census: distinct stats abbrs per season 12 in each of 2015/2016/2017/2018; SAN AND DAL both present in 2016 (SAN 34 rows, DAL 34) AND 2017 (SAN 34, DAL 35) - no SAN->DAL merger; TUL last played season 2015, DAL first 2016; SAN last season 2017, LVA first 2018",
+    "D-2 ESPN DET/TUL mislabel span re-measured: every Detroit Shock row on ESPN carries home_abbreviation/away_abbreviation TUL in ALL seasons 2002-2009 - 318 rows total (2002:32, 2003:42, 2004:37, 2005:36, 2006:44, 2007:45, 2008:43, 2009:39), home AND away; abbreviation DET appears 0 times on ESPN; ESPN Detroit per-season row counts equal stats DET per-season counts (same games, mislabeled key)",
+    "D-3 alias re-measured: 21 ESPN All-Star rows, 13-token set incl. WIL and STE; per-token home+away slots EAST 11, WEST 11, USA 4 (2004/2010/2021/2024), WIL 3 (2019/2022/2023 Team Wilson), ALL 3, STE 2 (2022/2023 Team Stewart), DEL 2 (2018/2019 Team Delle Donne), PAR 1, COL 1, CLA 1, SPO 1, COOP 1, WNBASTARS 1; stats side 0; note: the on-disk spec/script/handoff token set already contained WIL/STE (re-grepped at r1 start) - defect closed by adding the measured per-token breakdown to SPEC sec4 item 3",
+    "D-4 Cup finals re-measured: 6 finals, exactly one per Cup season 2021-2026, each the last-scheduled Cup game of its season - ET 2021-08-12 SEA vs CON (plain headline, only neutral Cup row of 2021), 2022-07-26 CHI vs LVA, 2023-08-15 LVA vs NYL, 2024-06-25 NYL vs MIN, 2025-07-01 MIN vs IND, 2026-06-30 NYL vs LVA (2022-2026 headlines 'WNBA Commissioner's Cup Championship'); prior '7' = old ('Cup' AND neutral) detector also catching the 2024-06-06 CHI@WAS neutral Cup GROUP game; detector fixed in measure_a2.py, rows_championship 7->6, championship_by_season 2024: 2->1, championship_neutral_site_rows 2->1",
+    "regeneration isolation verified by full-diff of measurements_a2.json vs pre-erratum backup: top-level keys identical; changed blocks ONLY team_key_table, team_key_table_rows (21->20), espn_commissioners_cup - census (5,988/7,008/union 7,017), filter law, timestamp laws, row-level join (5,954+25 matched / 9 ESPN-only / 1,029 stats-only) all reproduce unchanged (they key on display names, not the franchise map)",
+    "scope audit: no commits/push; lanes/B_MECHANISMS, lanes/C_PROTOCOL, lanes/D_VERIFY, research/control, plans untouched (git diff confined to lanes/A_DATA/GAME_UNIVERSE_SPEC_WNBA_1997PLUS.md + lanes/A_DATA/measure_a2.py, new untracked lanes/A_DATA/ERRATUM_TEAM_KEY_R1.md + handoff_A_r1.json); corpus read-only; schema/coverage counting only, no win-prob metric"
+  ],
+  "authority_claims": [
+    "CORRECTED LINEAGE (supersedes the wbap-a-data lineage claim): franchise_key LVA = UTA Utah Starzz 1997-2002 -> SAN San Antonio Silver Stars 2003-2013 / San Antonio Stars 2014-2017 -> LVA Las Vegas Aces 2018-2026; franchise_key DAL = DET Detroit Shock 1998-2009 -> TUL Tulsa Shock 2010-2015 -> DAL Dallas Wings 2016-2026; LAS continuous 1997-2026. Evidence: stats abbr season presence (SAN 2003-2017 incl. 2016 AND 2017; DAL 2016-2026; LVA 2018-2026; DET 1998-2009; TUL 2010-2015), SAN+DAL coexisting as 2 of 12 distinct teams in both 2016 and 2017, TUL last played 2015 / DAL first 2016, SAN last 2017 / LVA first 2018",
+    "canonical team-key table = 20 franchise keys covering all 30 seasons (was 21); franchise_key is the modern key of its lineage; successor B1 stream map must give Dallas the Detroit/Tulsa history and Las Vegas the Utah/San Antonio history, or W-H2 continuity pairs the wrong franchise histories (verifier consequence, now averted)",
+    "never join on raw ESPN abbreviations - strengthened evidence: ESPN labels ALL Detroit Shock rows TUL in every ESPN season 2002-2009 (318 rows, home and away; DET 0 times on ESPN), so ESPN's own TUL aliases Detroit 2002-2009 and Tulsa 2010-2015 across one franchise's two eras; join law unchanged (normalized display_name + ET date, exact-score fallback, 2026 crosswalk)",
+    "Commissioner's Cup finals = 6 (2021-2026, one per Cup season); identification law: the final is the last-scheduled Cup game of each Cup season (verified in all 6 seasons); the 2024-06-06 WAS-CHI neutral Cup GROUP game is a real regular-season game, never a final (still inside the 301 Cup rows and 16 neutral rows)",
+    "filter law and union universe UNCHANGED by this erratum: 21 All-Star alias rows (13-token set incl. WIL/STE, measured per-token breakdown now in SPEC sec4), 7 TBD, 3 forfeit/postponed, 16 neutral rows, 301 Cup rows, ESPN real 5,988 / stats real 7,008 / union 7,017 - all reproduce byte-for-byte on re-run"
+  ],
+  "known_limitations": [
+    "D-5 (verifier MINOR on lane C) deliberately NOT remediated: lanes/C_PROTOCOL verbatim-inherit sections still carry stale prior-memo counts (15 neutral vs measured 16; 14 All-Star rows / incomplete alias set vs measured 21 rows / 13-token set - 11 rows would leak: USAx4, WILx3, STEx2, COLx1, SPOx1); per remediation instruction lane C is untouched; successor must reconcile at the B1 freeze per lane C sec12.4 re-verify clause",
+    "handoff_A.json (task wbap-a-data) retains its original team-key test/authority text (wrong branch) as the historical record; it is NOT edited - the claims in THIS handoff supersede it for lineage and Cup-final counts; SPEC sec2/sec4 carry ERRATUM pointers to ERRATUM_TEAM_KEY_R1.md",
+    "cosmetic verifier observations left as-is (verifier: no action required): SPEC sec6 ESPN-only rows use home@away order while data is home-listed-first; spec date labels for the 2026 postponed row and 2026 Cup final are UTC dates while the forfeit label is an ET date",
+    "SAN display-name eras corrected en passant from the spec's old parenthetical ('Silver Stars <=2010, Stars 2011-2015') to the measured in-season names: San Antonio Silver Stars 2003-2013, San Antonio Stars 2014-2017 (both sources agree)",
+    "W-H2 per-season roster-coverage census remains NOT_RUN (lane A never owned it; gate honestly pending under lane B's gate law, unchanged by this erratum)",
+    "2026 counts remain as-of-corpus-snapshot (season in progress), unchanged by this erratum"
+  ],
+  "incidents": [],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "lanes/A_DATA/ERRATUM_TEAM_KEY_R1.md",
+    "lanes/A_DATA/GAME_UNIVERSE_SPEC_WNBA_1997PLUS.md",
+    "lanes/A_DATA/measure_a2.py",
+    "lanes/A_DATA/handoff_A_r1.json",
+    "~/.my-quantitative-data/wnba-prep-v1/measurements_a2.json",
+    "~/.my-quantitative-data/wnba-prep-v1/team_key_table.csv"
+  ]
+}

@@ -10,6 +10,14 @@ Fixes measured in attempt 1 output and re-verified here:
   - attempt 1 row-level join mixed UTC date vs local date and keyed by game_id prefix.
   - All-Star alias set extended: WIL/STE/COL/SPO/USA (attempt 1 missed Team Wilson/Stewart/Collier/Spoon/USA rows).
 Canonical team keys are FRANCHISE-level (PHO==PHX 2025+, POR(2000-02)==PDX(2026)).
+R1 ERRATUM (lanes/A_DATA/ERRATUM_TEAM_KEY_R1.md, data-verified from schedule bytes):
+  franchise_key LVA is the modern key of the UTA Utah Starzz 1997-2002 -> SAN San Antonio
+  Silver Stars/Stars 2003-2017 lineage (LVA first season 2018; SAN and DAL coexist as 2 of 12
+  distinct teams in BOTH 2016 and 2017 - no SAN->DAL merger); franchise_key DAL is the modern
+  key of DET Detroit Shock 1998-2009 -> TUL Tulsa Shock 2010-2015 -> DAL Dallas Wings 2016+;
+  LAS Los Angeles Sparks continuous 1997-2026. Cup finals = 6 (headline "Cup Championship"
+  2022-2026 + the 2021 neutral final); the prior "Cup AND neutral" detector double-counted the
+  2024-06-06 CHI@WAS neutral Cup GROUP game.
 
 Read-only over ~/.my-quantitative-data/wnba-v1/raw/ (EXTEND-ONLY corpus).
 Schema/coverage counting ONLY — no win-prob metrics, no scored computation.
@@ -135,9 +143,15 @@ R["espn_neutral_site"] = {
 
 # Commissioner's Cup
 cup = espn[espn["notes_headline"].fillna("").str.contains("Cup", case=False)]
-cup_champ = espn[espn["notes_headline"].fillna("").str.contains("Cup Championship", case=False)
-                 | (espn["notes_headline"].fillna("").str.contains("Cup", case=False)
-                    & espn["neutral_site"].astype(str).str.upper().isin(["TRUE", "1"]))]
+# R1 erratum (D-4): Cup FINAL = headline "Cup Championship" (2022-2026) plus the 2021 final
+# (plain headline, the only neutral-site Cup row of 2021). The prior detector ("Cup" AND
+# neutral-site) also caught the 2024-06-06 CHI@WAS neutral Cup GROUP game -> 7; measured
+# finals = 6, exactly one per Cup season. Cross-check: the final is the LAST-scheduled Cup
+# game of each Cup season (verified 2021-2026).
+cup_champ = espn[espn["notes_headline"].fillna("").str.contains("Cup Championship", case=False)]
+cup21_final = espn[(espn["season_file"] == 2021) & espn["notes_headline"].fillna("").str.contains("Cup", case=False)
+                   & espn["neutral_site"].astype(str).str.upper().isin(["TRUE", "1"])]
+cup_champ = pd.concat([cup_champ, cup21_final])
 R["espn_commissioners_cup"] = {
     "rows_headline_cup": int(len(cup)),
     "by_season": {int(k): int(v) for k, v in cup.groupby("season_file").size().items()},
@@ -205,18 +219,21 @@ for y in sorted(espn["season_file"].unique()):
     names = set(d["home_display_name"].dropna()) | set(d["away_display_name"].dropna())
     esp_names[int(y)] = sorted(n for n in names if not any(a in ALLSTAR_ABBR for a in []) and n.upper() not in {"TBD"})
 
+# R1 ERRATUM lineage (data-verified, see ERRATUM_TEAM_KEY_R1.md):
+#   LVA = modern key of UTA (1997-2002) -> SAN (2003-2017) -> Las Vegas Aces (2018-2026)
+#   DAL = modern key of DET (1998-2009) -> TUL (2010-2015) -> Dallas Wings (2016-2026)
 FRANCHISE_OF_NAME = {
-    "Utah Starzz": "SAN_DAL", "San Antonio Silver Stars": "SAN_DAL", "San Antonio Stars": "SAN_DAL", "Dallas Wings": "SAN_DAL",
+    "Utah Starzz": "LVA", "San Antonio Silver Stars": "LVA", "San Antonio Stars": "LVA", "Las Vegas Aces": "LVA",
     "Orlando Miracle": "CON", "Connecticut Sun": "CON",
-    "Detroit Shock": "DET_TUL", "Tulsa Shock": "DET_TUL",
-    "Los Angeles Sparks": "LAS", "Las Vegas Aces": "LVA",
+    "Detroit Shock": "DAL", "Tulsa Shock": "DAL", "Dallas Wings": "DAL",
+    "Los Angeles Sparks": "LAS",
     "Charlotte Sting": "CHA", "Cleveland Rockers": "CLE", "Houston Comets": "HOU", "Sacramento Monarchs": "SAC",
     "Miami Sol": "MIA", "Portland Fire": "POR_PDX", "Phoenix Mercury": "PHO", "New York Liberty": "NYL",
     "Minnesota Lynx": "MIN", "Seattle Storm": "SEA", "Washington Mystics": "WAS", "Indiana Fever": "IND",
     "Atlanta Dream": "ATL", "Chicago Sky": "CHI", "Golden State Valkyries": "GSV", "Toronto Tempo": "TOR",
 }
 FRANCHISE_KEY_OUT = {
-    "SAN_DAL": "DAL", "DET_TUL": "DAL_MERGED", "POR_PDX": "POR", "LVA": "LVA", "PHO": "PHO",
+    "LVA": "LVA", "DAL": "DAL", "POR_PDX": "POR", "PHO": "PHO",
 }
 # canonical table rows: franchise_key, stats_abbr, espn_abbrs_observed, espn_display_names, first_season, last_season
 tk = {}

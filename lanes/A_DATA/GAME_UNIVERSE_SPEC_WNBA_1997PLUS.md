@@ -39,28 +39,37 @@ hashed: `~/.my-quantitative-data/wnba-prep-v1/extensions/`.)
 
 ## 2. Canonical team keys (franchise-level)
 
-21 franchise keys cover all 30 seasons; full table with per-franchise observed abbreviations and
+> **ERRATUM R1 (2026-10-05, task wbap-a-data-r1)** — the two franchise-lineage rows below were
+> rebranched from the data (verifier defect D-1, MAJOR): **LVA is the modern key of the
+> UTA→SAN lineage** (not a fresh 2018 stream) and **DAL is the modern key of the DET→TUL
+> lineage** (not the SAN successor — SAN and DAL coexisted in 2016 AND 2017). Full evidence:
+> `lanes/A_DATA/ERRATUM_TEAM_KEY_R1.md`. This section supersedes the pre-erratum text.
+
+20 franchise keys cover all 30 seasons; full table with per-franchise observed abbreviations and
 display names (both sources): `~/.my-quantitative-data/wnba-prep-v1/team_key_table.csv`.
 Every boundary below is verified from the row data (`stats_abbr_seasons`, per-season name maps),
 not from external lists.
 
 | franchise_key | era keys (stats abbr / ESPN display) | seasons | event measured in data |
 |---|---|---|---|
-| SAN_DAL | UTA Utah Starzz 1997–2002 → SAN San Antonio Silver Stars/Stars 2003–2015 → DAL Dallas Wings 2016– | 1997–2026 | SAN has two display names (Silver Stars ≤2010, Stars 2011–2015 measured in-season names); ESPN spells Utah `UTH`, San Antonio `SA`/`SAS`; 2016 overlap SAN+DAL is the merger season (Shock roster merged in) |
-| DET_TUL | DET Detroit Shock 1998–2009 → TUL Tulsa Shock 2010–2015 → merges into DAL 2016 | 1998–2015 | 2010 DET→TUL boundary exact |
+| LVA | UTA Utah Starzz 1997–2002 → SAN San Antonio Silver Stars 2003–2013 / San Antonio Stars 2014–2017 → LVA Las Vegas Aces 2018– | 1997–2026 | SAN last season **2017**, LVA first **2018**; SAN and DAL coexist as 2 of 12 distinct teams in BOTH 2016 and 2017 (SAN 34/34 rows, DAL 34/35 rows) — no SAN→DAL merger; ESPN spells Utah `UTH`, San Antonio `SA`/`SAS`, Las Vegas `LV` |
+| DAL | DET Detroit Shock 1998–2009 → TUL Tulsa Shock 2010–2015 → DAL Dallas Wings 2016– | 1998–2026 | 2010 DET→TUL boundary exact; TUL last played season 2015, DAL first 2016; ESPN labels ALL Detroit rows `TUL` in every ESPN season 2002–2009 (see below) |
 | CON | ORL Orlando Miracle 1999–2002 → CON Connecticut Sun 2003– | 1999–2026 | ESPN spells Connecticut `CT`/`CONN`/`CON` |
-| LAS | LAS Los Angeles Sparks | 1997–2026 | ESPN `LOS`/`LA` |
-| LVA | LVA Las Vegas Aces | 2018–2026 | SAS→LVA relocation: SAN last season 2017, LVA first 2018 |
+| LAS | LAS Los Angeles Sparks | 1997–2026 | ESPN `LOS`/`LA`; continuous, never relocates (measured present in all 30 seasons) |
 | PHO | PHO 1997–2024 → PHX 2025– Phoenix Mercury | 1997–2026 | same franchise, stats abbr changed 2025; ESPN used `PHO` then `PHX` |
 | POR_PDX | POR Portland Fire 2000–2002 → PDX Portland Fire 2026– | 2000–2002, 2026– | 2026 expansion reuses the Fire name; ESPN uses `POR` for BOTH eras (measured) |
 | defunct | CHA Charlotte Sting (1997–2006) · CLE Cleveland Rockers (1997–2003) · HOU Houston Comets (1997–2008) · SAC Sacramento Monarchs (1997–2009) · MIA Miami Sol (2000–2002) | | end years exact |
 | expansion | CHI 2006 · ATL 2008 · GSV Golden State Valkyries 2025 (ESPN `GS`) · TOR Toronto Tempo 2026 (ESPN+stats `TOR`) | | |
 | stable | NYL (ESPN `NY`/`NYL`) · MIN · IND · SEA · WAS (ESPN `WSH`/`WAS`) | 1997/98–2026 | |
 
-**Never join on raw ESPN abbreviations.** Measured: ESPN's 2002 file labels all 16 Detroit Shock
-rows `home_abbreviation="TUL"` (a key that otherwise first appears in 2010); one ESPN display_name
-maps to up to 3 abbreviations across seasons (Connecticut: `CT`/`CONN`/`CON`) and ESPN reuses `POR`
-across a 24-year gap. Join on normalized `display_name`/`team_name` (§7) or the 2026 crosswalk.
+**Never join on raw ESPN abbreviations.** Measured: ESPN labels **every** Detroit Shock row
+`TUL` (home AND away) in **all** ESPN seasons 2002–2009 — **318 rows** (2002:32, 2003:42,
+2004:37, 2005:36, 2006:44, 2007:45, 2008:43, 2009:39); the abbreviation `DET` appears **0 times**
+on ESPN, so ESPN's own labels alias Detroit 2002–2009 and Tulsa 2010–2015 (`TUL`) across the
+same franchise's two eras (R1 erratum: scope was previously understated as a "2002 file"
+artifact); one ESPN display_name maps to up to 3 abbreviations across seasons (Connecticut:
+`CT`/`CONN`/`CON`) and ESPN reuses `POR` across a 24-year gap. Join on normalized
+`display_name`/`team_name` (§7) or the 2026 crosswalk.
 
 ## 3. Timestamp canonicalization — one `tip_utc` law
 
@@ -83,6 +92,11 @@ local_date   := tip_utc.tz_convert("America/New_York").date               # the 
 
 ## 4. Filter / exclusion law (APPLIED, measured)
 
+> **ERRATUM R1 (2026-10-05, task wbap-a-data-r1)**: item 3 now carries the measured per-token
+> alias breakdown (incl. WIL×3, STE×2); item 6 Cup finals corrected 7 → **6** (the prior
+> "Cup AND neutral" detector double-counted the 2024-06-06 WAS–CHI neutral Cup GROUP game).
+> See `lanes/A_DATA/ERRATUM_TEAM_KEY_R1.md`.
+
 Never filter on score presence — unplayed rows are **pre-filled 0–0** (measured: all 17 ESPN `status_type_state != 'post'` rows are 0–0; 0 rows with null scores). Normative filter chain:
 
 1. Keep `status_type_state == 'post'` (ESPN side only; stats side has no status column).
@@ -93,14 +107,26 @@ Never filter on score presence — unplayed rows are **pre-filled 0–0** (measu
 3. Drop All-Star / special-team alias rows: abbreviations or names in {EAST, WEST, ALL, USA, DEL,
    PAR, WIL, STE, CLA, COL, SPO, COOP, WNBASTARS} — **21 rows** (one per ASG season 2002–2026,
    none in 2008/2012/2016/2020 Olympic years). The prior memo counted 14 with an incomplete alias
-   set (missed Team Wilson/Stewart 2022–2023, Team Collier/Spoon 2025/2026, USA 2004/2010/2021/2024) — corrected. Stats side has **0** such rows.
+   set (missed Team Wilson/Stewart 2022–2023, Team Collier/Spoon 2025/2026, USA 2004/2010/2021/2024) — corrected. Measured per-token slots (home+away sides of the 21 rows, R1):
+   EAST 11, WEST 11 (2002–2017 classic format), USA 4 (2004/2010/2021/2024 Team USA),
+   WIL 3 (2019/2022/2023 Team Wilson), ALL 3 (2004/2010/2021 Team WNBA; 2024 uses `WNBASTARS`),
+   STE 2 (2022/2023 Team Stewart), DEL 2 (2018/2019 Team Delle Donne), PAR 1 (2018 Team Parker),
+   COL 1 + CLA 1 (2025 Team Collier/Clark), SPO 1 + COOP 1 (2026 Team Spoon/Coop).
+   Stats side has **0** such rows.
 4. Drop TBD if-necessary placeholders: **7 rows**, all 2026, state `pre`, dates 2026-10-17…2026-11-01.
 5. Neutral-site flag carried, **not** an exclusion: 16 rows (2013–2026) = 10 All-Star + 6 real
-   games incl. Cup championship games (e.g. 2021-08-12 SEA@CON, 2026-08-12 LA@PHX). Cup finals are
-   neutral but neutral-site also covers non-Cup regular games (2016-07-22 ATL@DAL, 2025-08-16 ATL@SEA).
+   games incl. Cup finals (only 2021/2025/2026 finals are neutral — the 2022–2024 finals were
+   home games, measured; e.g. 2021-08-12 ET SEA hosting CON, 2026-08-12 ET PHX hosting LA).
+   Neutral-site also covers non-final real games (2016-09-29 LAS–CHI, 2016-07-22 ATL@DAL,
+   the 2024-06-06 WAS–CHI Cup GROUP game, 2025-08-16 ATL@SEA).
 6. Commissioner's Cup rows (2021+): **301 rows, all `season_type=2`** (embedded in RS) — keep in the
    modeling table but flag `is_cup` (headline contains "Cup"); report separately. Cup finals:
-   7 rows (2021–2026, one per season; 2021 headline is plain "WNBA Commissioner's Cup" + neutral).
+   **6** — exactly one per Cup season 2021–2026 (R1 erratum: the prior "7" came from a detector
+   that also caught the 2024-06-06 WAS–CHI neutral Cup GROUP game; the final is the
+   last-scheduled Cup game of each season, verified in all 6 seasons). ET dates, home vs away:
+   2021-08-12 SEA vs CON (headline plain "WNBA Commissioner's Cup", the only neutral Cup row of
+   2021); 2022-07-26 CHI vs LVA; 2023-08-15 LVA vs NYL; 2024-06-25 NYL vs MIN; 2025-07-01 MIN vs
+   IND; 2026-06-30 NYL vs LVA (2022–2026 headlines "WNBA Commissioner's Cup Championship").
 7. Playoffs: ESPN `season_type==3` / stats `"playoffs"` — separate table/report.
 8. 2020 Wubble: **147 rows, all played, kept as real** (132 RS + 15 PO on both sides).
 
