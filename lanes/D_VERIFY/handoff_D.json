@@ -1,0 +1,79 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nbang-d-verify",
+  "cycle_id": "NBA-WINPROB-NG-PREP-V1",
+  "role": "quant-auditor (lane D independent verifier, fresh context)",
+  "lane": "D_VERIFY",
+  "dispatch_sha": "e85d9dbea662a9610783b6432b5a9d65548fbb7b",
+  "actual_start_sha": "e85d9dbea662a9610783b6432b5a9d65548fbb7b",
+  "commit_sha": "NOT_COMMITTED_CONTROLLER_LANDED",
+  "changed_paths": [
+    "lanes/D_VERIFY/VERIFICATION_REPORT.md",
+    "lanes/D_VERIFY/verify_recompute.py",
+    "lanes/D_VERIFY/verify_evidence.json",
+    "lanes/D_VERIFY/handoff_D.json"
+  ],
+  "tests": [
+    {
+      "command": ".venv/bin/python lanes/D_VERIFY/verify_recompute.py",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "646d37b01c79a677ab50af77d4c037318cd0a993b6851e5fb06a7f420f162cd0",
+      "note": "independent recomputation from corpus bytes; schema/coverage counting only (no win-prob metric computed); evidence in lanes/D_VERIFY/verify_evidence.json"
+    },
+    {
+      "command": "grep/sentinel scans over lanes/** (scored-computation patterns, banned sources, S1, credentials, 2009-2015 grids, GO phrase)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "no executable scoring code; banned sources only in ban-list/citation context; no sealed-S1 reference (S1-S4 = lane C selection-fold names); no credential material; no grid code for any window"
+    },
+    {
+      "command": "git boundary checks (upstream, show --stat e85d9dbe, status, foreign worktrees read-only)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "no upstream on branch; commit touches only lanes/{A,B,C}/** + this cycle's own research/control event_log; tree clean except lanes/D_VERIFY/**; foreign/terminal worktrees untouched"
+    }
+  ],
+  "authority_claims": [
+    "VERIFIED (re-measured from bytes): schedule corpus = 14,254 rows / 14,254 unique game_id across 11 files; per-file row counts match spec §3 exactly; game_id==id and season==file on all rows.",
+    "VERIFIED: tip law — game_date_time parses 14,254/14,254; parsed UTC == start_date == date on ALL rows; offsets only -0400 (4,869) / -0500 (9,385); UTC-date != local game_date on 11,023/14,254 = 77.33%; ET-home offsets 0 mismatches on 7,104 rows (superset incl. NY home games lane A's list missed); BOS 2024-25 DST flip demo reproduced exactly.",
+    "VERIFIED: dedupe/exclusion law reconciles to ZERO RESIDUE — 14,254 = 14,168 played + 19 headline-based exhibitions + 67 postponed (all Postponed/post, 67/67 makeup candidates); per-season played table reproduced exactly (RS standings 1,230 x9 + 1,059 (2020) + 1,080 (2021); play-in 37; playoffs 919; Cup final 1/season x3 via cup-row + 'Championship' headline).",
+    "VERIFIED: 30 teams x exactly 82 RS-standings-embedded games in 2017/2024/2025/2026 (incl. 66 Cup standings games, excl. final).",
+    "VERIFIED: crosswalk 2026 joins 1,330/1,330 with 1,330/1,330 game_date agreement (1,416 rows, 1,403 with espn_game_id; labels RS 1,230 / PO 85 / PI 6 / empty 9).",
+    "VERIFIED: hash integrity — all 13 in-corpus files match _download_provenance.tsv; all 10 new pbp parquets match DOWNLOAD_MANIFEST bytes+sha256; all 12 lane A/B/C landed artifacts match their handoff-declared sha256 (controller landed unmodified bytes).",
+    "VERIFIED: BDL cross-check honesty — final run 11 requests / 22 games (both <= 25), 22/22 MATCH, tip delta 0.0s; independent recount of hoopR games per probed date agrees with the aggregate and with BDL returns on 11/11 dates; all 22 games re-verified against CSV bytes and the 11 redacted resp files; runs 1-2 disclosure internally consistent (16+9+11=36); throttle evidenced by resp mtimes 13-15s apart; no key value anywhere.",
+    "VERIFIED: rights chain — CC BY 4.0 producer + MIT release store in ATTRIBUTION.md; BDL cross-check-only with fail-closed keychain adapter; EXTEND-ONLY honored (hoopR corpus untouched, new bytes outside git).",
+    "VERIFIED: PIT verdicts stand as written (classes 1-3 PIT_PASS conditional, spread UNVERIFIED_PIT, injury/roster NOT_RUN_PIT); post-game fields barred from pre-game features.",
+    "VERIFIED: lane B — exactly 4 mechanisms (NB-H1..H4) with frozen CI falsifiers vs B1*, negative-control twins, train-kill tests, designed-null parents (all reduce exactly to B1* K=32/HCA=100); banned shapes rejected; no re-grid of 2009-2015 anywhere.",
+    "VERIFIED: lane C — cutoff 2021-08-01T00:00:00Z frozen; OOS [2022..2026] frozen; <=9 arms incl. B0 + B1* verbatim (K=32/HCA=100/gamma=0.75); negative controls diagnostic-only outside the candidate budget; T1/T2/T3 inherited; GO law verbatim (no GO registered/consumed by this cycle); prospective ledger written_at_utc < tip_utc law.",
+    "VERIFIED: trial accounting — 0 scored outcomes (no sklearn/fit/predict/metric code anywhere in lanes/**; budget 0/0; no GO phrase).",
+    "ADJUDICATED: lane B's flagged discrepancy (dispatch/spec 1,059/1,080 vs script artifact 1,061/1,081) resolves in favor of the SPEC's headline-based law — the measure script used a weaker EAST/WEST-home-only All-Star filter and an over-broad cup regex; spec-law counts are the only ones reconciling to zero residue + 30x82 census + 67/67/67 cup rows. Successor inherits 1,059/1,080 and cup 67/season.",
+    "ADJUDICATED: cup-final discriminator = cup row ('In-Season|NBA Cup') AND headline contains 'Championship' (exactly 1/season 2024-2026); neutral_site==true is NOT the discriminator (2025/2026 Cup semifinals are also neutral, 7 neutral cup rows total).",
+    "VERIFIED (check FAIL recorded): lane A's pbp-completeness claim is WRONG — 14 played games lack pbp (2016x3, 2018x4: 400974444/400974773/400975617/400975670, 2020x6: 401161490/401161505/401161528/401161530/401161533/401161536, 2026x1), not 4. Defect D1 (MEDIUM), recorded, NOT repaired."
+  ],
+  "known_limitations": [
+    "Spot-sample bounds inherited: BDL cross-check is 22 games / 11 dates (free-tier quota); spread line-timing remains UNVERIFIED_PIT (undocumented upstream); injury/roster stays NOT_RUN_PIT.",
+    "verify_recompute.py re-hashed all in-corpus and downloaded files rather than a 3-file sample (stronger than the dispatch minimum); pbp spread re-measurement covered 3 seasons (2016/2021/2026) against the lane's full 11-season census.",
+    "D1 corrective action (spec §5 correction to '14 missing-pbp games + game-id list' and explicit cup-final discriminator) belongs to the controller/owner; this lane repairs nothing.",
+    "D2: measure_schedule_corpus.json is a superseded intermediate (weaker dedupe law); its figures must not be re-cited as played counts.",
+    "D3/D4/D5 (LOW): manifest total-bytes line off by 20,000,000; manifest '26 spot requests' vs authoritative 36; exhibition-pbp enumeration incomplete (all 19 exhibitions have pbp).",
+    "D6 (INFO): lane A's 6,632 ET-home exhaustiveness check accidentally excluded NY home games; corrected superset (7,104 rows) shows 0 mismatches — conclusion unchanged.",
+    "D7 (INFO): lane C's selection folds named S1-S4 collide with the workspace's sealed S1 store name; recommend rename (e.g. SEL-1..4) in the successor freeze to keep audit greps clean.",
+    "Expected-pending (not a defect): registry head still 01e747e7... vs measured e85d9dbe... — controller updates after synthesis, as pre-declared in the dispatch."
+  ],
+  "incidents": [
+    "Auditor self-caught tooling corrections (disclosed for honesty): (1) first census used groupby().size() counting non-played rows — produced false 32-team census, fixed to value_counts on played rows, re-run clean; (2) first handoff-hash check resolved a doubled lanes/ path prefix producing false mismatches, re-verified with absolute paths: 12/12 MATCH; (3) first cup-final split used neutral_site as discriminator (7 rows) — replaced by the headline-based law that reproduces the spec exactly; (4) a 538 quirk recount initially sliced game_id at the wrong offset, redone correctly: 4/126,314 rows confirmed. All corrections are internal to this lane; no lane artifact was modified.",
+    "No stop conditions triggered; no lane artifact missing; no evidence-vs-claim contradiction beyond recorded defects D1-D5."
+  ],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    {"path": "lanes/D_VERIFY/VERIFICATION_REPORT.md", "sha256": "ca75b4c80c3a220c8ed8abe176c975804fd93503886a80d68128c83ceb74eb20"},
+    {"path": "lanes/D_VERIFY/verify_recompute.py", "sha256": "3127ce1fd2f27bb804e75039b4d67199c1e9798fce324480abb5447b62241404"},
+    {"path": "lanes/D_VERIFY/verify_evidence.json", "sha256": "646d37b01c79a677ab50af77d4c037318cd0a993b6851e5fb06a7f420f162cd0"}
+  ],
+  "recommended_next_action": "Controller: record VERIFICATION_PASS for NBA-WINPROB-NG-PREP-V1 synthesis with defects D1 (MEDIUM, pbp holes 4->14 + cup-final discriminator note) and D2-D5 (LOW) carried into the PREP summary for owner decisions; update registry head to e85d9dbe... via researchctl CAS; the successor (if registered) inherits the spec-law played counts (1,059/1,080; cup 67/season), the 14-game missing-pbp tolerance list, and PROTOCOL_DRAFT_NBA_NG.md sections 1-12 verbatim.",
+  "verdict": "VERIFICATION_PASS",
+  "defect_counts": {"MEDIUM": 1, "LOW": 4, "INFO": 2, "BLOCKER": 0},
+  "completed_utc": "2026-10-05"
+}
