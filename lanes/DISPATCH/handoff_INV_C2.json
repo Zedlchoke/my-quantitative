@@ -1,0 +1,83 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nfl-winprob-ng-scored-v1-INV-C2",
+  "cycle_id": "NFL-WINPROB-NG-SCORED-V1",
+  "role": "diagnostic-lane",
+  "lane": "INV_C2",
+  "branch": "orca/nfl-winprob-ng-scored-v1-integration",
+  "dispatch_sha": "ecf8371abf7839ca49e9245c99f8aa7386d48fdd",
+  "actual_start_sha": "ecf8371abf7839ca49e9245c99f8aa7386d48fdd",
+  "commit_sha": null,
+  "changed_paths": [
+    "integration/lanes/INV_C2/C2_MACHINERY_INVESTIGATION.md",
+    "integration/lanes/INV_C2/VERDICT_TABLE.md",
+    "integration/lanes/INV_C2/probes/probe_c2.py",
+    "integration/lanes/INV_C2/probes/probe_c2_part2.py",
+    "integration/lanes/INV_C2/probes/probe_results.json",
+    "integration/lanes/INV_C2/probes/probe2_results.json",
+    "integration/lanes/DISPATCH/handoff_INV_C2.json"
+  ],
+  "tests": [
+    {
+      "command": ".venv/bin/python lanes/INV_C2/probes/probe_c2.py  (cwd=integration worktree)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": null,
+      "note": "bit-exact reproduction of venue_label_permutation control (dLL -0.006873 [-0.009950,-0.003733]) and parent C2_L075_D1O2_H025 (-0.010027 [-0.014440,-0.005374]) from raw games.csv via unmodified lanes/T_SELECT modules; row alignment + seed determinism verified"
+    },
+    {
+      "command": ".venv/bin/python lanes/INV_C2/probes/probe_c2_part2.py  (cwd=integration worktree)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": null,
+      "note": "half-speed/subsample brackets, B1* logit-rescaling null (x1.5: dLL -0.0054 CI<0 with zero mechanism), 0.5-ward jitter direction test (+0.0157, worse), gain-destruction accounting (31.5% destroyed)"
+    }
+  ],
+  "authority_claims": [
+    "VERDICT (proposal to controller): FAULT_ISOLATED_TO_VENUE_CONTROL — root cause is a defect in the C2 negative control's design + adjudication criterion, not in the parent C2 machinery, not in scoring/bootstrap, not in the time-shuffled-twin code",
+    "C3 control verdict: SOUND — venue_perm faulty branch exists only at arms.py L340 under venue_perm_rng, sole call site select.py L234-235 (control_c2_venue_perm); C3 twin (select.py L239-254) uses replay_elo with permuted z_table, code-independent and a faithful implementation of its pre-registration",
+    "C2 KILL stands a fortiori (owner law respected; no re-admission): (1) control fired on the pre-registered rule; (2) MECHANISMS §2-C2 'must destroy the train-internal gain' formally failed (only 31.5% destroyed); (3) selected config slope 1.2533 outside [0.85,1.15] kills regardless of any control evidence",
+    "Dispatch framing correction (factual): the venue control did NOT beat its parent — it lost to the parent (pooled 0.645624 vs 0.642470); the 'wins' flag fired on the vs-B1* comparison (select.py L320)"
+  ],
+  "known_limitations": [
+    "Diagnosis is train-internal (seasons 2000-2018 hard-filtered; inner folds 2014-2018, n=1275) — identical window to the investigated run; no access to any scored window by law",
+    "Hypothesis (f) (calibration-jitter) is REJECTED for the NFL direction by direct measurement (0.5-ward jitter worsens LL on slope-1.605 baseline); the cross-cycle NBA pattern (slope 0.7801, twins winning) is consistent with (f) in the overconfident direction — assessed as direction-dependent baseline sensitivity of 'control wins' criteria, not a single shared bug; the NBA lane itself was NOT re-adjudicated (different cycle, read-only context only)",
+    "Root cause is established by reproduction + decomposition probes; the 'remediation' items in C2_MACHINERY_INVESTIGATION.md §7 are a PROPOSAL for successor cycles only — nothing was implemented and no freeze/ledger/arm state was changed",
+    "No git commands used; all investigated files unmodified; probe outputs confined to lanes/INV_C2/probes/"
+  ],
+  "incidents": [],
+  "tree_status": "uncommitted-by-design",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/INV_C2/C2_MACHINERY_INVESTIGATION.md",
+      "sha256": "facc3ed93e9391ae4aa181df78ab239b0e4755f3ffcb5513abec48a79e5502c2"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/INV_C2/VERDICT_TABLE.md",
+      "sha256": "4a6844463eb4a6330d3ea1f91bde5ff78964403a96c9e7c9966fa0a0e779a81e"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/INV_C2/probes/probe_c2.py",
+      "sha256": "0b3f66717328c1285302891ba7e15075b121429d2e84e4321b31c1ef0020a07e"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/INV_C2/probes/probe_c2_part2.py",
+      "sha256": "97f7e8e0965d405b4ebb390b0330c06e258518f7b46949088f83fb117f78e394"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/INV_C2/probes/probe_results.json",
+      "sha256": "e98dc6ef78fb00a6ea7bbc241d2d18973bf1310e1f7bb433db4195810558afcf"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/INV_C2/probes/probe2_results.json",
+      "sha256": "1892e4b25341f623e8ca379d0d783b03cd99911af564249ac960109859a09e85"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/DISPATCH/handoff_INV_C2.json",
+      "sha256": null,
+      "note": "self-referential; hash computed at write time by consumer if needed"
+    }
+  ],
+  "recommended_next_action": "Controller: accept verdict (i) FAULT_ISOLATED_TO_VENUE_CONTROL — C3 ADMIT stands, no ERRATUM or control re-run required; C2 remains OUT of the slate (three independent kill grounds documented); optionally queue the control-design remediation proposal (INV_C2 report §7) into the successor cycle's pre-registration, not this cycle."
+}
