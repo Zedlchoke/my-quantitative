@@ -114,3 +114,25 @@ hoopR. The adapter has been fixed to emit array-style params. The targeted
 cross-check (matching specific hoopR games to BDL by season+date) remains
 **NOT_RUN_QUOTA_EXHAUSTED** — this session's 10-request budget is consumed.
 Next session can execute it with ~6 requests (one per target season × 1 page).
+
+## T2c CROSS-CHECK RESULTS (2026-10-05, 5/6 requests used, $0) — **5/5 MATCH**
+
+Protocol (co-owner-reviewed): pick 5 finished hoopR games from widely-separated
+seasons → query BDL by `dates[]=<local_date>` (array syntax) → match on
+date + home team identity + away team identity + score + tip UTC.
+
+| Date | Home | Away | hoopR score | BDL score | tip UTC | Verdict |
+|---|---|---|---|---|---|---|
+| 2016-01-23 | DEN | DET | 104-101 | 104-101 | 02:30Z ✓ | **MATCH** |
+| 2018-01-17 | OKC | LAL | 114-90 | 114-90 | 01:00Z ✓ | **MATCH** |
+| 2020-01-11 | BOS | NO | 140-105 | 140-105 | 00:00Z ✓ | **MATCH** |
+| 2022-01-17 | LAL | UTAH | 101-95 | 101-95 | 03:30Z ✓ | **MATCH** |
+| 2024-01-25 | MIA | BOS | 110-143 | 110-143 | 00:30Z ✓ | **MATCH** |
+
+All five checks (date, home_team, away_team, score, tip_utc) PASS on all 5
+targets — no mismatches, no unmatched games, no errors. BDL free-tier with
+`dates[]` array syntax is a **fully viable targeted cross-check source**.
+Prior T2b conclusions about pagination impracticality are definitively
+retracted (they were based on a syntax error, corrected by owner).
+
+Script: `bdl_t2c_crosscheck.py` (this lane); results: `BDL_T2C_CROSSCHECK.json`.
