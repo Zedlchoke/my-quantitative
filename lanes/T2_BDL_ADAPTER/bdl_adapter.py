@@ -75,21 +75,30 @@ class BDLClient:
             raise BDLKeyUnavailable("BDL client constructed without a key")
         q = ""
         if params:
-            q = "?" + "&".join(f"{k}={v}" for k, v in params.items() if v is not None)
+            # BDL uses array-style query params: seasons[]=2024 (not seasons=2024)
+            parts = []
+            for k, v in params.items():
+                if v is None:
+                    continue
+                if isinstance(v, (list, tuple)):
+                    for item in v:
+                        parts.append(f"{k}[]={item}")
+                else:
+                    parts.append(f"{k}={v}")
+            q = "?" + "&".join(parts) if parts else ""
         req = urllib.request.Request(
             f"{self.base}{path}{q}",
-            headers={"Authorization": self._key},  # docs: plain key, not Bearer
+            headers={"Authorization": self._key},
         )
         self._n_calls += 1
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 return json.loads(resp.read().decode())
         except urllib.error.HTTPError as e:
-            # Never include headers (key) or full URL in errors
             raise RuntimeError(f"BDL HTTP {e.code} on {path} (params omitted)") from None
 
     # ---- free-tier endpoints only -------------------------------------
-    def games(self, seasons: int | str | None = None, cursor: int = 0):
+    def games(self, seasons: list[int] | None = None, cursor: int = 0):
         return self._get("/games", {"seasons": seasons, "cursor": cursor})
 
     def teams(self):

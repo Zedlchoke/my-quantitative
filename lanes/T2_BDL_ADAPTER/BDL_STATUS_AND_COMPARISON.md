@@ -93,3 +93,24 @@ Everything else in the program proceeds without BDL.
   under $0 constraints". Paid tiers (ALL-STAR $9.99+) would unlock it but are
   outside the $0 budget.
 - **Cost: $0.** No bulk download. Key never in any artifact (sweep re-verified).
+
+## T2b CORRECTION (owner-identified, 2026-10-05)
+
+**Prior conclusion RETRACTED**: "free-tier /games does not support seasons filter"
+was WRONG. The HTTP 400 responses were caused by **incorrect parameter syntax**
+on my part: I sent `seasons=2024` (scalar) when the BDL API requires **array-style
+`seasons[]=2024`** (per docs.balldontlie.io Get All Games section). The owner
+identified this error.
+
+**Corrected finding (verified with request 10/10, the last of this session)**:
+`GET /games?seasons[]=2024` → HTTP 200, 25 rows per page, first game 2024-10-22
+(2024-25 season tip-off). **Free tier DOES support season filtering.** The
+NOT_RUN_PAGINATION_IMPRACTICAL verdict and the "~3,000 cursor pages" claim are
+both retracted — the actual page count for a full season is ~50 pages at 25/page,
+well within a reasonable rate-limited session.
+
+**Current status**: BDL is restored as a **viable cross-check source** alongside
+hoopR. The adapter has been fixed to emit array-style params. The targeted
+cross-check (matching specific hoopR games to BDL by season+date) remains
+**NOT_RUN_QUOTA_EXHAUSTED** — this session's 10-request budget is consumed.
+Next session can execute it with ~6 requests (one per target season × 1 page).
