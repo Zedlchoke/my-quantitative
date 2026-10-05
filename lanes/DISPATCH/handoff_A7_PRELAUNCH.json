@@ -1,0 +1,126 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nfl-winprob-ng-scored-v1-A7-PRELAUNCH",
+  "cycle_id": "NFL-WINPROB-NG-SCORED-V1",
+  "role": "independent-auditor",
+  "lane": "A7_PRELAUNCH",
+  "branch": "orca/nfl-winprob-ng-scored-v1-integration",
+  "dispatch_sha": "8cf29fe60809dd62c7d573292853d62b01cae0d4",
+  "actual_start_sha": "8cf29fe60809dd62c7d573292853d62b01cae0d4",
+  "commit_sha": null,
+  "verdict": "A7_PRELAUNCH_PASS",
+  "checks": {
+    "A7-1_sha_chain": "PASS",
+    "A7-2_designed_null_own_stream": "PASS",
+    "A7-3_no_spent_window": "PASS",
+    "A7-4_real_ledger_absence": "PASS",
+    "A7-5_rights": "PASS (evidence trail; auditor live probe NOT_CONCLUSIVE - optional, wrong-path 404)",
+    "A7-6_selection_ledger_and_recompute": "PASS (38 rows; B1STAR/C3_T050/C1_B025/B0 recomputed at delta=0.0)",
+    "A7-7_freeze_completeness_and_code_freeze": "PASS (10/10 items; CODE_FREEZE_SHA 7ec4c539 verified; GENESIS pin recomputed)",
+    "A7-8_boundary_compliance": "PASS (0/9 arms scored; GO REGISTERED_NOT_CONSUMED; s1 SEALED_UNTOUCHED)",
+    "A7-9_power_and_rules_verbatim": "PASS",
+    "A7-10_incidents_coherence": "PASS"
+  },
+  "blockers": [],
+  "changed_paths": [
+    "integration/lanes/A7_PRELAUNCH/A7_PRELAUNCH_VERDICT.md",
+    "integration/lanes/A7_PRELAUNCH/AUDIT_EVIDENCE.md",
+    "integration/lanes/A7_PRELAUNCH/OWNER_GATE_BRIEF.md",
+    "integration/lanes/A7_PRELAUNCH/tmp/** (audit probe scripts, fixtures, canary parquets, evidence JSONs)",
+    "integration/lanes/DISPATCH/handoff_A7_PRELAUNCH.json"
+  ],
+  "tests": [
+    {
+      "command": "/usr/bin/git -C <worktree> cat-file -t <sha> + log --format='%H %P %s' + merge-base --is-ancestor (7 named commits) + log --merges f55dab66..HEAD + status --porcelain",
+      "exit_code": 0,
+      "verdict": "PASS - A7-1",
+      "log_digest": null
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python lanes/A7_PRELAUNCH/tmp/audit_probe_a7_2_3.py",
+      "exit_code": 0,
+      "verdict": "PASS - A7-2 (4 designed nulls max|dp|==0.0 tobytes-equal on own stream) + A7-3 (2019 row dropped at load; backstop assert fires; pbp reads 2000-2017 only; odds quarantined)",
+      "log_digest": null
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python lanes/A7_PRELAUNCH/tmp/audit_replay_a7_6.py",
+      "exit_code": 0,
+      "verdict": "PASS - A7-6 (own replay: B1STAR 0.6524968479911611, C3_T050 0.6483475228409372, C1_B025 0.6526382289724465, B0 0.6830369855947883 - all delta 0.0 vs ledger; B0 p0=2765/4839 exact)",
+      "log_digest": null
+    },
+    {
+      "command": "find/ls/grep/shasum over worktree + ~/.my-quantitative-data/nfl-ng-scored-v1 (ledger absence, SYNTH inventory, ae99a803 placement, license sha, digests)",
+      "exit_code": 0,
+      "verdict": "PASS - A7-4 / A7-5 / A7-7",
+      "log_digest": null
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest research/control/NFL-WINPROB-NG-SCORED-V1/ledger/test_ledger_synthetic.py -q -p no:cacheprovider",
+      "exit_code": 0,
+      "verdict": "PASS - 42 passed (ported predecessor suite re-run)",
+      "log_digest": null
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest lanes/S_SYNTH/test_successor_synthetic.py -q -p no:cacheprovider",
+      "exit_code": 0,
+      "verdict": "PASS - 16 passed (successor synthetic suite re-run)",
+      "log_digest": null
+    },
+    {
+      "command": "cmp predecessor vs ported nfl_ng_ledger.py/test_ledger_synthetic.py; shasum -a 256 port (6fb0a1d4...==pin); git ls-tree/show 7ec4c539 (packet blob==9978a950 pin)",
+      "exit_code": 0,
+      "verdict": "PASS - byte-identical port + code-freeze tree binding",
+      "log_digest": null
+    }
+  ],
+  "authority_claims": [
+    "A7_PRELAUNCH verdict A7_PRELAUNCH_PASS for cycle NFL-WINPROB-NG-SCORED-V1 at integration HEAD 8cf29fe60809dd62c7d573292853d62b01cae0d4: all 10 dispatch checklist items PASS, zero blockers.",
+    "Designed-null equivalence independently reproduced on an auditor-built synthetic stream with unmodified frozen arms.py (sha 19dddd3f... asserted at import): C1_B000/C2_NULL/C3_T000/C4_D000 max|dp| exactly 0.0 vs B1*.",
+    "Selection ledger independently confirmed not fabricated: 38 rows, all pre-registered grid points, and pooled inner LL for B1STAR/C3_T050/C1_B025/B0 recomputed from raw nfl-nflverse-v1 games.csv + 18 pbp parquets with an auditor-written replay - all match to delta 0.0 (tolerance 1e-9).",
+    "No real prediction ledger exists worktree-wide or in ~/.my-quantitative-data/nfl-ng-scored-v1/; the sandbox ledger contains only SYNTH_-prefixed 2030 game rows; the freeze GENESIS digest ae99a803... appears in zero ledger bytes.",
+    "Boundary posture at audit time: budget 0/9 arms scored, GO phrase REGISTERED_NOT_CONSUMED, s1 SEALED_UNTOUCHED, no upstream configured (never pushed), no win-probability rows for real games anywhere in artifacts.",
+    "CODE_FREEZE_SHA 7ec4c539394e68538f74df327d85fa2a477c6eb7 verified: commit exists, its tree contains FREEZE_PACKET.md whose blob sha256 equals the pinned 9978a950...; GENESIS pinned payload digest ae99a803... recomputed exactly.",
+    "Owner gate is now OPEN for the P-8 two-key decision: the owner may type 'GO NFL WINPROB NG SCORED V1 PROSPECTIVE' verbatim at this cycle's gate; week-5 capture deadline 2026-10-08 ~18:15Z (first batch >=6h before 2026_05_TB_DAL kickoff 2026-10-09T00:15Z); 2026_04_ATL_NO 2026-10-06T00:15Z forfeit-by-design under Option B."
+  ],
+  "known_limitations": [
+    "N1 (vocabulary, minor, non-blocking): the tool-level margin-config NOT_RUN is labeled NOT_RUN_MARGIN_CONFIG in lanes/S_SYNTH artifacts + handoff_S_SYNTH but NOT_RUN_TOOLING in the S_SYNTH commit message; same fact, no behavioral impact. The freeze GENESIS digest string also appears in lane-S documentation/assertion contexts (and as dryrun_evidence.json field freeze_genesis_digest_never_used) beyond 'freeze docs' strictly - but never inside any ledger file (binding requirement holds: 0 ledger-byte occurrences).",
+    "N2 (probe semantics, non-blocking): the doctored-2019 row is dropped by the hard load filter (counted) rather than tripping the assertion; the assertion was separately demonstrated loud on an unfiltered frame. Defense-in-depth verified.",
+    "N3 (registry lag, informational): root registry row head is 8b196ef5 (wave-2 CAS write) while integration HEAD is 8cf29fe6; freeze chain of record is the integration commit chain; controller should reconcile the registry head at its next CAS write.",
+    "Auditor's single allowed live license fetch hit HTTP 404 on a wrong path guess (master/LICENSE); the operative rights evidence is the on-disk license (sha == 2a82ac9b pin, 18651 bytes) plus lane A's recorded live re-fetch in ATTRIBUTION.md. League/ESPN publication-commercial rights remain UNVERIFIED - internal-research-only, fail-closed.",
+    "This audit validates prelaunch readiness only: it types no GO, opens no window, and scores no arm; 0/9 budget unchanged."
+  ],
+  "incidents": [],
+  "tree_status": "uncommitted-by-design",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/A7_PRELAUNCH/A7_PRELAUNCH_VERDICT.md",
+      "sha256": "1365a85924948a1cf724a916105030338e34dc40ae625916d57ed7e48fda1fc1"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/A7_PRELAUNCH/AUDIT_EVIDENCE.md",
+      "sha256": "e3e0f23ea55140c49b98ec91b047bec7267461192485ca3d8ba34e83fbdcc8bb"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/A7_PRELAUNCH/OWNER_GATE_BRIEF.md",
+      "sha256": "b6d31c27703a21cb466a16cbcefef1a497fd3ef59f276f9192cf1fff0e329dd2"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/A7_PRELAUNCH/tmp/a7_2_3_evidence.json",
+      "sha256": "5eb6abd4d0358b76c440d517838c9cbebce056f75ea7779f26a370eac0aa7759"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/A7_PRELAUNCH/tmp/a7_6_replay_evidence.json",
+      "sha256": "4ea723679fb69b5f83b1573b0f30234d52beaeef77e00a02bbbcc9a84eb58249"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/A7_PRELAUNCH/tmp/audit_probe_a7_2_3.py",
+      "sha256": "not-pinned (auditor probe script; inspectable in lane tmp)"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/A7_PRELAUNCH/tmp/audit_replay_a7_6.py",
+      "sha256": "not-pinned (auditor probe script; inspectable in lane tmp)"
+    }
+  ],
+  "recommended_next_action": "Controller relays OWNER_GATE_BRIEF.md to the owner; on typed GO at this cycle's gate the controller substitutes the two GENESIS placeholders, writes the real ledger, and lands the week-5 batch by 2026-10-08T18:15Z (first kickoff 2026-10-09T00:15Z 2026_05_TB_DAL); reconcile the registry row head via CAS. Without owner GO, take PRELAUNCH_READY_PENDING_OWNER_GO as the standing terminal - nothing runs."
+}
