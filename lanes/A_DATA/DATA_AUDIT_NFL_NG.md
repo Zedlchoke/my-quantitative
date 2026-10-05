@@ -16,14 +16,21 @@ The held bytes are the canonical license text, title line verbatim:
 
 Load-bearing clauses, verbatim from the held copy:
 
-- §2(a)(1) grant: "the licensor grants You a worldwide, royalty-free,
-  non-sublicensable, non-exclusive, irrevocable license to Reproduce the
-  Licensed Material, in whole or in part, and to perform, Display, and
-  communicate the Licensed Material, in whole or in part" and "to produce,
-  Reproduce, and Share Adapted Material".
-- §3(a)(1)(A): attribution condition — "retain the following if it is supplied
-  by the Licensor with the Licensed Material: (i) identification of the creator
-  of the Licensed Material ... (ii) a copyright notice".
+- §2(a)(1) grant (verbatim from the held copy, sha256
+  `2a82ac9bbc3e3ee066908381e8d373896db5a6025d083fbd59692fe9ccfb9111`; hard
+  line-wrapping in the file collapsed, nothing else altered): "Subject to the
+  terms and conditions of this Public License, the Licensor hereby grants You
+  a worldwide, royalty-free, non-sublicensable, non-exclusive, irrevocable
+  license to exercise the Licensed Rights in the Licensed Material to:" — then
+  itemised: "a. reproduce and Share the Licensed Material, in whole or in
+  part; and" "b. produce, reproduce, and Share Adapted Material."
+- §3(a)(1)(A) (verbatim from the held copy, same wrapping collapse): "If You
+  Share the Licensed Material (including in modified form), You must:" —
+  "a. retain the following if it is supplied by the Licensor with the
+  Licensed Material:" — "i. identification of the creator(s) of the Licensed
+  Material and any others designated to receive attribution, in any reasonable
+  manner requested by the Licensor (including by pseudonym if designated);"
+  "ii. a copyright notice;".
 - §4 (Sui Generis Database Rights): "for the avoidance of doubt, Section
   2(a)(1) grants You the right to extract, reuse, reproduce, and Share all or a
   substantial portion of the contents of the database".
@@ -226,3 +233,27 @@ retro corrections). pbp has `season_type` (REG/POST), not `game_type`.
   every played 2026 game is NOT_RUN prospective.
 - Injury/availability: NOT_RUN_PIT (see INJURY_PIT_VERDICT.md).
 - No metric on real outcomes was computed anywhere in this lane.
+
+## ERRATUM (r1)
+
+- Date: 2026-10-05 (remediation task nflng-a-data-r1, cycle NFL-WINPROB-NG-PREP-V1).
+- Defect D2-a (reported by Lane D verification, severity MINOR, non-blocking):
+  two §1 quotes above were labelled "verbatim from the held copy" but were
+  paraphrases — the §2(a)(1) grant sentence ("…license to Reproduce the
+  Licensed Material… and to perform, Display, and communicate…") does not
+  exist in the held license bytes (the phrase "perform, Display" appears
+  nowhere in the file), and the §3(a)(1)(A) attribution quote elided item i
+  with "…" and dropped "(s)" from "creator(s)".
+- Correction (this r1): both quotes replaced in place with the TRUE verbatim
+  text read from the held license bytes (sha256
+  `2a82ac9bbc3e3ee066908381e8d373896db5a6025d083fbd59692fe9ccfb9111`,
+  18,651 bytes, `~/.my-quantitative-data/nfl-ng-prep-v1/rights/nflverse-data_LICENSE.md`);
+  the sha256 pin is unchanged and re-verified at correction time. The only
+  edit to §1 is the replacement of those two bullets; nothing else in this
+  document was touched.
+- Rights verdict UNAFFECTED: the load-bearing §4 Sui Generis Database Rights
+  quote was already byte-verbatim, the license identity is sha-pinned, and the
+  grant substance (reproduce/Share, adaptation, attribution condition,
+  database extract/reuse) is genuine CC BY 4.0. Verifier check D-2 verdict:
+  PASS (see lanes/D_VERIFY/VERIFICATION.md, "Defect D2-a was NOT repaired —
+  reported only"; this section is the repair).

@@ -56,3 +56,26 @@ manifests) left untouched — those are the pinned inputs of the TERMINAL cycle.
 
 Any use of rows 4, 5, 7, 8, 9, 11 carries: "Data: nflverse/nflverse-data
 releases (CC BY 4.0), https://github.com/nflverse/nflverse-data".
+
+## r1 refresh (task nflng-a-data-r1, 2026-10-05)
+
+Fresh schedules snapshot pulled for the r1 2026 recount. NEW directory +
+filenames — no existing bytes under `~/.my-quantitative-data/nfl-ng-prep-v1/`
+were overwritten or deleted. $0 only (anonymous HTTP GET, no accounts/keys).
+
+Pull window UTC: 07:15:08Z → 07:15:38Z.
+
+| # | local path (under nfl-ng-prep-v1/) | source URL | version / release tag | asset updated_at (GitHub) | bytes | sha256 | license note |
+|---|---|---|---|---|---|---|---|
+| r1-1 | raw_schedules_r1_20261005/games.csv | https://github.com/nflverse/nflverse-data/releases/download/schedules/games.csv | tag `schedules` | 2026-10-05T05:46:23Z | 2,182,513 | 486d72273c0d9650756176fc016a0852c65ad6f030f443805c20cb35e387a9fc | CC BY 4.0 |
+| r1-2 | raw_schedules_r1_20261005/timestamp.json | https://github.com/nflverse/nflverse-data/releases/download/schedules/timestamp.json | tag `schedules` | 2026-10-05T05:46:24Z | 43 | e771060881d4def7acd8c0e7b634a3c33d393c771f4d2464971421458e0adacf | content: {"last_updated":"2026-10-05 01:46:22 EDT"} = 2026-10-05T05:46:22Z release compile |
+| r1-3 | raw_schedules_r1_20261005/release_api_schedules.json | https://api.github.com/repos/nflverse/nflverse-data/releases/tags/schedules | REST releases API | — | 14,828 | acaa388315c7f0e1f1f9136ad8d32700f1c3ca29620976c3d0e4f290dc9e2cc2 | release/asset metadata evidence (tag `schedules`, published_at 2025-10-01T11:19:34Z) |
+
+Retry note: first attempt on rows r1-1/r1-2 used `curl` WITHOUT `-L`; the
+`releases/download/` URLs return 302 and curl (no `-f` error on 3xx) wrote
+0-byte files, detected immediately by hash+size check (e3b0c4429… = empty).
+Retry (1 of 2 allowed) with `-L` succeeded on first retry — final bytes are
+rows r1-1/r1-2 above. Evidence of the empty first attempt is NOT retained
+(0-byte files replaced by re-download into the same new filenames); no other
+impact. Recount that consumes rows r1-1..r1-3: see
+GAMES_2026_CLASSIFICATION.md "## Recount r1".
