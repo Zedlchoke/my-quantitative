@@ -1,0 +1,84 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "winprob-playerdata-prep-v1-C-NFL",
+  "cycle_id": "WINPROB-PLAYERDATA-PREP-V1",
+  "role": "data-lane",
+  "lane": "C_NFL",
+  "branch": "orca/winprob-playerdata-prep-v1-integration",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerdata-prep-v1/integration",
+  "dispatch_sha": "a025a5d2aabf65f4019ca5168f94efc3208738d5",
+  "actual_start_sha": "a025a5d2aabf65f4019ca5168f94efc3208738d5",
+  "commit_sha": null,
+  "changed_paths": [
+    "lanes/C_NFL/INVENTORY.md",
+    "lanes/C_NFL/RIGHTS.md",
+    "lanes/C_NFL/DOWNLOAD_MANIFEST.md",
+    "lanes/C_NFL/download_manifest_C_NFL.json",
+    "lanes/C_NFL/COVERAGE_SCHEMA.md",
+    "lanes/C_NFL/PIT_AUDIT.md",
+    "lanes/C_NFL/FEATURE_PROPOSALS.md",
+    "lanes/C_NFL/VERDICT_TABLE.md",
+    "lanes/DISPATCH/handoff_C_NFL.json"
+  ],
+  "tests": [
+    "On-disk inventory measured from bytes: play_by_play_2024.parquet = 49,492 rows x 372 cols, player columns are per-play attributions (passer/rusher/receiver/td/punt_returner/pass_defense_1_player_id) -> play-level, NOT weekly player stats; full-tree walk of ~/.my-quantitative-data found zero NFL player-stats files (all 'player' hits are WNBA corpora). Expectation NONE confirmed.",
+    "Release-store verification: 1 unauthenticated GitHub API call (HTTP 200) cached at release_api_listing.json; CURRENT weekly store = stats_player release (554 assets, stats_player_week_2026.parquet asset updated 2026-10-05T05:30:11Z); legacy player_stats release frozen at 2025-05-07 (superseded) — documented so future lanes do not download stale assets.",
+    "Downloads: 8 files all HTTP 200 (2,612,367 B total); every byte size equals the GitHub API asset metadata; sha256 per file in download_log_attempt1.json + download_manifest_C_NFL.json.",
+    "Re-download determinism: stats_player_week_2025.parquet re-pulled at 2026-10-05T07:19:04Z, 26 s after first pull — identical bytes (855,077 B, sha256 2a461becaa9adb3c93a3074a3a31f1e960162a50163371a2d34e28393b5fff10), identical=True.",
+    "Coverage measurements: 2024 = 18,983 rows x 150 cols / 285 games / weeks 1-22 (REG 1-18, POST 19-22 = 6+4+2+1); 2025 = 19,422 x 150 / 285 games same shape; 2026 = 4,379 x 150 / 63 games / weeks 1-4 REG in progress. Schema drift = NONE (identical column names + order across 2024/2025/2026). Duplicates (player_id,game_id) = 0 in all files. Placeholder artifact = exactly 1 all-zero NaN-player row per week (22/22/4).",
+    "games.csv join: game_id join rates 285/285 (2024), 285/285 (2025), 63/63 (2026; the 209 games-only rows are all future games, consistent with frozen split law); team/opponent consistency 100% on one-row-per-game samples.",
+    "PIT worked example executed with leak guards: target 2024_11_KC_BUF kickoff_utc 2024-11-17T21:25Z; prior-3 KC games strictly kickoff<target; P.Mahomes (GSIS 00-0033873) prior-3 = 819 pass yds / 6 TD / 1 INT / 124 att; assertions PASS (no same-game row, all aggregates from prior games only).",
+    "Kickoff UTC canonicalization: gameday+gametime -> tz_localize America/New_York (nonexistent=shift_forward, ambiguous=NaT) -> tz_convert UTC; gametime missing only in season 1999 (259 rows); verbatim ET-convention quote carried from corpus ATTRIBUTION.md.",
+    "Prospective-window proof at download moment 2026-10-05T07:18Z: all 63 games in stats_player_week_2026.parquet kicked off before the moment; 0 future games have stats rows; the 2026-10-06T00:15Z MNF game is absent — matches frozen 63/209 law. Schedule-snapshot staleness (Oct-4 pull: 49 scored; Oct-5 pull: 62 scored + in-flight SNF) documented, not a contradiction.",
+    "snap_counts audit: 2025 file 26,613 rows x 16 cols / 285/285 games / weeks 1-22; 2026 file 49 games (lags stats release by ~3 days, build 2026-10-02); duplicates (pfr_player_id,game_id)=0; key caveat: PFR ids vs GSIS ids in weekly stats -> players.parquet crosswalk required for player-level joins (published in players release, NOT downloaded).",
+    "On-disk pbp participation check (small sample, 2021 parquet schema): NO per-player participation/snap columns exist on disk (only play-level event attributions) -> NOT_RUN_PIT for pbp-derived prior-game snaps; snap_counts release (2012-2026 per listing) is the PIT-safe snap source.",
+    "Trial accounting: 0 scored computations, 0 win-prob metrics on real outcomes; language law respected (calibration/forecasting vocabulary only)."
+  ],
+  "authority_claims": [
+    "nflverse/nflverse-data LICENSE.md fetched live from https://raw.githubusercontent.com/nflverse/nflverse-data/main/LICENSE.md (HTTP 200, 2026-10-05T07:18:02Z, 18,651 bytes, sha256 2a82ac9bbc3e3ee066908381e8d373896db5a6025d083fbd59692fe9ccfb9111): CC BY 4.0 confirmed — verbatim identification lines 'Attribution 4.0 International' and 'Creative Commons Attribution 4.0 International Public License'; byte-identical (diff) to prior-cycle copy at ~/.my-quantitative-data/nfl-ng-prep-v1/rights/nflverse-data_LICENSE.md. Independent R_RIGHTS lane fetched the same file at 07:18:05Z with identical size 18,651 B.",
+    "Release store used for weekly player stats: https://github.com/nflverse/nflverse-data/releases/tag/stats_player (asset base .../releases/download/stats_player/); release body verbatim: 'Player stats in different summary levels created with nflfastR::calculate_stats()'.",
+    "Secondary store used for snap counts: https://github.com/nflverse/nflverse-data/releases/tag/snap_counts; release as-of markers downloaded verbatim: stats_player timestamp.json {\"last_updated\":\"2026-10-05 01:30:28 EDT\"}, snap_counts timestamp.json {\"last_updated\":\"2026-10-02 07:01:49 EDT\"}.",
+    "Underlying-data provenance context recorded: stats built via nflfastR pipelines from official NFL feeds (NFL operations / GSIS; Next Gen Stats-derived fields in the ecosystem); the CC BY 4.0 grant covers the nflverse-data repo/release artifacts and does NOT grant underlying league-data rights (fail-closed known-unknown, RIGHTS.md §4). 'Internal research only. NOT legal advice.'"
+  ],
+  "known_limitations": [
+    "Target-game injury/active/DNP features remain NOT_RUN_PIT (carried blocker re-confirmed: injuries CSVs carry no per-record publish timestamps); weekly_rosters release timing not audited this cycle.",
+    "GSIS<->PFR id crosswalk (players release players.parquet) NOT downloaded — player-level joins between weekly stats and snap_counts are blocked on it; team/bucket-level snap features do not need it.",
+    "snap_counts 2026 in-season build lags stats_player by ~3 days (49 vs 63 games at pull) — snap-share features must tolerate <=1-week staleness in-season.",
+    "Player-stat availability is release-cadence (release-level timestamp.json only, no per-row publish time); nflverse re-cuts whole-history files at season boundaries — frozen sha256s in DOWNLOAD_MANIFEST.md are this cycle's evidence anchor; any re-pull must re-hash and re-audit.",
+    "Weekly files carry 1 all-zero NaN-player placeholder row per week (deterministic artifact) — must be excluded in feature builds.",
+    "Weekly stats window downloaded 2024-2026 only (older seasons published 2018+ under stats_player; pbp_participation 2016+; snap_counts 2012+) — extension is cheap but not fetched this cycle per dispatch scope.",
+    "Feature comparison design in FEATURE_PROPOSALS.md is DESIGN ONLY — no baseline log-loss numbers exist yet; any execution needs fresh registration + owner instruction; B1* K40 HCA0 stays the frozen yardstick."
+  ],
+  "incidents": [],
+  "tree_status": "clean-except-listed-lane-files",
+  "workers": 0,
+  "outputs": [
+    "lanes/C_NFL/INVENTORY.md — on-disk player-level inventory (expectation NONE proven from bytes) vs published release-store map (stats_player CURRENT vs player_stats legacy, snap_counts, pbp_participation, players, weekly_rosters)",
+    "lanes/C_NFL/RIGHTS.md — live-verified CC BY 4.0 with verbatim quotes + URLs + retrieval timestamps, release store identity, underlying-data disclaimer, fail-closed known-unknowns, 'Internal research only. NOT legal advice.'",
+    "lanes/C_NFL/DOWNLOAD_MANIFEST.md (+ download_manifest_C_NFL.json) — 8 files with URL/tag/HTTP/UTC/bytes/sha256, release as-of markers, byte-identical re-download proof, not-downloaded list",
+    "lanes/C_NFL/COVERAGE_SCHEMA.md — seasons/weeks/rows/cols, stat blocks (150 cols block-verified), games join rates 100%, players/game, duplicates 0, missing-value map, schema drift NONE, offseason re-cut caveat",
+    "lanes/C_NFL/PIT_AUDIT.md — UTC canonicalization with caveats, worked prior-3 as-of example with leak guards, prospective-window proof, per-field verdicts (F1-F7), crosswalk dependency",
+    "lanes/C_NFL/FEATURE_PROPOSALS.md — 3 groups (QB form/availability+backup-QB snap share; skill usage mass; key-position absence proxy) with hypotheses vs frozen B1* K40 HCA0, join keys, risks, comparison DESIGN ONLY (log-loss, shuffled negative control)",
+    "lanes/C_NFL/VERDICT_TABLE.md — PASS/FAIL/NOT_RUN_PIT per check x data type, downloaded files table, blockers, $0 cost, HOLD verdict for FEATURE-PREP",
+    "lanes/DISPATCH/handoff_C_NFL.json — this handoff",
+    "data (outside git): ~/.my-quantitative-data/playerdata-prep-v1/nfl/ — raw_stats_player/, raw_snap_counts/, rights/, ATTRIBUTION.md, download logs, release_api_listing.json"
+  ],
+  "verdict": "PREP_DATA_VERIFIED_HOLD_FOR_FEATURE_PREP",
+  "finding_counts": {
+    "PASS": 16,
+    "FAIL": 0,
+    "NOT_RUN_PIT": 2,
+    "NOT_RUN_by_law": 1,
+    "BANNED_enforced": 1,
+    "downloads": 8,
+    "cost_usd": 0
+  },
+  "key_findings": [
+    "Weekly NFL player stats EXIST on the official store and are now on disk: stats_player release (CURRENT, in-season cadence; legacy player_stats release frozen 2025-05-07 — do not use). Downloaded 2024/2025 weekly (150 cols each, 285 games/season) + 2026 in-progress (63 games) + regpost_2025 aggregate + snap_counts 2025/2026.",
+    "games.csv join is perfect in-window: 100% game_id join rates (285/285, 285/285, 63/63), team/opponent consistency 100%, zero duplicates, zero schema drift 2024-2026.",
+    "PIT law satisfied for prior-games aggregates: kickoff-time ET->UTC canonicalization documented and worked (2024_11_KC_BUF prior-3 Mahomes example, leak-guarded); prospective-only 2026 window re-proven at the download moment (0 future games carry stats).",
+    "Blockers unchanged: injuries/active status NOT_RUN_PIT; pbp participation NOT on disk (separate release, not downloaded); snap_counts keys PFR ids -> players.parquet crosswalk needed for player-level snap joins; snap_counts lags stats ~3 days in-season.",
+    "Feature direction: 3 design-only groups (QB recent form/backup-QB snap share, skill usage mass incl. in-file target_share/air_yards_share/wopr, key-position absence proxy) must be judged against frozen B1* K40 HCA0 with log-loss + time-shuffled negative control; no runs this cycle."
+  ],
+  "next_safe_action": "Controller commits lanes/C_NFL/** + this handoff as one semantic lane commit; Lane D_VERIFY re-hashes downloaded files vs download_manifest_C_NFL.json and re-checks join rates; cycle proceeds toward PREP_COMPLETE_PENDING_OWNER_DECISIONS with NOT_RUN_PIT blockers and the players.parquet crosswalk fetch carried into any FEATURE-PREP successor (fresh registration + owner instruction required)."
+}
