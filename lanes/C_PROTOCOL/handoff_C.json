@@ -1,0 +1,45 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nflng-c-proto",
+  "cycle_id": "NFL-WINPROB-NG-PREP-V1",
+  "role": "quant-explorer",
+  "lane": "C_PROTOCOL",
+  "dispatch_sha": "fce0b14febcaec6e924cb1bf6629ccdeeb47c5e3",
+  "actual_start_sha": "fce0b14febcaec6e924cb1bf6629ccdeeb47c5e3",
+  "commit_sha": "PENDING_BACKFILL",
+  "changed_paths": [
+    "lanes/C_PROTOCOL/PROTOCOL_NFL_NG.md",
+    "lanes/C_PROTOCOL/LEDGER_SCHEMA.md",
+    "lanes/C_PROTOCOL/handoff_C.json"
+  ],
+  "tests": [],
+  "authority_claims": [
+    "Window law: SPENT 2019-2025 is cite-only (never hypothesis/selection/re-scoring surface); TRAIN = all complete audited seasons < 2019 (placeholder 2000-2018, exact list is a Lane-A freeze-packet fact); PROSPECTIVE = 2026+ from real ledger timestamps only, with played-before-record games permanently NOT_RUN prospective.",
+    "Train-internal selection: all free parameters of every arm selected by rolling-origin (expanding season folds over the TRAIN tail, placeholder inner-test 2014..2018) with a disclosed selection ledger, frozen in the successor freeze packet before the first prospective row. B1* (K=40/HCA=0/gamma=2/3) and B0 are exempt from selection by law.",
+    "Arm budget (<=9, binding): slot1 B0; slot2 B1* mandatory baseline; slots3-5 <=3 Lane-B candidates (plan priorities SOS-Elo / home-away split / offseason EPA prior, binding to Lane B's handoff); slot6 conditional interaction arm gated on G-INT (train-internal pooled dLL vs B1* CI entirely < 0 AND >= half inner folds negative); slot7 ONE reserve named in the freeze packet before any prospective row; slots8-9 explicitly RELEASED, never reallocated. Negative controls (time-shuffled twins, 1 per candidate) are diagnostic arms outside the budget: reported, never candidate wins; twin-also-wins => candidate UN-SCORED pending machinery audit.",
+    "Stop rules: per-arm early-kill is train-internal only (G-SELECT/G-ENTRY/G-PIT failure => never spends prospective window; G-ENTRY kill if train-internal dLL vs B1* CI entirely > 0, slope outside [0.85,1.15], or shuffled twin also wins); ADMIT requires negative point estimate and in-band slope; program stop if all candidate slots fail; the ONLY prospective-window aborts are operational (data supply, ledger integrity, owner) - no outcome-based early kill (anti optional-stopping, decision reads once per completed season).",
+    "Metrics/uncertainty: log loss primary; Brier + 10-bin reliability + calibration slope band [0.85,1.15] secondary (B0 slope reported N/A degenerate - clarification, not amendment); paired dLL with kickoff-date-clustered bootstrap, 10000 resamples; SEED DECISION: INHERIT 20261005 (seed is not a tuning knob; preserves machinery comparability with both terminal cycles).",
+    "Gates: T1/T2/T3 shape inherited (T1 pooled dLL vs B1* CI entirely < 0 AND >= half seasons negative; T2 slope in band; T3 no season Brier worse than B0 AND pooled dLL vs B0 CI entirely < 0); R1-R3 negative-terminal thresholds re-stated; INCONCLUSIVE language verbatim; playoff rows scored separately, never pooled into the regular-season headline.",
+    ">=2-new-season rule: no single-season NFL OOS decisive; strong conclusions need >=2 completed prospective seasons (~>=540 regular-season games) or a pooling plan pre-registered before the second season's first row; single-season outputs labelled descriptive.",
+    "Ledger law: append-only JSONL `nfl_ng_ledger@1`, one row per (game, arm), no outcome columns at all; recorded_at_utc < kickoff_utc strictly enforced at append AND re-validated at scoring against actual kickoffs; SHA-256 hash chain anchored to the freeze-packet GENESIS digest; postponement-later stays VALID (disclosed), moved-earlier-past-record INVALID_PROSPECTIVE, cancelled NOT_SCORED_CANCELLED; config error invalidates the arm's whole stream, rows never patched; duplicates and outcome-vocabulary keys fail the file.",
+    "Operations: controller-designated recorder role is the sole ledger writer; one weekly batch before the week's first kickoff UTC with >=6h design-placeholder margin; kickoff_utc from the Lane-A audited versioned schedule snapshot (snapshot id enters inputs_digest); identical-kickoff exclusion and kickoff-grain as-of law inherited; batch information sets may be strict subsets of the as-of legal set if pre-declared in the frozen config."
+  ],
+  "known_limitations": [
+    "OQ-1 (controller): final Lane-B candidate enumeration for slots 3-5 - Lane B's handoff had not landed when this lane closed; plan priorities are placeholders pending it.",
+    "OQ-2 (controller + Lane A): exact TRAIN season list, fallback season X (or 'not activated'), and neutral-site flaggability must be frozen from Lane A's audit before selection runs.",
+    "OQ-3 (owner): identity of the RESERVE arm (slot 7) must be named in the freeze packet before any prospective row, or the slot is released.",
+    "OQ-4 (owner): pooling plan shape if >=2 complete prospective seasons cannot accrue, and the launch date (fixes how much of 2026 is written off under the played-before-record law).",
+    "OQ-5 (controller): recorder role assignment and exact batch margin (design placeholder >=6h).",
+    "OQ-6 (controller): candidate-ranking rule naming C for the T/R gates (design placeholder: lowest pooled prospective LL among slots 3-6) must be registered in the freeze packet.",
+    "Design-only lane: no selection run, metric, or download executed; all Section-2 machinery is specified, not run; selection ledgers do not exist yet by construction.",
+    "Conflict note: dispatch packet line 'exactly ONE clean commit' vs task-authorized two-commit backfill procedure; the task instruction (later owner direction) was followed and the deviation is recorded in PROTOCOL_NFL_NG.md Section 11.5.",
+    "B0 calibration-slope degeneracy is documented as a clarification (N/A in successor tables); terminal B0 slope values (e.g. -4.278) are cited evidence of the same degeneracy, not a metric change."
+  ],
+  "incidents": [],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "lanes/C_PROTOCOL/PROTOCOL_NFL_NG.md",
+    "lanes/C_PROTOCOL/LEDGER_SCHEMA.md"
+  ]
+}
