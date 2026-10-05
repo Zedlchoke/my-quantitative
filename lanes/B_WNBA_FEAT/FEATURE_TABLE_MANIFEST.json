@@ -1,0 +1,1297 @@
+{
+ "schema": "wnba_player_feature_table@1",
+ "cycle": "WINPROB-PLAYERFEAT-PREP-V1",
+ "lane": "B_WNBA_FEAT",
+ "asof_rule_version": "tip_utc_strict_lt_v1",
+ "asof_law": "features use only same-season games with tip_utc STRICTLY < target tip_utc; Group A continuity additionally gated by the v2 law (game-1 membership only from that team's game 2 onward; v1 NOT_RUN_PIT)",
+ "determinism_law": "no wall-clock timestamps inside the table; tip_utc columns are scheduled-fact metadata required by the as-of law; sorted by (game_id, team_side); fixed column whitelist",
+ "inputs": {
+  "corpus": "/Users/hoangminhlong/.my-quantitative-data/wnba-prep-v1/roster_audit",
+  "schedules": "/Users/hoangminhlong/.my-quantitative-data/wnba-v1/raw/espn_schedules",
+  "lineage": "/Users/hoangminhlong/.my-quantitative-data/wnba-prep-v1/team_key_table.csv",
+  "spot_rehash": {
+   "manifest": "download_manifest_r2.json (cycle WNBA-WINPROB-PREP-V1 lane A)",
+   "files_checked": 8,
+   "all_match": true,
+   "mismatch": [],
+   "covers": ">=6 files incl. player_box + game_rosters, 2002-era and 2026",
+   "per_file": [
+    {
+     "file": "player_box_2002.csv",
+     "bytes_on_disk": 71853,
+     "bytes_manifest": 71853,
+     "sha256_match": true,
+     "size_match": true
+    },
+    {
+     "file": "player_box_2013.csv",
+     "bytes_on_disk": 2181243,
+     "bytes_manifest": 2181243,
+     "sha256_match": true,
+     "size_match": true
+    },
+    {
+     "file": "player_box_2020.csv",
+     "bytes_on_disk": 1736549,
+     "bytes_manifest": 1736549,
+     "sha256_match": true,
+     "size_match": true
+    },
+    {
+     "file": "player_box_2026.csv",
+     "bytes_on_disk": 4144369,
+     "bytes_manifest": 4144369,
+     "sha256_match": true,
+     "size_match": true
+    },
+    {
+     "file": "game_rosters_2002.csv",
+     "bytes_on_disk": 976386,
+     "bytes_manifest": 976386,
+     "sha256_match": true,
+     "size_match": true
+    },
+    {
+     "file": "game_rosters_2013.csv",
+     "bytes_on_disk": 982809,
+     "bytes_manifest": 982809,
+     "sha256_match": true,
+     "size_match": true
+    },
+    {
+     "file": "game_rosters_2019.csv",
+     "bytes_on_disk": 1207803,
+     "bytes_manifest": 1207803,
+     "sha256_match": true,
+     "size_match": true
+    },
+    {
+     "file": "game_rosters_2026.csv",
+     "bytes_on_disk": 2076903,
+     "bytes_manifest": 2076903,
+     "sha256_match": true,
+     "size_match": true
+    }
+   ]
+  }
+ },
+ "output": {
+  "path": "/Users/hoangminhlong/.my-quantitative-data/playerfeat-prep-v1/wnba/features/wnba_player_features_2002_2026.parquet",
+  "sha256": "sha256:ceaf10ba33e705b9569a11cec2aa33e1875e372c35d643ed5d80d5e757ffc7bf",
+  "bytes": 826415,
+  "rows": 11976,
+  "columns": [
+   "game_id",
+   "season",
+   "team_side",
+   "team_id",
+   "team_display_name",
+   "franchise_key",
+   "tip_utc",
+   "is_team_game1",
+   "asof_rule_version",
+   "continuity_c",
+   "continuity_prior_minutes_matched",
+   "continuity_prior_minutes_total",
+   "continuity_roster_size",
+   "continuity_neutral_reason",
+   "b3_minutes_total",
+   "b3_minutes_hhi",
+   "b3_top5_share",
+   "b3_games_played",
+   "b3_minutes_per_day",
+   "b3_window_first_tip",
+   "b3_window_last_tip",
+   "b3_neutral_reason",
+   "b5_minutes_total",
+   "b5_minutes_hhi",
+   "b5_top5_share",
+   "b5_games_played",
+   "b5_minutes_per_day",
+   "b5_window_first_tip",
+   "b5_window_last_tip",
+   "b5_neutral_reason",
+   "c_top5_athlete_ids",
+   "c_trailing_games_used",
+   "c_form_z_pts",
+   "c_form_z_reb",
+   "c_form_z_ast",
+   "c_absence_share",
+   "c_absence_mode",
+   "c_recent_game_id",
+   "c_recent_game_tip",
+   "c_neutral_reason"
+  ]
+ },
+ "row_law": "one row per (game_id, team side) for every universe game 2002-2026 (row exists even when features are neutral); NO outcome columns",
+ "per_season_rows": {
+  "2002": 542,
+  "2003": 510,
+  "2004": 474,
+  "2005": 476,
+  "2006": 514,
+  "2007": 484,
+  "2008": 518,
+  "2009": 484,
+  "2010": 440,
+  "2011": 448,
+  "2012": 446,
+  "2013": 442,
+  "2014": 444,
+  "2015": 450,
+  "2016": 440,
+  "2017": 438,
+  "2018": 440,
+  "2019": 440,
+  "2020": 294,
+  "2021": 420,
+  "2022": 480,
+  "2023": 522,
+  "2024": 526,
+  "2025": 622,
+  "2026": 682
+ },
+ "neutral_reason_counts": {
+  "continuity": {
+   "computed": 5907,
+   "prior_minutes_floor_pre2013": 5168,
+   "no_prior_in_corpus": 542,
+   "expansion_no_prior": 202,
+   "game1_v2_not_usable": 157
+  },
+  "b5": {
+   "computed": 5778,
+   "minutes_quality_floor_pre2013": 4165,
+   "coverage_floor_pre_2004": 793,
+   "insufficient_history": 690,
+   "no_prior_games": 550
+  },
+  "c": {
+   "computed": 5778,
+   "minutes_quality_floor_pre2013": 4958,
+   "insufficient_history": 690,
+   "no_prior_games": 550
+  }
+ },
+ "coverage": {
+  "universe_total": 5988,
+  "per_season": {
+   "player_box": {
+    "2002": {
+     "games_in_file": 16,
+     "universe_games": 271,
+     "universe_covered": 16,
+     "join_rate_vs_universe": 0.059,
+     "file_games_not_in_universe": 0,
+     "universe_games_missing": 255
+    },
+    "2003": {
+     "games_in_file": 195,
+     "universe_games": 255,
+     "universe_covered": 194,
+     "join_rate_vs_universe": 0.7608,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 61
+    },
+    "2004": {
+     "games_in_file": 214,
+     "universe_games": 237,
+     "universe_covered": 214,
+     "join_rate_vs_universe": 0.903,
+     "file_games_not_in_universe": 0,
+     "universe_games_missing": 23
+    },
+    "2005": {
+     "games_in_file": 230,
+     "universe_games": 238,
+     "universe_covered": 229,
+     "join_rate_vs_universe": 0.9622,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 9
+    },
+    "2006": {
+     "games_in_file": 256,
+     "universe_games": 257,
+     "universe_covered": 255,
+     "join_rate_vs_universe": 0.9922,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 2
+    },
+    "2007": {
+     "games_in_file": 241,
+     "universe_games": 242,
+     "universe_covered": 240,
+     "join_rate_vs_universe": 0.9917,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 2
+    },
+    "2008": {
+     "games_in_file": 252,
+     "universe_games": 259,
+     "universe_covered": 252,
+     "join_rate_vs_universe": 0.973,
+     "file_games_not_in_universe": 0,
+     "universe_games_missing": 7
+    },
+    "2009": {
+     "games_in_file": 243,
+     "universe_games": 242,
+     "universe_covered": 242,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2010": {
+     "games_in_file": 220,
+     "universe_games": 220,
+     "universe_covered": 219,
+     "join_rate_vs_universe": 0.9955,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 1
+    },
+    "2011": {
+     "games_in_file": 225,
+     "universe_games": 224,
+     "universe_covered": 224,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2012": {
+     "games_in_file": 221,
+     "universe_games": 223,
+     "universe_covered": 221,
+     "join_rate_vs_universe": 0.991,
+     "file_games_not_in_universe": 0,
+     "universe_games_missing": 2
+    },
+    "2013": {
+     "games_in_file": 222,
+     "universe_games": 221,
+     "universe_covered": 221,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2014": {
+     "games_in_file": 223,
+     "universe_games": 222,
+     "universe_covered": 222,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2015": {
+     "games_in_file": 226,
+     "universe_games": 225,
+     "universe_covered": 225,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2016": {
+     "games_in_file": 218,
+     "universe_games": 220,
+     "universe_covered": 218,
+     "join_rate_vs_universe": 0.9909,
+     "file_games_not_in_universe": 0,
+     "universe_games_missing": 2
+    },
+    "2017": {
+     "games_in_file": 220,
+     "universe_games": 219,
+     "universe_covered": 219,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2018": {
+     "games_in_file": 221,
+     "universe_games": 220,
+     "universe_covered": 220,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2019": {
+     "games_in_file": 221,
+     "universe_games": 220,
+     "universe_covered": 220,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2020": {
+     "games_in_file": 147,
+     "universe_games": 147,
+     "universe_covered": 147,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 0,
+     "universe_games_missing": 0
+    },
+    "2021": {
+     "games_in_file": 211,
+     "universe_games": 210,
+     "universe_covered": 210,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2022": {
+     "games_in_file": 241,
+     "universe_games": 240,
+     "universe_covered": 240,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2023": {
+     "games_in_file": 262,
+     "universe_games": 261,
+     "universe_covered": 261,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2024": {
+     "games_in_file": 264,
+     "universe_games": 263,
+     "universe_covered": 263,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2025": {
+     "games_in_file": 312,
+     "universe_games": 311,
+     "universe_covered": 311,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2026": {
+     "games_in_file": 342,
+     "universe_games": 341,
+     "universe_covered": 341,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    }
+   },
+   "game_rosters": {
+    "2002": {
+     "games_in_file": 271,
+     "universe_games": 271,
+     "universe_covered": 270,
+     "join_rate_vs_universe": 0.9963,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 1
+    },
+    "2003": {
+     "games_in_file": 256,
+     "universe_games": 255,
+     "universe_covered": 255,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2004": {
+     "games_in_file": 237,
+     "universe_games": 237,
+     "universe_covered": 237,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 0,
+     "universe_games_missing": 0
+    },
+    "2005": {
+     "games_in_file": 239,
+     "universe_games": 238,
+     "universe_covered": 238,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2006": {
+     "games_in_file": 256,
+     "universe_games": 257,
+     "universe_covered": 255,
+     "join_rate_vs_universe": 0.9922,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 2
+    },
+    "2007": {
+     "games_in_file": 243,
+     "universe_games": 242,
+     "universe_covered": 242,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2008": {
+     "games_in_file": 258,
+     "universe_games": 259,
+     "universe_covered": 258,
+     "join_rate_vs_universe": 0.9961,
+     "file_games_not_in_universe": 0,
+     "universe_games_missing": 1
+    },
+    "2009": {
+     "games_in_file": 243,
+     "universe_games": 242,
+     "universe_covered": 242,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2010": {
+     "games_in_file": 221,
+     "universe_games": 220,
+     "universe_covered": 220,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2011": {
+     "games_in_file": 225,
+     "universe_games": 224,
+     "universe_covered": 224,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2012": {
+     "games_in_file": 223,
+     "universe_games": 223,
+     "universe_covered": 223,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 0,
+     "universe_games_missing": 0
+    },
+    "2013": {
+     "games_in_file": 222,
+     "universe_games": 221,
+     "universe_covered": 221,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2014": {
+     "games_in_file": 223,
+     "universe_games": 222,
+     "universe_covered": 222,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2015": {
+     "games_in_file": 226,
+     "universe_games": 225,
+     "universe_covered": 225,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2016": {
+     "games_in_file": 219,
+     "universe_games": 220,
+     "universe_covered": 219,
+     "join_rate_vs_universe": 0.9955,
+     "file_games_not_in_universe": 0,
+     "universe_games_missing": 1
+    },
+    "2017": {
+     "games_in_file": 220,
+     "universe_games": 219,
+     "universe_covered": 219,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2018": {
+     "games_in_file": 222,
+     "universe_games": 220,
+     "universe_covered": 220,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 2,
+     "universe_games_missing": 0
+    },
+    "2019": {
+     "games_in_file": 221,
+     "universe_games": 220,
+     "universe_covered": 220,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2020": {
+     "games_in_file": 147,
+     "universe_games": 147,
+     "universe_covered": 147,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 0,
+     "universe_games_missing": 0
+    },
+    "2021": {
+     "games_in_file": 211,
+     "universe_games": 210,
+     "universe_covered": 210,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2022": {
+     "games_in_file": 241,
+     "universe_games": 240,
+     "universe_covered": 240,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2023": {
+     "games_in_file": 262,
+     "universe_games": 261,
+     "universe_covered": 261,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2024": {
+     "games_in_file": 264,
+     "universe_games": 263,
+     "universe_covered": 263,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2025": {
+     "games_in_file": 312,
+     "universe_games": 311,
+     "universe_covered": 311,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    },
+    "2026": {
+     "games_in_file": 342,
+     "universe_games": 341,
+     "universe_covered": 341,
+     "join_rate_vs_universe": 1.0,
+     "file_games_not_in_universe": 1,
+     "universe_games_missing": 0
+    }
+   }
+  },
+  "floors": {
+   "2002": {
+    "game_coverage_ge_90pct": false,
+    "minutes_weighted_eligible": false
+   },
+   "2003": {
+    "game_coverage_ge_90pct": false,
+    "minutes_weighted_eligible": false
+   },
+   "2004": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": false
+   },
+   "2005": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": false
+   },
+   "2006": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": false
+   },
+   "2007": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": false
+   },
+   "2008": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": false
+   },
+   "2009": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": false
+   },
+   "2010": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": false
+   },
+   "2011": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": false
+   },
+   "2012": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": false
+   },
+   "2013": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   },
+   "2014": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   },
+   "2015": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   },
+   "2016": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   },
+   "2017": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   },
+   "2018": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   },
+   "2019": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   },
+   "2020": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   },
+   "2021": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   },
+   "2022": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   },
+   "2023": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   },
+   "2024": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   },
+   "2025": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   },
+   "2026": {
+    "game_coverage_ge_90pct": true,
+    "minutes_weighted_eligible": true
+   }
+  },
+  "floor_law": "game-coverage floor >=90% seasons 2004+ (packet); minutes-quality floor 2013+ for minutes-weighted variants (packet); 2002 minutes 100% null -> excluded"
+ },
+ "degeneracy": {
+  "question": "does team minutes == 200 + 25*n_OT hold in this corpus?",
+  "answer": "NOT exactly. ESPN per-player minutes are integer-rounded (totals scatter 199-202 in completed regulation games) and 2003-2008 backfill-era games are systematically incomplete (equation-of-200 share 0.00 in 2003-2007).",
+  "per_season": {
+   "2002": {
+    "team_games": 0,
+    "eq200_share": null,
+    "in195_205_share": null,
+    "ge205_share": null,
+    "le194_share": null,
+    "total_median": null,
+    "total_max": null
+   },
+   "2003": {
+    "team_games": 390,
+    "eq200_share": 0.0,
+    "in195_205_share": 0.0846,
+    "ge205_share": 0.0564,
+    "le194_share": 0.859,
+    "total_median": 190.0,
+    "total_max": 242.0
+   },
+   "2004": {
+    "team_games": 428,
+    "eq200_share": 0.0,
+    "in195_205_share": 0.1028,
+    "ge205_share": 0.0631,
+    "le194_share": 0.8364,
+    "total_median": 189.0,
+    "total_max": 245.0
+   },
+   "2005": {
+    "team_games": 460,
+    "eq200_share": 0.0,
+    "in195_205_share": 0.087,
+    "ge205_share": 0.0587,
+    "le194_share": 0.8565,
+    "total_median": 190.0,
+    "total_max": 244.0
+   },
+   "2006": {
+    "team_games": 512,
+    "eq200_share": 0.0,
+    "in195_205_share": 0.0977,
+    "ge205_share": 0.0371,
+    "le194_share": 0.8652,
+    "total_median": 190.0,
+    "total_max": 272.0
+   },
+   "2007": {
+    "team_games": 482,
+    "eq200_share": 0.0,
+    "in195_205_share": 0.0975,
+    "ge205_share": 0.0768,
+    "le194_share": 0.8257,
+    "total_median": 190.0,
+    "total_max": 266.0
+   },
+   "2008": {
+    "team_games": 504,
+    "eq200_share": 0.004,
+    "in195_205_share": 0.131,
+    "ge205_share": 0.0714,
+    "le194_share": 0.7976,
+    "total_median": 190.0,
+    "total_max": 266.0
+   },
+   "2009": {
+    "team_games": 486,
+    "eq200_share": 0.4506,
+    "in195_205_share": 0.8765,
+    "ge205_share": 0.1132,
+    "le194_share": 0.0103,
+    "total_median": 200.0,
+    "total_max": 275.0
+   },
+   "2010": {
+    "team_games": 440,
+    "eq200_share": 0.4364,
+    "in195_205_share": 0.9341,
+    "ge205_share": 0.0614,
+    "le194_share": 0.0045,
+    "total_median": 200.0,
+    "total_max": 276.0
+   },
+   "2011": {
+    "team_games": 450,
+    "eq200_share": 0.4733,
+    "in195_205_share": 0.9422,
+    "ge205_share": 0.0533,
+    "le194_share": 0.0044,
+    "total_median": 200.0,
+    "total_max": 250.0
+   },
+   "2012": {
+    "team_games": 442,
+    "eq200_share": 0.4005,
+    "in195_205_share": 0.9321,
+    "ge205_share": 0.0633,
+    "le194_share": 0.0045,
+    "total_median": 200.0,
+    "total_max": 251.0
+   },
+   "2013": {
+    "team_games": 444,
+    "eq200_share": 0.4459,
+    "in195_205_share": 0.9459,
+    "ge205_share": 0.0541,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 250.0
+   },
+   "2014": {
+    "team_games": 446,
+    "eq200_share": 0.4417,
+    "in195_205_share": 0.9058,
+    "ge205_share": 0.0942,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 276.0
+   },
+   "2015": {
+    "team_games": 452,
+    "eq200_share": 0.4668,
+    "in195_205_share": 0.9381,
+    "ge205_share": 0.0619,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 251.0
+   },
+   "2016": {
+    "team_games": 436,
+    "eq200_share": 0.4335,
+    "in195_205_share": 0.9083,
+    "ge205_share": 0.0917,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 275.0
+   },
+   "2017": {
+    "team_games": 440,
+    "eq200_share": 0.4614,
+    "in195_205_share": 0.9455,
+    "ge205_share": 0.0545,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 251.0
+   },
+   "2018": {
+    "team_games": 442,
+    "eq200_share": 0.4977,
+    "in195_205_share": 0.9683,
+    "ge205_share": 0.0317,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 250.0
+   },
+   "2019": {
+    "team_games": 442,
+    "eq200_share": 0.4389,
+    "in195_205_share": 0.9774,
+    "ge205_share": 0.0226,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 226.0
+   },
+   "2020": {
+    "team_games": 294,
+    "eq200_share": 0.4898,
+    "in195_205_share": 0.9728,
+    "ge205_share": 0.0272,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 226.0
+   },
+   "2021": {
+    "team_games": 422,
+    "eq200_share": 0.436,
+    "in195_205_share": 0.9242,
+    "ge205_share": 0.0758,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 250.0
+   },
+   "2022": {
+    "team_games": 482,
+    "eq200_share": 0.4419,
+    "in195_205_share": 0.9502,
+    "ge205_share": 0.0498,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 252.0
+   },
+   "2023": {
+    "team_games": 524,
+    "eq200_share": 0.4676,
+    "in195_205_share": 0.958,
+    "ge205_share": 0.042,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 226.0
+   },
+   "2024": {
+    "team_games": 528,
+    "eq200_share": 0.4489,
+    "in195_205_share": 0.9621,
+    "ge205_share": 0.0379,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 251.0
+   },
+   "2025": {
+    "team_games": 624,
+    "eq200_share": 0.4824,
+    "in195_205_share": 0.9744,
+    "ge205_share": 0.0256,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 251.0
+   },
+   "2026": {
+    "team_games": 684,
+    "eq200_share": 0.4532,
+    "in195_205_share": 0.962,
+    "ge205_share": 0.038,
+    "le194_share": 0.0,
+    "total_median": 200.0,
+    "total_max": 302.0
+   }
+  }
+ },
+ "groups": {
+  "A": "continuity_c = minutes-weighted share of franchise prior-season (strictly s-1, universe games) player-minutes attributable to athletes on the team's game-1 roster sheet; franchise joins ONLY via team_key_table.csv; computed iff prior season >= 2013 (minutes-quality floor), prior coverage >= 90%, not expansion/first-corpus season, game-1 roster exists, v2 as-of satisfied",
+  "B": "per k in {3,5} (BOTH frozen; selection deferred to gated successor): pooled team minutes, minutes HHI, top-5 minute share, games played, minutes per available day over the k most recent same-season strictly-prior team-games; computed iff season >= 2013 and full window present",
+  "C": "top-5 minutes-weighted rotation from trailing prior-10 same-season games; minutes-weighted mean per-minute pts/reb/ast z vs own trailing baseline (>=3 valid players, >=3 baseline games, sd>0); absence proxy = share of expected top-5 minutes missing in the most recent prior game (null-minutes uniform proxy; DNP flag 2012+ cross-checked; active/reason UNUSABLE, restated)"
+ },
+ "measured": {
+  "espn_universe": {
+   "law": "keep status_type_state=='post'; drop Forfeit/Postponed; drop All-Star alias rows (EAST/WEST/ALL/USA/DEL/PAR/WIL/STE/CLA/COL/SPO/COOP/WNBASTARS on home or away abbreviation); TBD placeholders are state=='pre' already excluded",
+   "total_universe_games": 5988,
+   "cross_check_predecessor": {
+    "expected": 5988,
+    "match": true
+   },
+   "per_season": {
+    "2002": {
+     "rows_total": 272,
+     "universe_games": 271,
+     "dropped_alias": 1
+    },
+    "2003": {
+     "rows_total": 256,
+     "universe_games": 255,
+     "dropped_alias": 1
+    },
+    "2004": {
+     "rows_total": 238,
+     "universe_games": 237,
+     "dropped_alias": 1
+    },
+    "2005": {
+     "rows_total": 239,
+     "universe_games": 238,
+     "dropped_alias": 1
+    },
+    "2006": {
+     "rows_total": 258,
+     "universe_games": 257,
+     "dropped_alias": 1
+    },
+    "2007": {
+     "rows_total": 243,
+     "universe_games": 242,
+     "dropped_alias": 1
+    },
+    "2008": {
+     "rows_total": 259,
+     "universe_games": 259,
+     "dropped_alias": 0
+    },
+    "2009": {
+     "rows_total": 243,
+     "universe_games": 242,
+     "dropped_alias": 1
+    },
+    "2010": {
+     "rows_total": 221,
+     "universe_games": 220,
+     "dropped_alias": 1
+    },
+    "2011": {
+     "rows_total": 225,
+     "universe_games": 224,
+     "dropped_alias": 1
+    },
+    "2012": {
+     "rows_total": 223,
+     "universe_games": 223,
+     "dropped_alias": 0
+    },
+    "2013": {
+     "rows_total": 222,
+     "universe_games": 221,
+     "dropped_alias": 1
+    },
+    "2014": {
+     "rows_total": 223,
+     "universe_games": 222,
+     "dropped_alias": 1
+    },
+    "2015": {
+     "rows_total": 226,
+     "universe_games": 225,
+     "dropped_alias": 1
+    },
+    "2016": {
+     "rows_total": 220,
+     "universe_games": 220,
+     "dropped_alias": 0
+    },
+    "2017": {
+     "rows_total": 220,
+     "universe_games": 219,
+     "dropped_alias": 1
+    },
+    "2018": {
+     "rows_total": 222,
+     "universe_games": 220,
+     "dropped_alias": 1
+    },
+    "2019": {
+     "rows_total": 221,
+     "universe_games": 220,
+     "dropped_alias": 1
+    },
+    "2020": {
+     "rows_total": 147,
+     "universe_games": 147,
+     "dropped_alias": 0
+    },
+    "2021": {
+     "rows_total": 211,
+     "universe_games": 210,
+     "dropped_alias": 1
+    },
+    "2022": {
+     "rows_total": 241,
+     "universe_games": 240,
+     "dropped_alias": 1
+    },
+    "2023": {
+     "rows_total": 263,
+     "universe_games": 261,
+     "dropped_alias": 1
+    },
+    "2024": {
+     "rows_total": 264,
+     "universe_games": 263,
+     "dropped_alias": 1
+    },
+    "2025": {
+     "rows_total": 312,
+     "universe_games": 311,
+     "dropped_alias": 1
+    },
+    "2026": {
+     "rows_total": 360,
+     "universe_games": 341,
+     "dropped_alias": 1
+    }
+   }
+  },
+  "lineage": {
+   "source": "/Users/hoangminhlong/.my-quantitative-data/wnba-prep-v1/team_key_table.csv",
+   "franchise_keys": 20,
+   "law": "franchise joins via team_key_table.csv ESPN display names + stable ESPN team_id; raw ESPN abbreviations NEVER used (ESPN labels all Detroit 2002-2009 as TUL)",
+   "universe_team_seasons_mapped": 318,
+   "team_id_multi_franchise_violations": 0
+  },
+  "player_box_inventory": {
+   "2002": {
+    "rows": 344,
+    "cols": 35,
+    "minutes_null_rows": 344
+   },
+   "2003": {
+    "rows": 4279,
+    "cols": 56,
+    "minutes_null_rows": 594
+   },
+   "2004": {
+    "rows": 4694,
+    "cols": 56,
+    "minutes_null_rows": 702
+   },
+   "2005": {
+    "rows": 5079,
+    "cols": 56,
+    "minutes_null_rows": 821
+   },
+   "2006": {
+    "rows": 6076,
+    "cols": 56,
+    "minutes_null_rows": 1141
+   },
+   "2007": {
+    "rows": 5919,
+    "cols": 56,
+    "minutes_null_rows": 1311
+   },
+   "2008": {
+    "rows": 6245,
+    "cols": 56,
+    "minutes_null_rows": 1251
+   },
+   "2009": {
+    "rows": 5348,
+    "cols": 56,
+    "minutes_null_rows": 626
+   },
+   "2010": {
+    "rows": 4831,
+    "cols": 56,
+    "minutes_null_rows": 632
+   },
+   "2011": {
+    "rows": 4953,
+    "cols": 56,
+    "minutes_null_rows": 617
+   },
+   "2012": {
+    "rows": 4889,
+    "cols": 57,
+    "minutes_null_rows": 661
+   },
+   "2013": {
+    "rows": 4961,
+    "cols": 57,
+    "minutes_null_rows": 747
+   },
+   "2014": {
+    "rows": 5228,
+    "cols": 57,
+    "minutes_null_rows": 806
+   },
+   "2015": {
+    "rows": 5379,
+    "cols": 57,
+    "minutes_null_rows": 899
+   },
+   "2016": {
+    "rows": 5176,
+    "cols": 57,
+    "minutes_null_rows": 813
+   },
+   "2017": {
+    "rows": 5183,
+    "cols": 57,
+    "minutes_null_rows": 764
+   },
+   "2018": {
+    "rows": 5187,
+    "cols": 57,
+    "minutes_null_rows": 746
+   },
+   "2019": {
+    "rows": 5211,
+    "cols": 57,
+    "minutes_null_rows": 901
+   },
+   "2020": {
+    "rows": 3544,
+    "cols": 57,
+    "minutes_null_rows": 748
+   },
+   "2021": {
+    "rows": 4626,
+    "cols": 57,
+    "minutes_null_rows": 697
+   },
+   "2022": {
+    "rows": 5307,
+    "cols": 57,
+    "minutes_null_rows": 749
+   },
+   "2023": {
+    "rows": 5796,
+    "cols": 57,
+    "minutes_null_rows": 852
+   },
+   "2024": {
+    "rows": 5929,
+    "cols": 57,
+    "minutes_null_rows": 975
+   },
+   "2025": {
+    "rows": 7140,
+    "cols": 57,
+    "minutes_null_rows": 1245
+   },
+   "2026": {
+    "rows": 8293,
+    "cols": 57,
+    "minutes_null_rows": 1470
+   }
+  },
+  "game_rosters_inventory": {
+   "2002": {
+    "rows": 5959,
+    "cols": 21
+   },
+   "2003": {
+    "rows": 5605,
+    "cols": 21
+   },
+   "2004": {
+    "rows": 5194,
+    "cols": 21
+   },
+   "2005": {
+    "rows": 5288,
+    "cols": 21
+   },
+   "2006": {
+    "rows": 6076,
+    "cols": 21
+   },
+   "2007": {
+    "rows": 5969,
+    "cols": 21
+   },
+   "2008": {
+    "rows": 6400,
+    "cols": 21
+   },
+   "2009": {
+    "rows": 5348,
+    "cols": 21
+   },
+   "2010": {
+    "rows": 4854,
+    "cols": 21
+   },
+   "2011": {
+    "rows": 4953,
+    "cols": 21
+   },
+   "2012": {
+    "rows": 4934,
+    "cols": 21
+   },
+   "2013": {
+    "rows": 4961,
+    "cols": 21
+   },
+   "2014": {
+    "rows": 5228,
+    "cols": 21
+   },
+   "2015": {
+    "rows": 5379,
+    "cols": 21
+   },
+   "2016": {
+    "rows": 5199,
+    "cols": 21
+   },
+   "2017": {
+    "rows": 5183,
+    "cols": 21
+   },
+   "2018": {
+    "rows": 5211,
+    "cols": 21
+   },
+   "2019": {
+    "rows": 5211,
+    "cols": 21
+   },
+   "2020": {
+    "rows": 3544,
+    "cols": 21
+   },
+   "2021": {
+    "rows": 4626,
+    "cols": 21
+   },
+   "2022": {
+    "rows": 5307,
+    "cols": 21
+   },
+   "2023": {
+    "rows": 5796,
+    "cols": 21
+   },
+   "2024": {
+    "rows": 5929,
+    "cols": 21
+   },
+   "2025": {
+    "rows": 7140,
+    "cols": 21
+   },
+   "2026": {
+    "rows": 8293,
+    "cols": 21
+   }
+  }
+ }
+}

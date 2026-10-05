@@ -1,0 +1,88 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "winprob-playerfeat-prep-v1-B-WNBA-FEAT",
+  "cycle_id": "WINPROB-PLAYERFEAT-PREP-V1",
+  "role": "data-feature-lane",
+  "lane": "B_WNBA_FEAT",
+  "branch": "orca/winprob-playerfeat-prep-v1-integration",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration",
+  "dispatch_sha": "00323ba64ebbbc107d05fcf926c7cadf8dfa7acd",
+  "actual_start_sha": "00323ba64ebbbc107d05fcf926c7cadf8dfa7acd",
+  "commit_sha": null,
+  "tree_status": "uncommitted-by-design",
+  "workers": 0,
+  "changed_paths": [
+    "lanes/B_WNBA_FEAT/build_features.py",
+    "lanes/B_WNBA_FEAT/FEATURE_SPEC.md",
+    "lanes/B_WNBA_FEAT/COVERAGE_AUDIT.md",
+    "lanes/B_WNBA_FEAT/FEATURE_TABLE_MANIFEST.md",
+    "lanes/B_WNBA_FEAT/FEATURE_TABLE_MANIFEST.json",
+    "lanes/B_WNBA_FEAT/PIT_AUDIT.md",
+    "lanes/B_WNBA_FEAT/VERDICT_TABLE.md",
+    "lanes/DISPATCH/handoff_B_WNBA_FEAT.json"
+  ],
+  "outputs": [
+    "/Users/hoangminhlong/.my-quantitative-data/playerfeat-prep-v1/wnba/features/wnba_player_features_2002_2026.parquet",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/build_features.py",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/FEATURE_SPEC.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/COVERAGE_AUDIT.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/FEATURE_TABLE_MANIFEST.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/FEATURE_TABLE_MANIFEST.json",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/PIT_AUDIT.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/VERDICT_TABLE.md"
+  ],
+  "tests": [
+    "corpus integrity: 8/8 spot re-hashes match download_manifest_r2.json sha256 AND byte size exactly (player_box 2002/2013/2020/2026 + game_rosters 2002/2013/2019/2026 — satisfies >=6 incl. both families, 2002-era and 2026); corpus never written; $0, 0 downloads",
+    "universe re-derivation: ESPN filter law (post, drop Forfeit/Postponed, drop All-Star aliases) reproduces the predecessor's 5,988 games EXACTLY, per-season list identical row-by-row (271,255,237,238,257,242,259,242,220,224,223,221,222,225,220,219,220,220,147,210,240,261,263,311,341)",
+    "coverage audit vs universe: player_box 5.9% (2002, 16-game stub, minutes 100% null) / 76.1% (2003) / >=90.3% (2004+) / 100% every season 2013-2026; game_rosters >=99.2% all seasons; floors enforced: game-coverage >=90% 2004+, minutes-quality 2013+ for ALL minutes-weighted variants",
+    "degeneracy measured from bytes: team minutes == 200+25*n_OT is NOT exact — 2003-2008 backfill era systematically incomplete (team-game totals: 8.5-13.1% in [195,205], ~0% exactly 200, medians 190) while 2009+ is complete-but-integer-rounded (==200 share 40-50%, <=194 share 0% from 2013, >=205 share 2.3-11.3% = OT); documented in COVERAGE_AUDIT §5, no feature assumes the identity",
+    "feature table: 11,976 rows = 2 x 5,988 (one row per (game_id, team side), rows exist when features neutral); 40-column exact whitelist, ZERO outcome columns, no wall-clock timestamps (tip_utc/window-tip columns are scheduled-fact as-of metadata); determinism proven: two independent full builds -> identical parquet sha256 ceaf10ba33e705b9569a11cec2aa33e1875e372c35d643ed5d80d5e757ffc7bf (826,415 bytes)",
+    "Group A continuity (W-H2 linkage, v2 law): c_i(s) = minutes-weighted share of franchise prior-season (strictly s-1, universe games) minutes on the team's game-1 roster sheet; 5,907 computed rows (2014-2026, prior-season minutes-quality floor); v2 enforced (game-1 rows always neutral, reason game1_v2_not_usable, flag ONLY on game-1 rows); v1 NOT_RUN_PIT restated; neutral: prior_minutes_floor_pre2013 5,168, no_prior_in_corpus 542 (2002), expansion_no_prior 202 (CHI 2006, ATL 2008, GSV 2025, TOR 2026, POR_PDX 2026 — both arms); c in [0.124, 0.974] median 0.619",
+    "Group B minutes-mass/load: k in {3,5} BOTH computed (5,778 computed rows each, 2013+, full same-season windows), selection deferred to a gated successor; per k: pooled minutes, HHI, top-5 share, games played, minutes-per-available-day",
+    "Group C top-player form + absence: top-5 minutes-weighted rotation from trailing prior-10 (>=5 gate); per-minute pts/reb/ast z vs own trailing baseline (>=3 valid players, sd>0, minutes-weighted); absence proxy = share of expected top-5 minutes missing in most recent prior game via the UNIFORM null-minutes proxy (DNP flag 2012+ cross-checked; 'active'/'reason' measured defective by predecessor — restated UNUSABLE and absent from schema); 5,778 computed rows",
+    "lineage law: franchise joins ONLY via team_key_table.csv display names + stable ESPN team_id, never raw abbreviations; measured justification: ESPN labels ALL Detroit 2002-2009 as TUL (same abbreviation as Tulsa 2010-2015) while team_id 3 spans DET/TUL/DAL; UTA 2002 = team_id 15, SAN/LVA = team_id 17, both under franchise LVA; 0 unmapped universe teams, 0 team_id->multi-franchise violations (asserted in selftest)",
+    "selftest (--selftest, exit 0): 46/46 checks PASS incl. leak guards — strict tip inequality asserted per row on b3/b5 window tips and c recent-game tip (0 violations / 11,976 rows); NA<->neutral-reason invariant both directions; expansion neutrality; 2002 minutes exclusion; pre-2013 floors; and the predecessor CON 2013 worked example REPRODUCED from bytes (target 400445816 tip 2013-07-06T23:00Z; prior-5 team minutes 200/201/200/199/202 from games 400445826/400445854/400445709/400445771/400445798; b5_minutes_total=1002.0, b3=601.0)",
+    "PIT: worked examples with numbers in lanes/B_WNBA_FEAT/PIT_AUDIT.md (§2 CON prior-5 reproduction; §3 CON 2014 v2 law: game-1 400539461 neutral, game-2 400539470 c=0.405477=2769/6829; §4 GSV 2025 expansion 46/46 rows neutral; §5 IND absence 0.644 with strictly-prior recent game); no forecast, log loss, or win-prob quantity computed anywhere in this lane (0 scored)",
+    "boundaries: writes confined to lanes/B_WNBA_FEAT/ + lanes/DISPATCH/handoff_B_WNBA_FEAT.json + ~/.my-quantitative-data/playerfeat-prep-v1/wnba/; corpus hashes unchanged before/after; no git commands run; interpreter /Users/hoangminhlong/my-quantitative/.venv/bin/python only; heavy compute 4.1-4.9 min wall clock (< 30-min budget; no global lock taken — single-process local job)"
+  ],
+  "authority_claims": [
+    "This lane built a feature-PREP table only; it registers no GO phrase, consumes none, and computed no scored/win-prob/calibration metric",
+    "Corpus and all other data dirs treated READ-ONLY (EXTEND-ONLY law); new data written only under ~/.my-quantitative-data/playerfeat-prep-v1/wnba/",
+    "W-H2 (MECHANISMS_WNBA.md) consumed as continuity REFERENCE ONLY — never re-derived; v2 as-of law adopted per packet, v1 restated NOT_RUN_PIT",
+    "All predecessor coverage laws re-measured from bytes this session, not copied: 5,988 universe reproduced exactly; floors enforced as packet law and independently supported by the measured degeneracy table"
+  ],
+  "known_limitations": [
+    "Group B k-selection deliberately NOT made (both k=3,5 frozen in table; selection belongs to a future gated successor cycle)",
+    "Minutes-weighted variants are computed only 2013+ (B/C) and continuity only from season 2014 (prior-season 2013+ floor): seasons 2002-2012 rows exist with neutral values + reason flags; measured evidence shows 2003-2008 minute totals are systematically incomplete and 2009-2012 sits just under the frozen floor",
+    "ESPN per-player minutes are integer-rounded: team-minute totals wobble 199-202 in regulation (~40-50% exactly 200 from 2009+); OT not normalized away — consumers get measured totals, not 200+25*n_OT",
+    "Same-season window confinement is a FROZEN DECISION (season-start games neutral by construction; no cross-season pooling) — a successor may propose cross-season windows only with its own gated registration",
+    "Opening-roster v1 remains NOT_RUN_PIT (no publish timestamps on the game-1 sheet); only v2 (game-1 membership from that team's game 2 onward) is built",
+    "Absence proxy is a minutes-missing proxy, not an injury feed (none exists rights-cleared); pre-2012 rows are neutral so the DNP-vs-null-minutes eras never mix inside computed values",
+    "Continuity treats trades as invisible (season-start measure per W-H2 design); mid-season roster changes are absorbed only by the rolling B/C windows"
+  ],
+  "incidents": [],
+  "verdict": "PREP_WORK_COMPLETE",
+  "counts": {"BLOCKER": 0, "MAJOR": 0, "MINOR": 0, "NOT_RUN_BY_LAW": 4},
+  "not_run_by_law": [
+    "opening-roster variant v1 (NOT_RUN_PIT, restated)",
+    "target-game roster/starter/DNP/active/reason as features (FORBIDDEN / NOT_RUN_PIT, restated)",
+    "injury/availability feed (NOT_RUN_PIT — no dated archive)",
+    "scored computation / win-prob / calibration metric (out of lane authority; 0 scored)"
+  ],
+  "next_actions": [
+    "Controller: inspect lane artifacts + parquet, one semantic commit for the lane (artifacts intentionally uncommitted)",
+    "Independent verifier lane (D_VERIFY): re-hash outputs, independently recompute feature values for a sample of games, re-run build_features.py --selftest, leak-audit strict as-of inequality and neutral/fallback behavior",
+    "Scored successor (fresh registration + owner gate required): may arm Groups A/B/C against the frozen WNBA baseline; must freeze k-selection train-internal and carry the neutral-reason eligibility laws stated in FEATURE_SPEC §7"
+  ],
+  "handoff_artifacts": {
+    "feature_table_manifest_md": "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/FEATURE_TABLE_MANIFEST.md",
+    "feature_table_manifest_json": "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/FEATURE_TABLE_MANIFEST.json",
+    "feature_spec": "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/FEATURE_SPEC.md",
+    "coverage_audit": "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/COVERAGE_AUDIT.md",
+    "pit_audit": "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/PIT_AUDIT.md",
+    "verdict_table": "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/VERDICT_TABLE.md",
+    "build_script": "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/B_WNBA_FEAT/build_features.py",
+    "handoff": "/Users/hoangminhlong/my-quantitative/.worktrees/winprob-playerfeat-prep-v1/integration/lanes/DISPATCH/handoff_B_WNBA_FEAT.json"
+  },
+  "completed_utc": "2026-10-05"
+}
