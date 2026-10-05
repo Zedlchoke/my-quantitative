@@ -57,3 +57,20 @@ nfl-nflverse-v1 archive byte-untouched (re-hashed, all match). No accounts/keys/
    cadence (weekly ≥6h margin placeholder before first kickoff UTC; earliest opportunity
    2026-10-06T00:15:00Z week-4 remainder). 3. Prospective ledger opens only inside the
    successor cycle; every 2026 game played before its freeze stays NOT_RUN prospective.
+
+## Addendum r1 (owner follow-up round, 2026-10-05)
+
+- D2-a REMEDIATED (lane A r1, ADJUDICATION): two §1 license quotes replaced with true verbatim
+  text from the pinned LICENSE bytes ("exercise the Licensed Rights… reproduce and Share…";
+  attribution "(s)" restored) + dated ERRATUM; verifier r2 confirmed 2-hunk diff only, rights
+  verdict unaffected.
+- 2026 recount (07:16:19Z, verifier-r2 reproduced 07:23:28Z): 272 / 63 played all-final /
+  209 future 0-scored / earliest future kickoff 2026-10-06T00:15:00Z (2026_04_ATL_NO).
+- LEDGER TOOL landed (lane E): research/control/NFL-WINPROB-NG-PREP-V1/ledger/ —
+  nfl_ng_ledger@1 append-only, hash-chained, no outcome columns, pre-kickoff law enforced at
+  append AND scoring; 42/42 SYNTHETIC tests (verifier r2 re-ran + 4 adversarial probes).
+- Verifier r2: PASS 6/6, 0 defects (VERIFICATION_R2.md; observations O-1 registry-head
+  housekeeping done this commit round, O-2 R10 vocabulary restated in FREEZE_PACKET_DRAFT §4,
+  O-3 in-chat round-2 dispatch recorded in event log).
+- NEW controller artifacts: FREEZE_PACKET_DRAFT.md + OWNER_DECISION_PACKET.md (this round).
+- Still: 0 scored, no GO, $0, no real-game prediction written anywhere.
