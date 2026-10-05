@@ -1,0 +1,68 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "wbap-a-data",
+  "cycle_id": "WNBA-WINPROB-PREP-V1",
+  "role": "quant-explorer",
+  "lane": "A_DATA",
+  "dispatch_sha": "673b4f27e4abdefc5c54839febac29185dd6e794",
+  "actual_start_sha": "673b4f27e4abdefc5c54839febac29185dd6e794",
+  "commit_sha": "NOT_COMMITTED_CONTROLLER_LANDED",
+  "changed_paths": [
+    "lanes/A_DATA/GAME_UNIVERSE_SPEC_WNBA_1997PLUS.md",
+    "lanes/A_DATA/PIT_AUDIT_WNBA.md",
+    "lanes/A_DATA/DOWNLOAD_MANIFEST.md",
+    "lanes/A_DATA/measure_a.py (attempt 1, pre-existing from rate-limit-killed run; kept for provenance)",
+    "lanes/A_DATA/measure_a2.py (attempt 2, fixed+extended, re-runnable read-only)",
+    "lanes/A_DATA/handoff_A.json",
+    "~/.my-quantitative-data/wnba-prep-v1/measurements_a.json (attempt 1 output)",
+    "~/.my-quantitative-data/wnba-prep-v1/measurements_a2.json (attempt 2 output, authoritative)",
+    "~/.my-quantitative-data/wnba-prep-v1/team_key_table.csv (canonical 21-franchise team-key table)",
+    "~/.my-quantitative-data/wnba-prep-v1/release_depth_census.json (9 release tags, per-asset)",
+    "~/.my-quantitative-data/wnba-prep-v1/extensions/ (5 new downloads, 1,240,676 bytes, sha256 in extensions/sha256_extensions.txt)"
+  ],
+  "tests": [
+    "identity: ESPN schedules 6,029 rows / 25 seasons (2002-2026) / 6,029 unique game_id / 0 dupes / 9-digit ids; stats schedules 7,009 rows / 30 seasons (1997-2026) / 7,009 unique game_id / 0 dupes; stats game_id structure '10'+type-digit+YY+5-seq verified 100% (digit 2=RS 6,494 / 4=PO 515)",
+    "filter law applied: keep status_type_state=='post'; drop 3 rows (1 forfeit 2018-08-03 WAS-LVA 0-0 game 401018942/stats 1021800162; 2 postponed 2023-06-07, 2026-07-17, all pre-filled 0-0); drop 21 All-Star alias rows (extended set EAST/WEST/ALL/USA/DEL/PAR/WIL/STE/CLA/COL/SPO/COOP/WNBASTARS; stats side has 0); drop 7 TBD if-necessary placeholders (2026, state pre); NEVER filter on score presence (all 17 non-post rows are pre-filled 0-0); 16 neutral-site rows carried (10 All-Star + 6 real); 301 Commissioner's Cup rows (2021+, all season_type=2) flagged; 2020 Wubble 147/147 kept as real",
+    "census per season 1997-2026 written to measurements_a2.json: ESPN real 5,988 = 5,230 RS-excl-Cup + 301 Cup + 457 PO; stats real 7,008 = 6,493 RS + 515 PO (stats PO = 457 + 56 pre-2002 + 2 stats-only 2002 PO, reconciles exactly); 2026 snapshot: ESPN 360 rows = 341 played + 17 future pre + 2 postponed",
+    "timestamp law: ESPN schedule date/start_date/game_date_time are ONE canonical UTC instant, 6,029/6,029 (100%) equal when parsed per-file with format='ISO8601' (attempt-1's 94.03%/360-unequal was a pandas mixed-format parse artifact); ESPN box game_date_time = same instant 312/312 with cosmetic fixed -0400 suffix for ALL venues (NOT venue-local - corrects prior memo); box game_date == ET date 100%, == UTC date 53.5%; pbp wallclock 100% Z, first event median +3.1 min after tip; stats game_date == ET calendar date of tip_utc for 5,954/5,954 window matches (offset distribution: 5,954 at 0, 0 at +/-1)",
+    "cross-source join: two-pass (unique name-pair+ET-date window, then exact name-pair+score fallback): 5,954 + 25 = 5,979 of 5,988 ESPN real rows matched; 24 ambiguous back-to-back series pairs resolved uniquely by score; score fallback recovered the 2019 suspended game (ESPN 2019-08-05 completion 'RESUMED FROM JULY 5' vs stats keyed 2019-07-05, identical 70-99)",
+    "residuals enumerated: 9 ESPN-only rows (3 regular games 2007-06-20 CON@NYL, 2009-07-09 NYL@LAS, 2011-06-04 IND@CHI + 6 Commissioner's Cup finals 2021-2026 absent from stats side); 1,029 stats-only rows (1,022 in 1997-2001 + 7 genuine extras: 2002-08-20 PO doubleheader x2, 2003-06-12, 2003-07-22, 2004-05-20 doubleheader x2, 2004-05-25); model universe union 7,017 rows",
+    "team keys: 21 franchise keys over 30 seasons verified from row data (SAN_DAL UTA 1997-2002/SAN 2003-2015/DAL 2016+ with 2016 merger overlap; DET_TUL DET 1998-2009/TUL 2010-2015; CON ORL 1999-2002/CON 2003+; SAS->LVA boundary 2017/2018; PHO->PHX abbr change 2025; POR_PDX POR 2000-2002/PDX 2026 with ESPN reusing POR; defunct CHA 2006/CLE 2003/HOU 2008/SAC 2009/MIA 2002 end years; expansion CHI 2006/ATL 2008/GSV 2025/TOR+PDX 2026); ESPN 2002 artifact re-measured: all 16 Detroit Shock home rows labeled abbr TUL; ESPN display_name->abbr many-to-many (CT/CONN/CON, LA/LOS, NY/NYL, PHO/PHX, SA/SAS, WAS/WSH, ALL/WNBASTARS)",
+    "depth census (asset-level via GitHub release API, no mirror): espn_wnba_team_boxscores 2003-2026 (6.4 MB), player_box 2002-2026 (64.3 MB), espn_wnba_pbp 2002-2026 (1,065.7 MB), wnba_stats_pbp 1997-2026 (213.9 MB), game_rosters 2002-2026 (30.4 MB), shots 2002-2026 (147.4 MB), wnba_stats_team_boxscores 2026-only, wnba_stats_lineups 2026-only, wnba_crosswalk 2026-only; minimal pulls: 3 crosswalk csv + team_box_2013.csv (digest-verified) + game_rosters_2013.csv (digest-verified), sha256 recorded",
+    "mid-era schema check: team_box_2013 444 rows/222 games/54 cols, MISSING points_in_paint/fast_break_points/turnover_points vs 2025 (depth columns are modern-era; corrects prior memo's 'paint back to 2003'); game_rosters_2013 4,961 rows/22 cols with starter/did_not_play/active/reason"
+  ],
+  "authority_claims": [
+    "canonical tip_utc law: tip_utc := parse ESPN schedule 'date' with utc=True ISO8601; local_date := tip_utc in America/New_York; stats game_date measured == local_date at 100% (no venue-tz reconstruction needed or permitted)",
+    "never join on raw ESPN abbreviations (measured 2002 DET/TUL artifact, many-to-many abbr maps, POR reuse); join on normalized display_name + ET date (pass 1) with exact-score fallback (pass 2); official wnba_crosswalk authoritative for 2026 where present",
+    "filter law normative: status_type_state=='post', drop Forfeit/Postponed (exactly 3 rows ever), drop 21 All-Star alias rows, drop 7 TBD placeholders, never filter on score presence, Cup flagged not dropped, playoffs season_type=3 separate, 2020 Wubble real",
+    "ROLLING LAW (PIT): features for game G may use only inputs from games with tip_utc strictly < tip_utc(G); player_box active/DNP/starter and team_box stats and PBP events of game G are POST-GAME facts; injury/availability as reported = NOT_RUN_PIT (no dated archive exists in the rights-cleared corpus)",
+    "recommended modeling spine (for protocol lane to freeze): ESPN real rows 2002+ (5,988) + stats-only rows 1997-2001 (1,022) = union 7,017; the 7 stats-only rows in 2002-2004 and 9 ESPN-only rows require explicit policy, documented in GAME_UNIVERSE_SPEC section 6"
+  ],
+  "known_limitations": [
+    "attempt 1 of this task was killed mid-flight by infrastructure rate-limiting; its partial outputs were verified then corrected: attempt-1 measurements_a.json contains four wrong results superseded by measurements_a2.json (stats season_type int-vs-string zeros; ESPN instant equality 94.03% parse artifact; empty 2025 DST sample; row-level join 151/1,170 residuals from UTC-vs-local date mixing and game_id-prefix grouping)",
+    "three prior-cycle memo claims corrected by re-measurement: ESPN box game_date_time is NOT venue-local (fixed -0400 rendering of the UTC instant); All-Star rows are 21 not 14 (alias set was incomplete); points_in_paint is NOT available back to 2003 (absent in 2013 box)",
+    "2026 counts are as-of-corpus-snapshot (ESPN files built 2026-10-01, stats 2026-10-04; season in progress: 341 of 360 ESPN rows played, 17 future rows incl. 7 TBD placeholders, 2 postponed games pending makeup)",
+    "official wnba_crosswalk covers 2026 only; historical cross-source identity relies on the measured name+ET-date join law (documented, deterministic, 0 ambiguous after score fallback)",
+    "NOT_RUN_PIT: release assets are current-state snapshots with no publication-time columns; PIT safety is by-construction only, not as-of-audited",
+    "no injury/lineup feed with real publish timestamps exists in the rights-cleared corpus; injury features remain out unless a dated archive is proven",
+    "full-history PBP (~1.28 GB both sides) deliberately not pulled; depth census answered from asset metadata + two mid-era sample files; owner-budget-bound if a successor needs it",
+    "depth columns era boundary (points_in_paint/fast_break_points/turnover_points absent in 2013) means rolling depth-stat features must carry era guards; not audited season-by-season beyond 2013/2025 samples",
+    "CC BY 4.0 is the store README badge (code MIT); no per-release license sentence - maintainer confirmation still required before any external redistribution"
+  ],
+  "incidents": [
+    "attempt 1 (this task, prior run) was killed by infrastructure rate-limiting mid-flight; partial work (measure_a.py, measurements_a.json) was resumed from, verified, and 4 of its measurements corrected - details in known_limitations",
+    "during attempt 2, one measurement-script run hit two self-inflicted code errors (franchise-table season typing, a leftover malformed expression) fixed before the successful run; no data or scope impact"
+  ],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "lanes/A_DATA/GAME_UNIVERSE_SPEC_WNBA_1997PLUS.md",
+    "lanes/A_DATA/PIT_AUDIT_WNBA.md",
+    "lanes/A_DATA/DOWNLOAD_MANIFEST.md",
+    "lanes/A_DATA/measure_a2.py",
+    "~/.my-quantitative-data/wnba-prep-v1/measurements_a2.json",
+    "~/.my-quantitative-data/wnba-prep-v1/team_key_table.csv",
+    "~/.my-quantitative-data/wnba-prep-v1/release_depth_census.json",
+    "~/.my-quantitative-data/wnba-prep-v1/extensions/"
+  ]
+}
