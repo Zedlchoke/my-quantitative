@@ -50,3 +50,43 @@ compiles, consistent with post-game compilation.
 Delta vs archive copy (both sha256-pinned in DOWNLOAD_MANIFEST.md):
 games.csv `f1e8fe78…` (2026-10-04T12:16:32Z compile) → `338d7fe0…`
 (2026-10-05T03:16:28Z compile).
+
+---
+
+Everything above is HISTORY — frozen to the 2026-10-05T03:16:28Z release
+compile (sha `338d7fe0…`), retained as of the original audit. What follows is
+the r1 re-measurement on a FRESHER snapshot.
+
+## Recount r1 (measured 2026-10-05T07:16:19Z)
+
+Fresh snapshot: `~/.my-quantitative-data/nfl-ng-prep-v1/raw_schedules_r1_20261005/games.csv`
+(nflverse-data `schedules` release, asset updated_at 2026-10-05T05:46:23Z,
+release compile timestamp.json "2026-10-05 01:46:22 EDT" = 2026-10-05T05:46:22Z;
+pulled 2026-10-05T07:15:08–07:15:38Z, sha256
+`486d72273c0d9650756176fc016a0852c65ad6f030f443805c20cb35e387a9fc`,
+2,182,513 bytes — see DOWNLOAD_MANIFEST.md "## r1 refresh"). Same
+`America/New_York` → UTC kickoff derivation as the original section; read-only
+compute, schema/coverage/chronology counts only — NO win-prob metric.
+
+Measured now (UTC, in-run): **2026-10-05T07:16:19Z**.
+
+| quantity | count |
+|---|---|
+| Total 2026 games scheduled in fresh file | **272** (all `REG`, weeks 1–18; unchanged) |
+| Games with kickoff_utc ≤ 07:16:19Z (STARTED or FINISHED) | **63** — every one NOT_RUN prospective forever |
+| — of which with final scores in the fresh file | 63 (the in-flight boundary row from the original audit, `2026_04_DET_CAR`, now carries its final score) |
+| Games with kickoff_utc > 07:16:19Z (future) | **209** |
+| — of which ALREADY have scores (verify) | **0** — verified, no future game carries a score |
+| Earliest FUTURE kickoff UTC | **2026-10-06T00:15:00Z** — game `2026_04_ATL_NO` (next: 2026-10-09T00:15:00Z `2026_05_TB_DAL`) |
+| Newly scored vs the 2026-10-05T03:16:28Z snapshot (`338d7fe0…`) | **1** (`2026_04_DET_CAR` — the game in progress at the old compile) |
+| Retro score changes among already-scored rows | 0 |
+| Games with kickoff ≤ now still without a score | 0 |
+
+Prospective law restated: all 63 games with kickoff_utc ≤ 2026-10-05T07:16:19Z
+are NOT_RUN prospective — **no retrospective predictions for any played game,
+ever**. The 209 future games remain the only 2026 games eligible for a
+genuinely prospective append-only prediction ledger, and only if recorded
+strictly before their kickoff UTC at a successor scored cycle's own gate. The
+cycle prospective epoch is unchanged (2026-10-05T03:13:51Z, controller
+bootstrap time); this recount's "now" (07:16:19Z) is a measurement instant,
+not a new epoch.
