@@ -19,7 +19,7 @@ import subprocess
 import urllib.error
 import urllib.request
 
-BASE = "https://api.balldontlie.vn/v1"  # placeholder until docs URL confirmed; see check()
+BASE = "https://api.balldontlie.io/v1"  # official base URL verified from docs.balldontlie.io 2026-10-05: "GET https://api.balldontlie.io/v1/games"
 FREE_RATE_LIMIT_PER_MIN = 5
 ENV_VAR = "BALLDONTLIE_API_KEY"
 KEYCHAIN_SERVICE = "balldontlie"

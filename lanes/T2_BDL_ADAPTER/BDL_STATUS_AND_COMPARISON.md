@@ -74,3 +74,22 @@ Then: `python lanes/T2_BDL_ADAPTER/bdl_adapter.py` → expect `BDL key: PRESENT 
 **Block point:** until the owner loads the key AND (recommended) rotates the exposed
 one, all BDL network verification is NOT_RUN_KEY_NOT_LOADED (fail closed by design).
 Everything else in the program proceeds without BDL.
+
+## T2b execution results (2026-10-05, 9/10 requests used, $0)
+
+- **Base URL verified from docs**: `https://api.balldontlie.io/v1` (docs verbatim
+  "GET https://api.balldontlie.io/v1/games"); adapter placeholder `.vn` corrected.
+- **Auth: PASS** (Keychain key, HTTP 200 on /teams, 89 entries returned).
+- **Free-tier /games endpoint: HTTP 400 on every `seasons=YYYY` attempt** (6 tries
+  across 1946/2016/2017/2020/2023/2025/2026). Without the param (cursor-only) it
+  returns 25 rows from 1946-11-01 — so the endpoint works but **does not support
+  the seasons filter on free tier** (or requires a format the docs don't disclose
+  for free tier). This makes targeted cross-check by season/date **impractical**
+  within the ≤10-request budget: cursor pagination through ~75k games at 25/page
+  ≈ 3,000 requests.
+- **Cross-check verdict: NOT_RUN_PAGINATION_IMPRACTICAL** — hoopR stays the sole
+  PRIMARY for NBA 2016+ (already CC BY 4.0 verified + downloaded); BDL free tier
+  is demoted from "cross-check" to "not usable for targeted game verification
+  under $0 constraints". Paid tiers (ALL-STAR $9.99+) would unlock it but are
+  outside the $0 budget.
+- **Cost: $0.** No bulk download. Key never in any artifact (sweep re-verified).
