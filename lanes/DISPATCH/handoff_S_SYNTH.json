@@ -1,0 +1,81 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nfl-winprob-ng-scored-v1-S-SYNTH",
+  "cycle_id": "NFL-WINPROB-NG-SCORED-V1",
+  "role": "test-dryrun-lane",
+  "lane": "S_SYNTH",
+  "branch": "orca/nfl-winprob-ng-scored-v1-integration",
+  "dispatch_sha": "e08e4c423f64c06012be9ad63bfe1a9769d175a4",
+  "actual_start_sha": "e08e4c423f64c06012be9ad63bfe1a9769d175a4",
+  "commit_sha": null,
+  "changed_paths": [
+    "integration/lanes/S_SYNTH/PORT_NOTES.md",
+    "integration/lanes/S_SYNTH/test_successor_synthetic.py",
+    "integration/lanes/S_SYNTH/sandbox_dryrun.py",
+    "integration/lanes/S_SYNTH/DRYRUN_REPORT.md",
+    "integration/lanes/S_SYNTH/VERDICT_TABLE.md",
+    "integration/research/control/NFL-WINPROB-NG-SCORED-V1/ledger/nfl_ng_ledger.py",
+    "integration/research/control/NFL-WINPROB-NG-SCORED-V1/ledger/test_ledger_synthetic.py",
+    "integration/research/control/NFL-WINPROB-NG-SCORED-V1/ledger/README.md",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/sandbox/predictions_NFL-WINPROB-NG-SCORED-V1-SANDBOX_2030.jsonl",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/sandbox/predictions_NFL-WINPROB-NG-SCORED-V1-SANDBOX_2030.jsonl.genesis.json",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/sandbox/dryrun_evidence.json"
+  ],
+  "tests": [
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/NFL-WINPROB-NG-SCORED-V1/ledger/test_ledger_synthetic.py -v",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "predecessor synthetic suite on the byte-identical port: 42/42 passed"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest lanes/S_SYNTH/test_successor_synthetic.py -v",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "successor synthetic suite: 16/16 passed (designed-null x4 streams bit-exact max|dp|=0.0; null-not-vacuous power; C3 theta=50 determinism; as-of canaries same/later-kickoff + input assembly; R2 timestamp law; margin-config absence NOT_RUN_MARGIN_CONFIG + caller-side >=6h margin; single-byte-flip tamper last+first row)"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python lanes/S_SYNTH/sandbox_dryrun.py",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "sandbox dry-run run 1: 45 rows = 15 SYNTH games x 3 fielded arms via PORTED tool"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python lanes/S_SYNTH/sandbox_dryrun.py --reset",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "run 2: ledger byte-identical to run 1 (sha256 77029ae6713921ab204555b42eea36b368e905ec81fac7912b3ba2afa85b343c) - full determinism"
+    }
+  ],
+  "authority_claims": [
+    "Port of nfl_ng_ledger@1 is BYTE-IDENTICAL: nfl_ng_ledger.py sha256 6fb0a1d41b347c16162742ee2591090d576af7633fd1d86b641d444156a1219c, test_ledger_synthetic.py 93d3e248ae7190710bc334a638ff41e7a8394a9ea0ce140789157663a105bc1d, README.md d44e945f1d0c0ddd8271e08333fc4dbeb1d95314f6356b385c4f46dec5575256 (pre==post, equals lanes/F_FREEZE/freeze_digests.json predecessor_sources pins); zero line changes; PORT_NOTES.md documents the zero code adaptations and the one usage-level naming deviation (tool §1 filename law vs dispatch's prediction_ledger_sandbox.jsonl shorthand).",
+    "Designed-null equivalence on synthetic streams: C1_B000 / C2_NULL / C3_T000 / C4_D000 produce p_home BIT-IDENTICAL to B1* (max |dp| == 0.0, .tobytes() equal) on 4 synthetic GameSet streams, importing lanes/T_SELECT/arms.py and select.py UNMODIFIED (sha256s asserted against freeze packet section 9).",
+    "Sandbox ledger: 45 rows, (game,arm) uniqueness 45/45, chain verify [] with sandbox GENESIS e59ec10c61fa318969aa962589b8588f67b1f6aa6e36fd504b11e8e0b2d265b0 (!= freeze GENESIS ae99a803..., which is asserted absent from every sandbox byte), zero non-SYNTH_ game ids, kickoffs 2028-2030, p_home per freeze (B0 0.571399049390; B1* K=40 HCA=0 gamma=2/3; C3_T050 theta=50 with synthetic prior-season EPA z via frozen arms.z_standardize).",
+    "REAL prediction ledger does NOT exist: 6 explicit paths checked absent (incl. research/control/NFL-WINPROB-NG-SCORED-V1/ledger/prediction_ledger.jsonl and the README example predictions/ root) plus a worktree-wide find with zero hits; the ported tool has no default path constant (all paths explicit arguments); the REAL GENESIS was never written (owner-GO law).",
+    "No real game data used anywhere; lanes/T_SELECT code never modified; no git commands; writes confined to lanes/S_SYNTH/**, research/control/NFL-WINPROB-NG-SCORED-V1/ledger/**, the sandbox directory, and this handoff."
+  ],
+  "known_limitations": [
+    "Tool-level >=6h capture margin is NOT_RUN_MARGIN_CONFIG: the ported nfl_ng_ledger@1 exposes no margin config (enforces strict recorded_at < kickoff only); the >=6h freeze section 4 margin is enforced caller-side in sandbox_dryrun.enforce_capture_margin and is test-covered.",
+    "Sandbox ledger filename is the tool-enforced predictions_NFL-WINPROB-NG-SCORED-V1-SANDBOX_2030.jsonl rather than the dispatch's prediction_ledger_sandbox.jsonl shorthand (byte-identical port forbids renaming; deviation documented in PORT_NOTES.md section 3.2 and DRYRUN_REPORT.md section 3).",
+    "The full-file-rewrite limitation documented in the predecessor README applies unchanged (chain mechanics cannot detect a competent full rewrite; detection relies on the GENESIS pin and published tail hashes).",
+    "__pycache__ directories are Python runtime caches regenerated by test runs; the ported ledger dir was left containing only the three ported files after the final pass.",
+    "Sandbox dry-run artifacts persist under ~/.my-quantitative-data/nfl-ng-scored-v1/sandbox/ as rehearsal evidence; they are synthetic-only and anchored to the sandbox GENESIS, never to the freeze GENESIS."
+  ],
+  "incidents": [],
+  "tree_status": "uncommitted-by-design",
+  "workers": 0,
+  "outputs": [
+    {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/S_SYNTH/PORT_NOTES.md", "sha256": "987bc2513407a68dcf5f5e84cf3e398732f95013b9ae0bce7335e3f32a4ccff3"},
+    {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/S_SYNTH/test_successor_synthetic.py", "sha256": "1628843869f44069cf73d05168a0c8d854622107db9132d640a250a9c8ac450b"},
+    {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/S_SYNTH/sandbox_dryrun.py", "sha256": "01e4e0200653619bb8e365b76ae8b12cd4d04b8da71969221208e141262bcc18"},
+    {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/S_SYNTH/DRYRUN_REPORT.md", "sha256": "0ca3dde5932997af3a9ce8e21fb2cb636d2fb0f9d44aa691a107a31ef066212f"},
+    {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/lanes/S_SYNTH/VERDICT_TABLE.md", "sha256": "89553473aa7d48fed4242d07eefe57f9912169af923ed42188c970185ad4ec9f"},
+    {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/research/control/NFL-WINPROB-NG-SCORED-V1/ledger/nfl_ng_ledger.py", "sha256": "6fb0a1d41b347c16162742ee2591090d576af7633fd1d86b641d444156a1219c"},
+    {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/research/control/NFL-WINPROB-NG-SCORED-V1/ledger/test_ledger_synthetic.py", "sha256": "93d3e248ae7190710bc334a638ff41e7a8394a9ea0ce140789157663a105bc1d"},
+    {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-winprob-ng-scored-v1/integration/research/control/NFL-WINPROB-NG-SCORED-V1/ledger/README.md", "sha256": "d44e945f1d0c0ddd8271e08333fc4dbeb1d95314f6356b385c4f46dec5575256"},
+    {"path": "/Users/hoangminhlong/.my-quantitative-data/nfl-ng-scored-v1/sandbox/predictions_NFL-WINPROB-NG-SCORED-V1-SANDBOX_2030.jsonl", "sha256": "77029ae6713921ab204555b42eea36b368e905ec81fac7912b3ba2afa85b343c"},
+    {"path": "/Users/hoangminhlong/.my-quantitative-data/nfl-ng-scored-v1/sandbox/predictions_NFL-WINPROB-NG-SCORED-V1-SANDBOX_2030.jsonl.genesis.json", "sha256": "b1e7d496fcd76d2cb6bb4eafc60664869a5a6c71f320b327e19e5d46c8deb60f"},
+    {"path": "/Users/hoangminhlong/.my-quantitative-data/nfl-ng-scored-v1/sandbox/dryrun_evidence.json", "sha256": "b430916f315211c1aa53b63bad6bf3db3a74ff00ecb0b472381059314c9e42a3"}
+  ],
+  "recommended_next_action": "Controller integrates the S_SYNTH verdicts into the cycle evidence set (42/42 port suite, 16/16 successor suite, 45-row sandbox rehearsal with valid chain, real-ledger absence confirmed); A7 prelaunch may re-run lanes/S_SYNTH/test_successor_synthetic.py and sandbox_dryrun.py as independent verification."
+}
