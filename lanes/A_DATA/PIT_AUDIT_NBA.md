@@ -68,8 +68,9 @@ Conditions (all enforceable from the spec):
   `tip_utc < tip_utc(g)` only. The current game's rows live in the same pbp
   parquet — any "same-season expanding" implementation must exclude it
   explicitly; a date-keyed (not tip-keyed) window leaks same-night late games.
-- pbp holes documented in spec §5 (4 played games without pbp, 2016×3 +
-  2026×1) must be tolerated by feature code (smaller initial windows), never
+- pbp holes documented in spec §5 (14 played games without pbp, ERRATUM R1 /
+  defect D1: 2016×3, 2018×4, 2020×6, 2026×1 — full game-id list in spec §5)
+  must be tolerated by feature code (smaller initial windows), never
   imputed silently.
 - Same negative-control requirement as class 1.
 

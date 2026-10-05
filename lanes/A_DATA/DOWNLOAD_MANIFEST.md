@@ -35,7 +35,10 @@ lives in that directory's `_download_provenance.tsv` + `ATTRIBUTION.md`.
 | play_by_play_2024.parquet | 20,618,404 | 62b609ea487d23aec11e6756d7477a8b1df3a1e57e97fc90c7230b62a5835af1 |
 | play_by_play_2025.parquet | 21,552,259 | e3a61b57e491b71379abd1ad4c0b2617500a3921deadd3319ee9362d49d2a9dc |
 
-Total new bytes: 268,642,536 (~256 MiB). Purpose: spread-feature coverage
+Total new bytes: 248,642,536 (~237 MiB) — ERRATUM R1 (defect D3): this
+summary line previously stated 268,642,536 (~256 MiB), an arithmetic error of
+exactly +20,000,000 over the sum of the per-file sizes above; per-file sizes
+and all 10 sha256s were re-verified correct. Purpose: spread-feature coverage
 census + pbp/schedule reconciliation (GAME_UNIVERSE_SPEC §5–6). Parquet read
 with pyarrow 25.0.1 / pandas 3.0.5 (schema/coverage counting only).
 
@@ -53,4 +56,6 @@ with pyarrow 25.0.1 / pandas 3.0.5 (schema/coverage counting only).
 ## Nothing else downloaded
 
 No other network fetches this lane beyond the BDL spot requests above
-(26 spot requests total across the session, all ≥13 s apart, $0).
+(36 BDL requests total across the session — ERRATUM R1 (defect D4): this line
+previously stated 26; the correct total is 16 + 9 + 11 = 36 for runs 1–3 per
+BDL_CROSSCHECK_NBA.md, every one ≥13 s apart, $0).

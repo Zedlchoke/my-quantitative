@@ -143,15 +143,28 @@ season), 2024–2026 played RS 1,230 + 1 flagged Cup final.
 
 - pbp exists for all 11 seasons (2026 in-corpus; 2016–2025 newly downloaded,
   DOWNLOAD_MANIFEST.md).
-- All-Star event rows DO have pbp in some seasons (2016: 1, 2021: 1, 2022: 1,
-  2025: 3, 2026: 4) — the exhibition exclusion law of §4.2 must be applied to
-  pbp-derived game lists too, not assumed absent.
+- All-Star event rows DO have pbp — ERRATUM R1 (defect D5): MEASURED all 19
+  exhibitions across all 11 seasons carry pbp (2016: 1, 2017: 1, 2018: 2,
+  2019: 2, 2020: 2, 2021: 1, 2022: 1, 2023: 1, 2024: 1, 2025: 3, 2026: 4).
+  The exhibition exclusion law of §4.2 must be applied to pbp-derived game
+  lists too, not assumed absent.
 - No pbp ever attaches to a postponed listing (0 intersections measured on
   2016/2021/2022/2025/2026).
-- Played games WITHOUT pbp (spread features missing there):
-  2016: `400828893` (WSH–CHI 2016-03-16), `400828600` (CLE–SA 2016-01-30),
-  `400828393` (NY–ATL 2016-01-03); 2026: `401810469` (CHI–LAC 2026-01-20).
-  All other seasons: 0. A consumer must tolerate a handful of missing-pbp games.
+- Played games WITHOUT pbp (spread features missing there) — ERRATUM R1
+  (defect D1, re-measured 2026-10-05 from schedule CSVs minus pbp game_ids,
+  int32/str keys agree): **14 games**, not 4 —
+  2016×3: `400828893` (WSH–CHI 2016-03-16), `400828600` (CLE–SA 2016-01-30),
+  `400828393` (NY–ATL 2016-01-03);
+  2018×4: `400974444` (NO–GS 2017-10-20), `400974773` (WSH–DET 2017-10-20),
+  `400975617` (SAC–OKC 2018-02-22), `400975670` (SAC–BKN 2018-03-01);
+  2020×6: `401161490` (POR–DET 2020-02-24), `401161505` (GS–SAC 2020-02-25),
+  `401161528` (LAC–DEN 2020-02-29), `401161533` (MEM–LAL 2020-02-29),
+  `401161530` (ATL–POR 2020-03-01), `401161536` (PHX–GS 2020-03-01);
+  2026×1: `401810469` (CHI–LAC 2026-01-20).
+  Seasons 2017/2019/2021/2022/2023/2024/2025: 0. All 14 are real completed
+  regular-season games with final scores. A consumer must tolerate these
+  missing-pbp games by game-id list — never silently impute.
+  See `lanes/A_DATA/ERRATUM_PBP_GAP_R1.md`.
 
 ## 6. Spread-feature coverage census (re-verified, ALL seasons 2016–2026)
 
