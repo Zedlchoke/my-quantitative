@@ -1,0 +1,90 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nfl-playerfeat-prep-v1-B-BUILD",
+  "cycle_id": "NFL-PLAYERFEAT-PREP-V1",
+  "role": "data-feature-lane (frozen NFL player-feature table, PREP only)",
+  "lane": "B_BUILD",
+  "branch": "orca/nfl-playerfeat-prep-v1-integration",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration",
+  "dispatch_sha": "efedf6f47759230294525156aa31137ccd7ba382",
+  "actual_start_sha": "efedf6f47759230294525156aa31137ccd7ba382",
+  "commit_sha": null,
+  "changed_paths": [
+    "lanes/B_BUILD/FEATURE_SPEC.md",
+    "lanes/B_BUILD/build_features.py",
+    "lanes/B_BUILD/FEATURE_TABLE_MANIFEST.md",
+    "lanes/B_BUILD/FEATURE_TABLE_MANIFEST.json",
+    "lanes/B_BUILD/selftest_results.json",
+    "lanes/B_BUILD/COVERAGE_AUDIT.md",
+    "lanes/B_BUILD/PIT_AUDIT.md",
+    "lanes/B_BUILD/VERDICT_TABLE.md",
+    "~/.my-quantitative-data/nfl-playerfeat-prep-v1/features/nfl_playerfeat_table_v1.parquet",
+    "~/.my-quantitative-data/nfl-playerfeat-prep-v1/features/FEATURE_TABLE_MANIFEST.json",
+    "~/.my-quantitative-data/nfl-playerfeat-prep-v1/features/selftest_results.json",
+    "lanes/DISPATCH/handoff_B_BUILD.json"
+  ],
+  "tests": [
+    {"name": "input integrity", "result": "PASS", "detail": "6/6 input sha256s re-hashed and matched predecessor manifests (C_NFL + C_NFL_CROSSWALK pins) at build start; games.csv read for keys/kickoffs"},
+    {"name": "S1 kickoff strict-inequality as-of (full table)", "result": "PASS", "detail": "every row's n_prior_games_used == recount of same-season team games with kickoff_utc strictly < target; 0/1266 mismatches"},
+    {"name": "S2 KC 2024 worked example (predecessor PIT basis)", "result": "PASS", "detail": "2024_11_KC_BUF KC prior-3 = 819 yds / 6 TD / 1 INT / 124 att, n_prior=9 (wk6 bye), re-derived from bytes; ypa 6.60484, form +27.66667 yds/g"},
+    {"name": "S3 target-game absence perturbation", "result": "PASS", "detail": "one-at-a-time perturbation (+1000 pass yds / +50 targets / +5 EPA) of each fixture game's own stats rows; its table rows byte-identical for 2024_11_KC_BUF, 2024_07_KC_SF, 2026_04_PIT_CLE, 2026_03_ATL_GB"},
+    {"name": "S4 crosswalk canary pfr-null", "result": "PASS", "detail": "WhitCo05 (Cody White, gsis 00-0035891, crosswalk pfr_id NULL): 3 snap-2026 rows excluded from G3 pool by the frozen rule; LV 2026 rows flagged flag_g3_pfr_null_excluded=1"},
+    {"name": "S5 bye-week fixture", "result": "PASS", "detail": "KC 2024_07_KC_SF (bye wk6): window wks 5/4/3, qb_yds_k3=793.0 exact, rest_days=12.8403, no synthetic bye row"},
+    {"name": "S6 determinism double-run", "result": "PASS", "detail": "fresh in-process rebuild AND fresh-process rerun produce byte-identical parquet sha256 f1bc6b4a8c7f5c36457aaa393666ca90cc446cc6f934c3ea55f739b5de7c4f57"},
+    {"name": "S7 placeholder exclusion", "result": "PASS", "detail": "48 NaN-player rows (1/week: 22+22+4) excluded before aggregation"},
+    {"name": "S8 outcome-column ban", "result": "PASS", "detail": "44-column whitelist; banned-vocabulary scan 0 hits; games.csv score/result fields never read"},
+    {"name": "crosswalk join rates re-measured", "result": "PASS", "detail": "stats GSIS->crosswalk 1.0 / 1.0 / 1.0 (2024/2025/2026); snap pfr->crosswalk 0.997259 (2025, 6 unresolved ids) / 0.998213 (2026, 3 ids) — matches predecessor D_VERIFY censuses exactly"},
+    {"name": "boundary compliance", "result": "PASS", "detail": "writes only lanes/B_BUILD/** + ~/.my-quantitative-data/nfl-playerfeat-prep-v1/**; predecessor data dirs read-only; no writes to NFL-WINPROB-NG-SCORED-V1 or any other cycle's artifacts; 0 scored computation"}
+  ],
+  "authority_claims": [
+    "Dispatch packet DISPATCH_B_BUILD.md + PLAN_nfl_playerfeat_prep_v1.md are the only authorities used; spec frozen (FEATURE_SPEC.md v1.0.0) before the build per spec-first law",
+    "Output table contains NO outcome columns, NO target-game status fields (NOT_RUN_PIT law restated in spec/manifest/PIT_AUDIT), no win-prob or calibration-on-outcomes computation, no betting vocabulary",
+    "All features are strictly prior-game aggregates under kickoff-UTC strict inequality (asof_rule_version=asof-1.0.0-nfl-playerfeat-prep-v1, embedded per row)",
+    "Same-season as-of scope, bye=skipped week (rest_days from prior kickoffs), pfr-null rule = EXCLUDE from G3 pool with per-row disclosure flag — all frozen in FEATURE_SPEC.md before build",
+    "Rights posture inherited: nflverse-data CC BY 4.0 pinned; underlying league rights unverified, internal-research-only, fail-closed",
+    "Artifacts uncommitted-by-design (no git by lanes; controller commits)"
+  ],
+  "known_limitations": [
+    "G3 (snap absence proxy) computable only for 2025-2026 rows: snap_counts corpus has no 2024 coverage -> G3 NaN + flag_g3_no_snap_prior on all 570 rows of 2024 (disclosed, not imputed)",
+    "2026 rows cover only 63 played games (weeks 1-4); 209 future 2026 games have no rows by design (no stats); earliest future 2026 kickoff re-measured 2026-10-06T00:15:00Z",
+    "G3 is a deliberately lagged, noisy proxy: in-game injuries of a PRIOR game can read as absence in the next row; NOT_RUN_PIT (target-game status) is not bypassed",
+    "With exactly 1 snap-prior game, g3_top5_absent_share_recent = 0.0 by construction (documented spec exception, not a bug)",
+    "QB-identity continuity (snap-based lead-QB share from predecessor F1 design) is out of scope v1 (no 2024 snap corpus); G1 uses team-level QB aggregates",
+    "snap_counts 2026 in-season release lag <=1 week (build 2026-10-02 vs stats 2026-10-05) and release-cadence availability carried from predecessor; frozen sha256s are the evidence anchors",
+    "Stray empty directory lanes/'B_BUILD lanes'/D_VERIFY/ exists in the worktree (created 18:48, not by B_BUILD; likely another lane's path typo) — left untouched (outside B_BUILD allowed paths)"
+  ],
+  "incidents": [
+    "Dev incident 1 (resolved): first perturbation selftest perturbed 4 fixtures at once and flagged 2024_11_KC_BUF — root cause was test design (2024_07_KC_SF is a legitimate prior of that row), not the table; reformulated one-game-at-a-time and it passes",
+    "Dev incident 2 (resolved, real bug): tz-aware comparison .values < np.datetime64(target) mis-scoped the season-to-date QB aggregate (window sums stayed correct via later isin, STD means absorbed the target game); caught by the precursor of S3, fixed with pure pandas Series<Timestamp comparisons; final output sha is from the corrected code",
+    "Boundary note (honest disclosure): one read-only `git status --porcelain` was accidentally included in a compound directory-listing command near lane end (no write, no state change; output used only to confirm untracked scope = lanes/B_BUILD/ + dispatch packet). Hard rule is no git commands at all — flagged here for the record, none repeated"
+  ],
+  "tree_status": "uncommitted-by-design",
+  "workers": 0,
+  "outputs": [
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration/lanes/B_BUILD/FEATURE_SPEC.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration/lanes/B_BUILD/build_features.py",
+    "/Users/hoangminhlong/.my-quantitative-data/nfl-playerfeat-prep-v1/features/nfl_playerfeat_table_v1.parquet",
+    "/Users/hoangminhlong/.my-quantitative-data/nfl-playerfeat-prep-v1/features/FEATURE_TABLE_MANIFEST.json",
+    "/Users/hoangminhlong/.my-quantitative-data/nfl-playerfeat-prep-v1/features/selftest_results.json",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration/lanes/B_BUILD/FEATURE_TABLE_MANIFEST.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration/lanes/B_BUILD/FEATURE_TABLE_MANIFEST.json",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration/lanes/B_BUILD/selftest_results.json",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration/lanes/B_BUILD/COVERAGE_AUDIT.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration/lanes/B_BUILD/PIT_AUDIT.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration/lanes/B_BUILD/VERDICT_TABLE.md"
+  ],
+  "verdict": "BUILD_COMPLETE_PASS",
+  "next_actions": [
+    "Lane D_VERIFY: independent re-hash of inputs+output, re-join rates, >=6 sampled row recomputes (incl. bye-week and pfr-null cases), 0-scored grep, boundary check",
+    "Controller: 2026 recount at integration (63 played / 209 future / earliest future kickoff 2026-10-06T00:15:00Z) into control state; commit lanes/B_BUILD per plan §Boundaries"
+  ],
+  "handoff_artifacts": {
+    "spec": "lanes/B_BUILD/FEATURE_SPEC.md",
+    "manifest": "lanes/B_BUILD/FEATURE_TABLE_MANIFEST.md (+json)",
+    "coverage": "lanes/B_BUILD/COVERAGE_AUDIT.md",
+    "pit": "lanes/B_BUILD/PIT_AUDIT.md",
+    "verdict": "lanes/B_BUILD/VERDICT_TABLE.md",
+    "selftest": "lanes/B_BUILD/selftest_results.json"
+  },
+  "completed_utc": "2026-10-05T13:20:00Z"
+}
