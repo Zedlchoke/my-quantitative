@@ -1,0 +1,44 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "wbap-d-verify-r2",
+  "cycle_id": "WNBA-WINPROB-PREP-V1",
+  "role": "quant-auditor",
+  "lane": "D_VERIFY",
+  "dispatch_sha": "b53af240e8b2124c3b976fd97e7f1e5dcc9681ec",
+  "actual_start_sha": "b53af240e8b2124c3b976fd97e7f1e5dcc9681ec",
+  "commit_sha": "NOT_COMMITTED_CONTROLLER_LANDED",
+  "changed_paths": [
+    "lanes/D_VERIFY/DELTA_REVERIFY_R2.md (new: per-check PASS/FAIL with independently re-measured evidence, verdict VERIFICATION_PASS, defects table D-6..D-9)",
+    "lanes/D_VERIFY/delta_reverify_r2.py (new: fresh independent implementation - corpus counts, filter law, census/union join, lineage table, 7-leg roster PIT re-measurement; read-only over corpus + roster_audit)",
+    "lanes/D_VERIFY/reverify_r2_results.json (new: machine verdicts of the 37 re-verification checks)",
+    "lanes/D_VERIFY/handoff_D_r2.json (this file)"
+  ],
+  "tests": [],
+  "authority_claims": [
+    "VERDICT: VERIFICATION_PASS (r2, fresh context, independent re-measurement from bytes; 37/37 machine checks PASS per lanes/D_VERIFY/reverify_r2_results.json). 0 BLOCKER / 0 CRITICAL / 0 MAJOR / 4 MINOR (D-6..D-9, all supporting-text inaccuracies in lanes/A_DATA artifacts; none verdict-changing)",
+    "CHECK 1 PASS (counts fix, lane C r1): re-measured from ESPN schedule bytes - All-Star/exhibition alias rows = 21 across exactly 13 tokens (EAST 11, WEST 11, USA 4, WIL 3, ALL 3, STE 2, DEL 2, PAR 1, COL 1, CLA 1, SPO 1, COOP 1, WNBASTARS 1; 21 ASG seasons 2002-2026, absent exactly 2008/2012/2016/2020; stats side 0); neutral-site rows = 16 (10 alias + 6 real); Cup 301 rows / 6 finals. PROTOCOL_DRAFT_WNBA.md carries exactly 5 ERRATUM_COUNTS_R1 sites with 21/13-tokens/16 and 0 hits for '14 All-Star', '15 rows', or the stale 8-token list; its diff 6681486d..b53af240 is 24+/8- confined to the 5 declared sites. Measurement note: the 2026 ESPN file writes boolean columns lowercase - neutral-site counting must be case-insensitive (16th row is 2026-08-11 PHX@LA)",
+    "CHECK 2 PASS (roster PIT audit, lane A r2) - all seven dispatch legs re-measured: (a) coverage 5,983/5,988 universe games with rosters; the 5 missing (220608015 2002 CHA@UTA, 260523019+260526019 2006 CHI, 280523020 2008 DET@ATL, 400910457 2016 CHI@LAS PO G1) include NO team's season game-1; game-1 roster presence 318/318 team-seasons; (b) 0 duplicate (game,team,athlete) rows in 25 seasons; (c) linkage total: 0 malformed game_ids, all 6,004 distinct roster game_ids resolve in the full ESPN schedule, the 21 non-universe roster games are ASG+forfeit removed only by the filter law; (d) box 2002 stub 16/271 games minutes 100% '--', missing 61/23/9 (2003-05), 2/2/7 (2006-08), 1/2/2 (2010/2012/2016), 0 elsewhere; expansion set independently derived = {CHI 2006, ATL 2008, GSV 2025, POR_PDX 2026, TOR 2026}; computable-continuity fraction re-derived T=2003..2026 = 0%, 38.5%, 92.3%, then 100% every season T>=2006 (roster gate 23/23 seasons 2003-2025); (e) retro-fill (franchise,athlete)-season key: 1,061 (412 starter) / 10 (4) / 1 / 9 / 0 from 2006 - exact; (f) 2025 starter cross-check: 311/311 universe games, 622/622 team-games 5v5 with IDENTICAL starter sets, 7,115/7,115 row-level flags agree; (g) as-of law text carries every binding clause (strictly-prior-season facts, by-construction knowability, season-T rosters never inputs, game-day starter/DNP/active/ejected/reason forbidden pre-game, T>=2006/T>=2003 windows, mandatory filter-law inner join, display-name joins)",
+    "ADJUDICATION: PIT_PASS_BY_CONSTRUCTION (minutes-weighted continuity T>=2006; roster-share continuity T>=2003) FOLLOWS from the measured evidence; W-H2 KEEP stands. Every consumed input is a post-game fact of a strictly prior season; coverage and no-retro-fill are measured, not assumed; the 2002 box stub and 2003-2008 partial box shrink the window exactly as frozen in audit sec8 cl.4",
+    "CHECK 3 PASS (independence): the only NBA mentions in the new lane-A artifacts are ban statements; all 11 protocol-draft NBA mentions are byte-unchanged context/ban/machinery passages; every roster-audit number is measured from the two WNBA release tags + the WNBA corpus; no WNBA constant sourced to NBA data",
+    "CHECK 4 PASS (no-regression): ESPN 6,029/6,029/25 seasons; stats 7,009/7,009/30; stats id shape + type-digit crosstab; filter law 17/1/2/21/7 with exact forfeit/postponed ids and the stats 0-0 twin 1021800162; census 5,988 = 5,230+301+457 and 7,008 = 6,493+515; pre-2002 1,022; union 7,017 by independent two-pass join (matched 5,979; ESPN-only 9 = 3 regular ids + 6 Cup-final ids; stats-only 1,029; window matches all at ET offset 0); timestamps 6,029/6,029 both laws; lineage table 20 keys, SAN_DAL/DET_TUL absent, LVA 1997-2026 / DAL 1998-2026; git diff 6681486d..b53af240 = exactly 7 files (4 A_DATA added, 2 C_PROTOCOL added + 1 C_PROTOCOL modified surgical); lanes/B zero diff bytes back to 18fa135b; event_log changes are working-tree-only controller bookkeeping; corpus 4/4 spot sha256+byte match vs raw/audit_results.json incl. the lineage-decision files",
+    "CHECK 5 PASS (download integrity): 8/50 roster_audit files re-hashed vs download_manifest_r2.json (game_rosters_2002/2013/2022/2026, player_box_2002/2016/2023/2025) - bytes+sha256 exact 8/8; 6 GitHub-digest matches + the 2 recorded pre-digest assets size-verified; manifest total 86,572,091 bytes = claim; downloader is public GitHub release URLs with User-Agent only (no auth, $0); measure_r2_roster.py has zero network code",
+    "CHECK 6 PASS (accounting): scored-computation grep = metric definitions in protocol prose + verifier ban statements only; registry budget 0/0; go_phrase empty / NOT_REGISTERED (referenced only in verifier prose); no S1 access references; no credentials; registry row coherent (ACTIVE_LIGHT, worktree/branch match, s1 SEALED_UNTOUCHED, workers 0, updated_at predates today's lane runs); head = all-zeros placeholder is expected-pending controller normalization (measured branch HEAD b53af240...)"
+  ],
+  "known_limitations": [
+    "DEFECT D-6 (MINOR, lanes/A_DATA/ROSTER_PIT_AUDIT_WNBA.md sec5 + machine field game1_rows_min): the claim '100% of team-seasons 2002-2026 have a game-1 roster with >=10 rows' is false per-team and the machine field measures starters-per-game (both teams combined), not rows per team - 5/318 team-seasons have 8-9 game-1 roster rows (2005 LAS 8 @250521014; 2022 CON 9 @401391654; 2022 WAS 9 @401391650; 2025 GSV 9 @401736114; 2026 CHI 9 @401856895). Presence (the load-bearing gate) is 100%; successor carries these as structural missingness per audit sec8 cl.5 - no PIT or window change",
+    "DEFECT D-7 (MINOR, ROSTER_PIT_AUDIT sec6): '2009-2025 complete (0 missing)' and 'every team at full 1.0 box coverage from T=2010' contradict the audit's own measurements_r2.json and bytes - 2010:1, 2012:2, 2016:2 universe games missing box rows; machine prior_box_ratio_min 0.9706 at T=2011/2013/2017. All ratios >=0.94 >= 0.8 - binding law and T>=2006 window unaffected",
+    "DEFECT D-8 (MINOR, ROSTER_PIT_AUDIT sec3): 'the 2025 file alone has 311 distinct game keys' - raw file has 312 keys/7,140 rows incl. the ASG game 401781604 (25 rows); 311/7,115 is the universe-joined count (sec4 table consistent)",
+    "DEFECT D-9 (MINOR, handoff_A_r2 authority_claims[2]): '5,963/5,984 covered games' mislabels two real quantities - covered = 5,983; 5,963 = covered games with exactly 10 starters (99.7%, the adjacent 99.6% reproduces); 5,984 matches no measured quantity",
+    "verification is schema/coverage counting only; no win-prob metric computed; my join's window/score split (5,946+31+2) differs from lane A's (5,954+25) as order/orientation bookkeeping - totals and residual identities identical",
+    "lane A's measure_r2_roster.py / measure_r2_download.py were read (probe-key definitions) but NOT executed; all numbers re-derived by the fresh implementation in lanes/D_VERIFY/delta_reverify_r2.py"
+  ],
+  "incidents": [],
+  "tree_status": "clean-except-controller-event-log",
+  "workers": 0,
+  "outputs": [
+    "lanes/D_VERIFY/DELTA_REVERIFY_R2.md",
+    "lanes/D_VERIFY/delta_reverify_r2.py",
+    "lanes/D_VERIFY/reverify_r2_results.json"
+  ],
+  "recommended_next_action": "Controller: land lanes/D_VERIFY/{DELTA_REVERIFY_R2.md, delta_reverify_r2.py, reverify_r2_results.json, handoff_D_r2.json}. Both remediations (wbap-c-proto-r1 counts fix, wbap-a-data-r2 roster PIT audit) are verified from bytes; the 4 MINOR defects D-6..D-9 are text-only corrections in lanes/A_DATA artifacts (successor carries the 5 truncated game-1 rosters + 5 box-missing games 2010-2016 as structural missingness per ROSTER_PIT_AUDIT sec8 cl.5); W-H2 KEEP with minutes-weighted window T>=2006 / roster-share T>=2003 goes to the successor proposal as measured."
+}
