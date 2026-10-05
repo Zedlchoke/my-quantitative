@@ -1,0 +1,73 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nfl-winprob-ng-scored-v1-A7-R2",
+  "cycle_id": "NFL-WINPROB-NG-SCORED-V1",
+  "role": "independent-auditor",
+  "lane": "A7_PRELAUNCH_R2",
+  "branch": "orca/nfl-winprob-ng-scored-v1-integration",
+  "dispatch_sha": "1e41b8dd2cc7888b41bdb412ba882896376b65c2",
+  "actual_start_sha": "1e41b8dd2cc7888b41bdb412ba882896376b65c2",
+  "commit_sha": null,
+  "changed_paths": [
+    "integration/lanes/A7_PRELAUNCH_R2/A7_PRELAUNCH_VERDICT_R2.md",
+    "integration/lanes/A7_PRELAUNCH_R2/AUDIT_EVIDENCE_R2.md",
+    "integration/lanes/A7_PRELAUNCH_R2/OWNER_GATE_BRIEF_R2.md",
+    "integration/lanes/A7_PRELAUNCH_R2/tmp/selftest_stdout.json",
+    "integration/lanes/A7_PRELAUNCH_R2/tmp/selftest_stderr.txt",
+    "integration/lanes/A7_PRELAUNCH_R2/tmp/run_e2e_synth_redirect.py",
+    "integration/lanes/A7_PRELAUNCH_R2/tmp/e2e_rerun_stdout.txt",
+    "integration/lanes/A7_PRELAUNCH_R2/tmp/e2e_rerun/e2e_rerun_evidence.json",
+    "integration/lanes/A7_PRELAUNCH_R2/tmp/run_warmup_redirect.py",
+    "integration/lanes/A7_PRELAUNCH_R2/tmp/warmup_rerun/warmup_rerun_evidence.json",
+    "integration/lanes/A7_PRELAUNCH_R2/tmp/r2_9_null_and_cap_probe.py",
+    "integration/lanes/A7_PRELAUNCH_R2/tmp/r2_9_results.json",
+    "integration/lanes/DISPATCH/handoff_A7_PRELAUNCH_R2.json"
+  ],
+  "tests": [
+    {"command": "git cat-file -t / log --format='%H %P' / rev-list --merges / rev-parse / status (read-only)", "exit_code": 0, "verdict": "PASS", "note": "R2-1: chain f55dab66->ecf8371a(A7 control state)->46bd3b54(INV_C2)=3e52b7b1^->3e52b7b1(PIPE)->1e41b8dd(addendum); 0 merges, linear 14 commits, HEAD==dispatch sha, no upstream, tree clean except untracked R2 dispatch packet (by design)"},
+    {"command": "record_batch.py --mode selftest", "exit_code": 0, "verdict": "PASS", "note": "R2-4: auditor's own run at THIS SHA, 10/10 hand-computed checks incl. arm-config digest equality vs freeze pins, margin arithmetic, DST canonicalization, state-carry hand Elo, future-score abort, fresh-pull guard, p-format guard, prefix bit-equivalence"},
+    {"command": "record_batch.py --mode e2e-synth (in-process, LANE_DIR/RECORDER_SANDBOX/E2E_DIR redirected to lanes/A7_PRELAUNCH_R2/tmp)", "exit_code": 0, "verdict": "PASS", "note": "R2-4: all 3 scenarios independently reproduced: nominal 24 rows chain-intact 24xVALID_PROSPECTIVE with fixture sha e4a3fa70... and ledger sha cf92d600... BYTE-IDENTICAL to PIPE's pinned evidence; margin 5.98h refusal nothing-written; future-score abort nothing-written; double-run byte-identical; real-ledger paths existing=[]; audited code bytes and PIPE sandbox bytes untouched (PIPE sandbox ledger re-hashed equal post-run)"},
+    {"command": "record_batch.py --mode warmup-check (redirected, frozen snapshot 486d7227... pin verified)", "exit_code": 0, "verdict": "PASS", "note": "R2-3/R2-4: independent re-run equals PIPE run on every aggregate: 7,080 completed / 63 in 2026 == registration audit / 209 future / 0 future-with-score / 32 lineages / 830 z-entries / probabilities_emitted=0 / 0 p_home fields in evidence"},
+    {"command": "python -m pytest -q -p no:cacheprovider research/control/NFL-WINPROB-NG-SCORED-V1/ledger/test_ledger_synthetic.py (PYTHONDONTWRITEBYTECODE=1)", "exit_code": 0, "verdict": "PASS", "note": "R2-7: predecessor ledger suite 42/42 at THIS SHA"},
+    {"command": "python -m pytest -q -p no:cacheprovider lanes/S_SYNTH/test_successor_synthetic.py (PYTHONDONTWRITEBYTECODE=1)", "exit_code": 0, "verdict": "PASS", "note": "R2-7: successor synthetic suite 16/16 at THIS SHA"},
+    {"command": "python -m pytest -q -p no:cacheprovider lanes/PIPE/test_recorder_synthetic.py (PYTHONDONTWRITEBYTECODE=1)", "exit_code": 0, "verdict": "PASS", "note": "R2-7: PIPE additions 3/3 at THIS SHA (nothing weakened; additions only)"},
+    {"command": "GENESIS R2/R1 canonical payload digest recompute (sha256 over canonical JSON)", "exit_code": 0, "verdict": "PASS", "note": "R2-5: R2 recomputes to bd94eb77d35077ac7bc1761a2c61031a1cdf2f53c6d8be181de5ddfcefd51483 == pin, canonical string byte-equal to the erratum's literal twin; R1 (section 6 fields, PENDING placeholder) recomputes to ae99a803... == R1 pin exactly; supersession reason verified from bytes (two byte-level payload changes)"},
+    {"command": "r2_9_null_and_cap_probe.py (own synthetic stream, frozen arms.py imported with sha pin assert)", "exit_code": 0, "verdict": "PASS", "note": "R2-9: C1_B000/C2_NULL/C3_T000/C4_D000 all max|dp|=0.0 exactly AND .tobytes() equal vs B1* on my own 12-row 2-season stream; power checks all nonzero (C1_B025 3.76e-4, C2_h25 1.56e-2, C3_T050 6.22e-2, C4_D025 1.56e-2); doctored 2019 row dropped at load (n_dropped_over_ceiling=1, 0 rows > 2018 survive), backstop assert demonstrated loud, odds bait quarantined"},
+    {"command": "digest verification sweep (sha256 over 19 pinned files)", "exit_code": 0, "verdict": "PASS", "note": "R2-2/R2-3/R2-6: FREEZE_PACKET 9978a950==pin (unchanged), ERRATUM_R2 98681cde==r2-twin pin, 5 recorder modules == ERRATUM section-3 pins, arms.py 19dddd3f / select.py 8f733d45 / boot.py 0674b95f == section-9 pins, ledger tool 6fb0a1d4, SELECTION_LEDGER ff698d5d == packet pin, pbp 2018/2019/2020 == pins with PAR1 magic x3, games.csv 486d7227, LICENSE x2 == 2a82ac9b (18,651 B)"},
+    {"command": "boundary sweeps: find prediction-ledger paths; grep GO phrase / real-game-id+p / betting vocabulary", "exit_code": 0, "verdict": "PASS", "note": "R2-8: 0 real prediction-ledger files worktree-wide or data-dir top level (only SYNTH PIPETEST sandbox ledgers); GO phrase confined to 8 registered/boundary/verdict contexts, zero in new lanes; real-game-id regex across PIPE lane + auditor tmp + sandbox: 1 prose schedule-fact mention only, ZERO real game_ids carrying probability values; betting vocabulary only in negative boundary statements; state.json budget 0/9, s1 SEALED_UNTOUCHED, GO registered NOT typed, workers 0"}
+  ],
+  "authority_claims": [
+    "VERDICT: A7_PRELAUNCH_R2_PASS, 9/9 checklist items R2-1..R2-9 PASS, 0 blockers, at HEAD 1e41b8dd2cc7888b41bdb412ba882896376b65c2 == dispatch sha. Prior A7 PASS at ecf8371a was NOT inherited; every item was recomputed from bytes at THIS SHA.",
+    "R2-2: ERRATUM_R2 is coherent with the registered Option B (predecessor OWNER_DECISION_PACKET: week-5 slate becomes the first prospective window): capturable weeks = week 5 onward ONLY from 2026_05_TB_DAL 2026-10-09T00:15:00Z; 2026_04_ATL_NO and ALL pre-week-5 games NOT_RUN prospective forever (forfeit-by-design); the defective FREEZE_PACKET section-4 sentence is superseded append-only (packet bytes verified unchanged 9978a950...), which only NARROWS capture (closes the week-4 path), never widens; the standing OWNER_GATE_BRIEF forfeit-by-design text agrees; week-5 batch deadline 2026-10-08T18:15:00Z or earlier.",
+    "R2-3: state-carry law verified as code, not prose: T_SELECT caps 2018/2017 intact with hard filter + backstop asserts; recorder is a separate consumer whose warmup mask requires both final scores AND kickoff strictly before the batch timestamp; any future game with a score raises FutureScoreAbort before any compute; the warmup path computes counts only (no logarithm/metric/LL; probabilities_emitted=0 verified by my independent warmup re-run); pbp 2018-2020 on-disk digests == pins with PAR1 magic and manifest; license copies == pin 2a82ac9b...",
+    "R2-4: recorder tests re-run by the auditor at THIS SHA: selftest 10/10; e2e-synth all 3 scenarios + determinism reproduced byte-identically (fixture e4a3fa70..., ledger cf92d600... == PIPE's pinned claims); grep of all recorder/sandbox outputs shows zero real game_ids carrying probability values (single prose schedule-fact mention only); all sandbox ledger rows are SYNTH_-prefixed.",
+    "R2-5: GENESIS_PAYLOAD_DIGEST_R2 bd94eb77... recomputed exactly from the erratum's canonical form (placeholders POST_GO_TIMESTAMP / PENDING_CONTROLLER_ADDENDUM); R1 ae99a803... recomputation cross-check exact; supersession documented with reason; sandbox genesis distinctness asserted in the recorder selftest; freeze_digest input 9978a950... unchanged.",
+    "R2-6: controller addendum binds INV_C2 disclosure (twin adjudication vs reference AND vs own parent with parent slope in [0.85,1.15]) WITHOUT changing gates/arms/windows: FREEZE_PACKET bytes unchanged, T1-T3/R1-R3 text intact, arm-config digests recomputed == pins, SELECTION_LEDGER.jsonl sha == pin ff698d5d... (INV_C2 modified nothing it investigated); C2 stays OUT (three independent kill grounds); C3 ADMIT untouched; RECORDER_FREEZE_SHA 3e52b7b1... == the PIPE commit sha.",
+    "R2-8: boundaries hold at THIS SHA: no real prediction ledger exists anywhere (worktree + data dir); zero real-game probability rows; GO phrase registered-not-typed (8 registered/boundary contexts, zero in new lanes); budget 0/9; S1 SEALED_UNTOUCHED; no upstream configured (never pushed); no betting vocabulary.",
+    "R2-9: designed-null law re-proven independently on the auditor's own synthetic stream through the frozen arms.py: C1_B000/C2_NULL/C3_T000/C4_D000 bit-identical (max|dp|=0.0, .tobytes() equal) vs B1* with all four power checks nonzero; doctored 2019 row dropped at load with 0 rows above the ceiling surviving and the backstop assertion demonstrated loud."
+  ],
+  "known_limitations": [
+    "N1 (non-blocking): the week>=5 capture floor is erratum law + controller batch choice, NOT a code assert inside the frozen recorder (select_target_games takes the week from its caller; >=6h margin and SYNTH-only guard ARE code-enforced). The post-GO controller must select target weeks >= 5 only; patching the frozen recorder would be a new registered trial. Stated in OWNER_GATE_BRIEF_R2.md.",
+    "N2 (auditor-owned, non-blocking): the first R2-9 run had a vacuous C4 power check because the auditor's own synthetic stream gave no away team a <=6-day rest; C4_D000 bit-identity held in both runs; the auditor patched its OWN stream and re-ran (final power 1.56e-2). No audited artifact touched at any point.",
+    "N3 (non-blocking): freeze_digests.json (r1) retains the superseded R1 pin ae99a803... and frozen_refs.FREEZE_GENESIS_DIGEST_R1 exists only as a negative assertion (verified 0 occurrences in sandbox bytes); R1 must never anchor a ledger — append-only supersession, no silent edit. freeze_digests_r2.json cannot contain its own sha256; the controller pins it (d62f2a2a...) at its next CAS write alongside the R2 anchor.",
+    "Recorder re-runs were executed in-process with the module's output-path globals redirected into lanes/A7_PRELAUNCH_R2/tmp so the audited PIPE evidence files and sandbox bytes stayed untouched (PIPE sandbox ledger re-hashed equal post-run); warmup-check reruns the frozen snapshot smoke check, which is not a registration re-audit (the epoch and the 63-game NOT_RUN count remain frozen)."
+  ],
+  "incidents": [
+    {"id": "A7R2-I1", "severity": "minor", "disclosed": true, "remediated": true,
+     "what": "The auditor's R2-7 re-run of lanes/PIPE/test_recorder_synthetic.py regenerated lanes/PIPE/e2e_synth_evidence.json as a subprocess side effect (the test invokes the recorder CLI without output redirection; only the wall-clock ran_utc field differed - all shas/counts/verdicts byte-identical because the fixtures are deterministic).",
+     "remediation": "Exact committed bytes restored from 'git show HEAD:lanes/PIPE/e2e_synth_evidence.json' (restored sha256 d8aa004eb818e6ba76b6a0456d30f6f0e29387bbcf26397f7443ca9fc66f2475 == committed blob, verified); post-restore git status shows the file unmodified; final tree contains only lanes/A7_PRELAUNCH_R2/** + the dispatch packet + this handoff, all untracked by design.",
+     "impact": "None on substance: PIPE's audited evidence content was never altered in any byte that carries a claim; the recorder re-run evidence of record for this audit is the auditor's own redirected run (R2-4), which reproduces PIPE's pinned claims byte-exactly."}
+  ],
+  "tree_status": "uncommitted-by-design",
+  "workers": 0,
+  "outputs": [
+    "integration/lanes/A7_PRELAUNCH_R2/A7_PRELAUNCH_VERDICT_R2.md",
+    "integration/lanes/A7_PRELAUNCH_R2/AUDIT_EVIDENCE_R2.md",
+    "integration/lanes/A7_PRELAUNCH_R2/OWNER_GATE_BRIEF_R2.md",
+    "integration/lanes/A7_PRELAUNCH_R2/tmp/r2_9_results.json",
+    "integration/lanes/A7_PRELAUNCH_R2/tmp/e2e_rerun/e2e_rerun_evidence.json",
+    "integration/lanes/A7_PRELAUNCH_R2/tmp/warmup_rerun/warmup_rerun_evidence.json",
+    "integration/lanes/A7_PRELAUNCH_R2/tmp/r2_9_null_and_cap_probe.py",
+    "integration/lanes/DISPATCH/handoff_A7_PRELAUNCH_R2.json"
+  ]
+}
