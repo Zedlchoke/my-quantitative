@@ -1,0 +1,85 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nfl-playerfeat-prep-v1-D-VERIFY",
+  "cycle_id": "NFL-PLAYERFEAT-PREP-V1",
+  "role": "independent-verifier",
+  "lane": "D_VERIFY",
+  "branch": "orca/nfl-playerfeat-prep-v1-integration",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration",
+  "dispatch_sha": "b0febecac4551bb211c1b16385bd1dc6e2b73982",
+  "actual_start_sha": "b0febecac4551bb211c1b16385bd1dc6e2b73982",
+  "commit_sha": null,
+  "changed_paths": [
+    "lanes/D_VERIFY/VERIFICATION_REPORT.md",
+    "lanes/D_VERIFY/VERIFY_MATRIX.md",
+    "lanes/D_VERIFY/DISCREPANCY_REGISTER.md",
+    "lanes/D_VERIFY/work/t1_hash.py",
+    "lanes/D_VERIFY/work/t1_hash_results.json",
+    "lanes/D_VERIFY/work/t2_join.py",
+    "lanes/D_VERIFY/work/t2_join_results.json",
+    "lanes/D_VERIFY/work/t3_recompute.py",
+    "lanes/D_VERIFY/work/t3_results.json",
+    "lanes/D_VERIFY/work/t3b_kc_example.py",
+    "lanes/D_VERIFY/work/t3c_g2_kc.py",
+    "lanes/D_VERIFY/work/t4_rules.py",
+    "lanes/D_VERIFY/work/t4_results.json",
+    "lanes/D_VERIFY/work/t4b_claims.py",
+    "lanes/D_VERIFY/work/t4b_results.json",
+    "lanes/D_VERIFY/work/t4_rebuild_log.txt",
+    "lanes/DISPATCH/handoff_D_VERIFY.json"
+  ],
+  "tests": [
+    {"name": "T1 input+output re-hash", "result": "PASS", "detail": "7/7 sha256 (6 manifest inputs + output parquet f1bc6b4a…7c4f57) re-hashed with verifier-owned code, all identical to pins"},
+    {"name": "T2 join rates re-measured", "result": "PASS", "detail": "GSIS 1.0/1.0/1.0 (2001/2024/1512 players, placeholders 22/22/4=48); PFR 0.997259 (2183/2189) and 0.998213 (1676/1679); unresolved censuses identical incl. WhitCo05"},
+    {"name": "T3 full-table as-of recount", "result": "PASS", "detail": "own implementation: kickoff_utc strings, n_prior_games_used, rest_days (max dev 0.0), g3_n_snap_prior_games, flag_g3_pfr_null_excluded — 0 mismatches over all 1,266 rows"},
+    {"name": "T3 KC worked example 2024_11_KC_BUF (KC=away)", "result": "PASS", "detail": "from bytes: priors wks 1-5,7-10 (wk6 bye), n_prior 9, rest 7.14236, prior-3 = 819 yds / 6 TD / 1 INT / 124 att exact; ypa 6.60484, epa 30.55991, forms +27.66667/+6.85229, k5 1304/190; G2 U_tot 189, Hunt 74/Kelce 40/Hopkins 17, 0.69312/0.22208/63.0/0.79299 — all match PIT_AUDIT and table"},
+    {"name": "T3 sampled deep recomputes (44-col compare)", "result": "PASS", "detail": "bye-week 2024_07_KC_SF (KC: n_prior 5, rest 12.84028, yds_k3 793, wks 5/4/3); neutral opener 2026_01_ARI_LAC (all NaN, 96-row cohort); pfr-null 2026_02_LV_LAC (flag=1); n_w=1 2025_02_WAS_GB; 2026_04_PIT_CLE; BUF row 2024_11_KC_BUF — 0 column diffs each"},
+    {"name": "T4 missing-data rules", "result": "PASS", "detail": "flags 96/634/82/0/192/350 all match; per-season splits match; 96 no-prior rows all-NaN G1/G2/rest; 634 no-snap rows all-NaN G3 (all 2024 flagged); converse holds; 64 n_w=1 rows absent-share exactly 0.0; trunc semantics hold"},
+    {"name": "T4 outcome-column ban", "result": "PASS", "detail": "exact 44-col whitelist; banned-token scan 0 hits; no object columns beyond keys/as-of; asof_rule_version constant; flags binary; content provenance verified by recompute"},
+    {"name": "T4 determinism reproduction", "result": "PASS", "detail": "fresh-process rebuild via lanes/B_BUILD/build_features.py into /tmp/dverify_rebuild_pfr → sha f1bc6b4a…7c4f57 byte-identical to shipped parquet"},
+    {"name": "T4 universe/dates/ranges claims", "result": "PASS_WITH_REGISTERED_MINOR", "detail": "842 games (285/285/272), 633 stat gids, 0 orphans, 63 played + 209 future 2026, earliest future kickoff 2026-10-06T00:15:00Z, 4 first-computable dates: all match; 7/8 value ranges exact — g3_top5_newly_absent_count doc max 5 vs measured 2 (MINOR-1, doc-only)"},
+    {"name": "T5 boundary: 0 scored computation", "result": "PASS", "detail": "grep over lanes/ for scored/betting vocabulary: only ban-list declarations, boundary statements and dispatch text; builder contains aggregations only"},
+    {"name": "T5 isolation check", "result": "PASS", "detail": "git -C nfl-winprob-ng-scored-v1/integration status --porcelain → empty (clean); read-only observation only; no writes from this cycle"},
+    {"name": "T5 write scope", "result": "PASS", "detail": "own-worktree porcelain shows only DISPATCH_D_VERIFY.md (orchestrator) + lanes/D_VERIFY/ untracked; B_BUILD artifacts controller-committed; no out-of-scope writes"},
+    {"name": "canary + copy identity", "result": "PASS", "detail": "Cody White gsis 00-0035891 crosswalk pfr_id NULL; WhitCo05 = 3 snap-2026 rows (LV wks 1-3); LV 2026 wk2-4 flagged, wk1 no-snap; shipped manifest/selftest byte-identical to lane copies"}
+  ],
+  "authority_claims": [
+    "Dispatch packet DISPATCH_D_VERIFY.md is the sole authority for this lane; verdict values come exclusively from verifier-owned code written fresh from FEATURE_SPEC.md (builder functions not reused; builder re-executed only for the determinism reproduction)",
+    "Output table verified: sha f1bc6b4a8c7f5c36457aaa393666ca90cc446cc6f934c3ea55f739b5de7c4f57, 1,266 × 44, 0 outcome columns, as-of law asof-1.0.0-nfl-playerfeat-prep-v1 with kickoff strict inequality proven by full-table independent recount",
+    "NOT_RUN_PIT law holds: no column/value encodes target-game injury/active/DNP/starter status; G3 is a lagged prior-game snap proxy only",
+    "Two MINOR documentation discrepancies registered against B_BUILD audit prose (COVERAGE_AUDIT §5 range max; PIT_AUDIT §2 venue-direction wording) — no table, manifest, determinism or boundary impact",
+    "No git commands beyond the two permitted read-only status --porcelain observations (isolation + write scope); no URL fetches; $0"
+  ],
+  "known_limitations": [
+    "Verification is against the frozen bytes on disk at 2026-10-05; re-verification required if any input or the builder changes (sha pins make drift detectable)",
+    "Sampled deep recompute covers 7 rows (plus the full as-of/G3-flag layer for all 1,266 rows); non-sampled G1/G2/G3 feature values for individual rows were not exhaustively recomputed — covered instead by determinism reproduction + full as-of layer + S3-equivalent design trust anchored on the byte-identical rebuild",
+    "Value-range check of COVERAGE_AUDIT §5 relies on the doc's rounded 3-decimal claims; tolerance 0.001 applied (7/8 exact, 1 registered MINOR)",
+    "Stray empty dir lanes/'B_BUILD lanes'/D_VERIFY/ (pre-existing orchestrator path artifact) observed, not touched — outside this lane's allowed paths"
+  ],
+  "incidents": [
+    "Verifier script note 1 (self, resolved): first sample selection used side=home for 2024_11_KC_BUF which is BUF's row (game_id convention away_home; KC is away) — re-keyed to the KC away row; this surfaced MINOR-2 in PIT_AUDIT prose",
+    "Verifier script note 2 (self, resolved): t3 verdict expression and t4b final-check compared wrong structures (verdict line said DIFFS_FOUND despite zero mismatches; TypeError on fd dict) — fixed and re-run clean; data conclusions unaffected",
+    "None against other lanes: no repairs made, no writes outside lanes/D_VERIFY/** + handoff"
+  ],
+  "tree_status": "uncommitted-by-design",
+  "workers": 0,
+  "outputs": [
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration/lanes/D_VERIFY/VERIFICATION_REPORT.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration/lanes/D_VERIFY/VERIFY_MATRIX.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration/lanes/D_VERIFY/DISCREPANCY_REGISTER.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/nfl-playerfeat-prep-v1/integration/lanes/DISPATCH/handoff_D_VERIFY.json"
+  ],
+  "verdict": "VERIFIED_WITH_MINOR",
+  "discrepancy_counts": {"BLOCKER": 0, "MAJOR": 0, "MINOR": 2, "INFO": 2},
+  "next_actions": [
+    "Controller: optional B_BUILD prose fixes (COVERAGE_AUDIT §5 max 5→2 measured; PIT_AUDIT §2 'BUF at KC'→'KC at BUF'); neither blocks the cycle",
+    "Controller: commit lanes/D_VERIFY + handoff per plan §Boundaries; proceed on the verified frozen table (sha f1bc6b4a…7c4f57)"
+  ],
+  "handoff_artifacts": {
+    "report": "lanes/D_VERIFY/VERIFICATION_REPORT.md",
+    "matrix": "lanes/D_VERIFY/VERIFY_MATRIX.md",
+    "register": "lanes/D_VERIFY/DISCREPANCY_REGISTER.md",
+    "work_evidence": "lanes/D_VERIFY/work/*.py + *.json"
+  },
+  "completed_utc": "2026-10-05T14:05:00Z"
+}
