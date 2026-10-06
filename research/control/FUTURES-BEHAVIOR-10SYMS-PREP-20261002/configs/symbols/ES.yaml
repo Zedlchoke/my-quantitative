@@ -1,0 +1,271 @@
+schema: futures_behavior_symbol_config@1
+task_id: FUTURES-BEHAVIOR-10SYMS-PREP-20261002
+symbol: ES
+generated_utc: '2026-10-02'
+source_dossier: dossiers/ES_DOSSIER.md
+dossier_sha256: 63bc01ad8a665f2d804c349faa67077028dc00dfd15fd086b419308fbc588dfb
+provenance_note: >-
+  Hypotheses derived STRICTLY from dossiers/ES_DOSSIER.md S5. Corpus-1200 reuse: none claimed
+  (dossier). ES is the only symbol with a documented all-in commission example (2.24/side).
+defaults:
+  universe:
+    exchange: CME (Globex)
+    contract_cycle: HMUZ quarterly (9Q + 3 Dec)
+    liquid_chain_rule: front quarterly only (deferred quarterlies median <=5 lots/day vs front ~1.0-1.3M)
+    liquid_chain_evidence: 'OBSERVED ES S1/S3 contract_panel'
+  roll_rule:
+    baseline: declared_calendar_last_trade_month
+    baseline_definition: hold until last session BEFORE day-1 of the expiry month (last-trade-date month), roll to next listed quarterly at that close
+    reference: code/futbt/roll.py + BACKTEST_LAUNCH_DRAFT.md S0
+    target_adjustment: next_HMUZ_quarterly
+    dossier_finding: 'OBSERVED ES S1: declared rule rolls ~2 weeks before market migration; next-quarterly reaches front scale in roll week T-4/5 (5/5 cycles 2025-06..2026-09); thin declared-front windows 8-9 sessions/quarter; June expiry shifts off 3rd Friday (Juneteenth ESM6 2026-06-18, ESM7 2027-06-17)'
+    alternative_required: 'T-5 calendar roll (roll-week) primary alternative per ES-H1; volume roll NOT_RUN (crossover unmeasurable); OI roll NOT_RUN (no OI field)'
+  execution_laws:
+    decision_point: session_close_through_pit_view
+    default_fill: next_session_open_tick_rounded_cost_shifted
+    ambiguous_order: same_bar_tp_sl_worst_case_bound_no_point_pnl
+    close_only_bars: never_fill_any_path
+    tb_labels: TRAIN_ONLY_never_validation_features
+    adjusted_series: causal_additive_features_only_never_fills_mtm_pnl
+    attribution: full_path_leave_one_out_only_additive_leg_sums_forbidden
+  cost_model:
+    commission: {usd_per_side: 0.85, provenance: 'PUBLISHED IBKR 2026-10-02'}
+    exchange_fee: {provenance: 'DOCUMENTED_EXAMPLE all-in 2.24/side (IBKR 0.85 + exchange 1.38 + clearing 0.00 + reg 0.00-0.01), the only worked example; per-CME-schedule NOT_FETCHED'}
+    spread: {median_usd_per_contract: 12.5, provenance: 'MEASURED daily-BBO close proxy 1.0 tick front (n=284, 0 crossed days; S6 concordant)', caveat: non-synchronous, not executable}
+    slippage: {provenance: NOT_RUN_NO_DECLARED_VALUE}
+    stress_multipliers: [1.0, 1.5, 2.0]
+hypotheses:
+- id: ES-H1
+  dossier_ref: 'dossiers/ES_DOSSIER.md S5 H1 (mechanics-level, testable NOW)'
+  hypothesis_kind: construction_rule
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Quarterly OpEx economics (options/roll programs) migrate lendable liquidity front->next
+    in roll week; a T-5 calendar roll (expiry minus 5 sessions, Juneteenth June shift applied)
+    aligns the continuous reference with the measured migration ramps and avoids ~8-9
+    sessions/quarter of <1%-of-front-volume book.
+  pit_trigger:
+    mechanizable: true
+    observable: calendar-only - old-quarterly age reaches expiry-5 sessions (T-5)
+    field: exchange listing calendar + lastTradeDate set (holiday-shifted June)
+    source: S1 lastTradeDate set (resolved to 2031); exchange calendar published years ahead
+    as_of_rule: fully knowable in advance; no lookahead by construction
+    timestamp_at_decision: deterministic calendar date
+  direction: n/a (construction rule, not a trade)
+  entry: switch continuous reference contract at T-5 close
+  exit: n/a
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: quarterly cycle
+  universe: ES HMUZ chain
+  roll_rule_ref: this IS the roll rule A/B (declared baseline vs T-5)
+  sizing: n/a
+  regime_tags: [all_regimes_mechanical, holiday_compression_watch]
+  counter_hypothesis: migration is volume-driven not calendar-driven (crossover unmeasurable in snapshot; prospective collector can test)
+  failure_conditions:
+  - a cycle where the >=100k-lot ramp deviates >3 sessions from T-5 (watch Dec cycles / holiday compression)
+  - June expiry handling bug (Juneteenth shift) or vendor-continuous substitution
+  minimal_test:
+    kind: construction_rule_check_against_measured_ramps
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [ES], use: construction_check, floor: 'ALREADY MET by raw daily files (5/5 ramp dates measured)', floor_met: true, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: construction_rule_embedded_in_all_arm_b_cells
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [ES], use: backtest_fill, floor: '>=24m true volume (roll A/B within cells)', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [REGISTRATION_REQUIRED_FOR_SCORED_RUN, REAL_HOLIDAY_CALENDAR_NOT_RUN]
+  param_gaps: []
+  feasibility:
+    mechanization: high
+    acquisition_cost: in_hand_now
+    rank_basis_note: 'dossier: data requirements ALREADY met, floor none, budget 0'
+  rank: 1
+- id: ES-H4
+  dossier_ref: 'dossiers/ES_DOSSIER.md S5 H4'
+  hypothesis_kind: cross_asset_relative_value
+  mechanism_class: POSTULATED
+  mechanism: >-
+    NQ's higher duration/beta reprices differently under discount-rate shocks: rate-surprise
+    days (FOMC/CPI) widen the ES-NQ spread over 1-3 sessions.
+  pit_trigger:
+    mechanizable: true
+    observable: known FOMC/CPI release dates (FACT calendars) as event tags; v1 = event dates only (surprise measure PARAM-GAP)
+    field: event-date flag; ES/NQ front-chain closes
+    source: federalreserve.gov + bls.gov calendars (fetched 2026-10-02, FACT) + raw daily both symbols
+    as_of_rule: event dates known in advance; positions entered at prior close, no same-bar execution
+    timestamp_at_decision: prior close -> +1/+3 sessions
+  direction: rate-shock-sign conditional (spread direction declared before run)
+  entry: spread at prior close
+  exit: +1/+3 sessions
+  take_profit: 'PARAM_GAP: ES-H4-P2 (pre-declared required)'
+  stop_loss: 'PARAM_GAP: ES-H4-P2'
+  time_rules: 1-3 session horizon
+  universe: both fronts (ES, NQ), T-5 rolls per ES-H1
+  roll_rule_ref: defaults.roll_rule + ES-H1 T-5 alternative
+  sizing: beta-neutral 1:delta (declared formula before run; PARAM-GAP exact delta estimator)
+  regime_tags: [rate_surprise_days, non_event_days_control]
+  counter_hypothesis: both legs are one beta factor - spread unresponsive
+  failure_conditions:
+  - no spread-variance difference event vs non-event days
+  - roll-boundary contamination (unadjusted chains; event window overlapping a roll week)
+  minimal_test:
+    kind: descriptive_event_vs_nonevent_spread_variance
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [ES, NQ], use: conditional_descriptive, floor: 'daily both symbols front-scale ~14-17 months (LOW power; dossier floor >=100 events unmet)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    - {class: event_release_calendars, symbols: [US], use: event_calendar_descriptive, floor: 'FOMC/CPI dates (FACT, fetched 2026-10-02)', floor_met: true, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [ES, NQ], use: backtest_fill, floor: multi-year both legs (>=100 events), floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, REGISTRATION_REQUIRED_FOR_SCORED_RUN, REAL_HOLIDAY_CALENDAR_NOT_RUN]
+  param_gaps:
+  - {id: ES-H4-P1, piece: surprise measure for anything beyond date-based v1, reason: no PIT consensus archive in repo}
+  - {id: ES-H4-P2, piece: TP/SL + delta-neutral formula, reason: pre-declared before any run}
+  feasibility:
+    mechanization: high
+    acquisition_cost: in_hand_now
+    rank_basis_note: daily v1 (event-dates only) computable on legal data today; multi-year needs vendor
+  rank: 2
+- id: ES-H5
+  dossier_ref: 'dossiers/ES_DOSSIER.md S5 H5'
+  hypothesis_kind: regime_conditional
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Overnight liquidity thinness + dealer inventory at open: RTH-open gap continuation or
+    reversion is conditional on the trailing vol regime.
+  pit_trigger:
+    mechanizable: true
+    observable: RTH-open gap vs prior RTH close, normalized by trailing-20d mean|ret| (strict past); vol regime from trailing-63d vol
+    field: daily open/close on front chain
+    source: raw daily TRADES (RTH bars) in corpus
+    as_of_rule: gap known at the open; regime label from window ending prior session
+    timestamp_at_decision: 08:30 CT open decision
+  direction: 'declared per regime table before run (PARAM-GAP: direction table must be pre-registered)'
+  entry: RTH open
+  exit: RTH close same session
+  take_profit: 'PARAM_GAP: ES-H5-P1'
+  stop_loss: 'PARAM_GAP: ES-H5-P1'
+  time_rules: single session
+  universe: ES front chain
+  roll_rule_ref: defaults.roll_rule
+  sizing: vol-scaled (declared formula before run)
+  regime_tags: [high_trailing_vol, low_trailing_vol]
+  counter_hypothesis: gaps are pure information arrival - no reversion premium
+  failure_conditions:
+  - sign instability across the few vol regimes in window
+  - 'settlement-derived bars treated as tradable opens (pre-2025-06 chain unusable: open==close flat marks)'
+  - 284-day single-regime rally sample over-read
+  minimal_test:
+    kind: descriptive_gap_by_regime
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [ES], use: conditional_descriptive, floor: 'descriptive first pass legal on daily data (done at gap level in S3); hypothesis-grade needs >=2y front-scale (have 14 months)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [ES], use: backtest_fill, floor: '>=24m true volume', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: ES-H5-P1, piece: regime-conditional direction table + TP/SL, reason: must be declared before run (no ex-post tuning)}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: in_hand_now
+    rank_basis_note: descriptive pass legal today; direction table must be pre-registered
+  rank: 3
+- id: ES-H2
+  dossier_ref: 'dossiers/ES_DOSSIER.md S5 H2'
+  hypothesis_kind: structural_relation
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Cost-of-carry fair value: index arbitrage anchors futures = spot + carry, so the quarterly
+    roll-gap sign tracks (short rate - S&P dividend yield); gap > 0 while rate > div yield
+    (5/5 measured positive 2025-06..2026-09).
+  pit_trigger:
+    mechanizable: true
+    observable: adjacent-quarterly close gap at each roll vs contemporaneous ~3M USD rate and S&P forward dividend yield
+    field: roll gaps (measured) + rate series + dividend yield
+    source: raw roll tables + FRED rates (free, not pulled) + index-provider dividend yield (paid, not in repo)
+    as_of_rule: contemporaneous quarter values; settlement-derived deferred closes are marks, never fills
+    timestamp_at_decision: quarterly roll dates
+  direction: n/a (structural relation informing construction drift + calendar-spread ideas)
+  entry: n/a
+  exit: n/a
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: quarterly
+  universe: adjacent HMUZ pairs
+  roll_rule_ref: defaults.roll_rule (gaps are its byproduct)
+  sizing: n/a
+  regime_tags: [rates_above_dividend_yield, rates_below_dividend_yield_flip]
+  counter_hypothesis: gaps are hedging demand/supply pressure, not carry
+  failure_conditions:
+  - positive gap persists while rate < div yield (demand premium dominates carry)
+  - using settlement-derived deferred closes as tradable prices (forbidden)
+  minimal_test:
+    kind: descriptive_gap_vs_rate_sign
+    requirements:
+    - {class: derived_roll_gaps, symbols: [ES], use: signal_reference, floor: '>=8 quarters of real-volume roll gaps for a sign statement (5 measured)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    - {class: external_rates_vintages, symbols: [US], use: regime_split_feature, floor: '~3M USD rate daily (FRED free, not pulled)', floor_met: false, available_today: false, acquisition: free_public}
+    - {class: spx_dividend_yield, symbols: [US], use: regime_split_feature, floor: 'S&P forward dividend yield (index-provider or SPX options data - paid)', floor_met: false, available_today: false, acquisition: owner_declaration}
+    nondata_blockers: []
+  scored_run:
+    kind: structural_input_to_arm_b (not a standalone trade)
+    requirements:
+    - {class: derived_roll_gaps, symbols: [ES], use: signal_reference, floor: '>=8 quarters', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: [REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: ES-H2-P1, piece: dividend-yield source + exact rate tenor, reason: 'series not in repo; owner decision per dossier S6'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: free_public
+    rank_basis_note: gaps OBSERVED (5/5 positive); rate leg free; dividend yield owner-gated
+  rank: 4
+- id: ES-H3
+  dossier_ref: 'dossiers/ES_DOSSIER.md S5 H3'
+  hypothesis_kind: event_reaction
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Slow diffusion of repricing across investor horizons + dealer inventory smoothing: 30-min
+    post-release drift continues the surprise-implied direction after surprise-adjusted
+    CPI/NFP/FOMC releases.
+  pit_trigger:
+    mechanizable: true
+    observable: '8:30 ET CPI/NFP or 14:00 ET FOMC + surprise vs PIT consensus archive (NOT in repo)'
+    field: surprise + M1 price path
+    source: BLS/Fed actuals (free) + consensus archive (vendor, owner decision) + M1 >=2019
+    as_of_rule: consensus as-known-before-release; M1 entry >=5 min after release (no same-bar 8:30 execution)
+    timestamp_at_decision: release minute + 5
+  direction: surprise-sign
+  entry: M1 close >=5 min after release
+  exit: +X hours / session close (PARAM-GAP)
+  take_profit: 'PARAM_GAP: ES-H3-P1'
+  stop_loss: 'PARAM_GAP: ES-H3-P1'
+  time_rules: intraday-to-close horizon
+  universe: front quarterly (T-5 roll per ES-H1)
+  roll_rule_ref: defaults.roll_rule + ES-H1 alternative
+  sizing: vol-scaled declared formula
+  regime_tags: [high_vol_tight_fed, mid_cycle]
+  counter_hypothesis: full adjustment within the first minute (macro efficiency)
+  failure_conditions:
+  - edge disappears with 5-min entry delay or 2x costs (master S6)
+  - revised (non-vintage) macro data used; consensus snooping
+  minimal_test:
+    kind: descriptive_event_reaction
+    requirements:
+    - {class: consensus_surprise_archive, symbols: [US], use: signal_reference, floor: 'PIT consensus archive >=2015 (BLOCKED - none in repo)', floor_met: false, available_today: false, acquisition: owner_declaration}
+    - {class: minute_trades_m1, symbols: [ES], use: intraday_event, floor: 'M1 >=2019 around 8:30/14:00 (have ~10 months RTH + 2D/contract); >=40 events/class', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [CONSENSUS_LICENSE_OWNER_DECISION]
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: consensus_surprise_archive, symbols: [US], use: backtest_fill, floor: same, floor_met: false, available_today: false, acquisition: owner_declaration}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, REGISTRATION_REQUIRED_FOR_SCORED_RUN, CONSENSUS_LICENSE_OWNER_DECISION]
+  param_gaps:
+  - {id: ES-H3-P1, piece: TP/SL/exit-timing thresholds, reason: 'cannot be set without a look-ahead-free selection protocol (dossier)'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: vendor_paid
+    rank_basis_note: BLOCKED on consensus + M1 depth (dossier)
+  rank: 5

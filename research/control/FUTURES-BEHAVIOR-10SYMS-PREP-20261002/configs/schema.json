@@ -1,0 +1,281 @@
+{
+  "schema_family": "futures_behavior_strategy_configs@1",
+  "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+  "lane": "STRATEGY-CONFIGS",
+  "generated_utc": "2026-10-02",
+  "purpose": "Machine-checkable schema for per-symbol hypothesis/strategy research configs (configs/symbols/*.yaml) and the NQ+CL pilot config (configs/pilot_nq_cl.yaml). Derived STRICTLY from dossiers/*_DOSSIER.md section 5. PREP ONLY: no scored runs, no PnL, no parameter invention (missing rule pieces are PARAM-GAP entries, never values).",
+  "schema_dialect": "restricted-json-schema-subset@1 (supported keywords: type, const, enum, required, properties, items, minItems, additionalProperties, pattern; types: object, array, string, integer, number, boolean; pattern uses Python re.fullmatch)",
+  "validator": "analysis/strategy_lane/validate_configs.py",
+  "rank_rule": {
+    "declaration": "Priority rank is by mechanism/data-availability/sample-cost feasibility of the hypothesis's MINIMAL legal test, explicitly NOT by PnL (none exists) and NOT by expected performance.",
+    "sort_key_components_in_order": [
+      "minimal_test.acquisition_cost enum order: in_hand_now(0) < free_public(1) < owner_declaration(2) < vendor_paid(3)",
+      "feasibility.mechanization enum order: high(2) > medium(1) > low(0)",
+      "dossier_hypothesis_order (ascending)"
+    ],
+    "enforced_by_validator": true
+  },
+  "vocabularies": {
+    "corpus_requirement_classes": [
+      "daily_trades_per_contract", "daily_bid_ask", "minute_trades_m1", "hourly_trades_h1",
+      "definitions_reference", "statistics_settlement_oi", "open_interest", "settlement",
+      "derived_roll_gaps"
+    ],
+    "external_requirement_classes": [
+      "cftc_cot_archive", "consensus_surprise_archive", "external_rates_vintages",
+      "eia_wpsr_vintages", "eia_wngsr_vintages", "weather_forecast_vintages",
+      "mof_intervention_archive", "boj_statement_archive", "rba_market_pricing",
+      "synchronous_bbo", "spx_dividend_yield", "iron_ore_primary_price", "hg_copper_daily",
+      "gilt_yields_pit", "ons_calendar_vintages", "uk_fiscal_calendar", "lbma_lease_rates",
+      "opec_policy_record", "api_weekly_bulletin", "event_release_calendars",
+      "serial_contracts_refetch", "full_session_globex_intraday"
+    ],
+    "requirement_uses": [
+      "backtest_fill", "signal_reference", "conditional_descriptive", "intraday_event",
+      "intraday_execution", "construction_check", "cost_evidence", "event_calendar_descriptive",
+      "regime_split_feature"
+    ],
+    "acquisition_costs": ["in_hand_now", "free_public", "owner_declaration", "vendor_paid"],
+    "mechanizations": ["high", "medium", "low"],
+    "nondata_blockers": [
+      "DECLARED_SLIPPAGE_MISSING", "EXCHANGE_FEE_NOT_FETCHED", "REGISTRATION_REQUIRED_FOR_SCORED_RUN",
+      "REAL_HOLIDAY_CALENDAR_NOT_RUN", "CONSENSUS_LICENSE_OWNER_DECISION", "CORPUS_IDEA_TRANSFER_MUST_RE_REGISTER",
+      "PARAM_GAP_MUST_BE_PRE_REGISTERED"
+    ],
+    "hypothesis_kinds": [
+      "conditional_return", "conditional_distribution", "event_reaction", "structural_relation",
+      "construction_rule", "execution_rule", "regime_conditional", "cross_asset_relative_value"
+    ]
+  },
+  "definitions": {
+    "symbol_config": {
+      "type": "object",
+      "required": ["schema", "task_id", "symbol", "generated_utc", "source_dossier", "dossier_sha256", "defaults", "hypotheses"],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {"const": "futures_behavior_symbol_config@1"},
+        "task_id": {"const": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002"},
+        "symbol": {"type": "string", "pattern": "(NQ|ES|CL|NG|GC|SI|6E|6J|6B|6A)"},
+        "generated_utc": {"type": "string", "pattern": "2026-10-02"},
+        "source_dossier": {"type": "string", "pattern": "dossiers/(NQ|ES|CL|NG|GC|SI|6E|6J|6B|6A)_DOSSIER\\.md"},
+        "dossier_sha256": {"type": "string", "pattern": "[0-9a-f]{64}"},
+        "provenance_note": {"type": "string"},
+        "defaults": {"$ref": "#/definitions/defaults_block"},
+        "hypotheses": {"type": "array", "items": {"$ref": "#/definitions/hypothesis"}, "minItems": 3}
+      }
+    },
+    "defaults_block": {
+      "type": "object",
+      "required": ["universe", "roll_rule", "execution_laws", "cost_model"],
+      "additionalProperties": false,
+      "properties": {
+        "universe": {
+          "type": "object",
+          "required": ["exchange", "contract_cycle", "liquid_chain_rule", "liquid_chain_evidence"],
+          "additionalProperties": false,
+          "properties": {
+            "exchange": {"type": "string"},
+            "contract_cycle": {"type": "string"},
+            "liquid_chain_rule": {"type": "string"},
+            "liquid_chain_evidence": {"type": "string"}
+          }
+        },
+        "roll_rule": {
+          "type": "object",
+          "required": ["baseline", "baseline_definition", "reference", "target_adjustment", "dossier_finding", "alternative_required"],
+          "additionalProperties": false,
+          "properties": {
+            "baseline": {"type": "string"},
+            "baseline_definition": {"type": "string"},
+            "reference": {"type": "string"},
+            "target_adjustment": {"type": "string"},
+            "dossier_finding": {"type": "string"},
+            "alternative_required": {"type": "string"}
+          }
+        },
+        "execution_laws": {
+          "type": "object",
+          "required": ["decision_point", "default_fill", "ambiguous_order", "close_only_bars", "tb_labels", "adjusted_series", "attribution"],
+          "additionalProperties": false,
+          "properties": {
+            "decision_point": {"const": "session_close_through_pit_view"},
+            "default_fill": {"const": "next_session_open_tick_rounded_cost_shifted"},
+            "ambiguous_order": {"const": "same_bar_tp_sl_worst_case_bound_no_point_pnl"},
+            "close_only_bars": {"const": "never_fill_any_path"},
+            "tb_labels": {"const": "TRAIN_ONLY_never_validation_features"},
+            "adjusted_series": {"const": "causal_additive_features_only_never_fills_mtm_pnl"},
+            "attribution": {"const": "full_path_leave_one_out_only_additive_leg_sums_forbidden"}
+          }
+        },
+        "cost_model": {
+          "type": "object",
+          "required": ["commission", "exchange_fee", "spread", "slippage", "stress_multipliers"],
+          "additionalProperties": false,
+          "properties": {
+            "commission": {"type": "object", "required": ["usd_per_side", "provenance"], "additionalProperties": true,
+              "properties": {"usd_per_side": {"type": "number"}, "provenance": {"type": "string"}}},
+            "exchange_fee": {"type": "object", "required": ["provenance"], "additionalProperties": true,
+              "properties": {"provenance": {"type": "string"}}},
+            "spread": {"type": "object", "required": ["median_usd_per_contract", "provenance", "caveat"], "additionalProperties": true,
+              "properties": {"median_usd_per_contract": {"type": "number"}, "provenance": {"type": "string"}, "caveat": {"type": "string"}}},
+            "slippage": {"type": "object", "required": ["provenance"], "additionalProperties": true,
+              "properties": {"provenance": {"type": "string"}}},
+            "stress_multipliers": {"const": [1.0, 1.5, 2.0]}
+          }
+        }
+      }
+    },
+    "hypothesis": {
+      "type": "object",
+      "required": [
+        "id", "dossier_ref", "hypothesis_kind", "mechanism_class", "mechanism",
+        "pit_trigger", "direction", "entry", "exit", "take_profit", "stop_loss", "time_rules",
+        "universe", "roll_rule_ref", "sizing", "regime_tags", "counter_hypothesis",
+        "failure_conditions", "minimal_test", "scored_run", "param_gaps", "feasibility", "rank"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "(NQ|ES|CL|NG|GC|SI|6E|6J|6B|6A)-H[1-9]"},
+        "dossier_ref": {"type": "string", "pattern": "dossiers/(NQ|ES|CL|NG|GC|SI|6E|6J|6B|6A)_DOSSIER\\.md S5 H[1-9].*"},
+        "hypothesis_kind": {"enum": ["conditional_return", "conditional_distribution", "event_reaction", "structural_relation", "construction_rule", "execution_rule", "regime_conditional", "cross_asset_relative_value"]},
+        "mechanism_class": {"const": "POSTULATED"},
+        "mechanism": {"type": "string"},
+        "pit_trigger": {
+          "type": "object",
+          "required": ["mechanizable", "observable", "field", "source", "as_of_rule", "timestamp_at_decision"],
+          "additionalProperties": false,
+          "properties": {
+            "mechanizable": {"type": "boolean"},
+            "observable": {"type": "string"},
+            "field": {"type": "string"},
+            "source": {"type": "string"},
+            "as_of_rule": {"type": "string"},
+            "timestamp_at_decision": {"type": "string"}
+          }
+        },
+        "direction": {"type": "string"},
+        "entry": {"type": "string"},
+        "exit": {"type": "string"},
+        "take_profit": {"type": "string"},
+        "stop_loss": {"type": "string"},
+        "time_rules": {"type": "string"},
+        "universe": {"type": "string"},
+        "roll_rule_ref": {"type": "string"},
+        "sizing": {"type": "string"},
+        "regime_tags": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "counter_hypothesis": {"type": "string"},
+        "failure_conditions": {"type": "array", "items": {"type": "string"}, "minItems": 2},
+        "minimal_test": {"$ref": "#/definitions/test_block"},
+        "scored_run": {"$ref": "#/definitions/test_block"},
+        "param_gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "piece", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {"type": "string", "pattern": "(NQ|ES|CL|NG|GC|SI|6E|6J|6B|6A)-H[1-9]-P[0-9]+"},
+              "piece": {"type": "string"},
+              "reason": {"type": "string"}
+            }
+          }
+        },
+        "feasibility": {
+          "type": "object",
+          "required": ["mechanization", "acquisition_cost", "rank_basis_note"],
+          "additionalProperties": false,
+          "properties": {
+            "mechanization": {"enum": ["high", "medium", "low"]},
+            "acquisition_cost": {"enum": ["in_hand_now", "free_public", "owner_declaration", "vendor_paid"]},
+            "rank_basis_note": {"type": "string"}
+          }
+        },
+        "rank": {"type": "integer"}
+      }
+    },
+    "test_block": {
+      "type": "object",
+      "required": ["kind", "requirements", "nondata_blockers"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"type": "string"},
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["class", "symbols", "use", "floor", "available_today", "acquisition"],
+            "additionalProperties": false,
+            "properties": {
+              "class": {"type": "string"},
+              "symbols": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+              "use": {"enum": ["backtest_fill", "signal_reference", "conditional_descriptive", "intraday_event", "intraday_execution", "construction_check", "cost_evidence", "event_calendar_descriptive", "regime_split_feature"]},
+              "floor": {"type": "string"},
+              "floor_met": {"type": "boolean"},
+              "available_today": {"type": "boolean"},
+              "acquisition": {"enum": ["in_hand_now", "free_public", "owner_declaration", "vendor_paid"]},
+              "note": {"type": "string"}
+            }
+          },
+          "minItems": 1
+        },
+        "nondata_blockers": {
+          "type": "array",
+          "items": {"enum": ["DECLARED_SLIPPAGE_MISSING", "EXCHANGE_FEE_NOT_FETCHED", "REGISTRATION_REQUIRED_FOR_SCORED_RUN", "REAL_HOLIDAY_CALENDAR_NOT_RUN", "CONSENSUS_LICENSE_OWNER_DECISION", "CORPUS_IDEA_TRANSFER_MUST_RE_REGISTER", "PARAM_GAP_MUST_BE_PRE_REGISTERED"]}
+        }
+      }
+    },
+    "pilot_config": {
+      "type": "object",
+      "required": ["schema", "task_id", "generated_utc", "pilot_id", "status", "reference_documents", "legs", "controls", "variants", "trial_accounting_declaration", "seed_protocol", "walkforward_binding", "admission_gates"],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {"const": "futures_behavior_pilot_config@1"},
+        "task_id": {"const": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002"},
+        "generated_utc": {"type": "string", "pattern": "2026-10-02"},
+        "pilot_id": {"type": "string"},
+        "status": {"const": "DRAFT_NOT_GO_blocked_on_data_depth_and_registration"},
+        "reference_documents": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "legs": {"type": "array", "items": {"$ref": "#/definitions/pilot_leg"}, "minItems": 2},
+        "controls": {"$ref": "#/definitions/pilot_controls"},
+        "variants": {"type": "object"},
+        "trial_accounting_declaration": {"type": "object"},
+        "seed_protocol": {"type": "object"},
+        "walkforward_binding": {"type": "object"},
+        "admission_gates": {"type": "object"}
+      }
+    },
+    "pilot_leg": {
+      "type": "object",
+      "required": ["leg_id", "symbol", "hypothesis_id", "hypothesis_config_ref", "selection_reason", "declared_rule", "param_gaps_ref", "max_hold_sessions", "entry_delay_slots_sessions"],
+      "additionalProperties": false,
+      "properties": {
+        "leg_id": {"type": "string"},
+        "symbol": {"enum": ["NQ", "CL"]},
+        "hypothesis_id": {"type": "string", "pattern": "(NQ|CL)-H[1-9]"},
+        "hypothesis_config_ref": {"type": "string"},
+        "selection_reason": {"type": "string"},
+        "declared_rule": {"type": "object"},
+        "param_gaps_ref": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "max_hold_sessions": {"type": "integer"},
+        "entry_delay_slots_sessions": {"const": [0, 1, 2]}
+      }
+    },
+    "pilot_controls": {
+      "type": "object",
+      "required": ["flat_baseline", "always_on_baselines", "single_leg_baselines", "leave_one_leg", "on_off_accounting", "tb_labels_policy", "declared_cost_scenarios", "entry_delay_sensitivity", "roll_rule_ab", "ambiguous_order_law"],
+      "additionalProperties": false,
+      "properties": {
+        "flat_baseline": {"type": "object"},
+        "always_on_baselines": {"type": "object"},
+        "single_leg_baselines": {"type": "object"},
+        "leave_one_leg": {"type": "object"},
+        "on_off_accounting": {"type": "object"},
+        "tb_labels_policy": {"const": "TRAIN_ONLY_never_validation_features"},
+        "declared_cost_scenarios": {"type": "object"},
+        "entry_delay_sensitivity": {"type": "object"},
+        "roll_rule_ab": {"type": "object"},
+        "ambiguous_order_law": {"const": "same_bar_tp_sl_worst_case_bound_no_point_pnl"}
+      }
+    }
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "schema": "futures_overnight_prep_synth_verify_findings@1",
+  "task_id": "FUTURES-OVERNIGHT-PREP-20261003",
+  "lane": "SYNTH-VERIFY",
+  "generated_utc": "2026-10-04T07:45:00Z",
+  "worktree_sha_remeasured": "72c9bc5b1d94b812044a9bd21768c53b4d378436",
+  "branch": "prep/futures-behavior-10syms-20261002",
+  "scope": {
+    "mechanical": "11/11 handoffs: schema zcode_orch_v3_handoff@1 required fields; dispatch_sha==actual_start_sha (batch-1 a8cd06f2603a8df5a2db5999c63ab09c3a7134e7, batch-2 72c9bc5b1d94b812044a9bd21768c53b4d378436); authority_claims==[]; outputs[] sha256 recomputed (shasum -a 256); changed_paths inside lane globs; git status tracked-clean",
+    "spot_recomputes": "P2A 5 ES dates byte-grepped in captures + 68/68 arithmetic; P2B 208/272=4x52 + 112 new rows + GC +11/SI +7 + gap4 cell count; P2C 6 dated claims pinned to captures + 2016-04 single-April-row; P0-VERIFY verdict file + 10/10 table vs fees_corrected.json; P1 citation spot-checks 7/8/8/6/5; batch-2 language scan (32 files)",
+    "batch1_checkpoint_audit": "git diff-tree -r 72c9bc5b: 359 files, 0 non-addition entries, 0 paths outside research/control/FUTURES-OVERNIGHT-PREP-20261003/"
+  },
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "LOW",
+      "lane": "P0A-FEESOURCE",
+      "what": "handoff outputs[] declares sha256 for fees_erratum/source/COMEX.php.txt as 65 hex chars (extra 'e' inserted at position 15/16 of the true digest). Actual file hash: 4317c15a187162aef9a80c76e63af372b7034a4157e0317b9b634237e798997a. Declared value equals actual with one extra 'e' - a transcription typo; file content consistent, all other 13 P0A outputs hash-identical.",
+      "impact": "mechanical integrity of the handoff outputs[] only; no evidence or conclusion affected (P0-VERIFY independently re-extracted every load-bearing cell)"
+    },
+    {
+      "id": "F-2",
+      "severity": "LOW",
+      "lane": "P0-VERIFY",
+      "what": "test T1 verdict 'sha256 recomputed for all 17 P0A/P0B outputs: 17/17 match handoffs' is overbroad: P0A's declared COMEX.php.txt digest (65 chars, F-1) cannot have matched byte-for-byte. 16/17 match as declared; the 17th matches only after correcting the F-1 typo.",
+      "impact": "statement precision of a verification claim; the verdict itself (UPHELD_IN_FULL) re-verified here and stands"
+    },
+    {
+      "id": "F-3",
+      "severity": "LOW",
+      "lane": "P2C-BLS-VINTAGE",
+      "what": "handoff outputs[] sha256 for bls_vintage/captures/live_bls_ics_20261003_subset.txt has a single-character substitution at position 49 (declared '336c4bf030', actual '334c4bf030'). Actual: 6612c5d492d99c8367ca9a42625cb87c3c96e723d2e3673334c4bf030ae1dcf6.",
+      "impact": "handoff transcription typo; file and all other 4 outputs hash-consistent; all 6 dated-claim spot checks resolved from the captures"
+    },
+    {
+      "id": "F-4",
+      "severity": "LOW",
+      "lane": "P2A-CALGAP-EQ",
+      "what": "authority_claims non-empty (5 entries) - mechanical violation of the 'authority_claims == []' handoff law. Read content: all 5 entries are evidence/provenance claims (ARCHIVED_OFFICIAL_PRODUCT findings, NOT_OBTAINED statements), not assertions of gate/registry/ledger authority.",
+      "impact": "handoff-shape violation only; no authority grab; content fully verified"
+    },
+    {
+      "id": "F-5",
+      "severity": "LOW",
+      "lane": "P2B-CALGAP-FXCOMM",
+      "what": "authority_claims non-empty (6 entries) - same nature as F-4: provenance/evidence claims (counts, OVERTURNED parent findings, no-extrapolation pledge), no gate/registry authority asserted.",
+      "impact": "handoff-shape violation only"
+    },
+    {
+      "id": "F-6",
+      "severity": "LOW",
+      "lane": "P2B-CALGAP-FXCOMM",
+      "what": "outputs[] entry for cme_cal_gap/fx_comm/captures/SHA256SUMS.txt declares sha256 'see file (135 artifact hashes)' instead of a digest - not recomputable per schema. Recomputed by SYNTH-VERIFY: 17208199c6cc042057b1c94df1ffb6506c8ea9f0703c8ebf2002c17a1ebccc52 (file contains 135 lines).",
+      "impact": "schema conformance; the file itself is intact and its 135 listed artifact hashes remain the lane's evidence"
+    },
+    {
+      "id": "F-7",
+      "severity": "MEDIUM",
+      "lane": "P2B-CALGAP-FXCOMM",
+      "what": "Gap-4 headline 'energy/metals 2011-2015: 43/45 cells ARCHIVED_OFFICIAL' is not reproducible from the lane's own artifact and contradicts its own per-year breakdown (2011 11/11, 2012 11/11, 2013 11/11, 2014 9/11, 2015 10/11 => 52 OBTAINED of 55 in-universe; the raw 12-cell/year grid additionally contains anachronistic Juneteenth placeholders counted NOT_OBTAINED => 52/60 raw). SYNTH-VERIFY recomputed cell-by-cell from fxcomm_gapfill_coverage.json cells: 52 obtained, 55 in-universe, 60 raw grid.",
+      "impact": "coverage headline understates measured coverage by 9-10 cells (conservative direction); per-year figures and all underlying cells are correct; propagated correction recorded in synth/BLOCKER_MATRIX.md (both MD and JSON) and in this file. No decision could have been worsened by the understatement, but a headline that does not reconcile with its own artifact violates the round's reconciliation standard - hence MEDIUM."
+    },
+    {
+      "id": "F-8",
+      "severity": "LOW",
+      "lane": "P1-ESNQ",
+      "what": "outputs[] includes the handoff's own path with a declared 'self-hash of the pre-final-save body' - inherently not recomputable (self-referential). Disclosed in-band by the lane.",
+      "impact": "none beyond schema strictness; the 3 content outputs hash-match exactly"
+    }
+  ],
+  "clean_checks": [
+    "schema + required fields present in 11/11 handoffs",
+    "dispatch_sha == actual_start_sha == expected base in 11/11 (batch-1 a8cd06f2, batch-2 72c9bc5b)",
+    "commit_sha null with disclosure in 11/11; workers 0 in 11/11",
+    "changed_paths inside lane globs in 11/11; git status: zero tracked file modified; all untracked paths inside the round dir",
+    "batch-1 checkpoint 72c9bc5b: 359 pure additions, 0 outside round dir",
+    "outputs[] sha256: 34 of 40 declared digests recomputed identical; 6 findings above cover the remainder (2 single-char typos, 1 placeholder, 1 self-hash, 2 counted under authority_claims findings)",
+    "P2A spot: all 5 dates (09/17/2010, 12/17/2010, 03/18/2011, 06/17/2011, 09/16/2011) present in es_pcal_20100528164817.html (2 occurrences each + contract codes ESU10/ESZ10/ESH11/ESM11/ESU11); cross-check capture 20100418154051 has 4/5 exactly as claimed; 42+26=68",
+    "P2B spot: per-symbol 52/68 x4 = 208/272; new_rows 112 (6J 39, 6E 35, 6B 21, 6A 17); GC new-after-Jun2019 = 11 (GCQ19..GCZ23); SI new-after-Dec2019 = 7 (SIF20..SIZ22); FX holiday cells 2017-2023 sums match handoff (11/9/2/7/9/10/1 of universes 11/11/11/9/9/10/10)",
+    "P2C spot: Oct-10 notice shows Oct-24 + Social-Security rationale + Last-modified Oct 10 2025; Sep-10 schedule shows Oct.15/Nov.13/Dec.10 rows; Nov-21 CPI schedule shows Sep->Oct.24, Nov->Dec.18, October row ABSENT (canceled); Nov-21 EMPSIT shows Sep->Nov.20, Nov->Dec.16, October row ABSENT; EMPSIT Sep-ref->Nov-20 entry first in capture 20251115003655 (page last-modified 2025-11-14); 2016: all six 2016 captures show exactly one April row -> May 17 2016; the only 'June 2' regex hit is inside 'June 2016' (no June-2 release exists)",
+    "P0-VERIFY: verify/P0_ERRATUM_VERDICT.md + p0_verdict.json exist; final_verdict UPHELD_IN_FULL; per-code tier-1 all_in identical to fees_corrected.json capture values for 10/10 codes (ES/NQ 2.24, 6E/6B/6J/6A 2.46, CL 2.36, NG 2.46, GC/SI 2.51)",
+    "P1-ESNQ citations (7/7): ES_fomc ratio_vol 2.9055/ratio_absret 3.1885/+30m 2.6528/+45m 2.506/medians 1.143-1.376; NQ 0730 shares 0.0018533/0.0004109; NQ VR 0.8077/0.7113/0.6688 + acf1 -0.0758; NQ OVN 0.102->0.238; ES COT 14.85/14.36/11.86-12.72/922; ES roll 61/66; era numbers 0.80/0.59/2.99/1.46 in NQ addendum",
+    "P1-6E6B citations (8/8): 6E FOMC m780 17.2418; 6B MPC 7090.5/379.5=18.68; 6E 8:30 277/142=1.9507 + RV 15.5844/12.4516; gap 0.37777/0.80455; 6B corr 0.84-class; 6E 0.9097 vs -0.107 PIT (addendum L172 + dossier MAJOR-2); 6E crowded 7.68/6.52; 6B -0.074",
+    "P1-6J6A citations (8/8): boj_decision_window 34/53/9.50%/35.8% arithmetic; boj_mpm_vs_alldays n=54, 0.568/0.304=1.867, 1.2716, 13.43/10.35; tokyo_am extrema 18.0516/15.2436 + 59/120; AF1 2199/245=9.0, 4.35/0.91=4.8 (6A_DEEP_v2 L328), n=67, change 59 vs hold 29; AF3 modal ~2.35 (2.3463/2.344); AF2 n_material=16; MOF 386 (6J_DEEP_v2 L20)",
+    "P1-COMM recomputes (6/6, independent): WNGSR 1205 files 2001-05-07..2026-01-22; tidy 1205x26, survey_median 369 non-null, directions injections 247/withdrawals 87/NaN 35-of-369, all 369 medians positive; WPSR 790 issues + ttable4 790 files with Cushing in 790/790; CPC 610temp 4459 daily + 65 weekly + 31 pilot, inventory parquet 4555 rows; observed HDD/CDD parquet 1319 rows; vendor root ~/my-quantitative-data/futures-databento-av1trim/raw/dbn_zst contains ONLY 6A/6B/6E/6J/ES/NQ groups (zero comm O1M)",
+    "P1-CROSS citations (5/5): ES OVN variance 21-54% by year + ON volume ~15-17% (ES_DEEP_v2 L70/L212); NQ OVN 10.2->23.8; FOMC-on-6E 17.24 vs ECB 1.73 (6E_a4); A-r4=24=16+4+4 and D1=52/D2=53 (PLAYBOOKS L95-107)",
+    "language scan: 32 batch-2 files scanned; every occurrence of 'measured cost'/'complete cost' is a prohibition/law sentence or forbidden-words list (0 positive uses); every return-statistic/PnL/expectancy/hit-rate mention is a prohibition; ranking rubrics (ESNQ sum, 6E6B/6J6A product, COMM sum, CROSS 5-dim) contain no return statistics - no recompute required",
+    "outcome-blind: no sibling ranking used a return statistic; FINAL_RANKING.md applies the CROSS rubric mechanically and lists registration flags as display columns only"
+  ],
+  "per_lane_verdicts": {
+    "P0A-FEESOURCE": "PARTIAL",
+    "P0B-FEEIMPACT": "VERIFIED",
+    "P2A-CALGAP-EQ": "PARTIAL",
+    "P2B-CALGAP-FXCOMM": "PARTIAL",
+    "P2C-BLS-VINTAGE": "PARTIAL",
+    "P0-VERIFY": "VERIFIED",
+    "P1-ESNQ": "PARTIAL",
+    "P1-6E6B": "VERIFIED",
+    "P1-6J6A": "VERIFIED",
+    "P1-COMM": "VERIFIED",
+    "P1-CROSS": "VERIFIED"
+  },
+  "verdict_scale": "VERIFIED = all mechanical checks + all spot recomputes pass; PARTIAL = content verified but mechanical defects found (findings F-1..F-8; none affect evidence or conclusions); FAIL = none",
+  "verdict_rationale": {
+    "P0A-FEESOURCE": "content VERIFIED (captures present; glue adjudication reproduced downstream; 10/10 table) - PARTIAL for the F-1 hash typo in outputs[]",
+    "P2A-CALGAP-EQ": "content VERIFIED (5 dates byte-confirmed; 68/68; gaps 2/3 honestly NOT_OBTAINED) - PARTIAL for authority_claims shape (F-4)",
+    "P2B-CALGAP-FXCOMM": "content largely VERIFIED (208/272, GC/SI, holiday grids all reproduce) - PARTIAL for F-5/F-6 plus the F-7 headline that does not reconcile with its own artifact",
+    "P2C-BLS-VINTAGE": "content VERIFIED (all 6 dated claims + 2016-04 resolved from captures) - PARTIAL for the F-3 hash typo",
+    "P1-ESNQ": "content VERIFIED (7/7 citations resolve) - PARTIAL for the F-8 disclosed self-hash",
+    "P0B-FEEIMPACT / P0-VERIFY / P1-6E6B / P1-6J6A / P1-COMM / P1-CROSS": "all mechanical checks and all spot recomputes pass"
+  }
+}

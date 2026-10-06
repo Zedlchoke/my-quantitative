@@ -1,0 +1,98 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "CAL-JANQ",
+ "cycle_id": "FUTURES-SIX-ADOPT-PREP-20261004",
+ "role": "calendar-search-lane",
+ "lane": "CAL-JANQ",
+ "dispatch_sha": "9fb66c88d464fd90748bc04d78280c2d87939cd3",
+ "actual_start_sha": "9fb66c88d464fd90748bc04d78280c2d87939cd3",
+ "commit_sha": null,
+ "no_commit_disclosure": "per dispatch commit_policy lanes write files only; controller stages by pathspec and commits; lane ran exactly one git command (git rev-parse HEAD) for actual_start_sha; no add/commit/push/merge; commit_sha intentionally null",
+ "changed_paths": [
+  "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/calendar_delta.json",
+  "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/legality_validation.json",
+  "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/CAL_JANQ_REPORT.md",
+  "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/fetch_log.jsonl",
+  "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/fetch_lane.py",
+  "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/extract_cells.py",
+  "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/captures/**"
+ ],
+ "tests": [
+  {
+   "command": ".venv/bin/python research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/extract_cells.py",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "console: '6J 2023-2026 obtained: 4 -> 62/68 | 6A ... 4 -> 66/68 | NQ 2026 expiry cells: 4 | NQ deviation windows: product-code 0 / class-level 5 /10 | captures hashed: 15'; extractor hard-fails on any sha256 mismatch of the 6 hash-pinned captures"
+  },
+  {
+   "command": "shasum -a 256 over all 19 captures/ + 6 lane files (recomputed twice: fetch-time and handoff-time)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "capture_chain sha256 list embedded in legality_validation.json; Q5 sibling bytes re-verified per use vs sibling fetch_log.jsonl lines 75/77/78"
+  },
+  {
+   "command": "budget/attempt audit over fetch_log.jsonl (27 HTTP records; <=2 per URL/method; live-cmegroup never contacted)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "ae88a931c3ab418e634d4d3a66ee79114e8b3f53fa5ed1c372b0b5719f9859af (fetch_log.jsonl, 28 records incl. retro-logged WebFetch)"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "6J 2023Q1-Q4 expiry cells NOT_OBTAINED: complete CDX enumeration shows no 6J product-calendar capture crawled between 2017-07-28 and 2024-09-04 (expired contracts dropped by the service); no rule derivation used",
+  "6A 2023Q1/Q2 NOT_OBTAINED: Future/37 captures pre-span or post-expiry; Download.xls?productId=37 has zero archived captures (clean 0-byte CDX x2)",
+  "NQ/6J/6A product-code-level holiday-deviation rows NOT_OBTAINED 0/10+0/42+0/42: zero archived trading-hours-by-product captures carry ids 146/69/37 (fresh regex probe + sibling 799-urlkey enumeration)",
+  "trading-hours-holiday-download BLOCKED_TRANSPORT: both archived timestamps return HTTP 403 at the Wayback edge across curl id_/standard and WebFetch; route stopped, no bypass",
+  "Good-Friday-2026 window NOT_OBTAINED: only archived advisory vintage says settlement times 'Pending'",
+  "advisory settlement-time rows are class-level (FX / Equity & Crypto / IR / ...) and are NOT mapped to NQ/6J/6A codes (family-transplant prohibition); recorded verbatim in calendar_delta.json for owner adjudication",
+  "dispatch said 6J missing 10 cells; bounded scope was 8 (2023+2026); identity of the other 2 missing cells is not determinable from this lane's captures and is NOT inferred - flagged to owner",
+  "corrections to round-1 recorded in calendar_delta.json: 6J 2026 quarters ARE present in the re-verified Q5 XLS (dispatch 'CONFIRMED ABSENT' contradicted); pcal_37 Sep-2023 capture carries uncredited 2026 quarter rows",
+  "single-vintage risk on 6A 2026 cells (only one archived 6A calendar capture covers them); dual/triple vintage on 6J 2026 and NQ 2026",
+  "live www.cmegroup.com standing BLOCKED (round-1/Q5 evidence); not re-attempted"
+ ],
+ "incidents": [
+  {
+   "kind": "TRANSPORT_BLOCK",
+   "what": "web.archive.org 403 on services/trading-hours-holiday-download (4 curl attempts over 2 timestamps x 2 replay styles + 1 WebFetch)",
+   "handling": "BLOCKED_TRANSPORT recorded; route stopped per transport law; absence/block evidence in calendar_delta.json.absence_and_blocks"
+  },
+  {
+   "kind": "PRIOR_ROUND_CLAIM_CORRECTION",
+   "what": "round-1/dispatch '6J 2026 ABSENT' and 'pcal_37 exhausted' both corrected by own re-parse of re-verified Q5 bytes",
+   "handling": "documented in calendar_delta.json.corrections_to_prior_rounds with capture + sha"
+  }
+ ],
+ "tree_status": "worktree clean of lane-foreign modifications; lane wrote only cal_janq/** + this handoff; no git state changes beyond the one rev-parse",
+ "workers": "1 lane agent (CAL-JANQ), serial",
+ "outputs": [
+  {
+   "path": "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/calendar_delta.json",
+   "sha256": "2ec8dc99c0622d013a43083a3e286e7a7d84bd547489b83d33d8c06b8f079fa9"
+  },
+  {
+   "path": "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/legality_validation.json",
+   "sha256": "bc61ee81cb7654c93da274de67124e764b5539f33ef5df0385b75f104d653dd1"
+  },
+  {
+   "path": "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/CAL_JANQ_REPORT.md",
+   "sha256": "066c12174f0c85cdda9fc9a7c7e2dbd766b19e7b78f0fbf21955946f677e1038"
+  },
+  {
+   "path": "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/fetch_log.jsonl",
+   "sha256": "ae88a931c3ab418e634d4d3a66ee79114e8b3f53fa5ed1c372b0b5719f9859af"
+  },
+  {
+   "path": "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/fetch_lane.py",
+   "sha256": "3e399c5e493886bdb145499b41308c1b0eeb6cb97f615e47afa87a3714b7ee1a"
+  },
+  {
+   "path": "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/extract_cells.py",
+   "sha256": "0b73ed2d8bf98de1c2946b76fd37c25bc2b9485525fca68fa8a1cedc70dc7669"
+  },
+  {
+   "path": "research/control/FUTURES-SIX-ADOPT-PREP-20261004/cal_janq/captures/ (19 files)",
+   "sha256": "per-file shas pinned inside calendar_delta.json / legality_validation.json capture_chain"
+  }
+ ],
+ "recommended_next_action": "controller/owner: credit +8 expiry cells (6J 2026 x4 dual-vintage, 6A 2026 x4 single-vintage) into the cumulative FX calendar matrix per round-1 convention (248/272 after round-1 per fx_eb per_code_after 66+62+58+62 -> 256/272 after this lane), adjudicate the class-level 2026 advisory register (5/10 windows), and treat product-code deviation rows as remaining NOT_OBTAINED (routes exhausted within $0 permitted transport); Verify-R2 may re-run extract_cells.py (deterministic, hard-fails on sha drift)"
+}

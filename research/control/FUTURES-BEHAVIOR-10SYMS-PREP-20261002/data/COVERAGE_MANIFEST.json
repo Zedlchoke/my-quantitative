@@ -1,0 +1,1335 @@
+{
+ "schema": "futures_behavior_10syms_coverage_manifest@1",
+ "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+ "lane": "DATA-PIT-ACQUISITION-PREP",
+ "created_utc": "2026-10-02T04:50:07Z",
+ "claims_basis": {
+  "HAVE": "OBSERVED: data/scripts/measure_coverage.py over ~/.my-quantitative-data/futures-10syms-v1/raw/ (read-only; 1160 files, 0 parse errors; window = full corpus fetched 2026-10-02); per-file detail in data/coverage_measured.json",
+  "NEED": "POSTULATED-from-framework: owner_framework/00_MASTER_FRAMEWORK.md + per-symbol files. Framework content = HYPOTHESES, never facts/PASS. Needs are tied to hypothesis classes HC1-HC4, not to accepted strategies.",
+  "no_inference_rule": "anything unmeasured is NOT_RUN/NOT_AVAILABLE, never inferred PASS"
+ },
+ "hypothesis_classes": {
+  "HC1_daily_signal_deep_history": {
+   "description": "Daily per-contract signal research over multi-year history (driver tables, regime splits, term structure, year-by-year stability).",
+   "framework_refs": [
+    "00_MASTER \u00a76 (required tests: year-by-year, regime split, alternative roll)",
+    "00_MASTER \u00a78 (store raw individual contracts, explicit roll tables)",
+    "per-symbol \u00a79 backtest protocol: individual expiry contracts, walk-forward OOS"
+   ],
+   "needs": {
+    "daily_trades_per_contract": "real-volume daily OHLCV per individual expiry, >= 5y continuous, all listed expiries",
+    "definitions_reference": "full listing/activation + expiry calendar per root (PIT, no lookahead)",
+    "open_interest": "daily OI per contract (liquidity migration, PIT contract selection)",
+    "settlement": "official settlement per contract-day (exchange-event truth, separable from trade close)"
+   }
+  },
+  "HC2_intraday_execution": {
+   "description": "Intraday execution realism: session statistics, entry-delay tests, spread/depth response, fill realism.",
+   "framework_refs": [
+    "00_MASTER \u00a75.7 (entering 1-5 minutes later destroys the edge?)",
+    "per-symbol \u00a710 data checklist (bbo-1m/bbo-1s selective; mbp-1 execution/microstructure validation)",
+    "per-symbol \u00a717.3 (baseline 1-minute return/volatility/session statistics)"
+   ],
+   "needs": {
+    "minute_trades_m1": "continuous M1 per-contract multi-year (session stats, delayed-entry)",
+    "bid_ask_intraday": "synchronous BBO at <=1m (executable spread, not asynchronous EOD quotes)",
+    "statistics_settlement_oi": "official OHLC/volume/OI to reconcile bars vs exchange truth"
+   }
+  },
+  "HC3_roll_critical_windows": {
+   "description": "Roll windows and term structure: calendar vs volume vs OI roll, roll cost, back-adjustment sensitivity, vendor-stitch jump audit.",
+   "framework_refs": [
+    "00_MASTER \u00a78 (roll tables: old/new, decision ts, reason, volume/OI, gap, adjustment)",
+    "per-symbol \u00a76 (compare calendar roll vs volume roll vs OI roll; verify no vendor-stitch jump is alpha)"
+   ],
+   "needs": {
+    "daily_trades_per_contract": "ADJACENT contracts' simultaneous real-volume daily bars across full history (roll cost = adjacent close gap)",
+    "open_interest": "daily OI of old + new contract at roll decision time (PIT roll rule)",
+    "definitions_reference": "exact listing/expiration timestamps (roll decision uses only pre-known info)"
+   }
+  },
+  "HC4_event_study_windows": {
+   "description": "Event studies around scheduled releases (FOMC/CPI/NFP for NQ/ES/6*, EIA storage for NG/CL, CoT for positioning).",
+   "framework_refs": [
+    "00_MASTER \u00a75 (returns at 1m/5m/15m/1h/1d; spread+volume response; event timestamp in exchange tz + UTC)",
+    "00_MASTER \u00a77 (PIT: release timestamp, tz, vintage, earliest observable ts)"
+   ],
+   "needs": {
+    "minute_trades_m1": "M1 (or tick) around event timestamps, multi-year = many event repetitions",
+    "bid_ask_intraday": "spread response around events",
+    "external_pit": "release timestamps + as-known-then values (ALFRED vintages, CFTC CoT release times, EIA/BLS schedules) \u2014 NOT_SOLVED_BY_VENDOR, see DATA_ACQUISITION_SPEC.md"
+   }
+  }
+ },
+ "gap_types": {
+  "DEPTH_WALL_EXPIRED_RESOLUTION": "IBKR expired-contract secdef resolves only ~1y back (FUTURES-DATA-10SYMS-V1 finding 1): per-contract REAL-VOLUME daily chain is only ~14-17 months (measured front-chain run); older expiries unresolvable => cannot extend via IBKR retrospective fetch.",
+  "INTRADAY_VINTAGE_WALL": "IBKR intraday (M1/H1) availability ~10 recent months for these entitlements (NG ~2.2y; FUTURES-DATA-10SYMS-V1 finding 4 / S7_DEPTH_ACTIVE.json probes at 2024/2022 ends returned n=0). On-disk corpus is a snapshot: 2 trading days of M1 and ~30 days of H1 per contract, not continuous history.",
+  "SETTLEMENT_ONLY_DEEP_BARS": "65-88% of on-disk daily bars are close-only O=H=L=C with volume=0 (settlement-derived; measured per symbol below): usable as reference/signal price, NOT as fill price or volume evidence (FUTURES-DATA-10SYMS-V1 finding 3).",
+  "CLASS_ABSENT_OPEN_INTEREST": "IBKR bar files carry no open-interest field: OI class NOT_AVAILABLE in current corpus.",
+  "CLASS_ABSENT_STATISTICS": "No exchange statistics schema (official OHLCV/OI/settlement publications) in IBKR corpus; settlement only inferable from close-only bars.",
+  "CLASS_PARTIAL_DEFINITIONS": "Definitions only as embedded file headers (expiry_month=lastTradeDate raw, timeZoneId) for the 10-28 fetched contracts + S1_IDENTITY.json for the ~1y resolvable window. No listing/activation dates, no full expiry universe, no PIT add/modify/delete history.",
+  "BID_ASK_NONSYNCHRONOUS_1Y": "Daily BID and ASK are separate non-synchronous series (~1y): spread computed from them is NOT an executable spread (FUTURES-DATA-10SYMS-V1 S6)."
+ },
+ "symbols": {
+  "NQ": {
+   "venue_ibkr": "CME",
+   "databento_dataset": "GLBX.MDP3 (CME+CBOT+NYMEX+COMEX)",
+   "have": {
+    "daily_trades_per_contract": {
+     "status": "HAVE_PARTIAL",
+     "contracts_fetched": 10,
+     "contract_list": [
+      "NQH6",
+      "NQH7",
+      "NQM6",
+      "NQM7",
+      "NQU5",
+      "NQU6",
+      "NQU7",
+      "NQZ5",
+      "NQZ6",
+      "NQZ7"
+     ],
+     "bars_total": 4067,
+     "bars_close_only_settlement_derived": 3107,
+     "close_only_fraction": 0.764,
+     "bar_date_span": [
+      "2022-05-24",
+      "2026-10-01"
+     ],
+     "real_volume_any_contract_window": {
+      "from": "2025-01",
+      "to": "2026-09",
+      "n_months": 21
+     },
+     "front_chain_real_volume_run_months": 17,
+     "front_chain_real_volume_run": "2025-05..2026-09"
+    },
+    "daily_bid_ask": {
+     "status": "HAVE_PARTIAL",
+     "bid": {
+      "contracts": 10,
+      "bars": 1774,
+      "span": [
+       "2024-09-09",
+       "2026-10-01"
+      ]
+     },
+     "ask": {
+      "contracts": 10,
+      "bars": 1728,
+      "span": [
+       "2024-09-04",
+       "2026-10-01"
+      ]
+     },
+     "caveat": "non-synchronous separate series; ~1y; not executable spread"
+    },
+    "minute_trades_m1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 10,
+     "bars_total": 5835,
+     "per_contract_depth": "durationStr='2 D' (RTH) per contract snapshot",
+     "span_union": [
+      "2025-08-28",
+      "2026-10-01"
+     ]
+    },
+    "hourly_trades_h1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 10,
+     "bars_total": 1666,
+     "per_contract_depth": "durationStr='30 D' per contract snapshot",
+     "span_union": [
+      "2025-07-21",
+      "2026-10-01"
+     ]
+    },
+    "definitions_reference": {
+     "status": "HAVE_MINIMAL",
+     "detail": "embedded headers (expiry_month=raw lastTradeDate, timeZoneId) + S1_IDENTITY.json (multiplier/minTick/tz) for fetched contracts only; no listing/activation, no PIT universe"
+    },
+    "statistics_settlement_oi": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no statistics schema in IBKR corpus; settlement only via close-only bars (typed SETTLEMENT_ONLY_DEEP_BARS)"
+    },
+    "open_interest": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no OI field in IBKR bars"
+    },
+    "settlement": {
+     "status": "HAVE_DERIVED_ONLY",
+     "detail": "separable as close-only v=0 bars (identified, not an official settlement field)"
+    }
+   },
+   "need": {
+    "daily_trades_per_contract": "real-volume per-contract daily, >= 5y continuous, all listed expiries (incl. adjacent contracts simultaneously) [HC1,HC3]",
+    "daily_bid_ask": "synchronous quotes or cross-check basis, deep [HC2]",
+    "minute_trades_m1": "continuous multi-year M1 [HC2,HC4]",
+    "hourly_trades_h1": "multi-year H1 (cheap coarse intraday) [HC2]",
+    "definitions_reference": "full PIT definitions (listing/activation/expiry, add/modify/delete) [HC1,HC3]",
+    "statistics_settlement_oi": "official statistics incl. OI (stat_type 9) + settlement (stat_type 3) [HC1,HC2,HC3]",
+    "open_interest": "daily OI per contract [HC1,HC3]",
+    "settlement": "official settlement series [HC1]",
+    "external_pit": "see DATA_ACQUISITION_SPEC.md NOT_SOLVED_BY_VENDOR [HC4]"
+   },
+   "gap_types": [
+    "DEPTH_WALL_EXPIRED_RESOLUTION",
+    "INTRADAY_VINTAGE_WALL",
+    "SETTLEMENT_ONLY_DEEP_BARS",
+    "CLASS_ABSENT_OPEN_INTEREST",
+    "CLASS_ABSENT_STATISTICS",
+    "CLASS_PARTIAL_DEFINITIONS",
+    "BID_ASK_NONSYNCHRONOUS_1Y"
+   ]
+  },
+  "ES": {
+   "venue_ibkr": "CME",
+   "databento_dataset": "GLBX.MDP3 (CME+CBOT+NYMEX+COMEX)",
+   "have": {
+    "daily_trades_per_contract": {
+     "status": "HAVE_PARTIAL",
+     "contracts_fetched": 10,
+     "contract_list": [
+      "ESH6",
+      "ESH7",
+      "ESM6",
+      "ESM7",
+      "ESU5",
+      "ESU6",
+      "ESU7",
+      "ESZ5",
+      "ESZ6",
+      "ESZ7"
+     ],
+     "bars_total": 6276,
+     "bars_close_only_settlement_derived": 5115,
+     "close_only_fraction": 0.815,
+     "bar_date_span": [
+      "2021-06-07",
+      "2026-10-01"
+     ],
+     "real_volume_any_contract_window": {
+      "from": "2025-01",
+      "to": "2026-09",
+      "n_months": 21
+     },
+     "front_chain_real_volume_run_months": 17,
+     "front_chain_real_volume_run": "2025-05..2026-09"
+    },
+    "daily_bid_ask": {
+     "status": "HAVE_PARTIAL",
+     "bid": {
+      "contracts": 10,
+      "bars": 1848,
+      "span": [
+       "2024-08-30",
+       "2026-10-01"
+      ]
+     },
+     "ask": {
+      "contracts": 10,
+      "bars": 1854,
+      "span": [
+       "2024-08-30",
+       "2026-10-01"
+      ]
+     },
+     "caveat": "non-synchronous separate series; ~1y; not executable spread"
+    },
+    "minute_trades_m1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 10,
+     "bars_total": 5835,
+     "per_contract_depth": "durationStr='2 D' (RTH) per contract snapshot",
+     "span_union": [
+      "2025-08-28",
+      "2026-10-01"
+     ]
+    },
+    "hourly_trades_h1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 10,
+     "bars_total": 1724,
+     "per_contract_depth": "durationStr='30 D' per contract snapshot",
+     "span_union": [
+      "2025-07-21",
+      "2026-10-01"
+     ]
+    },
+    "definitions_reference": {
+     "status": "HAVE_MINIMAL",
+     "detail": "embedded headers (expiry_month=raw lastTradeDate, timeZoneId) + S1_IDENTITY.json (multiplier/minTick/tz) for fetched contracts only; no listing/activation, no PIT universe"
+    },
+    "statistics_settlement_oi": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no statistics schema in IBKR corpus; settlement only via close-only bars (typed SETTLEMENT_ONLY_DEEP_BARS)"
+    },
+    "open_interest": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no OI field in IBKR bars"
+    },
+    "settlement": {
+     "status": "HAVE_DERIVED_ONLY",
+     "detail": "separable as close-only v=0 bars (identified, not an official settlement field)"
+    }
+   },
+   "need": {
+    "daily_trades_per_contract": "real-volume per-contract daily, >= 5y continuous, all listed expiries (incl. adjacent contracts simultaneously) [HC1,HC3]",
+    "daily_bid_ask": "synchronous quotes or cross-check basis, deep [HC2]",
+    "minute_trades_m1": "continuous multi-year M1 [HC2,HC4]",
+    "hourly_trades_h1": "multi-year H1 (cheap coarse intraday) [HC2]",
+    "definitions_reference": "full PIT definitions (listing/activation/expiry, add/modify/delete) [HC1,HC3]",
+    "statistics_settlement_oi": "official statistics incl. OI (stat_type 9) + settlement (stat_type 3) [HC1,HC2,HC3]",
+    "open_interest": "daily OI per contract [HC1,HC3]",
+    "settlement": "official settlement series [HC1]",
+    "external_pit": "see DATA_ACQUISITION_SPEC.md NOT_SOLVED_BY_VENDOR [HC4]"
+   },
+   "gap_types": [
+    "DEPTH_WALL_EXPIRED_RESOLUTION",
+    "INTRADAY_VINTAGE_WALL",
+    "SETTLEMENT_ONLY_DEEP_BARS",
+    "CLASS_ABSENT_OPEN_INTEREST",
+    "CLASS_ABSENT_STATISTICS",
+    "CLASS_PARTIAL_DEFINITIONS",
+    "BID_ASK_NONSYNCHRONOUS_1Y"
+   ]
+  },
+  "CL": {
+   "venue_ibkr": "NYMEX",
+   "databento_dataset": "GLBX.MDP3 (CME+CBOT+NYMEX+COMEX)",
+   "have": {
+    "daily_trades_per_contract": {
+     "status": "HAVE_PARTIAL",
+     "contracts_fetched": 29,
+     "contract_list": [
+      "CLF6",
+      "CLF7",
+      "CLF8",
+      "CLG6",
+      "CLG7",
+      "CLG8",
+      "CLH6",
+      "CLH7",
+      "CLJ6",
+      "CLJ7",
+      "CLK6",
+      "CLK7",
+      "CLM6",
+      "CLM7",
+      "CLN6",
+      "CLN7",
+      "CLQ6",
+      "CLQ7",
+      "CLU6",
+      "CLU7",
+      "CLV5",
+      "CLV6",
+      "CLV7",
+      "CLX5",
+      "CLX6",
+      "CLX7",
+      "CLZ5",
+      "CLZ6",
+      "CLZ7"
+     ],
+     "bars_total": 42924,
+     "bars_close_only_settlement_derived": 32652,
+     "close_only_fraction": 0.7607,
+     "bar_date_span": [
+      "2019-09-03",
+      "2026-10-01"
+     ],
+     "real_volume_any_contract_window": {
+      "from": "2021-05",
+      "to": "2026-10",
+      "n_months": 66
+     },
+     "front_chain_real_volume_run_months": 17,
+     "front_chain_real_volume_run": "2025-05..2026-09"
+    },
+    "daily_bid_ask": {
+     "status": "HAVE_PARTIAL",
+     "bid": {
+      "contracts": 29,
+      "bars": 7265,
+      "span": [
+       "2024-08-30",
+       "2026-10-01"
+      ]
+     },
+     "ask": {
+      "contracts": 29,
+      "bars": 7264,
+      "span": [
+       "2024-08-30",
+       "2026-10-01"
+      ]
+     },
+     "caveat": "non-synchronous separate series; ~1y; not executable spread"
+    },
+    "minute_trades_m1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 29,
+     "bars_total": 22872,
+     "per_contract_depth": "durationStr='2 D' (RTH) per contract snapshot",
+     "span_union": [
+      "2025-08-28",
+      "2026-10-01"
+     ]
+    },
+    "hourly_trades_h1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 29,
+     "bars_total": 6574,
+     "per_contract_depth": "durationStr='30 D' per contract snapshot",
+     "span_union": [
+      "2025-07-21",
+      "2026-10-01"
+     ]
+    },
+    "definitions_reference": {
+     "status": "HAVE_MINIMAL",
+     "detail": "embedded headers (expiry_month=raw lastTradeDate, timeZoneId) + S1_IDENTITY.json (multiplier/minTick/tz) for fetched contracts only; no listing/activation, no PIT universe"
+    },
+    "statistics_settlement_oi": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no statistics schema in IBKR corpus; settlement only via close-only bars (typed SETTLEMENT_ONLY_DEEP_BARS)"
+    },
+    "open_interest": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no OI field in IBKR bars"
+    },
+    "settlement": {
+     "status": "HAVE_DERIVED_ONLY",
+     "detail": "separable as close-only v=0 bars (identified, not an official settlement field)"
+    }
+   },
+   "need": {
+    "daily_trades_per_contract": "real-volume per-contract daily, >= 5y continuous, all listed expiries (incl. adjacent contracts simultaneously) [HC1,HC3]",
+    "daily_bid_ask": "synchronous quotes or cross-check basis, deep [HC2]",
+    "minute_trades_m1": "continuous multi-year M1 [HC2,HC4]",
+    "hourly_trades_h1": "multi-year H1 (cheap coarse intraday) [HC2]",
+    "definitions_reference": "full PIT definitions (listing/activation/expiry, add/modify/delete) [HC1,HC3]",
+    "statistics_settlement_oi": "official statistics incl. OI (stat_type 9) + settlement (stat_type 3) [HC1,HC2,HC3]",
+    "open_interest": "daily OI per contract [HC1,HC3]",
+    "settlement": "official settlement series [HC1]",
+    "external_pit": "see DATA_ACQUISITION_SPEC.md NOT_SOLVED_BY_VENDOR [HC4]"
+   },
+   "gap_types": [
+    "DEPTH_WALL_EXPIRED_RESOLUTION",
+    "INTRADAY_VINTAGE_WALL",
+    "SETTLEMENT_ONLY_DEEP_BARS",
+    "CLASS_ABSENT_OPEN_INTEREST",
+    "CLASS_ABSENT_STATISTICS",
+    "CLASS_PARTIAL_DEFINITIONS",
+    "BID_ASK_NONSYNCHRONOUS_1Y"
+   ]
+  },
+  "NG": {
+   "venue_ibkr": "NYMEX",
+   "databento_dataset": "GLBX.MDP3 (CME+CBOT+NYMEX+COMEX)",
+   "have": {
+    "daily_trades_per_contract": {
+     "status": "HAVE_PARTIAL",
+     "contracts_fetched": 29,
+     "contract_list": [
+      "NGF26",
+      "NGF27",
+      "NGF28",
+      "NGG26",
+      "NGG27",
+      "NGG28",
+      "NGH26",
+      "NGH27",
+      "NGJ26",
+      "NGJ27",
+      "NGK26",
+      "NGK27",
+      "NGM26",
+      "NGM27",
+      "NGN26",
+      "NGN27",
+      "NGQ26",
+      "NGQ27",
+      "NGU26",
+      "NGU27",
+      "NGV25",
+      "NGV26",
+      "NGV27",
+      "NGX25",
+      "NGX26",
+      "NGX27",
+      "NGZ25",
+      "NGZ26",
+      "NGZ27"
+     ],
+     "bars_total": 43001,
+     "bars_close_only_settlement_derived": 27845,
+     "close_only_fraction": 0.6475,
+     "bar_date_span": [
+      "2019-09-03",
+      "2026-10-01"
+     ],
+     "real_volume_any_contract_window": {
+      "from": "2021-11",
+      "to": "2026-10",
+      "n_months": 60
+     },
+     "front_chain_real_volume_run_months": 17,
+     "front_chain_real_volume_run": "2025-05..2026-09"
+    },
+    "daily_bid_ask": {
+     "status": "HAVE_PARTIAL",
+     "bid": {
+      "contracts": 29,
+      "bars": 7277,
+      "span": [
+       "2024-08-30",
+       "2026-10-01"
+      ]
+     },
+     "ask": {
+      "contracts": 29,
+      "bars": 7276,
+      "span": [
+       "2024-08-30",
+       "2026-10-01"
+      ]
+     },
+     "caveat": "non-synchronous separate series; ~1y; not executable spread"
+    },
+    "minute_trades_m1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 29,
+     "bars_total": 23220,
+     "per_contract_depth": "durationStr='2 D' (RTH) per contract snapshot",
+     "span_union": [
+      "2025-08-28",
+      "2026-10-01"
+     ]
+    },
+    "hourly_trades_h1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 29,
+     "bars_total": 6901,
+     "per_contract_depth": "durationStr='30 D' per contract snapshot",
+     "span_union": [
+      "2025-07-21",
+      "2026-10-01"
+     ]
+    },
+    "definitions_reference": {
+     "status": "HAVE_MINIMAL",
+     "detail": "embedded headers (expiry_month=raw lastTradeDate, timeZoneId) + S1_IDENTITY.json (multiplier/minTick/tz) for fetched contracts only; no listing/activation, no PIT universe"
+    },
+    "statistics_settlement_oi": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no statistics schema in IBKR corpus; settlement only via close-only bars (typed SETTLEMENT_ONLY_DEEP_BARS)"
+    },
+    "open_interest": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no OI field in IBKR bars"
+    },
+    "settlement": {
+     "status": "HAVE_DERIVED_ONLY",
+     "detail": "separable as close-only v=0 bars (identified, not an official settlement field)"
+    }
+   },
+   "need": {
+    "daily_trades_per_contract": "real-volume per-contract daily, >= 5y continuous, all listed expiries (incl. adjacent contracts simultaneously) [HC1,HC3]",
+    "daily_bid_ask": "synchronous quotes or cross-check basis, deep [HC2]",
+    "minute_trades_m1": "continuous multi-year M1 [HC2,HC4]",
+    "hourly_trades_h1": "multi-year H1 (cheap coarse intraday) [HC2]",
+    "definitions_reference": "full PIT definitions (listing/activation/expiry, add/modify/delete) [HC1,HC3]",
+    "statistics_settlement_oi": "official statistics incl. OI (stat_type 9) + settlement (stat_type 3) [HC1,HC2,HC3]",
+    "open_interest": "daily OI per contract [HC1,HC3]",
+    "settlement": "official settlement series [HC1]",
+    "external_pit": "see DATA_ACQUISITION_SPEC.md NOT_SOLVED_BY_VENDOR [HC4]"
+   },
+   "gap_types": [
+    "DEPTH_WALL_EXPIRED_RESOLUTION",
+    "INTRADAY_VINTAGE_WALL",
+    "SETTLEMENT_ONLY_DEEP_BARS",
+    "CLASS_ABSENT_OPEN_INTEREST",
+    "CLASS_ABSENT_STATISTICS",
+    "CLASS_PARTIAL_DEFINITIONS",
+    "BID_ASK_NONSYNCHRONOUS_1Y"
+   ]
+  },
+  "GC": {
+   "venue_ibkr": "COMEX",
+   "databento_dataset": "GLBX.MDP3 (CME+CBOT+NYMEX+COMEX)",
+   "have": {
+    "daily_trades_per_contract": {
+     "status": "HAVE_PARTIAL",
+     "contracts_fetched": 22,
+     "contract_list": [
+      "GCF7",
+      "GCF8",
+      "GCG6",
+      "GCG7",
+      "GCH7",
+      "GCJ6",
+      "GCJ7",
+      "GCK7",
+      "GCM6",
+      "GCM7",
+      "GCN7",
+      "GCQ6",
+      "GCQ7",
+      "GCU7",
+      "GCV5",
+      "GCV6",
+      "GCV7",
+      "GCX6",
+      "GCX7",
+      "GCZ5",
+      "GCZ6",
+      "GCZ7"
+     ],
+     "bars_total": 12365,
+     "bars_close_only_settlement_derived": 8968,
+     "close_only_fraction": 0.7253,
+     "bar_date_span": [
+      "2019-12-31",
+      "2026-10-01"
+     ],
+     "real_volume_any_contract_window": {
+      "from": "2024-07",
+      "to": "2026-10",
+      "n_months": 28
+     },
+     "front_chain_real_volume_run_months": 16,
+     "front_chain_real_volume_run": "2025-06..2026-09"
+    },
+    "daily_bid_ask": {
+     "status": "HAVE_PARTIAL",
+     "bid": {
+      "contracts": 22,
+      "bars": 5401,
+      "span": [
+       "2024-10-01",
+       "2026-10-01"
+      ]
+     },
+     "ask": {
+      "contracts": 22,
+      "bars": 5387,
+      "span": [
+       "2024-10-01",
+       "2026-10-01"
+      ]
+     },
+     "caveat": "non-synchronous separate series; ~1y; not executable spread"
+    },
+    "minute_trades_m1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 22,
+     "bars_total": 14694,
+     "per_contract_depth": "durationStr='2 D' (RTH) per contract snapshot",
+     "span_union": [
+      "2025-09-29",
+      "2026-10-01"
+     ]
+    },
+    "hourly_trades_h1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 22,
+     "bars_total": 4001,
+     "per_contract_depth": "durationStr='30 D' per contract snapshot",
+     "span_union": [
+      "2025-08-19",
+      "2026-10-01"
+     ]
+    },
+    "definitions_reference": {
+     "status": "HAVE_MINIMAL",
+     "detail": "embedded headers (expiry_month=raw lastTradeDate, timeZoneId) + S1_IDENTITY.json (multiplier/minTick/tz) for fetched contracts only; no listing/activation, no PIT universe"
+    },
+    "statistics_settlement_oi": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no statistics schema in IBKR corpus; settlement only via close-only bars (typed SETTLEMENT_ONLY_DEEP_BARS)"
+    },
+    "open_interest": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no OI field in IBKR bars"
+    },
+    "settlement": {
+     "status": "HAVE_DERIVED_ONLY",
+     "detail": "separable as close-only v=0 bars (identified, not an official settlement field)"
+    }
+   },
+   "need": {
+    "daily_trades_per_contract": "real-volume per-contract daily, >= 5y continuous, all listed expiries (incl. adjacent contracts simultaneously) [HC1,HC3]",
+    "daily_bid_ask": "synchronous quotes or cross-check basis, deep [HC2]",
+    "minute_trades_m1": "continuous multi-year M1 [HC2,HC4]",
+    "hourly_trades_h1": "multi-year H1 (cheap coarse intraday) [HC2]",
+    "definitions_reference": "full PIT definitions (listing/activation/expiry, add/modify/delete) [HC1,HC3]",
+    "statistics_settlement_oi": "official statistics incl. OI (stat_type 9) + settlement (stat_type 3) [HC1,HC2,HC3]",
+    "open_interest": "daily OI per contract [HC1,HC3]",
+    "settlement": "official settlement series [HC1]",
+    "external_pit": "see DATA_ACQUISITION_SPEC.md NOT_SOLVED_BY_VENDOR [HC4]"
+   },
+   "gap_types": [
+    "DEPTH_WALL_EXPIRED_RESOLUTION",
+    "INTRADAY_VINTAGE_WALL",
+    "SETTLEMENT_ONLY_DEEP_BARS",
+    "CLASS_ABSENT_OPEN_INTEREST",
+    "CLASS_ABSENT_STATISTICS",
+    "CLASS_PARTIAL_DEFINITIONS",
+    "BID_ASK_NONSYNCHRONOUS_1Y"
+   ]
+  },
+  "SI": {
+   "venue_ibkr": "COMEX",
+   "databento_dataset": "GLBX.MDP3 (CME+CBOT+NYMEX+COMEX)",
+   "have": {
+    "daily_trades_per_contract": {
+     "status": "HAVE_PARTIAL",
+     "contracts_fetched": 22,
+     "contract_list": [
+      "SIF7",
+      "SIF8",
+      "SIG7",
+      "SIH6",
+      "SIH7",
+      "SIJ7",
+      "SIK6",
+      "SIK7",
+      "SIM7",
+      "SIN6",
+      "SIN7",
+      "SIQ7",
+      "SIU5",
+      "SIU6",
+      "SIU7",
+      "SIV6",
+      "SIV7",
+      "SIX6",
+      "SIX7",
+      "SIZ5",
+      "SIZ6",
+      "SIZ7"
+     ],
+     "bars_total": 10785,
+     "bars_close_only_settlement_derived": 7697,
+     "close_only_fraction": 0.7137,
+     "bar_date_span": [
+      "2020-12-31",
+      "2026-10-01"
+     ],
+     "real_volume_any_contract_window": {
+      "from": "2024-07",
+      "to": "2026-09",
+      "n_months": 27
+     },
+     "front_chain_real_volume_run_months": 17,
+     "front_chain_real_volume_run": "2025-05..2026-09"
+    },
+    "daily_bid_ask": {
+     "status": "HAVE_PARTIAL",
+     "bid": {
+      "contracts": 22,
+      "bars": 5366,
+      "span": [
+       "2024-08-30",
+       "2026-10-01"
+      ]
+     },
+     "ask": {
+      "contracts": 22,
+      "bars": 5290,
+      "span": [
+       "2024-08-30",
+       "2026-10-01"
+      ]
+     },
+     "caveat": "non-synchronous separate series; ~1y; not executable spread"
+    },
+    "minute_trades_m1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 22,
+     "bars_total": 12720,
+     "per_contract_depth": "durationStr='2 D' (RTH) per contract snapshot",
+     "span_union": [
+      "2025-08-28",
+      "2026-10-01"
+     ]
+    },
+    "hourly_trades_h1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 22,
+     "bars_total": 3588,
+     "per_contract_depth": "durationStr='30 D' per contract snapshot",
+     "span_union": [
+      "2025-07-21",
+      "2026-10-01"
+     ]
+    },
+    "definitions_reference": {
+     "status": "HAVE_MINIMAL",
+     "detail": "embedded headers (expiry_month=raw lastTradeDate, timeZoneId) + S1_IDENTITY.json (multiplier/minTick/tz) for fetched contracts only; no listing/activation, no PIT universe"
+    },
+    "statistics_settlement_oi": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no statistics schema in IBKR corpus; settlement only via close-only bars (typed SETTLEMENT_ONLY_DEEP_BARS)"
+    },
+    "open_interest": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no OI field in IBKR bars"
+    },
+    "settlement": {
+     "status": "HAVE_DERIVED_ONLY",
+     "detail": "separable as close-only v=0 bars (identified, not an official settlement field)"
+    }
+   },
+   "need": {
+    "daily_trades_per_contract": "real-volume per-contract daily, >= 5y continuous, all listed expiries (incl. adjacent contracts simultaneously) [HC1,HC3]",
+    "daily_bid_ask": "synchronous quotes or cross-check basis, deep [HC2]",
+    "minute_trades_m1": "continuous multi-year M1 [HC2,HC4]",
+    "hourly_trades_h1": "multi-year H1 (cheap coarse intraday) [HC2]",
+    "definitions_reference": "full PIT definitions (listing/activation/expiry, add/modify/delete) [HC1,HC3]",
+    "statistics_settlement_oi": "official statistics incl. OI (stat_type 9) + settlement (stat_type 3) [HC1,HC2,HC3]",
+    "open_interest": "daily OI per contract [HC1,HC3]",
+    "settlement": "official settlement series [HC1]",
+    "external_pit": "see DATA_ACQUISITION_SPEC.md NOT_SOLVED_BY_VENDOR [HC4]"
+   },
+   "gap_types": [
+    "DEPTH_WALL_EXPIRED_RESOLUTION",
+    "INTRADAY_VINTAGE_WALL",
+    "SETTLEMENT_ONLY_DEEP_BARS",
+    "CLASS_ABSENT_OPEN_INTEREST",
+    "CLASS_ABSENT_STATISTICS",
+    "CLASS_PARTIAL_DEFINITIONS",
+    "BID_ASK_NONSYNCHRONOUS_1Y"
+   ]
+  },
+  "6E": {
+   "venue_ibkr": "CME",
+   "databento_dataset": "GLBX.MDP3 (CME+CBOT+NYMEX+COMEX)",
+   "have": {
+    "daily_trades_per_contract": {
+     "status": "HAVE_PARTIAL",
+     "contracts_fetched": 20,
+     "contract_list": [
+      "6EF7",
+      "6EF8",
+      "6EG7",
+      "6EH6",
+      "6EH7",
+      "6EJ7",
+      "6EK7",
+      "6EM6",
+      "6EM7",
+      "6EN7",
+      "6EQ7",
+      "6EU6",
+      "6EU7",
+      "6EV6",
+      "6EV7",
+      "6EX6",
+      "6EX7",
+      "6EZ5",
+      "6EZ6",
+      "6EZ7"
+     ],
+     "bars_total": 9918,
+     "bars_close_only_settlement_derived": 8210,
+     "close_only_fraction": 0.8278,
+     "bar_date_span": [
+      "2020-12-15",
+      "2026-10-01"
+     ],
+     "real_volume_any_contract_window": {
+      "from": "2024-10",
+      "to": "2026-09",
+      "n_months": 24
+     },
+     "front_chain_real_volume_run_months": 14,
+     "front_chain_real_volume_run": "2025-08..2026-09"
+    },
+    "daily_bid_ask": {
+     "status": "HAVE_PARTIAL",
+     "bid": {
+      "contracts": 20,
+      "bars": 2491,
+      "span": [
+       "2024-11-29",
+       "2026-10-01"
+      ]
+     },
+     "ask": {
+      "contracts": 20,
+      "bars": 2471,
+      "span": [
+       "2024-11-29",
+       "2026-10-01"
+      ]
+     },
+     "caveat": "non-synchronous separate series; ~1y; not executable spread"
+    },
+    "minute_trades_m1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 20,
+     "bars_total": 10142,
+     "per_contract_depth": "durationStr='2 D' (RTH) per contract snapshot",
+     "span_union": [
+      "2025-11-26",
+      "2026-10-01"
+     ]
+    },
+    "hourly_trades_h1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 20,
+     "bars_total": 2554,
+     "per_contract_depth": "durationStr='30 D' per contract snapshot",
+     "span_union": [
+      "2025-10-17",
+      "2026-10-01"
+     ]
+    },
+    "definitions_reference": {
+     "status": "HAVE_MINIMAL",
+     "detail": "embedded headers (expiry_month=raw lastTradeDate, timeZoneId) + S1_IDENTITY.json (multiplier/minTick/tz) for fetched contracts only; no listing/activation, no PIT universe"
+    },
+    "statistics_settlement_oi": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no statistics schema in IBKR corpus; settlement only via close-only bars (typed SETTLEMENT_ONLY_DEEP_BARS)"
+    },
+    "open_interest": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no OI field in IBKR bars"
+    },
+    "settlement": {
+     "status": "HAVE_DERIVED_ONLY",
+     "detail": "separable as close-only v=0 bars (identified, not an official settlement field)"
+    }
+   },
+   "need": {
+    "daily_trades_per_contract": "real-volume per-contract daily, >= 5y continuous, all listed expiries (incl. adjacent contracts simultaneously) [HC1,HC3]",
+    "daily_bid_ask": "synchronous quotes or cross-check basis, deep [HC2]",
+    "minute_trades_m1": "continuous multi-year M1 [HC2,HC4]",
+    "hourly_trades_h1": "multi-year H1 (cheap coarse intraday) [HC2]",
+    "definitions_reference": "full PIT definitions (listing/activation/expiry, add/modify/delete) [HC1,HC3]",
+    "statistics_settlement_oi": "official statistics incl. OI (stat_type 9) + settlement (stat_type 3) [HC1,HC2,HC3]",
+    "open_interest": "daily OI per contract [HC1,HC3]",
+    "settlement": "official settlement series [HC1]",
+    "external_pit": "see DATA_ACQUISITION_SPEC.md NOT_SOLVED_BY_VENDOR [HC4]"
+   },
+   "gap_types": [
+    "DEPTH_WALL_EXPIRED_RESOLUTION",
+    "INTRADAY_VINTAGE_WALL",
+    "SETTLEMENT_ONLY_DEEP_BARS",
+    "CLASS_ABSENT_OPEN_INTEREST",
+    "CLASS_ABSENT_STATISTICS",
+    "CLASS_PARTIAL_DEFINITIONS",
+    "BID_ASK_NONSYNCHRONOUS_1Y"
+   ]
+  },
+  "6J": {
+   "venue_ibkr": "CME",
+   "databento_dataset": "GLBX.MDP3 (CME+CBOT+NYMEX+COMEX)",
+   "have": {
+    "daily_trades_per_contract": {
+     "status": "HAVE_PARTIAL",
+     "contracts_fetched": 20,
+     "contract_list": [
+      "6JF7",
+      "6JF8",
+      "6JG7",
+      "6JH6",
+      "6JH7",
+      "6JJ7",
+      "6JK7",
+      "6JM6",
+      "6JM7",
+      "6JN7",
+      "6JQ7",
+      "6JU6",
+      "6JU7",
+      "6JV6",
+      "6JV7",
+      "6JX6",
+      "6JX7",
+      "6JZ5",
+      "6JZ6",
+      "6JZ7"
+     ],
+     "bars_total": 9136,
+     "bars_close_only_settlement_derived": 7923,
+     "close_only_fraction": 0.8672,
+     "bar_date_span": [
+      "2020-12-15",
+      "2026-10-01"
+     ],
+     "real_volume_any_contract_window": {
+      "from": "2025-01",
+      "to": "2026-09",
+      "n_months": 21
+     },
+     "front_chain_real_volume_run_months": 14,
+     "front_chain_real_volume_run": "2025-08..2026-09"
+    },
+    "daily_bid_ask": {
+     "status": "HAVE_PARTIAL",
+     "bid": {
+      "contracts": 20,
+      "bars": 2373,
+      "span": [
+       "2024-11-29",
+       "2026-10-01"
+      ]
+     },
+     "ask": {
+      "contracts": 20,
+      "bars": 2368,
+      "span": [
+       "2024-11-29",
+       "2026-10-01"
+      ]
+     },
+     "caveat": "non-synchronous separate series; ~1y; not executable spread"
+    },
+    "minute_trades_m1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 20,
+     "bars_total": 7620,
+     "per_contract_depth": "durationStr='2 D' (RTH) per contract snapshot",
+     "span_union": [
+      "2025-11-26",
+      "2026-10-01"
+     ]
+    },
+    "hourly_trades_h1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 20,
+     "bars_total": 2148,
+     "per_contract_depth": "durationStr='30 D' per contract snapshot",
+     "span_union": [
+      "2025-10-17",
+      "2026-10-01"
+     ]
+    },
+    "definitions_reference": {
+     "status": "HAVE_MINIMAL",
+     "detail": "embedded headers (expiry_month=raw lastTradeDate, timeZoneId) + S1_IDENTITY.json (multiplier/minTick/tz) for fetched contracts only; no listing/activation, no PIT universe"
+    },
+    "statistics_settlement_oi": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no statistics schema in IBKR corpus; settlement only via close-only bars (typed SETTLEMENT_ONLY_DEEP_BARS)"
+    },
+    "open_interest": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no OI field in IBKR bars"
+    },
+    "settlement": {
+     "status": "HAVE_DERIVED_ONLY",
+     "detail": "separable as close-only v=0 bars (identified, not an official settlement field)"
+    }
+   },
+   "need": {
+    "daily_trades_per_contract": "real-volume per-contract daily, >= 5y continuous, all listed expiries (incl. adjacent contracts simultaneously) [HC1,HC3]",
+    "daily_bid_ask": "synchronous quotes or cross-check basis, deep [HC2]",
+    "minute_trades_m1": "continuous multi-year M1 [HC2,HC4]",
+    "hourly_trades_h1": "multi-year H1 (cheap coarse intraday) [HC2]",
+    "definitions_reference": "full PIT definitions (listing/activation/expiry, add/modify/delete) [HC1,HC3]",
+    "statistics_settlement_oi": "official statistics incl. OI (stat_type 9) + settlement (stat_type 3) [HC1,HC2,HC3]",
+    "open_interest": "daily OI per contract [HC1,HC3]",
+    "settlement": "official settlement series [HC1]",
+    "external_pit": "see DATA_ACQUISITION_SPEC.md NOT_SOLVED_BY_VENDOR [HC4]"
+   },
+   "gap_types": [
+    "DEPTH_WALL_EXPIRED_RESOLUTION",
+    "INTRADAY_VINTAGE_WALL",
+    "SETTLEMENT_ONLY_DEEP_BARS",
+    "CLASS_ABSENT_OPEN_INTEREST",
+    "CLASS_ABSENT_STATISTICS",
+    "CLASS_PARTIAL_DEFINITIONS",
+    "BID_ASK_NONSYNCHRONOUS_1Y"
+   ]
+  },
+  "6B": {
+   "venue_ibkr": "CME",
+   "databento_dataset": "GLBX.MDP3 (CME+CBOT+NYMEX+COMEX)",
+   "have": {
+    "daily_trades_per_contract": {
+     "status": "HAVE_PARTIAL",
+     "contracts_fetched": 20,
+     "contract_list": [
+      "6BF7",
+      "6BF8",
+      "6BG7",
+      "6BH6",
+      "6BH7",
+      "6BJ7",
+      "6BK7",
+      "6BM6",
+      "6BM7",
+      "6BN7",
+      "6BQ7",
+      "6BU6",
+      "6BU7",
+      "6BV6",
+      "6BV7",
+      "6BX6",
+      "6BX7",
+      "6BZ5",
+      "6BZ6",
+      "6BZ7"
+     ],
+     "bars_total": 7804,
+     "bars_close_only_settlement_derived": 6751,
+     "close_only_fraction": 0.8651,
+     "bar_date_span": [
+      "2020-12-15",
+      "2026-10-01"
+     ],
+     "real_volume_any_contract_window": {
+      "from": "2025-01",
+      "to": "2026-09",
+      "n_months": 21
+     },
+     "front_chain_real_volume_run_months": 14,
+     "front_chain_real_volume_run": "2025-08..2026-09"
+    },
+    "daily_bid_ask": {
+     "status": "HAVE_PARTIAL",
+     "bid": {
+      "contracts": 20,
+      "bars": 2375,
+      "span": [
+       "2024-11-29",
+       "2026-10-01"
+      ]
+     },
+     "ask": {
+      "contracts": 20,
+      "bars": 2372,
+      "span": [
+       "2024-11-29",
+       "2026-10-01"
+      ]
+     },
+     "caveat": "non-synchronous separate series; ~1y; not executable spread"
+    },
+    "minute_trades_m1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 20,
+     "bars_total": 8520,
+     "per_contract_depth": "durationStr='2 D' (RTH) per contract snapshot",
+     "span_union": [
+      "2025-11-26",
+      "2026-10-01"
+     ]
+    },
+    "hourly_trades_h1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 20,
+     "bars_total": 2008,
+     "per_contract_depth": "durationStr='30 D' per contract snapshot",
+     "span_union": [
+      "2025-10-17",
+      "2026-10-01"
+     ]
+    },
+    "definitions_reference": {
+     "status": "HAVE_MINIMAL",
+     "detail": "embedded headers (expiry_month=raw lastTradeDate, timeZoneId) + S1_IDENTITY.json (multiplier/minTick/tz) for fetched contracts only; no listing/activation, no PIT universe"
+    },
+    "statistics_settlement_oi": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no statistics schema in IBKR corpus; settlement only via close-only bars (typed SETTLEMENT_ONLY_DEEP_BARS)"
+    },
+    "open_interest": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no OI field in IBKR bars"
+    },
+    "settlement": {
+     "status": "HAVE_DERIVED_ONLY",
+     "detail": "separable as close-only v=0 bars (identified, not an official settlement field)"
+    }
+   },
+   "need": {
+    "daily_trades_per_contract": "real-volume per-contract daily, >= 5y continuous, all listed expiries (incl. adjacent contracts simultaneously) [HC1,HC3]",
+    "daily_bid_ask": "synchronous quotes or cross-check basis, deep [HC2]",
+    "minute_trades_m1": "continuous multi-year M1 [HC2,HC4]",
+    "hourly_trades_h1": "multi-year H1 (cheap coarse intraday) [HC2]",
+    "definitions_reference": "full PIT definitions (listing/activation/expiry, add/modify/delete) [HC1,HC3]",
+    "statistics_settlement_oi": "official statistics incl. OI (stat_type 9) + settlement (stat_type 3) [HC1,HC2,HC3]",
+    "open_interest": "daily OI per contract [HC1,HC3]",
+    "settlement": "official settlement series [HC1]",
+    "external_pit": "see DATA_ACQUISITION_SPEC.md NOT_SOLVED_BY_VENDOR [HC4]"
+   },
+   "gap_types": [
+    "DEPTH_WALL_EXPIRED_RESOLUTION",
+    "INTRADAY_VINTAGE_WALL",
+    "SETTLEMENT_ONLY_DEEP_BARS",
+    "CLASS_ABSENT_OPEN_INTEREST",
+    "CLASS_ABSENT_STATISTICS",
+    "CLASS_PARTIAL_DEFINITIONS",
+    "BID_ASK_NONSYNCHRONOUS_1Y"
+   ]
+  },
+  "6A": {
+   "venue_ibkr": "CME",
+   "databento_dataset": "GLBX.MDP3 (CME+CBOT+NYMEX+COMEX)",
+   "have": {
+    "daily_trades_per_contract": {
+     "status": "HAVE_PARTIAL",
+     "contracts_fetched": 20,
+     "contract_list": [
+      "6AF7",
+      "6AF8",
+      "6AG7",
+      "6AH6",
+      "6AH7",
+      "6AJ7",
+      "6AK7",
+      "6AM6",
+      "6AM7",
+      "6AN7",
+      "6AQ7",
+      "6AU6",
+      "6AU7",
+      "6AV6",
+      "6AV7",
+      "6AX6",
+      "6AX7",
+      "6AZ5",
+      "6AZ6",
+      "6AZ7"
+     ],
+     "bars_total": 7695,
+     "bars_close_only_settlement_derived": 6763,
+     "close_only_fraction": 0.8789,
+     "bar_date_span": [
+      "2021-09-14",
+      "2026-10-01"
+     ],
+     "real_volume_any_contract_window": {
+      "from": "2025-03",
+      "to": "2026-09",
+      "n_months": 19
+     },
+     "front_chain_real_volume_run_months": 14,
+     "front_chain_real_volume_run": "2025-08..2026-09"
+    },
+    "daily_bid_ask": {
+     "status": "HAVE_PARTIAL",
+     "bid": {
+      "contracts": 20,
+      "bars": 2388,
+      "span": [
+       "2024-11-29",
+       "2026-10-01"
+      ]
+     },
+     "ask": {
+      "contracts": 20,
+      "bars": 2374,
+      "span": [
+       "2024-11-29",
+       "2026-10-01"
+      ]
+     },
+     "caveat": "non-synchronous separate series; ~1y; not executable spread"
+    },
+    "minute_trades_m1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 20,
+     "bars_total": 7023,
+     "per_contract_depth": "durationStr='2 D' (RTH) per contract snapshot",
+     "span_union": [
+      "2025-11-26",
+      "2026-10-01"
+     ]
+    },
+    "hourly_trades_h1": {
+     "status": "HAVE_SNAPSHOT_ONLY",
+     "contracts": 20,
+     "bars_total": 1921,
+     "per_contract_depth": "durationStr='30 D' per contract snapshot",
+     "span_union": [
+      "2025-10-17",
+      "2026-10-01"
+     ]
+    },
+    "definitions_reference": {
+     "status": "HAVE_MINIMAL",
+     "detail": "embedded headers (expiry_month=raw lastTradeDate, timeZoneId) + S1_IDENTITY.json (multiplier/minTick/tz) for fetched contracts only; no listing/activation, no PIT universe"
+    },
+    "statistics_settlement_oi": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no statistics schema in IBKR corpus; settlement only via close-only bars (typed SETTLEMENT_ONLY_DEEP_BARS)"
+    },
+    "open_interest": {
+     "status": "NOT_AVAILABLE",
+     "detail": "no OI field in IBKR bars"
+    },
+    "settlement": {
+     "status": "HAVE_DERIVED_ONLY",
+     "detail": "separable as close-only v=0 bars (identified, not an official settlement field)"
+    }
+   },
+   "need": {
+    "daily_trades_per_contract": "real-volume per-contract daily, >= 5y continuous, all listed expiries (incl. adjacent contracts simultaneously) [HC1,HC3]",
+    "daily_bid_ask": "synchronous quotes or cross-check basis, deep [HC2]",
+    "minute_trades_m1": "continuous multi-year M1 [HC2,HC4]",
+    "hourly_trades_h1": "multi-year H1 (cheap coarse intraday) [HC2]",
+    "definitions_reference": "full PIT definitions (listing/activation/expiry, add/modify/delete) [HC1,HC3]",
+    "statistics_settlement_oi": "official statistics incl. OI (stat_type 9) + settlement (stat_type 3) [HC1,HC2,HC3]",
+    "open_interest": "daily OI per contract [HC1,HC3]",
+    "settlement": "official settlement series [HC1]",
+    "external_pit": "see DATA_ACQUISITION_SPEC.md NOT_SOLVED_BY_VENDOR [HC4]"
+   },
+   "gap_types": [
+    "DEPTH_WALL_EXPIRED_RESOLUTION",
+    "INTRADAY_VINTAGE_WALL",
+    "SETTLEMENT_ONLY_DEEP_BARS",
+    "CLASS_ABSENT_OPEN_INTEREST",
+    "CLASS_ABSENT_STATISTICS",
+    "CLASS_PARTIAL_DEFINITIONS",
+    "BID_ASK_NONSYNCHRONOUS_1Y"
+   ]
+  }
+ },
+ "cross_symbol_observations": {
+  "front_chain_real_volume_run_months": {
+   "NQ": 17,
+   "ES": 17,
+   "CL": 17,
+   "NG": 17,
+   "GC": 16,
+   "SI": 17,
+   "6E": 14,
+   "6J": 14,
+   "6B": 14,
+   "6A": 14
+  },
+  "close_only_fraction": {
+   "NQ": 0.764,
+   "ES": 0.815,
+   "CL": 0.7607,
+   "NG": 0.6475,
+   "GC": 0.7253,
+   "SI": 0.7137,
+   "6E": 0.8278,
+   "6J": 0.8672,
+   "6B": 0.8651,
+   "6A": 0.8789
+  },
+  "contracts_fetched": {
+   "NQ": 10,
+   "ES": 10,
+   "CL": 29,
+   "NG": 29,
+   "GC": 22,
+   "SI": 22,
+   "6E": 20,
+   "6J": 20,
+   "6B": 20,
+   "6A": 20
+  }
+ }
+}

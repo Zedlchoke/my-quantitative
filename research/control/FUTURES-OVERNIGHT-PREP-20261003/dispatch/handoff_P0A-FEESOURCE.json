@@ -1,0 +1,111 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-OVERNIGHT-PREP-20261003",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "P0A-FEESOURCE",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior/prep",
+  "branch": "prep/futures-behavior-10syms-20261002",
+  "dispatch_sha": "a8cd06f2603a8df5a2db5999c63ab09c3a7134e7",
+  "actual_start_sha": "a8cd06f2603a8df5a2db5999c63ab09c3a7134e7",
+  "end_sha_remeasured": "a8cd06f2603a8df5a2db5999c63ab09c3a7134e7",
+  "sha_drift": "NONE",
+  "commit_sha": null,
+  "commit_disclosure": "No commit made: $0 read-only lane; commits/pushes prohibited by dispatch. All outputs are untracked files under research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/ plus this handoff.",
+  "generated_utc": "2026-10-03T15:28:00Z",
+  "summary": "Re-sourced the 4 IBKR fee pages with saved raw captures. GLUED-SUPERSCRIPT DEFECT CONFIRMED at byte level: CME.php raw HTML shows 1.38<sup>6</sup> (NQ + ES rows) and regulatory 0.01<sup>1</sup> (live; 0.02<sup>1</sup> in 2026-06-08 archive) — parent A4's 1.386/0.011 were footnote markers glued by tag-stripping renderers; page state is otherwise IDENTICAL to the parent fetch epoch (extraction defect, not page change). Parent's NYMEX regulatory 0.02 is contradicted by live AND 2026-09-25 archive (0.01, no markers) — extraction error (INFERENCE). Parent's COMEX 1.65 + 0.01 confirmed correct; archive proves a genuine metals revision (1.60->1.65, MGC 0.60->0.70, QO/QI/QC 1.00->1.50) and a regulatory change (0.02->0.01) during 2026. Corrected tier-1 (=Fixed) all-ins USD/side: NQ 2.24, ES 2.24, 6E 2.46, 6B 2.46, 6J 2.46, 6A 2.46, CL 2.36, NG 2.46, GC 2.51, SI 2.51 — ALL TEN owner provisional numbers CONFIRMED by capture. IBKR's own worked example '0.85 + 1.38 + 0.00 + 0.01 = 2.24' (Fixed ES) is captured verbatim and sums exactly; the Tiered ES example contains an IBKR-side stale cell (reg 0.00 vs printed sum 2.24) — documented. IB-JP footnote-1 nuance: the IB-JP text is an inline cell parenthetical (0.01 x 1.1 Japan tax), not a US-account condition.",
+  "recommended_next_action": "Downstream lanes (P0B/P2x) should consume fees_corrected.json (tier-1 all-ins above; Tiered T2/T3/T4 per code inside) and RETIRE the parent's 1.386/0.011/0.02 values. Owner account verification remains NOT_RUN. If a round-2 cross-check is wanted, fetch live raw HTML from an unsinkholed machine to close the residual 13:05Z-vs-15:22Z NYMEX window (archive 2026-09-25 already makes page-flip implausible).",
+  "changed_paths": [
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/archive_CME.php.html",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/archive_NYMEX.php.html",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/archive_NYMEX.php.html.gz_raw",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/archive_COMEX.php.html",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/archive_commissions-futures.php.html",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/archive_commissions-futures.php.html.gz_raw",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/CME.php.txt",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/NYMEX.php.txt",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/COMEX.php.txt",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/commissions-futures-amer.php.txt",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/CME.php.md",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/superscript_adjudication.md",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/fees_corrected.json",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/FEES_CORRECTED.md",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/fetch_log.jsonl",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/MANIFEST.md",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/dispatch/handoff_P0A-FEESOURCE.json"
+  ],
+  "tests": [
+    {
+      "command": "git -C <prep worktree> rev-parse HEAD (start and end)",
+      "exit_code": 0,
+      "verdict": "PASS - HEAD == dispatch_sha a8cd06f2603a8df5a2db5999c63ab09c3a7134e7 at both measurements; branch prep/futures-behavior-10syms-20261002",
+      "log_digest": "start 2026-10-03T15:09:33Z / end 2026-10-03T15:27:30Z, identical SHA"
+    },
+    {
+      "command": "python -c \"import json; json.load(open('fees_corrected.json'))\"",
+      "exit_code": 0,
+      "verdict": "PASS - fees_corrected.json valid JSON",
+      "log_digest": "fees_corrected.json OK"
+    },
+    {
+      "command": "python -c \"[json.loads(l) for l in open('fetch_log.jsonl')]\"",
+      "exit_code": 0,
+      "verdict": "PASS - 20/20 JSONL lines parse",
+      "log_digest": "fetch_log.jsonl OK, lines: 20"
+    },
+    {
+      "command": "shasum -a 256 over all 14 evidence files",
+      "exit_code": 0,
+      "verdict": "PASS - hashes recorded in MANIFEST.md and outputs[]",
+      "log_digest": "full 64-hex digests in outputs[]; MANIFEST.md carries 16-hex table"
+    },
+    {
+      "command": "byte-level adjudication greps (python re over archive_*.html): sup-adjacency, worked-example sums, IB-JP tax arithmetic (0.01x1.1=0.011, 0.02x1.1=0.022, 2.15x1.2=2.58, 1.28x1.2=1.536)",
+      "exit_code": 0,
+      "verdict": "PASS - every load-bearing cell reconciles; IBKR Tiered-ES example flagged as internally defective page content (0.85+1.38+0.00+0.00 != printed 2.24)",
+      "log_digest": "quotes verbatim in superscript_adjudication.md and FEES_CORRECTED.md"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "VERIFIED_VS_ACCOUNT=NOT_RUN on every value; all numbers are MODELED_COST public-reference schedule values, not measured account costs.",
+    "Live raw-HTML transport to www.interactivebrokers.com was BLOCKED_TRANSPORT on this machine (hostname sinkholed to 127.0.0.1 at OS level; curl sandboxed+unsandboxed and WebFetch all refused, 0 bytes to origin). Live evidence = web_reader text renders; byte authority = 4 web.archive.org raw HTML snapshots (CME 2026-06-08, COMEX 2026-03-10, NYMEX 2026-09-25, commissions 2026-09-25). Live-vs-archive agreement verified on every load-bearing cell except the two documented temporal changes.",
+    "Live text renders are tag-stripped renderer outputs: superscript markers glue into digits BY DESIGN on those files (the defect mechanism itself); the archive raw HTML is the superscript authority. Web_reader markdown render of CME.php arrived harness-summarized and was NOT used as evidence (quarantined; see incidents).",
+    "CME reg fee changed 0.02 -> 0.01 and COMEX metals futures 1.60 -> 1.65 during 2026; corrected table states live (2026-10-03) values with both epochs captured. Historical-year use needs the CURRENT_SCHEDULE_AS_APPROXIMATION rule from the parent table.",
+    "FX codes 6E/6B/6J/6A remain alias-mapped to the generic CME 'Forex Futures' 1.60 group row (EUR/GBP/JPY/AUD aliases + 6H printed; outright symbols not verbatim) - mapping_corroboration PARTIAL, unchanged from parent.",
+    "Overnight Position Fee tables remain NOT_RUN (JS-driven, never render). Give-up 0.05 published but excluded from all-in (waived when IBKR is prime+executing). No effective dates published on any page.",
+    "Parent-quoted sentence 'These commission rates are charged by all IBKR entities' was not found in this lane's captures (archive grep: 0 hits) - do not cite it without re-verification."
+  ],
+  "incidents": [
+    {
+      "id": "P0A-INC-1",
+      "what": "First CME.php web_reader (markdown) result reached the lane agent harness-summarized/truncated; an initial transcription saved as CME.php.md could not be guaranteed cell-by-cell faithful and risked reconstruction contamination from the parent table (the exact defect mode under adjudication).",
+      "response": "File immediately quarantined (overwritten with invalidation notice, 15:14:35Z, before any downstream use); capture redone via complete untruncated text render (CME.php.txt 15:20:30Z) and raw archive HTML. No quarantined content was cited anywhere.",
+      "impact": "none on conclusions; documented in fetch_log.jsonl and CME.php.md header"
+    },
+    {
+      "id": "P0A-INC-2",
+      "what": "www.interactivebrokers.com resolves to 127.0.0.1 on this machine (OS-level sinkhole): direct curl (sandboxed and dangerously-unsandboxed) and WebFetch all failed with 0 bytes to origin. web.archive.org resolves normally.",
+      "response": "Blocked transports logged per attempt; evidence gathered via web.archive.org raw snapshots + web_reader live renders. CME.php curl consumed 3 invocations (2 sandboxed incl. 1 diagnostic + 1 unsandboxed) - none reached the network; disclosed in fetch_log.jsonl attempt 3.",
+      "impact": "live raw-HTML capture not possible from this machine; mitigated by archive+render pairing"
+    }
+  ],
+  "tree_status": "worktree prep/futures-behavior-10syms-20261002 @ a8cd06f clean-tracked; lane outputs are 17 untracked files under research/control/FUTURES-OVERNIGHT-PREP-20261003/ (fees_erratum/source/ x16 + this handoff); sibling lanes' untracked files not touched; nothing committed, staged, merged or pushed",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/FEES_CORRECTED.md", "sha256": "006d6372fb5a6f09595d24297174a3a0c1390d27ac869b027adf12bd1b5d1bef"},
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/fees_corrected.json", "sha256": "7cd65f253f51ed0bc8fad25dc939797fb4e874ce1d975269f98affa128a2aca8"},
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/superscript_adjudication.md", "sha256": "e36a01239329a869ae64ab5867c50087f23c6977fcdc7f801d18dbaab7d37356"},
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/fetch_log.jsonl", "sha256": "f370f305e53ad6706574bf975f2e935dfc8a2137ac8721016e2b4d0fe1544bf6"},
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/MANIFEST.md", "sha256": "c8c8ff5a06d5091689d028666633cecba27cb55b9c9ac64d0e3a543958ffed4f"},
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/archive_CME.php.html", "sha256": "0f726c52ce90a2e159b376ef40e11e78afd8d279bceb263719038d4c3a3b9e85"},
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/archive_NYMEX.php.html", "sha256": "9031e0d9a274488d5aba14d256c97b0c4460bce5636c2bb25e5f351b214806ff"},
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/archive_COMEX.php.html", "sha256": "8809dec04e5c9c15c7f15dda38f38f4417f96d249a284fbffeacffa6c02d13a4"},
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/archive_commissions-futures.php.html", "sha256": "6df03fd5645b67d46ca0d6db8c9689ed92d298571ceb99d59c92e9365040964f"},
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/CME.php.txt", "sha256": "75a8647065d1590e06db7b1244f72a759b09ec672f8eb2072fd09343a5978565"},
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/NYMEX.php.txt", "sha256": "dbcc25b3cf519925eebfd9388312c6eca940a27287319a329767b4e58129ed1a"},
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/COMEX.php.txt", "sha256": "4317c15a187162aeef9a80c76e63af372b7034a4157e0317b9b634237e798997a"},
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/commissions-futures-amer.php.txt", "sha256": "14d79331c4255addefd7a573c83730f08832508b1ceb3b3b64f9cc4fb0348cda"},
+    {"path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/CME.php.md", "sha256": "469d8220a061384a0ec80a8d5c1091c06c617a688d1cbb46fc7bb5f4c8de545c", "note": "QUARANTINED incident record, not evidence"}
+  ]
+}

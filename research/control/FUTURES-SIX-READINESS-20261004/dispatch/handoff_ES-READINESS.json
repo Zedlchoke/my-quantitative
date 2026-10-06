@@ -1,0 +1,82 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "ES-READINESS",
+  "cycle_id": "FUTURES-SIX-READINESS-20261004",
+  "role": "data-readiness-lane",
+  "lane": "ES-READINESS",
+  "dispatch_sha": "d7fc62312947b2613523dd401d44c9ec1a8d166b",
+  "actual_start_sha": "d7fc62312947b2613523dd401d44c9ec1a8d166b",
+  "run_date": "2026-10-04",
+  "commit_sha": null,
+  "no_commit_disclosure": "controller commits",
+  "changed_paths": [
+    "research/control/FUTURES-SIX-READINESS-20261004/es/DATA_READINESS_ES.md",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/es_readiness.json",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/es_expiry_recheck.json",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/es_session_holiday.json",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/es_fee_status.json",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/es_trial_census.json",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/es_o1m_roll_recheck.json",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/q5_independent_verify/verify_q5_captures.py",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/q5_independent_verify/verify_report.json",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/q5_independent_verify/extracted_es_grid.json",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/q5_independent_verify/sha256_sums_mine.txt",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/verify_expiry.py",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/verify_o1m_roll.py",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/verify_session_holiday.py",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/verify_fee_and_census.py",
+    "research/control/FUTURES-SIX-READINESS-20261004/es/assemble_readiness.py",
+    "research/control/FUTURES-SIX-READINESS-20261004/dispatch/handoff_ES-READINESS.json",
+    "dispatch/handoff_ES-READINESS.json"
+  ],
+  "tests": [
+    {"id": 1, "name": "verify_expiry.py — Expiry 68/68 re-derivation + machine date checks + capture byte-grep", "verdict": "PASS", "detail": "Union of D3 37 product rows + DEEPFOUR 26 family rows + OVERNIGHT 5 gap quarters = 68/68, 0 conflicts, 0 missing/extra; 68/68 rule-ok (67 plain 3rd Fridays + ESM6 2026-06-18 Juneteenth shift); quarterly spacing 84-98d, 0 violations; data-side 66/66 ES_cache roll expiries match authority; 5 pre-2012 gap dates byte-grepped in G1a (5/5), G1b (4/5, Sep-2011 absent exactly as baseline documents), NQ pcal 2011 (5/5 incl verbatim NQU11 row); G1a/G1b sha256 match baseline-claimed digests. Out: es/es_expiry_recheck.json"},
+    {"id": 2, "name": "q5_independent_verify/verify_q5_captures.py — Q5 independent verification (own sha256 + own raw-byte re-extraction, no Q5 code reused)", "verdict": "PASS_WITH_RESIDUALS", "detail": "15 present captures: all sha256 match coverage-JSON claims AND Q5's SHA256SUMS.txt; weekly Globex string re-extracted from cspecs_133 raw bytes equals claim; 23/23 claimed 2026 deviation cells reproduced from raw bytes (1 cell = claim-side duplicate-event merge artifact, values identical); 5 extra 2025 cells yielded (harmless). Residual: 8 of 23 listed captures MISSING from disk AND absent from Q5's own fetch_log (coverage-JSON over-claim; none needed for any claimed cell). Verdict VERIFIED_WITH_RESIDUALS. Out: es/q5_independent_verify/*"},
+    {"id": 3, "name": "verify_session_holiday.py — session/holiday assembly + day-offset legality", "verdict": "PASS", "detail": "161 weekday checks (holiday observance dates all Mon-Fri; Sunday Q5 eventDates = legal Globex session-start days, documented), 36 event-row checks (HH:MM parse, chronological within official eventDate rows, closed minutes inside standing session span with later reopen on file), DST CT/ET offset constant 1h, no transition Sunday in grid: all legal. NOT_OBTAINED register carried (2011-2025 product times NOT_TRANSCRIBED -> SPEC E1 fail-closed EXCLUDE; P3#2 ClearPort PENDING_ADJUDICATION untouched). Out: es/es_session_holiday.json"},
+    {"id": 4, "name": "verify_fee_and_census.py — fee cell restatement + pinning; trial census recount", "verdict": "PASS", "detail": "2.24 tier-1 all-in MODELED COST UPHELD restated from baseline (P0 erratum UPHELD in full); VERIFIED_VS_ACCOUNT=NOT_RUN (D2 open); SPEC PB1_ES §5 21.006/33.506/46.006 recorded UNDER-REVIEW-erratum; $0.01/side NFA-basis divergence open; fee A7 READY-NOT-RUN; 15 cited baseline artifacts sha256-pinned; 24 frozen identities enumerated and machine-counted (8+8+4+4), minimal recount F1 11 + F2 11 + F3 7 + F4 7 = 36 vs cap 24, headroom 0, all BLOCKED_TRIAL_BUDGET; no web capture re-derived; no new trials. Out: es/es_fee_status.json + es/es_trial_census.json"},
+    {"id": 5, "name": "verify_o1m_roll.py — O1M panel + roll-rule recompute from ES_cache parquets", "verdict": "PASS", "detail": "7,825,657 rows re-measured (exact match to dossier); span 2010-06-06T22:00Z..2026-09-30T23:59Z (ts_event = bar start); 4,204 sessions reproduced; 66/66 volume crossovers recomputed from es_contract_daily.parquet match es_roll_table.json under the disclosed last-25-sessions-pre-expiry search window; recomputed |T-5 - crossover| <= 2 sessions 66/66 (0 violations >3, matching recorded abs_t5_dev_gt3=0); sign-match 61/66 reproduced exactly. Out: es/es_o1m_roll_recheck.json"},
+    {"id": 6, "name": "assemble_readiness.py — 8-dim readiness assembly", "verdict": "PASS", "detail": "Dims 1-5,8 PASS with residual registers; dims 6 (fee) and 7 (trial budget) BLOCKED; closing line 'data-ready != scored-authorized' with blocking dims explicit. Out: es/es_readiness.json + es/DATA_READINESS_ES.md"}
+  ],
+  "summary": "ES data-readiness dossier complete: 8 dims = PASS (identity/tick, O1M coverage, roll/expiry, session/holiday, event PIT, reproduction/A7) + BLOCKED (fee/spread/slippage/BBO; trial budget). Expiry 68/68 CONFIRMED by independent re-derivation with capture-byte legs; roll rule OBSERVED with 66/66 crossovers and 61/66 sign-match reproduced from cache bytes; 2026 weekly + 11 deviation windows OBTAINED_PERMITTED and independently verified from Q5 raw bytes; corrected fee 2.24 USD/side tier-1 MODELED COST stands with VERIFIED_VS_ACCOUNT=NOT_RUN and SPEC §5 UNDER-REVIEW-erratum; ES minimal 36 vs frozen 24 (headroom 0) BLOCKED_TRIAL_BUDGET stands; NO_GO_REGISTER/SCORE/ORDER stand. Closing line: data-ready != scored-authorized.",
+  "authority_claims": [
+    "Zero git commands: HEAD was resolved by reading the worktree .git pointer file and the common gitdir's refs/heads/codex/futures-six-readiness-20261004 (== d7fc62312947b2613523dd401d44c9ec1a8d166b, identical to dispatch_sha); no commit, no staging, no index or ref writes, no push/merge.",
+    "Zero network access: all evidence read from local artifacts; nothing fetched.",
+    "Zero PnL, zero scored cells, zero S1 access, no new hypotheses, no registration/budget writes.",
+    "Q5 archived values used ONLY after this lane's independent verification: our own sha256 over every capture file, re-extraction of claimed values from raw capture bytes with our own from-scratch parser (no Q5 code reused), and cell-by-cell comparison to claims (verdict VERIFIED_WITH_RESIDUALS). P3-lane captures were never extracted; P3#2 ClearPort left PENDING_ADJUDICATION.",
+    "Fee values are MODELED COST restatements of pinned baseline artifacts (15 sha256 pins in es/es_fee_status.json); no fee source re-fetched or re-derived.",
+    "Writes confined to research/control/FUTURES-SIX-READINESS-20261004/es/** and the two handoff copies; everything else read-only (incl. the P3 sibling dir)."
+  ],
+  "known_limitations": [
+    "Capture bytes for D3 C10/C11 product-calendar captures and DEEPFOUR R4 family capture are NOT present in this worktree: mid-era (2017-12/2018-09), 2024-2025 and 2026 expiry spot-checks ran on the authority-claim vs data-side (ES_cache) leg only (all match); the capture-byte legs are recorded NOT_RUN_IN_THIS_WORKTREE with pointers, not inferred PASS.",
+    "8 of the 23 Q5-listed ES deviation captures are missing from the P3 captures dir AND absent from Q5's own fetch_log while cal_permitted_coverage.json lists them with sha256 (over-claim on Q5's side). Zero claimed cells depend on them; owner may wish to annotate the coverage JSON.",
+    "Dispatch brief said '13 sha-pinned captures'; the coverage JSON lists 23 for the ES 2026 cell-group (weekly + 22 deviation entries incl. alternate-timestamp duals). Verification covered every listed file; count discrepancy recorded.",
+    "ES product-level Globex early-close TIMES 2011-2025 remain NOT_TRANSCRIBED (they live in per-holiday official files); frozen SPEC §2-E1 law EXCLUDEs any day not proven ES-specific — handling law, not new evidence.",
+    "P3#2 ClearPort 2026 row left PENDING_ADJUDICATION; nothing was extracted from any P3-lane capture.",
+    "NOT_RUN register unchanged: VERIFIED_VS_ACCOUNT (fee, owner decision D2 open); A7 FEE re-audit READY-NOT-RUN; BBO/depth NOT_RUN program-wide (D5 law); PIT consensus/surprise archive NOT_RUN (H3) + publish-latency NOT_RUN; 2010-PDF 15:15-CT 'regular close' vs ledger 16:30-CT day end is a role difference (RTH close vs full-session end), both annotated with citations."
+  ],
+  "incidents": [
+    "MISSING-HANDOFF-FIRST-ATTEMPT: the first handoff copy was written to the worktree-root dispatch/handoff_ES-READINESS.json (the original dispatch packet's 'relative to worktree' path); the controller reads the round-dir research/control/FUTURES-SIX-READINESS-20261004/dispatch/ and found it missing. This file is the corrected round-dir copy; the root copy is disclosed in changed_paths and left in place for the controller to keep or discard.",
+    "Verification-script development iterations (all fixed before any verdict was recorded; final JSONs come only from the final code): (a) Q5 comparator initially compared tuples vs lists and missed the 'events' wrapper and the 'CME Globex: ' venue prefix — fixed; claim-side duplicate events on 2026-12-24 classified MATCH_SET_EQUAL_CLAIM_HAS_DUPLICATES rather than MISMATCH; (b) an initially hardcoded fetch_log flag in the Q5 script was replaced with a real log check (result: all 8 missing files NOT_IN_LOG); (c) expiry union initially mis-parsed DEEPFOUR's '2024_gapfill' year key — fixed; (d) O1M crossover recompute initially searched whole history and fired on far-forward thin-volume noise (15/66) — fixed with the disclosed 25-session window (66/66); (e) session-legality ordering rules refined twice after real event shapes (interleaved reopen rows, Sunday session-start eventDates) showed the first rules were wrong, not the data.",
+    "All verification scripts re-run end-to-end after finalization: idempotent, same verdicts."
+  ],
+  "tree_status": {
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-six-readiness/prep",
+    "branch": "codex/futures-six-readiness-20261004",
+    "head": "d7fc62312947b2613523dd401d44c9ec1a8d166b",
+    "git_status": "NOT MEASURED — dispatch forbids git commands in this lane; HEAD resolved by reading gitdir pointer files only. Lane wrote only the changed_paths above (round-dir es/** + the two handoff copies).",
+    "note": "no commits made by this lane; commit_sha null by design — controller commits"
+  },
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-SIX-READINESS-20261004/es/DATA_READINESS_ES.md", "kind": "dossier", "note": "8-dim verdict table + methods + contradictions/residuals + NOT_RUN register + closing line 'data-ready != scored-authorized'"},
+    {"path": "research/control/FUTURES-SIX-READINESS-20261004/es/es_readiness.json", "kind": "machine-verdict", "note": "per-dim status/evidence/residuals; blocking dims 6 (fee) + 7 (trial budget); standing rulings"},
+    {"path": "research/control/FUTURES-SIX-READINESS-20261004/es/es_expiry_recheck.json", "kind": "machine-results", "note": "68/68 re-derivation, per-quarter date checks, data-side crosscheck, capture byte-grep legs, sha256 pins"},
+    {"path": "research/control/FUTURES-SIX-READINESS-20261004/es/es_session_holiday.json", "kind": "machine-results", "note": "era weekly templates, 2010-2026 windows, legality validation (161 dates + 36 event rows), NOT_OBTAINED register, P3#2 PENDING_ADJUDICATION"},
+    {"path": "research/control/FUTURES-SIX-READINESS-20261004/es/es_fee_status.json", "kind": "machine-results", "note": "2.24 MODELED COST restatement, D2 NOT_RUN, SPEC §5 UNDER-REVIEW-erratum, $0.01 reg-basis divergence, A7-fee READY-NOT-RUN, 15 sha256 pins"},
+    {"path": "research/control/FUTURES-SIX-READINESS-20261004/es/es_trial_census.json", "kind": "machine-results", "note": "24 frozen IDs enumerated, minimal recount 36 vs 24, headroom 0, BLOCKED_TRIAL_BUDGET"},
+    {"path": "research/control/FUTURES-SIX-READINESS-20261004/es/es_o1m_roll_recheck.json", "kind": "machine-results", "note": "panel re-measure, 66/66 crossover + T5 recompute, 61/66 sign-match reproduction"},
+    {"path": "research/control/FUTURES-SIX-READINESS-20261004/es/q5_independent_verify/", "kind": "verification", "note": "owner-law Q5 verification chain: own sha256 sums, own raw-byte re-extraction, cell-by-cell diff vs claims, VERIFIED_WITH_RESIDUALS verdict + 8 missing-capture residuals"},
+    {"path": "research/control/FUTURES-SIX-READINESS-20261004/dispatch/handoff_ES-READINESS.json", "kind": "handoff", "note": "this file (round-dir copy requested by controller)"},
+    {"path": "dispatch/handoff_ES-READINESS.json", "kind": "handoff", "note": "first-attempt copy at the worktree-root dispatch/ path (disclosed duplicate; controller may keep or discard)"}
+  ]
+}

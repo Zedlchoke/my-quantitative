@@ -1,0 +1,104 @@
+{
+  "schema": "verify_findings@1",
+  "task_id": "FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003",
+  "lane": "VERIFY",
+  "generated_utc": "2026-10-03T14:38:29Z",
+  "worktree_head_remeasured": "7149425df83b7c47f34848fc83d36e450b802bc5",
+  "sha_pair_check": "all 7 handoffs: dispatch_sha == actual_start_sha == 7149425d... == worktree HEAD (re-measured); no drift",
+  "outputs_sha256_recompute": "38/38 output entries across 7 handoffs: all MATCH (shasum -a 256 recomputed independently)",
+  "git_hygiene": "git status --porcelain: zero tracked modifications; single untracked root research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/; no untracked paths outside it",
+  "forbidden_language_scan": "6 hits for measured-cost/complete-cost family across lane .md/.json; all are explicit negations or law statements (e.g. 'Nothing in this file is a measured cost from any account'); zero positive uses",
+  "lane_verdicts": {
+    "A1-CMECAL-NQES": "VERIFIED",
+    "A2-CMECAL-FX": "PARTIAL",
+    "A3-CMECAL-COMM": "PARTIAL",
+    "A4-FEES": "VERIFIED",
+    "A5-EVENTS-BBO-COVERAGE": "VERIFIED",
+    "B1-DEEP-ESNQ": "VERIFIED",
+    "B2-DEEP-6E6B": "VERIFIED"
+  },
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "MAJOR",
+      "lane": "A2-CMECAL-FX",
+      "what": "Per-symbol expiry coverage is internally inconsistent. Machine rows (fx_cal_coverage.json per_symbol_by_year.6E and the flat expirations list) contain 17 6E quarters (2010:4, 2011:2, 2012:3 missing ECH12/Mar-2012, 2013:4, 2014:4) and the flat list totals 96. But the JSON summary dict says 6E:18, the evidence MD enumerates '6E (codes EC) - 18 quarters: ... 2012 all 4 (Mar 19, Jun 18, Sep 17, Dec 17)', and the handoff verdict says '6E 18/68'. 18+31+13+35 = 97, so '96 total' and '6E 18' cannot both be true. The handoff's own known_limitations states '6E lacks Sep/Dec 2011 + Mar 2012', which contradicts its own 18/68 verdict and matches the 17-row machine data. The MD's enumerated Mar-2012 date (2012-03-19) exists in no machine row.",
+      "evidence": "verify/recompute_A2_fx.py output; fx_cal_coverage.json expirations_coverage.per_symbol_quarters_obtained_of_68 vs per_symbol_by_year vs expirations (flat, len 96); FX_CALENDAR_EVIDENCE.md section 3; handoff_A2 verdicts.expiry_dates vs known_limitations[3]",
+      "required_fix": "Amend to 6E 17/68 (total stays 96/272) in fx_cal_coverage.json summary, FX_CALENDAR_EVIDENCE.md, and the handoff - or, if a sourced ECH12 capture row actually exists, add it to the machine rows and change every 96 to 97. One of the two must move; they cannot coexist."
+    },
+    {
+      "id": "F-2",
+      "severity": "MAJOR",
+      "lane": "A2-CMECAL-FX + A3-CMECAL-COMM",
+      "what": "Handoffs REFUSED as submitted per the dispatch's mechanical rule 'authority_claims == [] (non-empty => REFUSED)': A2 carries 6 entries, A3 carries 7. Inspection shows the entries are evidence/fact claims misplaced into the authority_claims field, not claims of governance authority (no registry/gate/scoring usurpation). Content-level verification was still performed by VERIFY and is reported here.",
+      "evidence": "handoff_A2-CMECAL-FX.json .authority_claims (len 6); handoff_A3-CMECAL-COMM.json .authority_claims (len 7)",
+      "required_fix": "Mechanical amendment by Lead (or lane re-issue): move the entries into summary/known_limitations/verdicts and empty authority_claims. No evidence re-work needed."
+    },
+    {
+      "id": "F-3",
+      "severity": "MINOR",
+      "lane": "A2, A3, A4, A5, B1, B2 (all except A1)",
+      "what": "tests[] entries do not carry the command/exit_code/verdict shape required by the verification procedure. A1 conforms exactly. A2/A5 use name/command/result; A4 uses command+result with 'PASS (exit 0)' embedded in a string; B1/B2 use name/result/detail or name/result/evidence; A3 has tests: [] entirely while claiming validation outcomes only in prose.",
+      "required_fix": "Normalize on integration; A3 should at minimum record its row-count/script validations as test entries."
+    },
+    {
+      "id": "F-4",
+      "severity": "MINOR",
+      "lane": "A3, B1, B2, A4",
+      "what": "changed_paths hygiene: A3/B1/B2 declare changed_paths: [] while their outputs[] non-empty (changed_paths should enumerate what the lane wrote); A4 appends ' (new, untracked)' annotations inside path strings, so the values are not clean paths (glob matching still resolves via prefix).",
+      "required_fix": "Cosmetic amendment at integration time; no content impact."
+    },
+    {
+      "id": "F-5",
+      "severity": "NOTE",
+      "lane": "A1-CMECAL-NQES",
+      "what": "The NQ holiday-2011 evidence URL (web.archive.org/web/20110313182401/...holiday-calendar/) is absent from this session's fetch_log.jsonl. Explained, not fabricated: nq_cal_coverage.json marks 2011 reverified_first_hand=false and NQ_CALENDAR_EVIDENCE.md labels it '(D3 transcription; PDFs catalogued there)' - inherited prior-lane evidence, honestly disclosed. The 2010 PDF and 2026 live page which WERE re-fetched first-hand are present in the log.",
+      "required_fix": "None; keep the inherited-evidence labeling when folding into DATACONTRACT_QUALIFICATION."
+    },
+    {
+      "id": "F-6",
+      "severity": "NOTE",
+      "lane": "A5-EVENTS-BBO-COVERAGE",
+      "what": "fetch_log.jsonl timestamps are session reconstructions (utc_reconstructed=true on every row) because per-attempt wall times were not captured at call time; order/outcomes accurate. Disclosed in handoff known_limitations.",
+      "required_fix": "None."
+    },
+    {
+      "id": "F-7",
+      "severity": "NOTE",
+      "lane": "A2-CMECAL-FX",
+      "what": "Incident disclosure: 'pip install xlrd into the shared venv' - a write outside the lane's file boundary (environment mutation, not a repo/git write), needed to parse official .xls holiday schedules. Honestly disclosed; flagged for Lead awareness since the venv is machine-shared.",
+      "required_fix": "None; Lead may pin the dependency in reproducibility notes."
+    },
+    {
+      "id": "F-8",
+      "severity": "NOTE",
+      "lane": "VERIFY-vs-dispatch",
+      "what": "The VERIFY dispatch packet's shorthand 'ECB 17.2x' is loose: the artifacts attribute x17.2 to the FOMC statement minute (6E_a4_events.json m780 = 17.2418; 6E dossier 'median volume x17.2'), and explicitly state ECB decisions are a x1.7 event. The lane artifacts are internally correct; no artifact error.",
+      "required_fix": "None (recorded so the dispatch shorthand is not propagated)."
+    },
+    {
+      "id": "F-9",
+      "severity": "NOTE",
+      "lane": "inherited dossier (surfaced by B1)",
+      "what": "ADJUDICATION of the DISCLOSED discrepancy: ES_DEEP_v2.md line 77 prose says daily-return acf1 'negative in 6/7 eras' - WRONG. The dossier's own era table (E1..E7 acf1: -0.109, +0.014, -0.065, -0.038, -0.243, +0.003, -0.088) and ES_regime_stats.json (eras[*].acf1_daily) both give NEGATIVE IN 5 OF 7 ERAS (positive: E2 +0.0144, E6 +0.0034). B1's addendum correctly uses 5/7 and disclosed the discrepancy without editing (errata authority belongs to the dossier-owning lane).",
+      "required_fix": "Dossier erratum to be filed by the owning lane/cycle; B1's addendum stands as-is."
+    }
+  ],
+  "recomputes_performed": {
+    "A4": "45/45 ALL_IN rows = commission + exchange offset + regulatory offset (exact, tol 1e-9), incl. NQ 2.247=0.85+1.386+0.011 and 6E/6B/6J/6A 2.461=0.85+1.60+0.011; label law SOURCE=PUBLIC_REFERENCE + VERIFIED_VS_ACCOUNT=NOT_RUN on all 108 rows_flat; fx_mapping_note corroboration_status=PARTIAL honestly recorded",
+    "A1": "holidays 17/17 per_year; NQ expirations 68/68 = 36 product (9 years) + 32 family (8 years); independent 3rd-Friday arithmetic on all 68 dates: 67 conform, single deviation 2026-06-18 = documented Juneteenth shift (3rd Fri Jun 19 2026); ES 63/68 = 37 D3 + 26 family, 5 NOT_OBTAINED listed with measured archive facts; fetch_log spot-checks (2010 PDF, 2026 live, rolldates, product-calendar captures) present; 2011 inherited-D3 case see F-5",
+    "A2": "flat list 96 rows; per-symbol recount 6E 17 / 6B 31 / 6J 13 / 6A 35 (see F-1 vs declared 18/31/13/35); independent rule check: all 96 dates == Monday-before-3rd-Wednesday (or Fri/Tue business-day fallback), zero deviations - reproduces the lane's 96/96 claim; verbatim last-trade rule quote present with 2012-01-07-era capture URLs x4 + 2023-06-10 confirmation",
+    "A3": "row files recounted: CL 75+108=183 distinct contract-months (0 overlap), NG 120+120=240 distinct, GC 22, SI 20; ranges CL Apr2010..Feb2027, NG Jun2010..Feb2027, GC Aug2013..Jun2019, SI Mar2015..Dec2019; all four termination rules quoted verbatim with two capture eras + URLs; SI 12:25 vs GC 12:30 offset stated as 'Distinctness finding' with both sources",
+    "A5": "CPI 204 (17y x 12) and EMPSIT 204 (17y x 12), all rows 08:30 stamped; both anomalies (CPI-2016-APRIL-DOUBLE-ENTRY; BLS-2025-LATE-YEAR-VINTAGE-DIVERGENCE) recorded verbatim with explicit no-cause-claims handling; staleness range 0.825-0.891 over 1,160 files, two symbols independently recomputed from max_mtime vs 2026-10-03T00:00Z reference (6A 0.843, ES 0.889 - exact); BBO doc states bbo-1m cannot prove intrabar fill/queue position, MODELED COST law restated",
+    "B1": "both addenda exactly 12 numbered sections in order; 26/26 evidence_index artifacts exist with sha256 pin match; >=10 headline numbers reproduced from analysis JSONs (n_rolls 66; FOMC 132/91/40; ES var_on by year 20.9-53.8; ES era sessions sum 4204; decl_thin median 9.0; sign_match 61/66; NQ sessions 4219; NQ acf1 -0.0758; NQ VR .808/.711/.669; NQ2020 old +13.20 vs remeasured +38.43); acf1 adjudication see F-9",
+    "B2": "court draft has sections (a)-(d) with b1-b4/c1-c4; renders explicit 'NO reopening verdict, PB2 remains HOLD'; >=6 headline numbers verified at source (6E n_rolls_measured 27 + gap sign 27/27; 6B pearson 0.8423; 6E corr_gap_vs_cip 0.9097 latest-vintage vs r=-0.107 PIT per ERRATUM MAJOR-2; 6B thin window 1,069..13,222 per 6B dossier ERRATUM M7 + DC row; FOMC x17.2 = m780 17.2418); MDE table 2.80*sigma/sqrt(n) reproduced all 12 cells within 0.01bp; 6E RT cost 3.33-5.87 and 6B RT cost 5.78-10.42 reproduce quoted 3.3-5.9 / 5.8-10.4; evaluable sessions 1746-60-113=1573 / 1746-60-114=1572 exact"
+  },
+  "cross_lane_consistency": [
+    "B1/B2 recorded sibling-lane results as REQUIREMENTS only (not consumed, disclosed) - no contradiction with A1/A2/A4 landed results; B1's NQ cost gate and B2's court fee layer are now decidable/fillable with A4's landed values (NQ all-in 2.247 tier-1; 6E/6B exchange offset 1.60/side ~= 0.23-0.25bp RT on B2's notional basis - does not overturn the court's 'futures not cheaper' reading)",
+    "Calendar source-class vocabulary LIVE_OFFICIAL / ARCHIVED_OFFICIAL(/_PRODUCT/_FAMILY) / NOT_OBTAINED used consistently across A1/A2/A3; A4 uses PUBLIC_REFERENCE + LIVE_OFFICIAL consistently with its fee domain",
+    "A1 family-wording authority rule (official family tables verbatim-quoted as authority) consistent with A2's FX-family blocks and A3's family PDF treatment",
+    "No lane claims a qualification upgrade; A3's explicit non-claim verified present"
+  ],
+  "critical_findings": 0,
+  "overall_recommendation": "INTEGRATE after amendments: A2 must fix F-1 (6E 17-vs-18) and both A2 and A3 must clear authority_claims (F-2). All 38 output sha256 pins verified; all recomputed headline numbers reproduce except A2's per-symbol split (F-1); no inferred-PASS, no fabricated URL, no account-fee evidence found anywhere."
+}

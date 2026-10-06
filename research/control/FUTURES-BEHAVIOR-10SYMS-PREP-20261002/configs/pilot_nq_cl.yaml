@@ -1,0 +1,122 @@
+schema: futures_behavior_pilot_config@1
+task_id: FUTURES-BEHAVIOR-10SYMS-PREP-20261002
+generated_utc: '2026-10-02'
+pilot_id: PILOT-NQ-CL-20261002
+status: DRAFT_NOT_GO_blocked_on_data_depth_and_registration
+reference_documents:
+- BACKTEST_LAUNCH_DRAFT.md (arms/variants/trial formula/seeds/costs/PIT/admission bars)
+- dossiers/NQ_DOSSIER.md S5 (sha256 a52dd60b7b2f37f3f1d0c278e3145cf891101143bac118f81140e47256424ec8)
+- dossiers/CL_DOSSIER.md S5 (sha256 6fc8954ef77bfebdc0215e3285505a77a338ab7325b9a0a1c26c1366cd1240fa)
+- configs/symbols/NQ.yaml, configs/symbols/CL.yaml (leg rule sources)
+- analysis/strategy_lane/wf_manifest.json (deterministic walk-forward manifest this pilot consumes)
+legs:
+- leg_id: LEG-NQ-COT
+  symbol: NQ
+  hypothesis_id: NQ-H2
+  hypothesis_config_ref: configs/symbols/NQ.yaml#NQ-H2
+  selection_reason: 'NQ dossier S5 names H2 "the cheapest fully-PIT-testable hypothesis" (free PIT CoT archive + release-timestamp FACT); rank 1 in configs/symbols/NQ.yaml feasibility order'
+  declared_rule:
+    phase_0_evidence_gate: conditional-distribution comparison FIRST - no trade rule until descriptive evidence exists (dossier requirement; phase-0 is Arm-A descriptive, selection-free)
+    trigger: 'CFTC CoT equity-index NQ futures-only leveraged-fund net position in extreme trailing-percentile bucket (strict past window; release-timestamped Fri 15:30 ET, position-date Tuesday use FORBIDDEN)'
+    entry: next-session open after extreme-percentile classification at close
+    direction: two-sided conditional (unwind direction; symmetric long/short declaration)
+    exit: 5-10 session hold (PARAM-GAP exact value) or opposite-decile re-cross stop, time exit 10 sessions
+    sizing: risk-parity vs 20-day ATR strict-past (PARAM-GAP risk unit)
+  param_gaps_ref: [NQ-H2-P1, NQ-H2-P2]
+  max_hold_sessions: 10
+  entry_delay_slots_sessions: [0, 1, 2]
+- leg_id: LEG-CL-TSMOM
+  symbol: CL
+  hypothesis_id: CL-H1
+  hypothesis_config_ref: configs/symbols/CL.yaml#CL-H1
+  selection_reason: 'CL dossier S5 names H1 "most testable with data already in hand" (rank 1); spread state computable from legal per-contract closes today; regime split by own curve state'
+  declared_rule:
+    trigger: '20-day change of front calendar spread d(M2-M1) below its own strictly-trailing rolling median (deepening backwardation = long state; reverse on state flip)'
+    entry: next-session open after spread-state close
+    direction: long/short CL front outright per state
+    exit: horizon 5-20 sessions (PARAM-GAP exact) or state flip
+    sizing: PARAM-GAP (vol-target parameter is parameter selection - forbidden in prep)
+  param_gaps_ref: [CL-H1-P1, CL-H1-P2, CL-H1-P3]
+  max_hold_sessions: 20
+  entry_delay_slots_sessions: [0, 1, 2]
+controls:
+  flat_baseline:
+    description: no positions ever; measures cost-less drift of the journal/accounting harness (1 cell)
+    n_cells: 1
+  always_on_baselines:
+    description: always-long and always-short in each leg universe, same roll/fill/cost path as active arms; any active-arm claim must beat these (2 cells)
+    n_cells: 2
+    variants: [always_long, always_short]
+  single_leg_baselines:
+    description: 'each leg alone on the identical execution/cost path (2 cells: NQ-only, CL-only) - the attribution anchor for combined arms'
+    n_cells: 2
+  leave_one_leg:
+    description: FULL-PATH re-runs of the combined system with one leg removed (2 cells); leg-PnL SUMS are forbidden as attribution (engine law additive_attribution_guard); every leave-one-out cell re-runs the entire journal from t0
+    n_cells: 2
+    mode: FULL_PATH_RERUN
+  on_off_accounting:
+    missed_winners: 'for each leg and each session: trigger fired but the combined arm had the leg DISABLED (post leave-one-out or regime gate) -> the counterfactual labeled outcome is recorded from the single-leg full path; a missed winner = counterfactual net-positive after declared costs at 1.0x. Ex-post labels are DESCRIPTION-ONLY accounting, never entry features.'
+    false_admissions: 'trades the combined arm ADMITTED (trigger on, leg enabled) whose realized net outcome after declared costs at 1.0x is negative; reported per leg per arm alongside missed winners so on/off asymmetry is visible, not just totals'
+    bookkeeping: journal-level, per-session, deterministic; no counterfactual is ever netted into point PnL totals
+  tb_labels_policy: TRAIN_ONLY_never_validation_features
+  declared_cost_scenarios:
+    stress_multipliers_variable_costs: [1.0, 1.5, 2.0]
+    components:
+      commission: {value: 0.85, unit: usd_per_side, provenance: PUBLISHED_IBKR}
+      exchange_fee: {status: NOT_RUN_NOT_FETCHED, placeholder_class: 'ES-documented all-in 2.24/side as DECLARED placeholder ceiling for NQ/CL - never a measured cost; cells touching it report cost_incomplete=true and cannot claim pass bars'}
+      spread: {NQ: {median_usd: 32.5, provenance: MEASURED_daily_bbo_proxy}, CL: {median_usd: 30.0, provenance: MEASURED_daily_bbo_proxy}}
+      slippage: {status: NOT_RUN_NO_DECLARED_VALUE, scenario_S0: 'no declared value - all cost-complete claims FORBIDDEN', scenario_S1: 'owner-declared nonzero USD/contract/side + declarer + rationale REQUIRED before any Arm-B pass/fail statement (proposed-for-discussion default 1 tick/side is a DECLARED assumption, not a measurement)'}
+    hard_rule: a complete cost total refuses to compute while any component is NOT_RUN (engine cost book law)
+  entry_delay_sensitivity:
+    slots_sessions: [0, 1, 2]
+    requirement: 'framework test #9 / launch draft V4: every leg evaluated at all three entry delays; an edge that exists only at delay 0 is reported as execution-fragile, not as an edge'
+  roll_rule_ab:
+    arm_A_declared_calendar: 'declared calendar baseline (last session before day-1 of last-trade month; canonical basis) - both symbols per configs/symbols/{NQ,CL}.yaml defaults.roll_rule'
+    arm_B_volume_switch: 'PIT volume-migration rule: cutoff t-1 (strictly-earlier volume only), confirmation 2 consecutive sessions (launch draft V1) - dossier tension being tested: NQ declared-rule thin first ~2 weeks of quarter vs CL old-contract 3-7x volume advantage at declared rolls (13/14) with n=1 leadership switch 4 days pre-LTD'
+    hard_rule: 'roll-rule conclusions are separate cells, never mixed; result flipping sign between roll arms = construction-alpha disclosure (framework test #11)'
+  ambiguous_order_law: same_bar_tp_sl_worst_case_bound_no_point_pnl
+variants:
+  roll_rules: [declared_calendar, volume_switch_pit_t_minus_1_confirm_2]
+  cost_stress: [1.0, 1.5, 2.0]
+  slippage_scenarios: [S0_no_declaration_costs_incomplete, S1_owner_declared_slot]
+  entry_delay_sessions: [0, 1, 2]
+  continuous_adjustment: causal_additive_features_only (execution/MTM on raw contracts; ratio refused on non-positive CL 2020-type prices)
+trial_accounting_declaration:
+  primary_cells_formula: '2 symbols x 1 rule per leg x 2 roll rules x 3 stress x 2 slippage scenarios x 3 entry delays = 72'
+  primary_cells: 72
+  baselines: {flat: 1, always_on: 2, single_leg: 2}
+  ablations: {leave_one_leg: 2}
+  total_declared_trials: 79
+  multiplicity_disclosure:
+    families: {LEG-NQ-COT: 'NQ family: 1 rule x 2 roll x 3 stress x 2 slippage x 3 delay = 36 primary cells + NQ-side baselines/ablations', LEG-CL-TSMOM: 'CL family: 36 primary cells + CL-side baselines/ablations'}
+    family_count: 2
+    rule: 'any future leg/rule added to this pilot increments the family count and REQUIRES re-freezing the trial budget before any further scored run; fold suppression for performance reasons is forbidden (only INSUFFICIENT_COVERAGE, recorded)'
+  budget_status: NOT_RUN_ALL_CELLS_until_registration_and_admission_bars
+seed_protocol:
+  master_seed: 20261002
+  per_cell_seed: '20261002 + cell_index (cell_index from the STABLE enumeration order: symbol -> rule -> roll -> stress -> slippage -> delay)'
+  enumeration_order: [symbol, rule, roll_rule, cost_stress, slippage_scenario, entry_delay]
+  synthetic_fixture_seed: 20261002
+  determinism_requirements: [byte_identical_reruns, prefix_determinism_at_every_reporting_cutoff, future_mutation_invariance_at_every_reporting_cutoff]
+walkforward_binding:
+  manifest: analysis/strategy_lane/wf_manifest.json
+  generator: analysis/strategy_lane/wf_manifest.py
+  engine_interface: 'code/futbt/walkforward.py WalkForwardPlanner(sessions, true_horizon_sessions, embargo_sessions).plan(n_folds, train_frac) - READ-ONLY coupling note: if the engine interface is mid-edit by another lane, the manifest targets the DOCUMENTED interface in code/README.md (futbt.walkforward row) and must be re-verified at integration'
+  rules:
+    selection: 'nested TRAIN selection ONLY; selector receives a PIT view pinned at TRAIN end; params frozen + stamped before TEST'
+    purge: 'purge_sessions >= true_horizon_sessions (= max_hold + entry_delay) per leg; under-purge raises (engine law)'
+    embargo: 'embargo_sessions = true_horizon_sessions (launch draft S7: embargo = purge = true horizon)'
+    folds: 'anchored-expanding, >=4 folds, train_frac 0.7; fold TEST windows never overlap; label maturity: TEST cells whose label window extends past the last session are right-censored and recorded, never silently dropped'
+    drop_policy: 'only INSUFFICIENT_COVERAGE, recorded per fold with coverage numbers; performance-reason suppression forbidden'
+admission_gates:
+  DAILY_BT_ready:
+    true_volume_front_chain_months: '>=24 (measured 2026-10-02: NQ 17, CL 17 per COVERAGE_MANIFEST) - BLOCKED'
+    pit_roll_rule: PASS_by_construction (declared calendar; volume alt PIT-guarded)
+    complete_costs: BLOCKED (slippage undeclared; NQ/CL exchange fees NOT_FETCHED)
+    verdict: BLOCKED_10_of_10_symbols_today
+  owner_decisions_pending:
+  - data-depth option (vendor history vs prospective accumulation vs accept 14-17 months with caveat stamp)
+  - declared slippage values (S1 scenario) with declarer + rationale
+  - NQ/CL exchange fee fetch or owner broker-schedule declaration
+  - registration of the scored cycle with this frozen trial budget (79 cells)
+  - real exchange holiday calendar (or explicit empirical-bar-calendar caveat)
