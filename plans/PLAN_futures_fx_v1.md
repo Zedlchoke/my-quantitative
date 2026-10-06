@@ -28,3 +28,8 @@ purchases/push/merge remain forbidden until the owner types the GO phrase.
   (quarantined; JF2 rows refuse) → **owner typed GO:
   `GO FUTURES-FX-V1 SCORED EXECUTION`** → scored under canonical lock → twin
   → terminal A7.
+
+
+## ADDENDUM (2026-10-06, LANE-FX-PREGO2 via controller): freeze-stamp supersession wave-6b
+
+The freeze stamps cited above in the launch-freeze section — `prego/fx_eb/freeze_6e/` (stamp ed4288a9), `freeze_6b/` (c8f30511) — are HISTORICAL (pre-wave-6b). They are superseded at HEAD by the wave-6b re-freeze (lane WAVE6B; delta-verified by A7-DELTA-VERIFY): `freeze_6e` content stamp `d6a0c07e`, manifest file sha `8abeb37b`; `freeze_6b` content stamp `7d931c1c`, manifest file sha `f18790d2`. Cause of change: each FX freeze manifest grew exactly 4 dated-calendar input pins (`bls_dates.json` ad41d2a7, `ecb_decisions.json` 09eb980e, `mpc_decisions.json` e2df4de5, `collisions.json` 8e57e29d — ECB/MPC dated tables + BLS vintage artifact + pinned collision lists); re-freeze epoch `2026-10-06T12:00:00Z`. Identity tables (`c309d011` 6E / `23647771` 6B) and exclusion calendars (`2c76203b` 6E / `f709fe85` 6B) are BYTE-IDENTICAL to the bundles this plan originally pinned — no registered identity, budget, cost or scientific artifact changed. 6J (`6c21a1b7` / manifest `16b40279`) and NQ (`15ecbb6f` / manifest `3f33b42d`) are UNCHANGED. The operative pin set for FUTURES-FX-V1 execution is the NEW set; it is the set `dryrun_impl/dryrun_exec.py` BUNDLES pinned and the set the gate-3 exact-arm dry-run (`dryrun/quarantine/FUTURES-FX-V1/20261006T092238Z_31112`) consumed with `VERIFIED_NO_DRIFT`. Evidence: `calfix/w6b/W6B_REPORT.md` §2, `a7_prelaunch/delta6/`, `prego2/fx/PIN_SUPERSESSION_ADDENDUM.json` (re-hashed at prego2, HEAD b0be48c4).
