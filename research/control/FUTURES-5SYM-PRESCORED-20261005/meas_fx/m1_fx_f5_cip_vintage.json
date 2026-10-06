@@ -1,0 +1,93 @@
+{
+ "schema": "meas_fx_m1_f5_cip_vintage@1",
+ "item": "WORK_QUEUE A-#8 / HYPO G3 \u2014 FX-F5 CIP-vintage sensitivity",
+ "law": "descriptive correlation/regime statistics on committed vintages only; no conditional-on-signal return; no PnL; PB2 untouched; owner real-time SOFR decision (court \u00a7d row 7) remains a SIGNATURE regardless of this quantification",
+ "inputs": {
+  "committed_per_roll_vintage_rows": "FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6e/a7_6e_recompute.json:rolls_cip.rows",
+  "lane_basis_6E": "FUTURES-DEEPRESEARCH-V2-20261003/analysis/6E_a3_term.json:gap_summary",
+  "6B_latest_only": "FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a3_term.json:gap_vs_policy_diff"
+ },
+ "n_rolls": 27,
+ "vintage_bases": {
+  "latest": "FRED SOFR latest + ECB \u20acSTR SDW latest (lane basis)",
+  "vintage_asof": "ALFRED year-end SOFR vintages 2019-12-31..2024-12-31 + 2026-09-30 as-of each roll (A7 audit basis); \u20acSTR latest-only (no vintage set exists anywhere)"
+ },
+ "6E_correlations": {
+  "pearson_latest": 0.9097001093702894,
+  "spearman_latest": 0.8998778998778999,
+  "pearson_vintage_asof": -0.10682904525420368,
+  "spearman_vintage_asof": 0.015262515262515262,
+  "committed_check": {
+   "lane_pearson_latest": 0.9097001093702898,
+   "a7_pearson_latest": 0.9097001093702898,
+   "a7_pearson_vintage": -0.1068290452542038,
+   "reproduction_within": "1e-6 (this lane recomputes from the same committed rows)"
+  }
+ },
+ "6E_sign_agreement": {
+  "latest": [
+   27,
+   27
+  ],
+  "vintage_asof": [
+   26,
+   27
+  ],
+  "committed": {
+   "lane_latest": "27/27",
+   "a7_vintage": "26/27"
+  }
+ },
+ "regime_label_flip": {
+  "definition": "flip = sign(CIP-predicted gap, latest) != sign(CIP-predicted gap, year-end-ALFRED-as-of) on the same roll (the differential-regime label the F5 host split consumes)",
+  "n_flips": 1,
+  "flip_rolls": [
+   "2022-12-01"
+  ],
+  "note": "1/27 rolls flip the differential-regime label between bases (2022-12-01); independently, the CORRELATION sign itself flips (+0.91 -> \u22120.11). Both channels damage F5: stratum membership changes on the flipped roll(s), and the rho that must clear the 0.20 bar flips sign with the vintage basis.",
+  "n": 27
+ },
+ "rho_bar_test": {
+  "bar": 0.2,
+  "bar_source": "ANCESTRY_CHECK.md FX-F5 row ('the 0.20 rho bar vs the V8/V9 nominal/PPP shadows must be re-measured at any D2-equivalent stage'); bar value precedent FAMILY_FAILURES.jsonl row 67 ('bar 0.20, margin -0.008')",
+  "latest_basis": {
+   "rho": 0.9097001093702894,
+   "passes_bar": true
+  },
+  "vintage_asof_basis": {
+   "rho": -0.10682904525420368,
+   "passes_bar": false
+  },
+  "verdict": "BAR PASSAGE IS VINTAGE-DEPENDENT: r=+0.91 (latest) clears the 0.20 bar; r=\u22120.11 (year-end-ALFRED as-of) fails it. Vintage choice alone decides bar passage on the only vintage basis available \u2014 the measured proof of the standing NEEDS_EVIDENCE (FX-F5 stays NEEDS_EVIDENCE; owner real-time SOFR decision mandatory before any F5-conditioned registration)."
+ },
+ "v8_v9_shadow_context": {
+  "note": "the dead standalone forms' own shadow-rho magnitudes, cited as context (ANCESTRY_RHO_BLOCK class); the DIRECT rho of F5's differential regime vs the V8/V9 shadow series is NOT_RUN (shadow series not in tree)",
+  "FXFV9_A5_P1_pooled_rho_vs_FXFV8_anchor": 0.3034,
+  "FXFV9_A5_P2_pooled_rho_vs_FXFV8_anchor": 0.3119,
+  "FXFV8_A5_P1_death": "CONTROL_OUTEARNED_ANCHOR: DGS10-level control out-earned 4.01x (cluster #14)",
+  "FXNG1_A4_P2_death": "CTL-DGS10LEVEL out-earned (cluster #15)",
+  "direct_rho_vs_shadows": "NOT_RUN_DATA_NOT_IN_TREE (DGS10 / PPP-deviation signal series not committed in this tree)"
+ },
+ "6B_side": {
+  "committed_latest_only": {
+   "pearson": 0.8422873936515503,
+   "spearman": 0.7444555252013872,
+   "mean_gap_ticks_diff_pos": 9.368421052631579,
+   "n_diff_pos": 19,
+   "n_diff_neg": 1,
+   "vintage_note_committed": "BoE official_history_latest (revision-free levels); Fed DFEDTARU FRED latest (not vintage-true PIT; ALFRED year-end vintages exist only); levels are policy targets known same-day, benign for descriptive CIP mapping"
+  },
+  "vintage_asof_recomputation": "NOT_RUN_DATA_NOT_IN_TREE \u2014 no committed 6B vintage-as-of recomputation exists and the DFEDTARU/BoE vintage files are not in this tree; BoE Bank Rate is revision-free, so the 6B vintage risk is the US side only"
+ },
+ "not_run": [
+  {
+   "what": "fresh year-end-ALFRED as-of recomputation from the vintage CSVs themselves (6E and 6B)",
+   "grounds": "NOT_RUN_DATA_NOT_IN_TREE",
+   "path": "git ls-files finds NO committed DFF/SOFR/DFEDTARU vintage capture under the worktree (only the collector script FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/collect/fred_alfred.py and the BLS vintage captures, which are release-schedule captures, not rate vintages). The vintages live outside the repo at /Users/hoangminhlong/.my-quantitative-data/futures-nonprice-10syms/fred_alfred (subdirs latest/, pit/, vintage_attempts/) \u2014 uncommitted, therefore NOT consumed by this lane; a committed 6E per-roll vintage-as-of recomputation does exist (a7_6e_recompute.json rolls_cip) and is what m1 consumes."
+  },
+  {
+   "what": "direct 0.20-rho measurement of F5's differential regime vs the V8/V9 nominal/PPP shadow series",
+   "grounds": "NOT_RUN_DATA_NOT_IN_TREE (shadow series not committed); bar is re-measured at any D2-equivalent stage by law"
+  }
+ ]
+}

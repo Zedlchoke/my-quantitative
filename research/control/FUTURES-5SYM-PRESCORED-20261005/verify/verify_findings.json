@@ -1,0 +1,164 @@
+{
+  "schema": "p5_verify_findings@1",
+  "cycle_id": "FUTURES-5SYM-PRESCORED-20261005",
+  "lane": "VERIFY",
+  "audit_sha": "ac5c4c18dc1ab1253c61f84dc1fa9fc4f7583ed7",
+  "head_confirmed": true,
+  "tree_clean_confirmed": true,
+  "overall_verdict": "VERIFIED_WITH_NOTES",
+  "counts": { "CRITICAL": 0, "MAJOR": 1, "MINOR": 4, "NOTE": 4 },
+  "hash_bindings": {
+    "method": "re-sha256 of every outputs[] entry vs git show ac5c4c18:<path> (verify/hash_binding_rerun.py, exit 0)",
+    "per_lane": {
+      "INTAKE": { "matched": 6, "mismatched": 0, "placeholders": 0 },
+      "NQ": { "matched": 8, "mismatched": 0, "placeholders": 0 },
+      "FXEB": { "matched": 9, "mismatched": 0, "placeholders": 1 },
+      "FXJA": { "matched": 9, "mismatched": 0, "placeholders": 1 },
+      "EXEC": { "matched": 15, "mismatched": 0, "placeholders": 0, "note": "matched only after resolving round-dir-relative paths (V-4)" },
+      "HYPO": { "matched": 7, "mismatched": 0, "placeholders": 0 },
+      "CALCOST": { "matched": 20, "mismatched": 0, "placeholders": 1 }
+    },
+    "totals": { "real_digest_entries": 74, "matched": 74, "mismatched": 0, "self_placeholders": 3 }
+  },
+  "findings": [
+    {
+      "id": "V-1",
+      "severity": "MAJOR",
+      "title": "handoff_FXJA.json violates zcode_orch_v3_handoff@1 sha law",
+      "detail": "dispatch_sha=f9e7b400dfec5c064494a16c7bec0494b08545caa4a95b4e84736174d999ca7a is 64-hex (not a 40-hex git SHA) and != actual_start_sha=ffed828f73fa19fa0ff4aee3ac1b441909a43940, with no explanatory field. Schema law: 'both 40-hex; must be EQUAL or the handoff is INVALID'. Corroborated stale-draft pattern: CALCOST completion pass found its own draft with the same f9e7b400 value and non-conforming task_id/role and replaced it; FXJA's committed handoff (task_id 'FXJA', role 'LANE-FXJA (...)') shows the same pattern and was never replaced. FXJA evidence itself intact: 9/9 outputs re-hash MATCH at ac5c4c18, arithmetic reproduces.",
+      "evidence": "git show ac5c4c18:research/control/FUTURES-5SYM-PRESCORED-20261005/dispatch/handoff_FXJA.json (exit 0); handoff_CALCOST.json incidents[] STALE_DRAFT entry; hash_binding_rerun.py FXJA 9/9",
+      "action": "Controller re-issues/corrects the FXJA handoff record; lane files byte-untouched"
+    },
+    {
+      "id": "V-2",
+      "severity": "MINOR",
+      "title": "tests[] fields non-conformant in all 7 handoffs",
+      "detail": "Schema requires tests[] {command, exit_code, verdict PASS|FAIL|NOT_RUN, log_digest}. INTAKE/NQ/EXEC: narrative strings in verdict (not enum). FXEB: verdict+log_digest missing. FXJA: exit_code+verdict+log_digest missing. HYPO/CALCOST: verdict+log_digest missing. Underlying evidence present in prose; decisive tests re-run by auditor (pytest 42/42 exit 0; shasum -c 17/17 exit 0).",
+      "evidence": "handoff_*_json tests[] inspection; verify/pytest_rerun_ac5c4c18.log",
+      "action": "Controller-side normalization at integration (optional)"
+    },
+    {
+      "id": "V-3",
+      "severity": "MINOR",
+      "title": "Non-digest or missing sha256 in outputs[] self-entries (FXEB, FXJA, CALCOST)",
+      "detail": "FXEB 'SELF (written last; hash recorded by controller at wave commit)'; FXJA 'SELF (computed post-write by controller if needed)'; CALCOST self-entry omits the sha256 key. All disclosed; none ever stamped by the controller. Clean alternative: omit self-entry, state limitation in known_limitations.",
+      "evidence": "handoff_FXEB.json / handoff_FXJA.json / handoff_CALCOST.json outputs[]",
+      "action": "Stamp at wave commit or drop the self-entry"
+    },
+    {
+      "id": "V-4",
+      "severity": "MINOR",
+      "title": "EXEC outputs[] paths are round-dir-relative",
+      "detail": "EXEC records 'exec/...' while all other lanes use repo-relative paths. All 15 entries resolve under the round-dir prefix and hash MATCH at ac5c4c18; binding holds, convention ambiguous.",
+      "evidence": "verify/hash_binding_rerun.py second pass: 15/15 MATCH",
+      "action": "Record; optionally normalize paths at integration"
+    },
+    {
+      "id": "V-5",
+      "severity": "MINOR",
+      "title": "EXEC and CALCOST dispatch_sha != actual_start_sha (both disclosed)",
+      "detail": "EXEC ffed828f vs b051d61e with actual_start_sha_note (controller wave checkpoints, lane made zero commits); CALCOST ffed828f vs 059c0665 with incidents[] documenting inherited agent death + completion pass. Cause is controller-made commits of other lanes' work, not lane-input tree drift; graded MINOR on disclosure+benign-cause (contrast V-1).",
+      "evidence": "handoff_EXEC.json actual_start_sha_note; handoff_CALCOST.json incidents[]",
+      "action": "Record"
+    },
+    {
+      "id": "V-6",
+      "severity": "NOTE",
+      "title": "commit_sha null in all 7 handoffs",
+      "detail": "Consistent with lanes-never-commit law; controller stamps at integration; none stamped.",
+      "evidence": "handoff_* commit_sha==null (7/7)",
+      "action": "Stamp at integration (same pass as V-3)"
+    },
+    {
+      "id": "V-7",
+      "severity": "NOTE",
+      "title": "Census row schema varies by row type",
+      "detail": "All 29 rows share the core keys but only 8/29 carry literal ids_minimal_conv_b/ids_full_grid/k6; FX rows use ids_conv_d/ids_native_conv_c, overlays ids_standalone, dead/diagnostic rows dead_at_gate/missing_evidence. Every row carries an explicit falsifiability/deadness marker (automated scan: none lacking); md consumes variants consistently. Information-complete; a literal all-13-keys claim would be false (none found claiming it).",
+      "evidence": "hypo/census_5sym.json field scan; falsifiability marker scan: NONE lacking",
+      "action": "Record"
+    },
+    {
+      "id": "V-8",
+      "severity": "NOTE",
+      "title": "Synth compression drops two inline disclosures (both present upstream in-packet)",
+      "detail": "SHORTLIST_5SYM states JF3=12 and AF3=12 without the draft's '(FXJA stricter 11 disclosed)' parenthetical (line 1 declares synthesis over SHORTLIST_DRAFT.md where the disclosure lives; also in CENSUS_5SYM/ANCESTRY_CHECK). 6B row's 'MDE 4.2bp' is FX-F1's census MDE (SPEC_6B.md L166) placed by leg leaders; numerically correct, attribution compressed.",
+      "evidence": "synth/SHORTLIST_5SYM.md vs hypo/SHORTLIST_DRAFT.md; fx_eb/SPEC_6B.md L166",
+      "action": "Record"
+    },
+    {
+      "id": "V-9",
+      "severity": "NOTE",
+      "title": "Untracked git-ignored cache dirs in working directory",
+      "detail": ".pytest_cache/, exec/.pytest_cache/, exec/__pycache__/, exec/test_runner_v2/__pycache__/ exist on disk, are NOT tracked at ac5c4c18 (git ls-tree exit 1) and are ignored; produced by test runs (lane's and auditor's). Worktree re-verified clean after the auditor's pytest run.",
+      "evidence": "git ls-tree -r ac5c4c18 (no cache paths); git status --porcelain empty post-run",
+      "action": "None (not round artifacts)"
+    }
+  ],
+  "checks": {
+    "cache_v3_rehash": { "sampled": 8, "of_manifest": 10, "matched": 8, "method": "shasum -a 256 on-disk vs adopt/cache_v3_hashes.json (incl. both large parquets)" },
+    "arithmetic": {
+      "6J_RT": "2*(2.46+25.00+6.25)=67.42 EXACT; 67.42/79787.50=8.4499bp EXACT",
+      "6A_era": "2*(2.46+4*10+10)=104.92 EXACT ($10 tick); 2*(2.46+4*5+5)=54.92 EXACT ($5 tick)",
+      "6E_6B": "0.00005*125000=6.25 EXACT; 0.0001*62500=6.25 EXACT",
+      "identity_budgets": "NQ 22=11+11/29/36 with 36 unique IDs; FX 22/33/48 per symbol (44/66/96 both-leg CONV-D); J-A 29=11+11+7",
+      "census": "29 rows + 2 diagnostics; NQ 3/1/0/0/1, 6E 0/3/4/0/0, 6B 0/2/4/0/0, 6J 2/4/0/0/0, 6A 0/0/0/5/0 (PREP/NEEDS/HOLD/PARK/REJECT) — all EXACT"
+    },
+    "pit_calendar_cost": {
+      "imm_derivation": "zero derivation code; all grep hits are prohibition statements or 'immaterial' false positives",
+      "fail_closed_tables": "nq/CALENDAR_PIT_POLICY_NQ.md, fx_eb/CALENDAR_PIT_POLICY_6E_6B.md, fx_ja/CALENDAR_PIT_POLICY_6J_6A.md all present with dated exclusions",
+      "sha256_minus_c": "17/17 OK, exit 0",
+      "fetch_log": "18 lines (<=40); no URL >2 attempts; tools {curl, webfetch} only",
+      "a7_rehash": "3/3 MATCH reproduced (2c1095d6…211ad, fa697c69…982e, a9078769…6722)"
+    },
+    "language": {
+      "stale_costs": "21.006/33.506/46.006/1.386: every hit labeled stale/erratum/never-consumable/retired/hard-refuse; zero use-as-value",
+      "pnl_claims": "zero positive claims (sharpe hit = 'sharpest'; expectancy> = gate definition; profitable/edge = negations or meta)",
+      "modeled_framing": "binding MODELED/UNDER-REVIEW/NOT_RUN labels on every number in all 3 sampled cost contracts"
+    },
+    "ancestry": {
+      "ledger_rows": 173,
+      "sampled_rows_real": [4, 32, 34, 35, 51, 78, "107-109", 132, 134, 140, 158, 160],
+      "sharpest_adjacencies": "JF3 vs row 34 and FX-F1 vs rows 32/34/35 both real and bound in near_miss_register",
+      "zero_re_entry": true,
+      "new_family_adjudications": 11,
+      "falsifiability": "29/29 rows carry explicit markers"
+    },
+    "implementation": {
+      "bug1_fix_in_code": true,
+      "bug2_fix_in_code": true,
+      "observed_vs_published_separate": true,
+      "duplicate_id_idempotency": "DUPLICATE_RETRY rows, never recomputed",
+      "sandbox_law": "REFUSED_REAL_GOVERNANCE_DIR before any I/O; --allow-real-governance hard-refused; never combines with --test-fault",
+      "era_and_direction": "6A two-era table with 2020-11-23 boundary; direction-signed pnl law; T17/T18 tests",
+      "pytest_rerun": "42 passed, exit 0 at ac5c4c18",
+      "contract_numbers": "all 6 match lane-verified identities; labeled PLACEHOLDER-PENDING-PER-SYMBOL-LANE"
+    },
+    "isolation": {
+      "governance_dir": "only heavy_runtime/ + mdp_dvc_remote/; no refusal_record.json; no round artifacts",
+      "cycle_registry_sha256": "b292229770b748442f58911da6e7ac8e79a3ef8d9c5b96503bce398efb6a9027",
+      "futures_5sym_registry_entries": 0,
+      "go_recorded_under_round_dir": false
+    },
+    "synth": {
+      "namespace_mappings_verified": 6,
+      "collision_sets_covered": ["P5-FXEB-OD1/OD6", "P5-HYPO-OD1/OD4"],
+      "shortlist_numbers_match": true,
+      "work_queue_residuals_match": true,
+      "report_vi_claims_verified": ["12/28/11", "cache 10/10", "22/29/36+36 IDs", "34/42 vs 0/42", "67.42=8.4499bp", "6A $10->$5 @2020-11-20/23", "20 refusal codes", "42/42", "29+2/0 new/173"]
+    },
+    "authority": {
+      "self_ratification": "none (FXEB/FXJA/HYPO claims are restatements + new P5-* owner slots only)",
+      "gates_restated_not_changed": true
+    }
+  },
+  "per_lane_verdicts": {
+    "INTAKE": "VERIFIED",
+    "NQ": "VERIFIED",
+    "FXEB": "VERIFIED_WITH_NOTES",
+    "FXJA": "VERIFIED_WITH_NOTES",
+    "EXEC": "VERIFIED_WITH_NOTES",
+    "HYPO": "VERIFIED",
+    "CALCOST": "VERIFIED_WITH_NOTES",
+    "synth": "VERIFIED"
+  }
+}

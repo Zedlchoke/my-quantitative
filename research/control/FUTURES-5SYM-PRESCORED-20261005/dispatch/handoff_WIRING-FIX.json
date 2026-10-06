@@ -1,0 +1,148 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-5SYM-PRESCORED-20261005/WIRING-FIX",
+ "cycle_id": "FUTURES-5SYM-PRESCORED-20261005",
+ "lane": "WIRING-FIX",
+ "role": "LANE-WIRING-FIX (wave-4 PREP-only: replaced the defective positional-only seam with a REAL intent-execution seam and proved SPEC semantics preservation; fixed the committed REPRO_FAIL defect class)",
+ "wave": 4,
+ "commit_sha": null,
+ "commit_sha_note": "lanes never commit (dispatch law); all changes left uncommitted in the worktree at HEAD f1f69c8e",
+ "dispatch_sha": "7743eceb41b1550dd8d0148f9e46a2c7f44e9424ffad58af6f956ee769dd9776",
+ "dispatch_sha_note": "sha256 of dispatch/DISPATCH_MANIFEST_WAVE3.json (the named dispatch packet; laws carry over per wave-4 intake)",
+ "actual_start_sha": "f1f69c8e18e6d5ba4ab801632e22428251950131",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-5sym-prescored/prep",
+ "branch": "prep/futures-5sym-prescored-20261005",
+ "head_at_handoff": "f1f69c8e18e6d5ba4ab801632e22428251950131",
+ "tree_status": "HEAD measured f1f69c8e at lane start and unchanged at end (zero commits). Lane writes confined to: exec/scored_runner_v2.py (authorized runner-extension approach), freeze_wiring/wiring/*, freeze_wiring/tests/*, freeze_wiring/repro_mixed_direction/*, freeze_wiring/FREEZE_BUILDER_SPEC_IMPL.md (append-only section), dispatch/handoff_WIRING-FIX.json. REPRO_FAIL.json (committed f1f69c8e) untouched — verified byte-identical via git status. Untracked canonical/ + dispatch/handoff_CANONICAL-CODE.json belong to another lane and were never touched. No network, no S1, no GO, no registration, no writes outside sandbox temp dirs at runtime.",
+ "implementation_shape": {
+  "chosen": "owner-law option (a): intent-mode extension of exec/scored_runner_v2.py",
+  "why": "the owner test list requires the FULL gate set through the seam (missing authority / wrong GO / registry mismatch / input drift refusals pre-computation, twin-mismatch-never-success, publication-failure-keeps-observed, finalization-fault-non-zero-exit, retry idempotency against a shared ledger) — that is the runner's existing ~500-line law; option (b) would have duplicated it. With (a) accounting reuse is an identity, not a proof: compute_intents and compute_all share era_for / round_to_tick / the gross+cost formulas / 6dp rounding / Ledger.append_trials / twin / publication, and the production path a future registered cycle calls is the same CLI. Parity vs an independent SPEC-arithmetic reference is additionally proven per-trade (T-MD7) and positional-vs-intent parity on the single-trade case.",
+  "new_schema": "futures_5sym_prescored/intent_packet@1 (INTENT_TIMELINE_VERBATIM)",
+  "production_entrypoint": "freeze_wiring/wiring/intent_executor.py::intent_and_run (per identity group, canonical lock around it per CANONICAL_INTEGRATION.md)",
+  "spec_doc": "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/wiring/INTENT_SEAM_SPEC.md"
+ },
+ "verdict": "PASS",
+ "verdict_basis": "Defect fixed and proven: the mixed-direction repro (owner case Long 2023-06-14 + Short 2023-06-15 in identity FBNQ1-F1-CONT-UP-D0-S2) now executes BOTH trades through the production path (2 journal trades, directions [1,-1], per-intent timestamps + 343.0 USD net each, ONE TRIAL row, observed denominator 1) — repro.py exit 0, REPRO_FIXED.json verdict PASS; REPRO_FAIL.json untouched as history. All 10 owner-listed tests implemented and green (T-MD1..T-MD10, journal+ledger+denominator asserted per test), plus runner-validator unit laws and the positional-scope relabel proof (12 in test_intent_seam.py). Old suites stay green unmodified in assertions: exec/test_runner_v2 42/42 (the runner extension is additive; spec_packet@1 path byte-unchanged in behavior), freeze_wiring wave-3 suite 21/21 with exactly 3 tests adjusted for the new REFUSED_POSITIONAL_SCOPE law (each documented below; none weakened). Positional compiler relabeled POSITIONAL_ACCOUNTING_TEST_ONLY and refuses >1-intent / mixed-direction groups (exit 46). Authority gates carried: non-SYNTHETIC refused at wiring AND runner layers; GO/registry/authority/drift/lock/twin/publication/finalization all proven through the intent seam (T-MD10). Locks FREE_PROVEN at start and end; heavy lock never taken.",
+ "tests": [
+  {
+   "name": "locks inspect START (lane-open, light posture)",
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python /Users/hoangminhlong/my-quantitative/research/researchctl.py locks inspect",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": null,
+   "summary": "verdict FREE_PROVEN, reason 'no registry row and the lock file is not flocked' — heavy lock never taken by this lane (suite light, every invocation < 15s); mirrored by tests/LOCKS_LOG.jsonl suite-start line"
+  },
+  {
+   "name": "exec/test_runner_v2 suite (existing 42 — must stay green after the runner extension)",
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/futures-5sym-prescored/prep && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/exec/test_runner_v2 -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "cbbaaa279b6ac020c5d4d8ade6a5b0886c3b92c5736577e2b709428c1f897084",
+   "summary": "42 passed in 5.53s (also 42 passed at 4.17s and 3.91s on earlier runs; suite unmodified, zero test edits — the intent-mode addition dispatches on the new intent_packet@1 schema only)"
+  },
+  {
+   "name": "freeze_wiring wave-3 suite after adjustments (21)",
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/futures-5sym-prescored/prep/research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/tests && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest test_wiring_e2e.py test_freeze_builder_gates.py test_isolation.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "7df2606a39d21e6534691b0c762347d2791f0af75f1a0979def60758eff609b0",
+   "summary": "33 passed in 10.15s for the full directory run (wave-3 21 + new 12); wave-3-only runs 10 e2e + 9 gates + 2 isolation, all PASS. Three tests adjusted for the REFUSED_POSITIONAL_SCOPE law, each documented in the module docstring and below — no assertion weakened"
+  },
+  {
+   "name": "NEW test_intent_seam.py (T-MD1..T-MD10 + validator + positional-scope relabel)",
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/futures-5sym-prescored/prep/research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/tests && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest test_intent_seam.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "d11659fbe6c16546490a4aa80fdcc6e6f0d956ea7353638fa333e9f3b2be74c1",
+   "summary": "12 passed in 4.63s — T-MD1 mixed-direction both-execute (2 trades dirs [1,-1], 1 TRIAL, observed +1 not +2); T-MD2 same-day ordering/timestamps byte-preserved journal==ledger; T-MD3 D0 vs D30M own horizons + SL same-bar + session-close exit_reasons; T-MD4 warmup-252 exclusion + fold-seam exactly-one-fold (folds from the SPEC packet, not F-COMPILED); T-MD5 calendar-exclusion no-trade + roll-week post-roll identity routing + 6A era boundary $10/$5 with 57.00/30.75 era-1-calibrated costs + era-2-model-refuses-era-1-entry (exit 41) + 6J yen-strengthening sign; T-MD6 zero-trade anchor processed (executed-count-0 TRIAL, observed counts it); T-MD7 executor==independent contract-SPEC arithmetic on 7 cases (both directions, both 6A eras, 6J, SL exit, 6E) + positional/intent single-trade parity; T-MD8 PIT prefix replay byte-identical journal prefix; T-MD9 mixed-direction retry idempotent (DUPLICATE_RETRY, no recompute, byte-identical TRIAL); T-MD10 failure paths (REFUSED_AUTHORITY_INVALID / REFUSED_NO_AUTHORITY / REFUSED_GO_PHRASE_MISMATCH / REFUSED_REGISTRY_MISMATCH / REFUSED_INPUT_DRIFT pre-computation; FAILED_TWIN_MISMATCH never success; FAILED_PUBLICATION keeps observed + quarantine; FAILED_LOCK_RELEASE RELEASE_RAISED non-zero + no handoff; non-SYNTHETIC refused at wiring layer and again at runner layer on a re-pinned tampered packet)"
+  },
+  {
+   "name": "repro script (defect fixed state)",
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/futures-5sym-prescored/prep/research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/repro_mixed_direction && /Users/hoangminhlong/my-quantitative/.venv/bin/python repro.py",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "36d2a175d1ba921ae5a45140df1ac8fe54b2f03dd8e4159c1c63472df470aa54",
+   "summary": "verdict PASS via the production path (intent_contract -> intent_executor -> runner intent-mode): 2 trades, directions [1,-1], entry_ts [2023-06-14, 2023-06-15], net 343.0 each, ledger_trial_rows 1, observed_identity_count 1; REPRO_FIXED.json written byte-stable across runs (sha 7b27f702... equal before/after); REPRO_FAIL.json (committed f1f69c8e) untouched"
+  },
+  {
+   "name": "locks inspect END (lane-close)",
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python /Users/hoangminhlong/my-quantitative/research/researchctl.py locks inspect",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": null,
+   "summary": "verdict FREE_PROVEN (same tri-state as start; no registry row, flock free) — also appended by the suite conftest as the LOCKS_LOG suite-end line"
+  }
+ ],
+ "wave3_test_adjustments": [
+  {
+   "test": "test_wiring_e2e.py::test_nq_f1_end_to_end_identity_denominator",
+   "change": "the ALW identity (2 same-day-ordered adapter intents) now EXPECTS CompileRefusal REFUSED_POSITIONAL_SCOPE (exit 46) on the positional path and executes through the intent seam on the panel's own session timeline, asserting the per-intent journal (both legs, per-intent entry_ts/prices/exit_reason) that the positional encoding could not represent; the duplicate-retry resubmission (compiled_ids[0] == ALW) routes through the SAME seam path that first observed it. Denominator laws identical and unchanged: cumulative append-only TRIAL growth, observed==published, DUPLICATE_RETRY never recounts, zero-trade anchors stay out.",
+   "why_not_weaker": "strictly stronger: adds the refusal law, per-intent timestamp preservation, and a 2-intent retry idempotency proof the old test did not have"
+  },
+  {
+   "test": "test_wiring_e2e.py::test_compiled_pit_truncation_identical_trades_up_to_T",
+   "change": "positional PIT proof now uses the single-intent CONT-UP identity (the 2-intent ALW group is out of positional scope by law); ADDED a 3-bar truncation case proving the runner fabricates NO trade when the declared exit bar is absent",
+   "why_not_weaker": "the multi-trade PIT law is carried by test_intent_seam.py::test_tmd8 on the real seam (3 intents, byte-identical prefix); the added case strengthens the no-future-data proof"
+  },
+  {
+   "test": "test_wiring_e2e.py::test_6a_era_boundary_through_runner",
+   "change": "the 2-era group (2 intents, one identity) now EXPECTS REFUSED_POSITIONAL_SCOPE (n_intents 2 asserted); additionally each era runs single-intent through the positional path binding its OWN entry era (era names + $10/$5 tick values + gross 500.0 era-invariant asserted, compile expected-net parity kept); the era-pair cost math with an era-1-calibrated manifest (57.00/30.75, exactly the old expected numbers) moved to test_intent_seam.py T-MD5c on the real seam, where both eras legitimately live in ONE declared identity",
+   "why_not_weaker": "every old numeric assertion (eras, tick values, gross, per-trade net parity) still asserted somewhere green; the refusal is new law evidence"
+  }
+ ],
+ "outputs": [
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/exec/scored_runner_v2.py", "sha256": "f3042d53fbb577b4b84e464876a20fca7915fd6b24d86316a5ddaacf70a1a7e2"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/wiring/intent_executor.py", "sha256": "4a0b288e22a0426fff508a9d2f80193ba9d592121a11ec86aed7585a12b31918"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/wiring/INTENT_SEAM_SPEC.md", "sha256": "539526d960b4d55a89f12c5fe78af31dd987bc786f51c52bdd7827de0075207c"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/wiring/spec_compiler.py", "sha256": "27c29a22c5925dba8ef58faa17e277090ba84a3ce98fe8b01d1230597cf7dea0"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/wiring/intent_contract.py", "sha256": "33de308d8f0a11c0f9f75f257496210f7f639844f53740922902a428914fdaa5"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/wiring/__init__.py", "sha256": "80ad750fd1b30ec5a35c55bd5bc49f3ef352f6e63c3a9f1d603229b88dbae4bd"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/tests/test_intent_seam.py", "sha256": "07a841122e0449c391ad1c723525a1f1394f0f2ef373f039d4bc128a91db5175"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/tests/test_wiring_e2e.py", "sha256": "ab8d53b39ac2a45ace1b0d57039907e56a1cc3371dc3147fef1cbbaa6a3c1d33"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/repro_mixed_direction/repro.py", "sha256": "c7660d782e214634783d438992a66d7bf7bfb855602e7e9c7c77158f23c64947"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/repro_mixed_direction/REPRO_FIXED.json", "sha256": "7b27f70248a47cefc2f48e185a082a934b42b2c89a9a65618951db91fe005b3c"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/FREEZE_BUILDER_SPEC_IMPL.md", "sha256": "71cfb2286cd0ab6da756ac2be8d898b9888f18602be6499bf198ae7c4b79aad0"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/tests/LOCKS_LOG.jsonl", "sha256": "dca206d0a91e96f31f3d5f47f231c0d9dc9bb220a3db02002c0e93e281ea40d1"}
+ ],
+ "outputs_note": "LOCKS_LOG.jsonl is the suite conftest's append-only locks instrumentation (50 lines; +2 per pytest run of the freeze_wiring suite) — its digest is recorded as of the final suite run; any later pytest run appends 2 more lines by design. REPRO_FAIL.json intentionally absent from outputs: committed history at f1f69c8e, never deleted, byte-unchanged.",
+ "authority_claims": [],
+ "known_limitations": [
+  "real-data execution remains NOT_RUN everywhere (existing law): non-SYNTHETIC provenance refuses at the wiring layer and again inside the runner; every computed artifact is stamped SYNTHETIC-SANDBOX",
+  "ONE cost-calibration era per intent run: a cross-era identity (6A boundary) carries an explicitly DECLARED calibrated era and the C3 gate refuses mismatches in both directions; per-era cost manifests (true D8-era-aware pricing) remain owner-gated and are NOT implemented",
+  "intent-mode consumes the frozen fixture bars as a DATE-KEYED execution timeline only (fold/warmup/exclusion law + bar indexing); fill prices come from the intent records; intraday session-mask filtering stays descriptive in symbol_contracts (same as the positional law) — sub-daily horizons are carried by per-intent declared exits + exit_reason, not by minute bars",
+  "T-MD8 semantics: 'identical trades up to T' = intents FULLY RESOLVED by T (entry and exit bars within the prefix); a trade entered before T but exiting after T is correctly absent from the prefix replay and present in the full replay (documented in the test docstring)",
+  "exec/SHA256SUMS_exec.txt (wave-3 pin table) now drifts from the modified scored_runner_v2.py; left untouched as the EXEC lane's artifact — the modified runner is disclosed here by sha f3042d53...",
+  "canonical machine-wide lock integration remains a documented sequence, NOT executed integration (CANONICAL_INTEGRATION.md section 0, unchanged from wave-3 erratum)",
+  "GATE-0 authority matrix, budgets/ceilings, D3/D8/D9, PB2/PB3 all unchanged and unsigned — the seam adds no authority and registers nothing",
+  "wave-3 test adjustments: exactly 3 tests changed (documented in wave3_test_adjustments + test_wiring_e2e module docstring); no assertion weakened; all other 18 wave-3 tests byte-unchanged",
+  "pytest stdout logs live in /tmp (ephemeral); digests + summary lines pinned in tests[]"
+ ],
+ "incidents": [
+  {
+   "id": "WF-1",
+   "severity": "LOW",
+   "summary": "adapter exit_reason vocabulary discovery: real adapter lanes emit SL / TP / SESSION_CLOSE / HORIZON_CLOSE (not the seam's lowercase enum) — first collect_class_intents run raised ValueError. Fixed by making the wiring the translator: intent_contract.canon_exit_reason + EXIT_REASON_ALIASES, and adding 'take_profit' to the runner's INTENT_EXIT_REASONS (additive; positional path untouched; exec suite re-run green after the change)"
+  },
+  {
+   "id": "WF-2",
+   "severity": "LOW",
+   "summary": "NQ adapter panels legitimately carry TWO session aggregates per event date (warmup row + authoritative event-day override; 68 raw sessions / 66 dates) — the builder initially refused duplicates. Fixed to dedupe-with-evidence: last aggregate per date wins, n_sessions_raw recorded in the compile record (never silent); the e2e helper dedupes identically"
+  }
+ ],
+ "changed_paths": [
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/exec/scored_runner_v2.py",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/wiring/__init__.py",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/wiring/spec_compiler.py",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/wiring/intent_contract.py",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/wiring/intent_executor.py",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/wiring/INTENT_SEAM_SPEC.md",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/tests/test_intent_seam.py",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/tests/test_wiring_e2e.py",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/tests/LOCKS_LOG.jsonl",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/repro_mixed_direction/repro.py",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/repro_mixed_direction/REPRO_FIXED.json",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/freeze_wiring/FREEZE_BUILDER_SPEC_IMPL.md",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/dispatch/handoff_WIRING-FIX.json"
+ ],
+ "recommended_next_action": "controller: wave-4 wiring defect is closed (REPRO_FIXED.json verdict PASS; 42 exec + 33 freeze_wiring suites green; positional scope relabeled and refusing). Remaining owner-gated surfaces for any future registered cycle are unchanged: GATE-0 authority per symbol, per-era 6A cost manifests (D8), canonical lock integration execution, real-data provenance lift, budgets/ceilings, registration + typed GO. No scored outcome, no PnL claim, no registration, no GO exists from this lane."
+}

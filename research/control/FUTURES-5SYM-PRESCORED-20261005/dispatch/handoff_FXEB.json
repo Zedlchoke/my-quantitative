@@ -1,0 +1,81 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-5SYM-PRESCORED-20261005/FXEB",
+  "cycle_id": "FUTURES-5SYM-PRESCORED-20261005",
+  "role": "lane",
+  "lane": "FXEB",
+  "dispatch_sha": "ffed828f73fa19fa0ff4aee3ac1b441909a43940",
+  "actual_start_sha": "ffed828f73fa19fa0ff4aee3ac1b441909a43940",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/SPEC_6E.md",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/SPEC_6B.md",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/IDENTITY_BUDGET_6E_6B.md",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/IDENTITY_BUDGET_6E_6B.json",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/CALENDAR_PIT_POLICY_6E_6B.md",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/COST_CONTRACT_6E_6B.md",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/FREEZE_BUILDER_SPEC_6E_6B.md",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/RUNNER_COMPAT_6E_6B.md",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/GAPS_AND_DECISIONS_6E_6B.md",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/dispatch/handoff_FXEB.json"
+  ],
+  "tests": [
+    {
+      "name": "identity numbers byte-verification against committed evidence",
+      "command": "read-only single-shot reads + cross-check of 6E (EUR 125,000; USD/EUR; tick 0.00005=$6.25; 50,000 int-nano) and 6B (GBP 62,500; USD/GBP; tick 0.0001=$6.25; 100,000 int-nano) against DATA_READINESS_6E/6B sec.1, fx_eb_readiness.json 6E/6B.dims.1_identity_tick, FXEB_K6_GATES sec.0.5/4",
+      "exit_code": 0,
+      "artifact": "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/SPEC_6E.md sec.1; SPEC_6B.md sec.1"
+    },
+    {
+      "name": "panel/chain re-hash in this worktree",
+      "command": "shasum -a 256 over 6E_cache/{6e_annotated_1m,6e_outright_1m,held_calendar}.parquet contract_registry.json and 6B_cache/{6b_annotated_1m,6b_outright_1m,held_calendar,chain_calendar}.parquet (+24 evidence documents)",
+      "exit_code": 0,
+      "artifact": "FREEZE_BUILDER_SPEC_6E_6B.md sec.1 (held_calendar 6E 35aa5d0b... and 6B dff43c4c... equal the pins in cost_roll_events_fxeb.json / fx_eb_readiness.json -> zero drift); handoff outputs[]"
+    },
+    {
+      "name": "cost ladder arithmetic re-derivation",
+      "command": "RT(tier)=2*(2.46+18.75+{6.25,12.50,18.75}) -> 54.92/67.42/79.92 USD RT; bp-of-notional re-derived from notional=size*px (6E 119,400-155,363 @0.9552-1.2429; 6B 64,950-88,781 @1.0392-1.4205; 6B slippage bp at ref px 1.30) reproducing the recorded bands 3.6-6.3 / 6.3-11.2 bp",
+      "exit_code": 0,
+      "artifact": "COST_CONTRACT_6E_6B.md sec.3 (marked DERIVED where inputs named)"
+    },
+    {
+      "name": "heavy-lock discipline",
+      "command": ".venv/bin/python research/researchctl.py locks inspect",
+      "exit_code": 0,
+      "artifact": "verdict FREE_PROVEN (no registry row, flock free); all lane work light single-shot reads; no heavy job taken"
+    }
+  ],
+  "authority_claims": [
+    "PB2 HOLD (6E/6B) STANDS: every deliverable in fx_eb/ is a CONDITIONAL-ON-PB2-LIFT draft and says so at the top; PB2 lift is cited as owner slot P5-OD1 and is NOT treated as given nor requested (authority: PLAYBOOKS_DRAFT r5 sec.2; PB2_ANCESTRY_COURT_DRAFT sec.d; PB2_HOLD_RESTATE.md sha256 88386aa3443ac8713a1dc33eba628910d04c088cc2a9d64fce8238c9d9d5a75b)",
+    "6E/6B identity, session, calendar, PIT and cost laws in the SPECs are restatements or transparent derivations from committed artifacts only; zero new fetches; zero network; zero PnL; zero scored runs; zero conditional-on-signal statistics",
+    "IDENTITY_BUDGET totals are exactly IDENTITY_TABLES sec.6 (sha256 750858ab...) FX-A 44 / FX-B 66 / FX-C 96 CONV-D, decomposed per symbol 6E 22/33/48 and 6B 22/33/48; CONV-C census-native 32/48/72 disclosed and never summed",
+    "FX Variant-A reg composition on the FX tier (0.85+1.60+0.02=2.47/side) is DERIVED: A7_FEE_REAUDIT sec.8 dual-variant table tabulates ES/NQ only; the owner ruling slot is minted as P5-OD6",
+    "New decision IDs minted this round carry the P5- prefix: P5-OD1..P5-OD11 + P5-FREEZE-REFUSAL (draft refusal id); prior decisions cited by original IDs only"
+  ],
+  "known_limitations": [
+    "6E expiry ECU26/ECZ26 NOT_OBTAINED (archived Future/58 wall at 2021-07-03, rows end Jun-2026); 6B expiry 2023Q1-2024Q2 (6 cells) NOT_OBTAINED (structural expired-contract drop, demonstrated cross-vintage 21/21 exact)",
+    "6B holiday/deviation grid 0/42 NOT_OBTAINED with documented structural absence (product id 42 in no archived by-product capture; PDF families carry no product hours) => no holiday-adjacent exclusion implementable for 6B; hole declared verbatim",
+    "6E 8 aged-out holiday windows INCONCLUSIVE (never cells); 6E deviant-session identification for 29/34 OBTAINED windows NOT_RUN (captures absent from committed tree) => 93 fail-closed neighborhood cells",
+    "BBO/execution realism NOT_RUN (D5); fee account verification NOT_RUN; fee layer UNDER REVIEW; spread proxy $18.75/side close-proxy high-biased (most biased-low at F4 reopen window)",
+    "court b1.1 1m trigger-time anatomy NOT_RUN (required BEFORE any scored F1 registration); per-trade dispersion NOT_RUN; F4 minimum-gap threshold NOT_RUN (registered-cycle decision)",
+    "6B contract_registry.json NOT_OBTAINED (6E-only artifact); official-calendar cross-reference substitutes; two-rule roll agreement 1458/1746 documented in dossier v2",
+    "freeze builder NOT_RUN by design (refused-by-draft P5-FREEZE-REFUSAL while gate list unsigned); no dry-run of any strategy computation (dispatch absolute)",
+    "F5 CIP-vintage quantification + real-time SOFR source decision owner-gated NOT_RUN; F3 BLS publish-latency + full 8:30 release-type census NOT_RUN"
+  ],
+  "incidents": [],
+  "tree_status": "clean apart from untracked research/control/FUTURES-5SYM-PRESCORED-20261005/ (this round's lane writes only: fx_eb/** + dispatch/handoff_FXEB.json); nothing staged; no commits; no other worktrees touched; git commands = rev-parse + status only",
+  "workers": [],
+  "outputs": [
+    {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/SPEC_6E.md", "sha256": "0dc03bb9671e8d62baf027d9fe24f696037df2c13e61b0d3be5c0215a0199b98"},
+    {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/SPEC_6B.md", "sha256": "c47b9c7f9e3b17ca60085c536735cee402c1a1dd102eda98fe7ffd56748df814"},
+    {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/IDENTITY_BUDGET_6E_6B.md", "sha256": "fb43d5448d5b350e0137ac3e4bfe2858d57d159a0c5dc56ed2195f74eab9e196"},
+    {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/IDENTITY_BUDGET_6E_6B.json", "sha256": "add1d8237978b2053a6eff6d759134111a06946c96ca3969f0f7cb6af3f89142"},
+    {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/CALENDAR_PIT_POLICY_6E_6B.md", "sha256": "94de6190745096b1218434996221488c7f376b07fadaf5847c44bbe93c192ab1"},
+    {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/COST_CONTRACT_6E_6B.md", "sha256": "d80a1152f4a221ec8d57b3c3d02a33d73400a1395a5c9ec1a3ee5fe36ba7a960"},
+    {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/FREEZE_BUILDER_SPEC_6E_6B.md", "sha256": "841519531130f1346c76c36b9890a240842b8aee8fe6c30c15b4a22530f5e970"},
+    {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/RUNNER_COMPAT_6E_6B.md", "sha256": "1b639d8cca55662bb4a72f0a7ab0527726d51b4e75c6ac7d7548de45c60ee979"},
+    {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/fx_eb/GAPS_AND_DECISIONS_6E_6B.md", "sha256": "022fcb54b107593d8135cf6374f56e2093598183720c62d9e25cf26a6603f6d0"},
+    {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/dispatch/handoff_FXEB.json", "sha256": "SELF (written last; hash recorded by controller at wave commit)"}
+  ],
+  "recommended_next_action": "No FX action is executable: PB2 HOLD binds. If the owner ever rules P5-OD1 (PB2 lift), the consumption order is: P5-OD2/OD3 (FX ceiling CONV-D vs census-native + delay slots) -> P5-OD6/OD7 (fee basis + alias corroboration) -> freeze-builder invocation (refusal path then stands down) -> registration/prelaunch-A7/dry-run/typed-GO per CYCLE_LAUNCH_DRAFT sec.6. Independent of PB2: P5-OD11 (court b1.1 trigger-time anatomy commissioning) and P5-OD9 (D12 posture) are the only prep items that can advance now."
+}

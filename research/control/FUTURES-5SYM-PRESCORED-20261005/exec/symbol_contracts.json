@@ -1,0 +1,189 @@
+{
+  "schema": "futures_5sym_prescored/symbol_contracts@1",
+  "cycle_id": "FUTURES-5SYM-PRESCORED-20261005",
+  "authored_by": "LANE-EXEC (PREP-only round; runner-infrastructure authoring, not spec ratification)",
+  "verification_law": "EVERY contract-number row below carries verification=PLACEHOLDER-PENDING-PER-SYMBOL-LANE. The numbers are DATA to scored_runner_v2 (consumed verbatim, never corrected by the runner); they are NOT verified market facts. Per-symbol lanes (nq/, fx_eb/, fx_ja/) plus the VERIFY lane must re-derive each number against committed exchange-spec evidence and replace every PLACEHOLDER marker before any real freeze. Until that happens no real scored run is possible (PREP-only, outcome-blind law; the runner additionally hard-refuses the real governance dir, so only sandbox execution can ever consume this file in this build).",
+  "pnl_law": "gross_pnl_usd = direction * (exit_price - entry_price) * usd_per_price_unit(era), where usd_per_price_unit(era) = tick_value_usd(era) / tick_size(era). One trade carries exactly ONE era, chosen by the ENTRY bar timestamp (inclusive effective_from compare, UTC date); a trade straddling an era boundary uses its entry era for BOTH fills, for tick-grid rounding AND for cost conversion.",
+  "cost_law": "cost_usd per side = fee_per_side_usd(tier) + (spread_ticks(stress) + slip_ticks(stress)) * tick_value_usd(era). Applied once per fill side (entry + exit).",
+  "era_law": "The applicable era row for a trade is the LAST row in era_table whose effective_from <= entry bar date. 6A carries two eras (the only two-era contract in this build; D8-era-aware cost law upstream lineage); every other symbol carries a single era row.",
+  "quote_direction_law": "long_base_sign is +1 for every contract in this build: a long position profits when the quoted price RISES. 6J carries an explicit quote_direction_note because its USD-per-JPY quote convention (price ~0.0067) is the classic sign-confusion trap; the runner applies the SAME formula to all symbols and the sign convention itself is under test (test_symbol_laws.py::T18).",
+  "contracts": {
+    "ES": {
+      "ticker": "ES",
+      "exchange": "CME",
+      "description": "E-mini S&P 500 — COMPATIBILITY ONLY (upstream FUTURES-ES-PB1-V1 reference contract; not one of the 5 target symbols)",
+      "tick_size": 0.25,
+      "tick_value_usd": 12.5,
+      "multiplier": 50,
+      "quote_ccy": "USD",
+      "base_ccy": "SPX_INDEX",
+      "long_base_sign": 1,
+      "quote_direction_note": "Quoted in USD per SPX index point; long index position profits when the price rises.",
+      "session_mask_spec": {
+        "tz": "America/Chicago",
+        "rth": "08:30-15:00",
+        "note": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE: descriptive only — runner_v2 consumes bars as a plain ordered series and does not yet filter by session mask."
+      },
+      "era_table": [
+        {
+          "era": "ES-era1",
+          "effective_from": "1900-01-01",
+          "tick_size": 0.25,
+          "tick_value_usd": 12.5,
+          "multiplier": 50,
+          "verification": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE"
+        }
+      ],
+      "verification": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE (compatibility reference; the upstream ES numbers were verified inside FUTURES-ES-PB1-V1 but are carried here as unverified data)"
+    },
+    "NQ": {
+      "ticker": "NQ",
+      "exchange": "CME",
+      "description": "E-mini Nasdaq-100",
+      "tick_size": 0.25,
+      "tick_value_usd": 5.0,
+      "multiplier": 20,
+      "quote_ccy": "USD",
+      "base_ccy": "NDX_INDEX",
+      "long_base_sign": 1,
+      "quote_direction_note": "Quoted in USD per NDX index point; long position profits when the price rises.",
+      "session_mask_spec": {
+        "tz": "America/Chicago",
+        "rth": "08:30-16:15 CT (era-A close, through 2015-09-18) / 08:30-16:00 CT (era-B close, from 2015-09-21 SESSION_SWITCH_DATE)",
+        "evidence": "research/control/FUTURES-5SYM-PRESCORED-20261005/nq/CALENDAR_PIT_POLICY_NQ.md §1 era table (era-A close 16:15 CT through 2015-09-18, era-B close 16:00 CT from 2015-09-21, RTH span 08:30 CT -> era-correct close); corroborated by nq/SPEC_NQ.md sessions row (era-A 16:15 CT / era-B 16:00 CT, measured constant) and nq/RUNNER_COMPAT_NQ.md RC-2.1; correction applied by LANE-FREEZE-WIRING 2026-10-05 — the prior value '08:30-15:00' was finding F1 (MISMATCH, descriptive-only) in exec/symbol_contracts_verified.json; era-A Friday 15:15 CT early closes are handled per-session by measured last minute, never asserted (RC-2.2)",
+        "note": "Corrected per the era-correct law (LANE-FREEZE-WIRING 2026-10-05; previously PLACEHOLDER '08:30-15:00', which matched no NQ era). Descriptive only — runner_v2 consumes bars as a plain ordered series and does not yet filter by session mask."
+      },
+      "era_table": [
+        {
+          "era": "NQ-era1",
+          "effective_from": "1900-01-01",
+          "tick_size": 0.25,
+          "tick_value_usd": 5.0,
+          "multiplier": 20,
+          "verification": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE"
+        }
+      ],
+      "verification": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE (number fields unchanged by LANE-FREEZE-WIRING; session_mask_spec.rth corrected 2026-10-05 to the era-correct law per its 'evidence' pointer — resolves verification finding F1 of exec/symbol_contracts_verified.json)"
+    },
+    "6E": {
+      "ticker": "6E",
+      "exchange": "CME",
+      "description": "Euro FX futures",
+      "tick_size": 0.00005,
+      "tick_value_usd": 6.25,
+      "multiplier": 125000,
+      "quote_ccy": "USD",
+      "base_ccy": "EUR",
+      "long_base_sign": 1,
+      "quote_direction_note": "Quoted USD per 1 EUR (~1.05-1.20); long EUR position profits when the price rises.",
+      "session_mask_spec": {
+        "tz": "America/Chicago",
+        "rth": "07:20-14:00",
+        "note": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE: descriptive only."
+      },
+      "era_table": [
+        {
+          "era": "6E-era1",
+          "effective_from": "1900-01-01",
+          "tick_size": 0.00005,
+          "tick_value_usd": 6.25,
+          "multiplier": 125000,
+          "verification": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE"
+        }
+      ],
+      "verification": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE"
+    },
+    "6B": {
+      "ticker": "6B",
+      "exchange": "CME",
+      "description": "British Pound futures",
+      "tick_size": 0.0001,
+      "tick_value_usd": 6.25,
+      "multiplier": 62500,
+      "quote_ccy": "USD",
+      "base_ccy": "GBP",
+      "long_base_sign": 1,
+      "quote_direction_note": "Quoted USD per 1 GBP (~1.20-1.35); long GBP position profits when the price rises.",
+      "session_mask_spec": {
+        "tz": "America/Chicago",
+        "rth": "07:20-14:00",
+        "note": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE: descriptive only."
+      },
+      "era_table": [
+        {
+          "era": "6B-era1",
+          "effective_from": "1900-01-01",
+          "tick_size": 0.0001,
+          "tick_value_usd": 6.25,
+          "multiplier": 62500,
+          "verification": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE"
+        }
+      ],
+      "verification": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE"
+    },
+    "6J": {
+      "ticker": "6J",
+      "exchange": "CME",
+      "description": "Japanese Yen futures",
+      "tick_size": 0.0000005,
+      "tick_value_usd": 6.25,
+      "multiplier": 12500000,
+      "quote_ccy": "USD",
+      "base_ccy": "JPY",
+      "long_base_sign": 1,
+      "quote_direction_note": "CME 6J is quoted in USD per 1 JPY (price ~0.0065-0.0070), NOT the familiar JPY-per-USD spot convention (~150). A long 6J position profits when the JPY APPRECIATES, i.e. when the quoted price number RISES. The runner applies long_base_sign=+1 to the quoted price series; anyone feeding a JPY-per-USD series without inversion flips every PnL sign. This sign convention is explicitly under test (test_symbol_laws.py T18).",
+      "session_mask_spec": {
+        "tz": "America/Chicago",
+        "rth": "07:20-14:00",
+        "note": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE: descriptive only."
+      },
+      "era_table": [
+        {
+          "era": "6J-era1",
+          "effective_from": "1900-01-01",
+          "tick_size": 0.0000005,
+          "tick_value_usd": 6.25,
+          "multiplier": 12500000,
+          "verification": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE"
+        }
+      ],
+      "verification": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE"
+    },
+    "6A": {
+      "ticker": "6A",
+      "exchange": "CME",
+      "description": "Australian Dollar futures — the ONLY two-era contract in this build (D8-era-aware cost law lineage from the FXJA lane)",
+      "tick_size": 0.0001,
+      "tick_value_usd": 10.0,
+      "multiplier": 100000,
+      "quote_ccy": "USD",
+      "base_ccy": "AUD",
+      "long_base_sign": 1,
+      "quote_direction_note": "Quoted USD per 1 AUD (~0.65-0.70); long AUD position profits when the price rises. Top-level tick fields reflect era1 and are convenience copies only — the RUNNER READS THE ERA TABLE, never the top-level fields, for any per-trade computation.",
+      "session_mask_spec": {
+        "tz": "America/Chicago",
+        "rth": "07:20-14:00",
+        "note": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE: descriptive only."
+      },
+      "era_table": [
+        {
+          "era": "6A-era1",
+          "effective_from": "1900-01-01",
+          "tick_size": 0.0001,
+          "tick_value_usd": 10.0,
+          "multiplier": 100000,
+          "verification": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE"
+        },
+        {
+          "era": "6A-era2",
+          "effective_from": "2020-11-23",
+          "tick_size": 0.00005,
+          "tick_value_usd": 5.0,
+          "multiplier": 100000,
+          "verification": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE (era boundary 2020-11-23 and the $10/tick -> $5/tick regime split are the FXJA lane's D8-era-aware cost law carriers; re-verify the exact exchange effective date per the 6A contingency packet before any real freeze)"
+        }
+      ],
+      "verification": "PLACEHOLDER-PENDING-PER-SYMBOL-LANE (both era rows; the era BOUNDARY itself is also data pending per-symbol-lane verification)"
+    }
+  }
+}

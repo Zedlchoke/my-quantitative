@@ -1,0 +1,160 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+ "cycle_id": "UNREGISTERED_PREP",
+ "role": "lane",
+ "lane": "ACQ-OPT",
+ "dispatch_sha": "8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e",
+ "actual_start_sha": "8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e",
+ "commit_sha": null,
+ "commit_sha_disclosure": "null by design for this dispatch: lane leaves its new namespace untracked in the worktree (lead/owner integrates); HEAD re-verified 8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e before and after the run (dispatch_sha == actual_start_sha).",
+ "changed_paths": [
+  "acquisition_optimization/acq_probe.py",
+  "acquisition_optimization/acq_probe_followup.py",
+  "acquisition_optimization/finalize_analysis.py",
+  "acquisition_optimization/coverage_results.json",
+  "acquisition_optimization/coverage_results_round1_asrun.json",
+  "acquisition_optimization/analysis_summary.json",
+  "acquisition_optimization/ACQUISITION_OPTIMIZATION.md",
+  "acquisition_optimization/probe_run.log",
+  "acquisition_optimization/followup_run.log",
+  "acquisition_optimization/package_manifests/pkgA.json",
+  "acquisition_optimization/package_manifests/pkgA_variant_24m_floor.json",
+  "acquisition_optimization/package_manifests/pkgB.json",
+  "acquisition_optimization/package_manifests/pkgC.json",
+  "dispatch/handoff_ACQ-OPT.json"
+ ],
+ "tests": [
+  {
+   "command": "acq_probe.py (real run: 195 sequential metadata-only requests to hist.databento.com; key read in-process from ~/.config/my-quantitative-secrets/databento-api-key)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "194x200 + 1x422 (symbology date-range, typed); evidence coverage_results.json + coverage_results_round1_asrun.json; probe_run.log"
+  },
+  {
+   "command": "acq_probe_followup.py (real run: 43 more metadata-only requests; combined 238/260 hard cap honored)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "43x200 incl. symbology.resolve fix validation (continuous->instrument_id HTTP 200, NQ.c.0=67 / CL.c.0=197 roll intervals); followup_run.log"
+  },
+  {
+   "command": "offline plan verification (mocked transport): 195 planned requests in expected scenario; cap 260 enforced in code (SKIPPED_CAP typing)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "n/a (console-verified count 195; worst-case ladder escalation protected by hard cap)"
+  },
+  {
+   "command": "finalize_analysis.py (offline; zero network): disk-gate verdicts + 50-hypothesis support verdicts + DERIVED-line totals fix",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "analysis_summary.json@2: LITERAL headline A 0/42+8NVG, A-v1 30/12/8, B 40/2/8 (SI-H2, CL-H3), C 41/1/8 (CL-H3); DEFAULT24 comparison A-v1 31/11/8, B/C identical; disk verdicts unchanged (PILOT FITS, A CONDITIONAL, B/C DOES_NOT_FIT)"
+  },
+  {
+   "command": "credential-leak scan: grep -rE 'db-[A-Za-z0-9_-]{12,}' over the namespace + no 'Authorization' string in any artifact",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "scan output empty"
+  },
+  {
+   "command": "post-audit rerun: finalize_analysis.py (revised per ACQ_SKEPTIC_AUDIT MAJOR-1/MINOR-1/2/3) with asserts that coverage_results.json totals patches are present; coverage_results.json NOT rewritten (sha256 319955b4b965217a71c1cf94a2b1f9c35896b245eccdf6a604d6246142de6a4d unchanged); credential re-scan clean",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "counts match the audit's independent recomputation (recompute_02) exactly: B {40 SUPPORTED, 8 NVG, 2 UNSUPPORTED}, C {41, 8, 1}"
+  }
+ ],
+ "authority_claims": [],
+ "summary": "Metadata-only acquisition-optimization round executed within authority: 238 logical requests (hard cap 260; sequential; <=3 attempts; 237x HTTP 200, 1x HTTP 422 typed and root-caused), ZERO data downloads, ZERO purchases/subscriptions/account changes/credit spend. COVERAGE TRUTH: every one of the 10 roots x 4 schemas (ohlcv-1m, bbo-1m, statistics, definition) has records in the earliest refinement band 2010-06-06..2010-12-06 and is current through 2026-10-01 \u2014 oldest common window == per-symbol longest == 2010-06-06; no symbol is availability-limited. Coverage grid + latest probes recorded per cell with notes (FIX/FAST pre-2017, ms-precision pre-2015-11-20, stat_flags pre-2015-01-20 vendor issue). Daily/hourly aggregated LOCALLY from 1m \u2014 no 1d/1h lines in any package. Packages (exact get_cost + record_count + billable_size per line; ratio get_cost/list = 0.9313 exact on 31/31 lines): pkgA v2 = $85.72 gc / $92.04 list, 68.2M records, 8.61 GB (18m for 8 roots, 9m CL/NG; NO vendor hypothesis floor met \u2014 at ~$100 no 10-symbol package can meet even the 24m DAILY_BT floor); pkgA-v1 variant = $129.57 gc / $139.12 list (24m floor for 8/10, 30/50 floors met under the LITERAL headline policy, 31/50 under the 24m-default comparison); pkgB restructured = $496.81 gc measured ($498.06 all-in incl. $1.25 DERIVED CL roll-window bbo), 316.1M records, 34.66 GB (NQ/ES full 2010+, CL 2019+, NG 2021+, minors 2019+, NQ bbo 2y, CL bbo roll-windows; 40/42 in-corpus vendor floors met; unsupported: SI-H2 (10y floor) + CL-H3 (RB/HO legs outside the 10-root corpus, in NO package)); pkgC = $888.02 gc / $953.50 list + $2.54 DERIVED, 551.0M records, 61.43 GB (all 10 roots full 2010-06-06.., 1 unsupported: CL-H3 only (out-of-corpus RB/HO legs); all in-corpus floors met). KEY COST FINDING: CL parent bbo-1m is dominated by far-month quote books (measured $194.40 for 2y, $1,019.49 full) \u2014 REJECTED and replaced by roll-window-enumerated bbo anchored at a measured $0.0130/window (CLN6/CLQ6 2026-06-24..2026-07-03). trades/ticks excluded from all packages by design: no hypothesis needs tick resolution (same-bar TP/SL handled by worst-case-bound execution law; roll cost = close gap; SI-H5 note says no tick model covers gap risk); any future intrabar-order-resolution need = UNSUPPORTED, separate quote round. DISK GATE (measured now: 21.65 GiB avail / 23.25 GB decimal on ~/.my-quantitative-data volume, 89% full; usable at 20% reserve 18.6 GB): PILOT FITS (2.9-4.8 GB peak ASSUMED range); pkgA CONDITIONAL_FITS (11.2-18.9); pkgA-v1 CONDITIONAL/DOES_NOT_FIT at high end (17.7-29.9); pkgB DOES_NOT_FIT (45.1-76.3); pkgC DOES_NOT_FIT (79.9-135.1) \u2014 external drive required before any B/C spend (proposal recorded), bounded PILOT-first sequencing + chunk/SHA256/idempotent-re-request checkpoint plan restated. symbology.resolve fix CONFIRMED: continuous->instrument_id works (422 was date-range only). POST-AUDIT REVISION (audit/acq_skeptic/ACQ_SKEPTIC_AUDIT.md, PASS_WITH_FINDINGS): MAJOR-1 fixed (support verdicts re-derived per-requirement-symbols; CL-H3 [RB,HO] UNSUPPORTED in every package; counts B 40 SUPPORTED/2 UNSUPPORTED, C 41/1, A-v1 30/12 literal / 31/11 under 24m-default); MINOR-1 floor policy stated + dual-counted; MINOR-2 CL roll-window count aligned to 96 (safe direction, DERIVED $1.25 unchanged); MINOR-3 coverage claims restated at band precision (first-hit band 2010-06-06..2010-12-06). Raw evidence coverage_results.json byte-identical (sha 319955b4...); audit namespace read-only, untouched. Priority order: pilot (already queued, NOT duplicated; one-owner rule carves overlap) -> NQ,CL,ES -> GC,SI,6E,6J,6B,6A (2019+) -> NG (2021+) -> depth-to-2010 last.",
+ "findings": [
+  "OBSERVED: all 40 coverage cells (10 roots x ohlcv-1m/bbo-1m/statistics/definition) have records>0 in 2010-06-06..2010-12-06; all 10 roots current in 2026-09-01..2026-10-02 (latest-month counts 40,139-976,594/root).",
+  "OBSERVED: get_cost/list ratio = 0.9313 EXACTLY on 31/31 measured lines this round (matches METADATA-PROBE's 2/2); billable_bytes == record_count x DBN record size (56/80/80/520 B) exact on every line.",
+  "OBSERVED: CL parent bbo-1m = 135,001,067 records / 10.80 GB for 2y and 707,977,896 records / 56.64 GB full era \u2014 far-month quote books dominate; NQ parent bbo-1m is 100x cheaper ($3.40 for 2y, $23.32 full).",
+  "OBSERVED: roll-window bbo is ~$0.0130 per CL monthly roll window (CLN6+CLQ6, 2026-06-24..2026-07-03, measured) \u2014 the cost-efficient CL-H5 design.",
+  "OBSERVED: disk free now 21.65 GiB (df: 228Gi total, 89% used; current data dir 3.7 GB); pkgB/pkgC peak projections (ASSUMED 0.4-0.6x raw + 0.5-1.0x parquet + scratch) exceed the 18.6 GB usable at 20% reserve \u2014 DOES_NOT_FIT without external storage.",
+  "OBSERVED: at ~$100 (pkgA v2 $85.72 gc) ZERO of 42 vendor-gated hypotheses meet their data floors; +$44 (pkgA-v1 $129.57 gc) meets 30/50 (LITERAL; 31/50 under the 24m-default comparison); $497 (pkgB) meets 40/42 (residual: SI-H2 10y floor, CL-H3 out-of-corpus RB/HO legs); $888 (pkgC) meets 41/42 (residual: CL-H3 only) \u2014 cost per marginal floor step quantified for the owner.",
+  "FACT(sourced): stat_flags normalization inconsistent pre-2015-01-20 (issues.databento.com roadmap, via DBN-ADAPTER lane code/futbt/dbn/README.md, access 2026-10-02); FIX/FAST pre-2017 + ms-precision pre-2015-11-20 per vendor docs in request_manifest vendor_context.",
+  "CONFIRMED: symbology.resolve continuous->instrument_id works with in-range dates (HTTP 200; NQ.c.0 67 intervals, CL.c.0 197) \u2014 PILOT-06/EXP-09 fix validated, free endpoint.",
+  "POST-AUDIT FIX (MAJOR-1, audit/acq_skeptic/ACQ_SKEPTIC_AUDIT.md): support evaluation now keys depth floors on EACH REQUIREMENT's symbols, not the hypothesis's own root \u2014 CL-H3's daily_trades_per_contract legs are RB/HO product futures (CL.yaml), explicitly outside the 10-root corpus and in NO package, so CL-H3 is UNSUPPORTED in every package; prior headlines 'B: 1 of 50' and 'C: 0 of 50' were wrong and are corrected to B 40/2 (SI-H2, CL-H3) and C 41/1 (CL-H3)."
+ ],
+ "defects": [
+  "Round-1 aggregation bug (fixed, zero re-requests): count_value() accepted int payloads only, so float get_cost payloads were stored but not aggregated; followup recovered all costs from stored payloads. coverage_results_round1_asrun.json preserves the as-run round-1 state.",
+  "Round-2 pkgC restructure initially dropped ohlcv1m_per_root_counts from the packages dict; recovered from the request log (rids PKGC-C-O1M-*-RC) and re-patched into coverage_results.json + pkgC.json.",
+  "Post-audit corrections applied (disclosed minimal edits, zero re-requests, raw evidence byte-identical): MAJOR-1 per-requirement-symbol support evaluation; MINOR-1 explicit dual-reported floor policy (LITERAL headline; 24m-default comparison; only A-v1 differs 31 vs 30 SUPPORTED); MINOR-2 CL roll-window count 96 everywhere; MINOR-3 band-precision coverage wording; plus NOTE-6 ratio claim upgraded to the audit's stronger 41/41+2 recomputation."
+ ],
+ "open_questions": [
+  "Owner budget decision PENDING: $100/$600 were scenarios, not grants. Choose pkgA-v2 ($85.72) vs pkgA-v1 ($129.57, 24m floor for 8/10) vs pkgB ($496.81) \u2014 every quote needs re-probe at spend time (no documented validity window).",
+  "External storage decision REQUIRED before pkgB/pkgC: internal volume cannot hold them (DOES_NOT_FIT verdicts with numbers).",
+  "SI-H2 (>=10y two-leg floor) is the only vendor-floor-unsupported hypothesis in pkgB \u2014 satisfied only by pkgC's 2010+ depth for SI+GC; owner decides if that floor matters.",
+  "CL/NG roll-window bbo DERIVED costs are anchored on ONE measured window; exact enumeration requires delivered definitions + declared roll table \u2014 re-quote per window before spend."
+ ],
+ "known_limitations": [
+  "METADATA-ONLY round: no data downloaded, nothing validated against actual bytes on disk; all record/billable/cost numbers are API metadata quotes (end dates EXCLUSIVE; whole-UTC-day windows avoid the 10-minute-multiple caveat).",
+  "Disk peak ranges are ASSUMED (0.4-0.6x raw zstd, 0.5-1.0x parquet, <=1.0x scratch): vendor publishes no compression ratios \u2014 measure at pilot and re-project.",
+  "bbo-1m earliest-band probes prove records exist in 2010H2; quote-book quality in the FIX/FAST era (pre-2017) is unverified until real delivery QA.",
+  "trades/tbbo/mbp-1/mbo/ohlcv-1s/1h/1d/status not quoted: no current hypothesis needs them; a future intrabar-order-resolution need would be UNSUPPORTED by these packages.",
+  "Hypothesis support verdicts are DATA-AVAILABILITY verdicts against configs/symbols floors (finalize_analysis.py); they say nothing about test PASS/FAIL; non-vendor blockers (slippage, fees 9/10, holiday calendar, consensus archives, vintages, serial re-fetch deadlines, registration) still gate everything scored.",
+  "Account/credits: NOT_RUN_DOC_UNCLEAR (no verifiable endpoint); $125-credit arithmetic excluded on purpose; credits are not free spend.",
+  "Unit prices captured 2026-10-02 (ohlcv-1m $70, bbo-1m $18, statistics $1.0, definition $1.7 per GB historical) \u2014 re-check at spend."
+ ],
+ "incidents": [
+  "1x HTTP 422 (P4-SYMRES round 1): symbology.resolve rejected start_date 2010-01-01 as before available start \u2014 typed data_start_date_before_available_start_date; retry with 2010-06-06 returned 200. No billing impact (free endpoint).",
+  "No credential incidents: key read in-process from the owner 0600 file outside the repo; passed only as Basic auth to official endpoints; artifacts scanned clean (no db- tokens, no Authorization strings); no env/args/logs/chat exposure."
+ ],
+ "tree_status": "worktree otherwise clean at HEAD 8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e; this lane owns only the untracked acquisition_optimization/ namespace + dispatch/handoff_ACQ-OPT.json; other untracked entries exist from sibling lanes and were untouched: dispatch/NONPRICE_DISPATCH.json, nonprice_acquisition/ (nonprice lane), audit/acq_skeptic/ + dispatch/handoff_ACQ-SKEPTIC.json (skeptic audit lane \u2014 read-only for ACQ-OPT).",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "acquisition_optimization/acq_probe.py",
+   "sha256": "7235b92fe2d813cbb299d28f0a4a3897d9b0ce9581f3d9caf2a7c551520da1fc"
+  },
+  {
+   "path": "acquisition_optimization/acq_probe_followup.py",
+   "sha256": "7e20a2fceb373741be477b7b0d20c2c2fcf91029822a15562f74a71e050c5227"
+  },
+  {
+   "path": "acquisition_optimization/finalize_analysis.py",
+   "sha256": "2e2830ea418c1221cbe19159006d2e62b7fba9b118dd84385d4917dc28e2c303"
+  },
+  {
+   "path": "acquisition_optimization/coverage_results.json",
+   "sha256": "319955b4b965217a71c1cf94a2b1f9c35896b245eccdf6a604d6246142de6a4d"
+  },
+  {
+   "path": "acquisition_optimization/coverage_results_round1_asrun.json",
+   "sha256": "5c7ec69548425814d276b3e2752504ae4a053434724ab1ffb7eba368ca1e0204"
+  },
+  {
+   "path": "acquisition_optimization/analysis_summary.json",
+   "sha256": "ec3146d9a13a785ca00592a3fe43921dd0ea085bfaa7109ad749958242fec3fa"
+  },
+  {
+   "path": "acquisition_optimization/ACQUISITION_OPTIMIZATION.md",
+   "sha256": "ea6a0d6b57fdc6d513ba7cd5530dc062113063e439c4763516945408b28ad668"
+  },
+  {
+   "path": "acquisition_optimization/probe_run.log",
+   "sha256": "29e50501a3b59fc357386fb09298f2c62c6067e1130b40d00c39c5a6a1afe683"
+  },
+  {
+   "path": "acquisition_optimization/followup_run.log",
+   "sha256": "f16500df2f1aff63a0f3b3ffec2099dd6b18b849b35310950a427fe29c8abb8f"
+  },
+  {
+   "path": "acquisition_optimization/package_manifests/pkgA.json",
+   "sha256": "657f6be5aab54749cb20f8b9ba0271e22167e3f9987d165f4c52ad80ada6d997"
+  },
+  {
+   "path": "acquisition_optimization/package_manifests/pkgA_variant_24m_floor.json",
+   "sha256": "60f9e0c32299dfefd36ad3996ab9b854ba668364907e65445339a3333fae0ce2"
+  },
+  {
+   "path": "acquisition_optimization/package_manifests/pkgB.json",
+   "sha256": "a58835237b9f549d5c43932dacfffd8ba6a4c23617502ce102237a78472a4840"
+  },
+  {
+   "path": "acquisition_optimization/package_manifests/pkgC.json",
+   "sha256": "8fdf4810996aa909f15290bc83d91ff624f06a34621174969c54e9e27f33e866"
+  }
+ ],
+ "recommended_next_action": "Owner reads acquisition_optimization/ACQUISITION_OPTIMIZATION.md and decides (1) budget: pkgA-v2 $85.72 vs pkgA-v1 $129.57 vs pkgB $496.81 (all get_cost, re-probe at spend), after the already-queued PILOT acceptance; (2) external storage for pkgB/pkgC (internal volume DOES_NOT_FIT); (3) whether SI-H2's 10y floor justifies pkgC depth. No spend, download, or scored run is authorized by anything in this round.",
+ "generated_utc": "2026-10-02T11:49:34.222961+00:00"
+}

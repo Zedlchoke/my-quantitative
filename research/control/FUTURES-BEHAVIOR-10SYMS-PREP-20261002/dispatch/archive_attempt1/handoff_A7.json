@@ -1,0 +1,58 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "lane_id": "A7-AUDIT",
+  "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+  "status": "COMPLETE",
+  "summary": "DELTA AUDIT (fix verification, lane FIX-A7-FINDINGS): all fixes VERIFIED — M1-M4 (MAJOR) and m1-m5 (MINOR) plus n1, zero new findings. Test suite re-run by auditor: 147 OK (140 original + 7 close-only-fill-law regressions). M1: CL_behavior_stats.py now excludes roll-boundary returns (within_contract_returns, 14 excluded rows recorded); corrected sd 3.0528% sample (n=265) EXACTLY reproduces the auditor's independent within-contract recomputation; erratum block preserves superseded stitched values; CL dossier §3 erratum + corrected bullets verified against the regenerated JSON. M2: canonical roll basis (last-trade month) adopted in roll.py docstring, BACKTEST_LAUNCH_DRAFT §0, NG_DOSSIER §1 (erratum retiring 'INFEASIBLE'), INTEGRATION_SUMMARY §1.1; the fix lane's new file-cut claim independently recomputed from raw by the auditor — exact (12/12 NG + 12/12 CL expired contracts cut at canonical roll sessions; NGV26 through 2026-09-29, CLV6 through 2026-09-23); residual NG divergences disclosed, engine basis authoritative. M3: close-only fill law now unconditional and structural — exec_cost raises on close-only (single choke point), TP/SL never evaluated on close-only bars, TIME/MANUAL exits deferred to next tradeable session, roll legs require both bars tradeable, censoring discloses never-executed exits, journal.FillRecord refuses is_close_only_bar=True; 7 new tests cover all paths. M4: delivery-month convention corrected in CL dossier, DATA_ACQUISITION_SPEC §4 (both errors incl. roll-basis), measure_coverage.py + coverage_measured.json, rawdata.py comment — all match S9 C3 and the auditor's raw-LTD verification. REPORT_VI.md test count already updated to 147 (residual cleared outside fix lane). Cumulative counts after delta: BLOCKER 0, MAJOR 0 (4 fixed/verified), MINOR 0 (5 fixed/verified), NOTE 4 (n1 fixed; n2-n4 positive/advisory). A7_AUDIT.md updated with full DELTA section (per-finding VERIFIED with evidence).",
+  "outputs": [
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/audit/A7_AUDIT.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/audit/recompute_headline.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/audit/recompute_headline.json"
+  ],
+  "findings": {
+    "verdict": "DELTA_PASS_ALL_FIXES_VERIFIED",
+    "delta_counts": {"verified": 10, "not_verified": 0, "new_findings": {"BLOCKER": 0, "MAJOR": 0, "MINOR": 0, "NOTE": 0}},
+    "cumulative_after_delta": {"BLOCKER": 0, "MAJOR": 0, "MINOR": 0, "NOTE": 4},
+    "per_finding": {
+      "M1_CL_stitched_returns": {
+        "status": "VERIFIED",
+        "evidence": "analysis/CL_behavior_stats.py within_contract_returns() + exclusion recording; CL_behavior_stats.json n_returns=265, n_roll_boundary_returns_excluded=14, sd=0.030528 sample == auditor recomputation (population 3.047% x sqrt(265/264)); erratum_2026_10_02_M1 preserves superseded values; CL_DOSSIER.md s3 ERRATUM with per-value superseded->corrected table; rolling-vol/dependence/weekday all recomputed within-contract and dossier text matches JSON."
+      },
+      "M2_roll_basis_fork": {
+        "status": "VERIFIED",
+        "evidence": "canonical last-trade-month basis in roll.py docstring (no behavior change), BACKTEST_LAUNCH_DRAFT s0, NG_DOSSIER s1 (+ERRATUM retiring 'INFEASIBLE'), INTEGRATION_SUMMARY s1.1; fix lane's file-cut claim independently recomputed from raw by auditor: NGV25..NGU26 and CLV5..CLU6 all cut exactly at canonical roll sessions (12/12 each); NGV26 last bar 2026-09-29, CLV6 last bar 2026-09-23 — exact; residual divergences (NGV26 last matured roll ~4 weeks late; live NGX26 held to ~2026-10-28 vs engine roll 2026-09-30) disclosed, engine authoritative."
+      },
+      "M3_close_only_fill_law": {
+        "status": "VERIFIED",
+        "evidence": "engine.py exec_cost(bar_is_close_only) raises; TP/SL guarded ('NEVER on a close-only bar'); TIME/MANUAL deferred to next tradeable session; roll legs require both bars tradeable (RollEvent carries execution session/gap); censoring discloses never-executed exits; journal.FillRecord.is_close_only_bar refused structurally; 7 new tests (test_engine.py:439-574); suite 147 OK re-run by auditor; README/draft/INTEGRATION counts updated; typo fixed (n1)."
+      },
+      "M4_delivery_month_convention": {
+        "status": "VERIFIED",
+        "evidence": "CL_DOSSIER conventions corrected + ERRATUM; DATA_ACQUISITION_SPEC s4 corrected (both errors: delivery = letter-code month AND roll basis) with do-not-act-on-old-text warning; measure_coverage.py + coverage_measured.json caveat corrected (JSON valid); rawdata.py comment corrected; all statements match S9 C3 + auditor raw-LTD verification (R8)."
+      },
+      "m1_NG_curve_label": {"status": "VERIFIED", "evidence": "NG_DOSSIER s3 + INTEGRATION_SUMMARY s1.3 now 'contango-shaped'; numbers unchanged (auditor R4 exact)."},
+      "m2_GC_roll_count": {"status": "VERIFIED", "evidence": "GC_DOSSIER s1+s3 seventh roll GCV6->GCZ6 @2026-09-30 +31.1 USD/oz old leg 245 lots == auditor R5 values."},
+      "m3_chain_length_footnote": {"status": "VERIFIED", "evidence": "INTEGRATION_SUMMARY s1.4 definitional footnote (calendar-run vs per-dossier chain eras)."},
+      "m4_citation_precision": {"status": "VERIFIED", "evidence": "DATA_ACQUISITION_SPEC s8.3 NDFD date no longer attributed to the registry page + re-verify instruction; s2 JS-render re-verification note for Databento facts."},
+      "m5_6J_simple_vs_log": {"status": "VERIFIED", "evidence": "6J_DOSSIER s3 SIMPLE labels + log equivalents (+2.44/+2.71) == auditor R6; 2026-07-31 echo tagged simple."},
+      "n1_typo": {"status": "VERIFIED", "evidence": "engine.py:309 'NOT fabricated'."}
+    },
+    "residuals": [
+      "REPORT_VI.md 140->147 residual already cleared outside the fix lane (file now reads 147 test PASS).",
+      "M2 residual divergence stays DISCLOSED by design: NG descriptive chain holds live front NGX26 to ~2026-10-28 vs engine canonical roll 2026-09-30; engine basis authoritative for any Arm A/B.",
+      "CL rolling-vol 'last' now as-of 2026-09-30 (2026-10-01 return is an excluded roll-boundary return) — disclosed in erratum.",
+      "Auditor's own recompute_headline.json fetch-boundary caveat stands (2026-10-01 rows are the auditor helper's artifacts)."
+    ]
+  },
+  "defects": [],
+  "open_questions": [
+    "Phase 0 must still re-confirm the Databento catalog facts (2010-06-06, schemas, tiers) via the free API before any spend (m4 note, unchanged).",
+    "Owner data-depth decision and slippage declarations remain the pre-Arm-B gates (BACKTEST_LAUNCH_DRAFT s9, unchanged by this delta)."
+  ],
+  "sha256_of_key_outputs": {
+    "audit/A7_AUDIT.md": "a2656695f15333ccdfaf3490b45eb5ec6ce2a8e7275cfa6548a918700cb527dd",
+    "audit/recompute_headline.py": "5dac87b45b24ad0dbd47b4529a60d431e5106aa9800290d21a26be96e9ce4a36",
+    "audit/recompute_headline.json": "3bcb7729dd4d648bbcbb5f260305910700fa09b913b5f3f706705682100d5190",
+    "audit/FIX_LOG.md (input, read-only)": "91b5068d5e7fb2d5cc666044cfe4bb9f707697c66edf0732d31effe2e3d5551a"
+  }
+}

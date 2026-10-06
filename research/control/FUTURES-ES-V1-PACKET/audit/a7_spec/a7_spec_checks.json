@@ -1,0 +1,72 @@
+{
+  "schema": "a7_spec_checks@1",
+  "task_id": "A7-SPEC",
+  "cycle_id": "FUTURES-ES-V1-PACKET",
+  "role": "independent-auditor",
+  "lane": "A7-SPEC",
+  "run_date": "2026-10-03",
+  "worktree": {
+    "path": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior/prep",
+    "branch": "prep/futures-behavior-10syms-20261002",
+    "head": "cce2cfa01042ac3f683493761da80377bb2e152a",
+    "packet_uncommitted": true
+  },
+  "audited_objects_sha256": {
+    "SPEC_PB1_ES.md": "69899341aa0a0bafc3e0bb0ead4eaebb7449b4b15dbd1dcb57a0a9c73a5f3787",
+    "PLAN_futures_es_v1.md": "06140882f13d96fd1325c472ef3788da7d4ce1c6b571c7c27d75b8e8e0c7a06b",
+    "plans/CYCLE_REGISTRY.json (read-only ref)": "b292229770b748442f58911da6e7ac8e79a3ef8d9c5b96503bce398efb6a9027"
+  },
+  "probes": {
+    "r1_identity_grid": {"verdict": "PASS", "out": "probes/out_probe_r1_identity_grid.json",
+      "counts": {"P_A": 8, "P_B": 8, "primary": 16, "FOMC": 4, "controls": 4, "total": 24,
+                 "full_grid": 24, "omitted": 8, "omitted_all_D30xS1S3": true}},
+    "r2_cost_arithmetic": {"verdict": "PASS", "out": "probes/out_probe_r2_cost_arithmetic.json",
+      "allin_default_nfa002": {"S1": 21.006, "S2": 33.506, "S3": 46.006},
+      "allin_window_2014_10_01_2017_12_31": {"S1": 20.996, "S2": 33.496, "S3": 45.996},
+      "matches_spec": true,
+      "source_binding": {"commission_0.85": "C5 Fixed S1 (max of tiers)", "exchange_1.386": "X1 S2 offset",
+                         "nfa_0.02": "X2n S5", "nfa_0.01_window": "X2n S5 2014-10-01..2017-12-31"},
+      "ibkr_offset_011_double_count": false,
+      "r3_residual_fee_bias_direction_claims": 0},
+    "r4_r5_expiry_rule_and_holidays": {"verdict": "PASS", "out": "probes/out_probe_r4_r5_expiry_rule_and_holidays.json",
+      "d3_rows_checked": 37, "rule_agrees": 37, "rule_mismatches": 0,
+      "eval_window_quarters": 66,
+      "june2021_naive_misprediction": {"naive": "2021-06-17", "actual": "2021-06-18"},
+      "d3_recount": {"claimed": 36, "actual_table_rows": 37, "coverage_json_fields_recompute": 37,
+                     "in_eval_window": 36, "not_obtained_years": [2019, 2020, 2021, 2022, 2023, 2026]},
+      "per_day_es_provable_years": ["2010"]},
+    "standard_audit": {"verdict": "PASS", "out": "probes/out_probe_standard_audit.json",
+      "go_phrase_exact_hits": 0, "go_phrase_raw_hits": 0, "go_phrase_fields_scanned": 170,
+      "cycle_id_collisions": 0, "folds_contiguous": true, "folds_cover_data_window": true,
+      "language_law_violations": 0, "outcome_blindness_declared": true,
+      "provenance_all_present": true, "two_key": true, "s1_sealed": true,
+      "root_registry_write_blocker_flagged": true}
+  },
+  "adjudications": {
+    "R1": "PASS — P-A 8 + P-B 8 = 16 primary; +FOMC 4 +C1-C4 4 = 24 total; no implicit 24-grid; D30x{S1,S3} (8 cells) declared non-existent",
+    "R2": "PASS — 21.006/33.506/46.006 recomputed exact; -0.01 window 2014-10-01..2017-12-31; IBKR offset 0.011 not added anywhere; D2 source values verified (X1 1.386; X2n 0.02->0.01->0.02)",
+    "R3": "PASS — no bias-direction claim in SPEC/PLAN; D2 confirms per-year values not extractable (CME PDF cells unextractable, historical IBKR content never fetched)",
+    "R4": "PASS PIT-LEGAL — deterministic public rule as decision law, D3/bars validation-only; authority-less quarters ALLOWED-with-validation (bars 66/66), full-quarter EXCLUDE on mismatch; MINOR pin: Juneteenth displacement calendar (June 2021 NOT displaced)",
+    "R5": "PASS — archived 2011-2025 = CME-wide windows + ClearPort/floor only; per-day ES-specific times ONLY 2010 (official PDF); 2026 widget-blocked; unproven ES holiday-suspect days 2011-2026 => E1 EXCLUDE fail-closed; measured early-close sessions 3-10/yr"
+  },
+  "findings": [
+    {"id": "M-1", "severity": "MINOR", "where": "SPEC §1 + D3 artifacts", "finding": "36/68 understates D3 authority table: 37 quarters enumerated (36 in eval window); coverage JSON's own fields recompute to 37", "erratum": "re-label '37/68 ARCHIVED_OFFICIAL (36 within eval window 2010-06..2026-09)'"},
+    {"id": "M-2", "severity": "MINOR", "where": "SPEC §1 roll rule", "finding": "generic observed-federal-holiday shift clause would mispredict June 2021 (federal observance on 3rd Friday; CME did not displace; bars 66/66) -> needless fail-closed EXCLUDE of Q2-2021", "erratum": "pin operative displacement calendar: only 2026-06-18 and 2027-06-17 (Juneteenth); June 2021 not displaced"},
+    {"id": "M-3", "severity": "MINOR", "where": "SPEC §3", "finding": "base-EXCLUDE says 'FOMC-days (92 timed)'; 40 untimed 2011-2015 statement days have no declared treatment", "erratum": "pin day-level base-EXCLUDE for all FOMC statement days (incl. untimed 2011-2015); FOMCIN = INCLUDE set"},
+    {"id": "M-4", "severity": "MINOR", "where": "SPEC §3", "finding": "'RTH-core' minute range undefined for the <60% coverage stand-aside", "erratum": "define RTH-core per era in the frozen spec"},
+    {"id": "M-5", "severity": "MINOR", "where": "SPEC §4", "finding": "'ATR(20d median RTH range)' name-vs-formula mismatch; window/close-source not pinned", "erratum": "pin: SL = 1.0 x median of trailing-20 RTH session ranges, strict past, era-correct closes, short/flagged sessions excluded"},
+    {"id": "N-1", "severity": "NOTE", "finding": "NFA 0.02 post-2018 rests on last official doc (2017 filing, open-ended); conflicting unverified mirror ($0.01 as of 2026-07-01) not adopted; SPEC choice conservative"},
+    {"id": "N-2", "severity": "NOTE", "finding": "exchange 1.386 is IBKR published offset rate (CME tariff cells unextractable) — attribution correct"},
+    {"id": "N-3", "severity": "NOTE", "finding": "SPEC may add D2's 'approximation KNOWN-WRONG in >=2 documented ways' caveat (no direction) for disclosure completeness"},
+    {"id": "N-4", "severity": "NOTE", "finding": "validation '(a)+(b)' vacuous in (a) for authority-less quarters; read '(b), plus (a) where authority exists'"},
+    {"id": "N-5", "severity": "NOTE", "finding": "E1 candidate-day enumeration rule must be pinned in the freeze-time deterministic exclude script (windows + notice-named days + adjacent eves)"},
+    {"id": "N-6", "severity": "NOTE", "finding": "sizing risk 0.5%/trade deferred '[freeze tại GO]' — declared; pin before GO"},
+    {"id": "N-7", "severity": "NOTE", "finding": "prior interrupted attempt of this lane left artifacts in audit/a7_spec/ (no handoff); overwritten within allowed write zone"}
+  ],
+  "severity_counts": {"BLOCKER": 0, "MAJOR": 0, "MINOR": 5, "NOTE": 7},
+  "spec_verdict": "FREEZE_READY_WITH_ERRATA",
+  "one_line_rulings": {
+    "R4": "PIT-LEGAL; authority-less quarters ALLOWED-with-validation (bars 66/66; full-quarter EXCLUDE on any mismatch), not excluded by default; pin Juneteenth calendar (June 2021 NOT displaced).",
+    "R5": "2011-2025 archived tables are CME-wide windows + ClearPort/floor only; per-day ES-specific early-close TIMES only for 2010; 2026 widget-blocked; unproven ES holiday-suspect days 2011-2026 => E1 EXCLUDE (fail-closed; 3-10 early-close sessions/yr measured)."
+  }
+}

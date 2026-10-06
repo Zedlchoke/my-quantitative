@@ -1,0 +1,216 @@
+{
+  "schema": "nonprice_manifest_sources@1",
+  "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+  "lane": "NONPRICE-DATA-ACQUISITION",
+  "generated_utc": "2026-10-02",
+  "erratum_2026_10_02_nonprice_fix": {
+    "source": "audit A7-NONPRICE-VERIFY (PASS_WITH_FINDINGS) + NONPRICE-FIX lane",
+    "dfii10_pit_probe_file": "fred_alfred/pit/DFII10/DFII10_asof_2024-12-31.csv is a DEAD PROBE, NOT a PIT snapshot: the file's value column is DFII10_20261002 (LATEST vintage, observations through 2026-09-30) because the realtime_start/realtime_end route ignores those params (measured, see vintage_method). It is NOT ingested by any normalizer (normalize_fred_vintage_attempts reads fred_alfred/vintage_attempts/ only) and a parse test now fences it. Raw dir is immutable so the file stays on disk under this disclosure - NEVER consume anything under fred_alfred/pit/ as vintage evidence.",
+    "duplicate_fetches": "60 within-session duplicate (url, sha256) fetch pairs exist in raw_manifest.jsonl (58 ALFRED vintage verification re-fetches ~20s apart, 1 CPC zip, 3 NCEI dir listings; identical shas, no integrity impact). No action on raw (append-only evidence); rule added to collect/common.py: session-level (url) dedupe after a successful fetch (audit m-2).",
+    "boj_statement_count": "181 URLs enumerated; 180 files on disk (114 PDF 2010-2017 + 66 HTML 2018+) - one PDF (k241219b.pdf, >4MB) went wait_storage with its same-day HTML sibling present. Normalized inventory now includes BOTH formats (boj_fomc_statement_inventory.parquet: 180 BOJ + 147 FOMC rows); pre-fix it carried only the 66 HTML rows (audit m-1).",
+    "wngsr_issue_date_raw": "issue_date_raw in eia_wngsr_vintages_tidy.parquet is UNRELIABLE (pre-fix first 'Month DD, YYYY' anywhere in the page; audit m-4). Superseded by issue_date (parsed from the page's own 'Release date:' header; 1169/1205 rows) + issue_date_source + observation_week_ending; filename date remains the fallback and matches the header on 1185/1205 rows.",
+    "wngsr_net_change_rebuild": "net_change_bcf rebuilt table/section-anchored + validated against consecutive-issue totals diff; SIGNED (+injection/-withdrawal); rows failing validation quarantined EXTRACT_LOW_CONFIDENCE with net_change_bcf=null (audit M-1). See normalize/eia_normalize.py erratum docstring."
+  },
+  "target_window_rule": "ACQ-OPT earliest market coverage (GLBX.MDP3 2010-06-06, acquisition_optimization/coverage_results.json) -> required window 2010-06-06..2026-10-02; per-series config floors may extend earlier (CoT 2006+, WNGSR 1994+, ALFRED full available history); actual coverage recorded as measured, never assumed.",
+  "disk_cap_bytes_initial": 2147483648,
+  "raw_dir": "/Users/hoangminhlong/.my-quantitative-data/futures-nonprice-10syms/",
+  "source_families": {
+    "cftc_cot": {
+      "collector": "collect/cftc_cot.py",
+      "base_urls": [
+        "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm",
+        "https://www.cftc.gov/MarketReports/CommitmentsofTraders/HistoricalCompressed/index.htm"
+      ],
+      "access_date": "2026-10-02",
+      "products": {
+        "futures_only_legacy": {"url_pattern": "https://www.cftc.gov/files/dea/history/deacot{YYYY}.zip", "coverage_intent": "2006..2026 annual as-published archives", "pit_fields": {"observation_period": "Tuesday as-of (report_date_in_file)", "released_at": "Friday 15:30 ET convention after report week (schedule FACT, RESEARCH_MATRIX CoT note)", "first_available_at": "release Friday (per no-revision policy, as-published files are the vintage)", "vintage": "as-published weekly file; legacy futures-only NOT revised once published (CFTC FAQ)"}},
+        "tff": {"url_pattern": "https://www.cftc.gov/files/dea/history/fut_fin_txt_{YYYY}.zip", "coverage_intent": "earliest..2026 (TFF starts 2006-06)", "pit_fields": {"observation_period": "Tuesday as-of", "released_at": "Friday 15:30 ET", "first_available_at": "release Friday", "vintage": "WARNING: TFF compressed history is classification-backcast, NOT vintage-stable (tfmexplanatorynotes.pdf; already verified in-repo RESEARCH_MATRIX CoT note) - PIT use requires release-dated weekly files; we archive annual files AND flag this caveat in normalization"}},
+        "disaggregated": {"url_pattern": "https://www.cftc.gov/files/dea/history/deacot{YYYY}_d.zip", "coverage_intent": "earliest..2026 (disagg starts 2006-2008 by market)", "pit_fields": {"observation_period": "Tuesday as-of", "released_at": "Friday 15:30 ET", "first_available_at": "release Friday", "vintage": "annual compressed history; classification caveats similar to TFF disclosed"}}
+      },
+      "market_mappings_to_verify": {
+        "note": "verify from CFTC's own market-code/disaggregation documentation and the archive files themselves at collection time; record EXACT market names + codes found",
+        "expected": {
+          "NQ": "NASDAQ-100 MINI (or consolidated equity-index market incl. NQ) - CME",
+          "ES": "S&P 500 CONSOLIDATED - CME",
+          "CL": "CRUDE OIL, LIGHT SWEET - NYMEX (consolidated incl. WTI)",
+          "NG": "NATURAL GAS - NYMEX",
+          "GC": "GOLD - COMEX",
+          "SI": "SILVER - COMEX (5000oz class)",
+          "6E": "EURO FX - CME",
+          "6J": "JAPANESE YEN - CME",
+          "6B": "BRITISH POUND - CME",
+          "6A": "AUSTRALIAN DOLLAR - CME"
+        }
+      },
+      "politeness": {"rate_limit_s": 0.5, "retries": 3, "backoff_s": 2}
+    },
+    "fred_alfred": {
+      "collector": "collect/fred_alfred.py",
+      "base_urls": ["https://fred.stlouisfed.org/graph/fredgraph.csv", "https://alfred.stlouisfed.org/graph/alfredgraph.csv", "https://alfred.stlouisfed.org/"],
+      "access_date": "2026-10-02",
+      "key_policy": "file-public CSV endpoints only; NO api.stlouisfed.org key use; if a needed series is only available via key-route, type OWNER_KEY_WAIT",
+      "series": {
+        "DFII10": {"desc": "10y TIPS real yield (NQ-H1, GC-H5, GC-H2)", "floor": "2019+ per NQ-H1; pull full available (2003+)"},
+        "DGS10": {"desc": "10y Treasury nominal (NQ-H1, GC-H5)", "floor": "full available"},
+        "T10YIE": {"desc": "10y breakeven (GC-H5, GC-H2)", "floor": "full available"},
+        "DTB3": {"desc": "3M T-bill discount rate (ES-H2 ~3M USD rate, SI-H3)", "floor": "full available"},
+        "SOFR": {"desc": "SOFR overnight (SI-H3, 6E-H2)", "floor": "2018+ (series start)"},
+        "DFF": {"desc": "Effective fed funds daily (6J-H3, 6A-H5)", "floor": "full available"},
+        "FEDFUNDS": {"desc": "Effective fed funds monthly (6A-H5 policy differential, backfill pre-DFF)", "floor": "full available"},
+        "DFEDTARU": {"desc": "Fed funds target upper (6A-H5 policy-rate series)", "floor": "2008+ (series start)"},
+        "DTWEXBGS": {"desc": "Broad trade-weighted USD index - DXY-class PIT series (CL-H4; DXY itself is ICE-licensed)", "floor": "2006+ (series start)"},
+        "DGS2": {"desc": "2y nominal yield (regime context for rates repricing, NQ/ES)", "floor": "optional"}
+      },
+      "vintage_method": "MEASURED 2026-10-02: realtime_start/realtime_end params are IGNORED by alfredgraph.csv (returns latest); the working vintage route is &vintage_date={YYYY-MM-DD} (column suffix honors the date; verified vs latest for DGS10). Host is heavily rate-limited: requests can take minutes and hang when hammered; year-end snapshots collected at patient cadence (20s spacing, bounded retries). 404 on dates before series start is expected. api.stlouisfed.org without key = HTTP 400 (OWNER_KEY_WAIT evidence if finer per-release vintages are needed).",
+      "pit_fields": {"observation_period": "observation_date", "released_at": "realtime (vintage) chunk boundary as-known date; intra-chunk release timing disclosed as NOT measurable from file-public route", "first_available_at": "ALFRED realtime first-vintage date per observation when full-vintage data present", "vintage": "chunk realtime_end stamp"},
+      "politeness": {"rate_limit_s": 0.6, "retries": 3, "backoff_s": 3}
+    },
+    "eia": {
+      "collector": "collect/eia.py",
+      "base_urls": ["https://ir.eia.gov/ngs/", "https://ir.eia.gov/wpsr/", "https://www.eia.gov/naturalgas/weekly/", "https://www.eia.gov/petroleum/supply/weekly/"],
+      "access_date": "2026-10-02",
+      "key_policy": "NO EIA API v2 key route; key-free report/archive files only",
+      "items": {
+        "wngsr_schedule": {"url": "https://ir.eia.gov/ngs/schedule.html", "desc": "WNGSR release schedule incl. holiday moves (NG-H5 FACT; observation-period Friday vs release Thursday 10:30 ET)"},
+        "wngsr_history": {"urls": ["https://ir.eia.gov/ngs/ngshistory.xlsx", "https://ir.eia.gov/ngs/vlrstorage.xlsx", "https://ir.eia.gov/ngs/rtrstorage.xlsx"], "desc": "WNGSR historical storage: lower-48 + East/West/Midwest/South regions, 1994+ weekly", "floor": "1994+ (NG-H1)"},
+        "wpsr_tables": {"url_pattern": "https://ir.eia.gov/wpsr/tdashboard.htm + table*.txt/csv weekly files", "desc": "WPSR weekly tables: crude stocks incl. Cushing (table 1/13), gasoline (table 3), distillate (table 4), refinery runs (table 14), imports (table 1)", "floor": "2010-06+ required; pull earliest easily available as-published history"},
+        "wpsr_schedule": {"url": "https://www.eia.gov/petroleum/supply/weekly/ + ir.eia.gov/wpsr/", "desc": "WPSR release schedule (Wed 10:30 ET, holiday moves)"}
+      },
+      "pit_fields": {"observation_period": "stocks as-of Friday (WNGSR) / Friday (WPSR)", "released_at": "scheduled release datetime (10:30 ET Thu/ET Wed; holiday moves from schedule page)", "first_available_at": "release datetime", "vintage": "weekly estimates preliminary; errata/vintage differences between successive weekly files NOT archived by EIA publicly -> DECLARED_LAG caveat, revisions not reconstructible"},
+      "politeness": {"rate_limit_s": 0.5, "retries": 3, "backoff_s": 2}
+    },
+    "bls_bea_fed": {
+      "collector": "collect/bls_bea_fed.py",
+      "base_urls": ["https://www.bls.gov/news-release/", "https://www.bls.gov/schedule/", "https://download.bls.gov/pub/time.series/", "https://www.federalreserve.gov/monetarypolicy/"],
+      "access_date": "2026-10-02",
+      "items": {
+        "bls_cpi_archives": {"url_pattern": "https://www.bls.gov/news-release/archives/cpi_{YYYYMMDD}.htm", "desc": "as-published CPI news releases (first prints) - the PIT-legal actuals for CPI hypotheses (ES-H4, GC-H2, 6B-H5, 6B-H2 US leg)", "floor": "2010-06+ required (config floors say >=2015); if bot-filtered (403) record blocker and fall back to download.bls.gov latest-revised flat files with DECLARED_LAG"},
+        "bls_empsit_archives": {"url_pattern": "https://www.bls.gov/news-release/archives/empsit_{YYYYMMDD}.htm", "desc": "as-published Employment Situation (NFP) first prints; prior-2-month revisions are the known PIT trap (ALFRED-class need)", "floor": "2010-06+"},
+        "bls_schedule": {"url": "https://www.bls.gov/schedule/news-release/2026_schedule.htm (+ prior years)", "desc": "release calendar incl. 8:30 ET slots (6B-H5, ES-H3/H4 date lists)", "note": "spec records /schedule fetch 403 under bot filtering - try; archive pages themselves carry release dates in filenames"},
+        "bls_bulk": {"urls": ["https://download.bls.gov/pub/time.series/cu/cu.data.1.AllItems", "https://download.bls.gov/pub/time.series/ce/ce.data.00a.TotalNonfarm.All"], "desc": "key-free revised-latest series (CPI NSA, total nonfarm payrolls) - descriptive/cross-check only, NOT PIT"},
+        "fomc_calendar": {"url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm", "desc": "FOMC meeting dates 2010-2026 (ES-H4, 6E-H3 event tags; 14:00 ET release FACT)"},
+        "fomc_historical": {"url_pattern": "https://www.federalreserve.gov/monetarypolicy/fomchistorical{YYYY}.htm", "desc": "historical FOMC materials per year -> statement/minutes URLs", "floor": "2010..2026"},
+        "fomc_statements": {"url_pattern": "https://www.federalreserve.gov/newsevents/pressreleases/monetary{YYYYMMDD}a.htm", "desc": "as-issued FOMC statements (implementation note of decision timing)", "floor": "2010..2026"},
+        "bea": {"urls": ["https://apps.bea.gov/api/..."], "desc": "BEA GDP/PCE only if configs require - NO config requires BEA directly (checked 2026-10-02: no bea class in any hypothesis) -> OPTIONAL, skip unless framework names it"}
+      },
+      "pit_fields": {"observation_period": "reference month/week in the release", "released_at": "news-release timestamp embedded in archive page (8:30 ET convention) or schedule", "first_available_at": "release datetime", "vintage": "as-published archive page = first print; bulk flat files = revised-latest (flagged, separate table)"},
+      "politeness": {"rate_limit_s": 1.0, "retries": 2, "backoff_s": 5, "note": "BLS is known bot-sensitive; conservative pacing"}
+    },
+    "cb_banks": {
+      "collector": "collect/cb_banks.py",
+      "base_urls": ["https://www.ecb.europa.eu/", "https://data-api.ecb.europa.eu/", "https://www.boj.or.jp/", "https://www.mof.go.jp/", "https://www.bankofengland.co.uk/", "https://www.ons.gov.uk/", "https://www.gov.uk/", "https://www.rba.gov.au/"],
+      "access_date": "2026-10-02",
+      "items": {
+        "ecb_decisions": {"url_pattern": "https://www.ecb.europa.eu/press/pr/date/{YYYY}/html/... (rate decisions)", "desc": "ECB Governing Council rate decisions 2010+ (6E event context)"},
+        "ecb_estr": {"url_pattern": "https://data-api.ecb.europa.eu/service/data/EST/B.EU000A2X2A25.WT datacsv", "desc": "EUR short rate (ESTR) daily - 6E-H2 rate differential leg", "floor": "2019+ (ESTR start)"},
+        "boj_mpm": {"url_pattern": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm + /en/mopo/mpmdeci/mpr_{YYYY}k{N}.pdf", "desc": "BoJ MPM dates + statements (6J-H4 classification index)", "floor": "2010..2026"},
+        "boj_tona": {"url_pattern": "https://www.boj.or.jp/en/statistics/market/... TONA daily", "desc": "TONA overnight rate - 6J-H3 differential leg", "floor": "earliest available (TONA published since 2016 as reform; uncollateralized call rate longer)"},
+        "mof_feio": {"url_pattern": "https://www.mof.go.jp/en/policy/international_policy/reference/feio/quarterly{...}", "desc": "MOF FX intervention quarterly amounts (JPY-buying/selling ops) - 6J-H2, 6J-H5 action history", "floor": "2010..2026 quarterly (+ monthly list)"},
+        "boe_bank_rate": {"url": "https://www.bankofengland.co.uk/boeapps/database/Bank-Rate.asp", "desc": "BoE Bank Rate decision history (6B-H2 BoE leg context)"},
+        "boe_mpc_minutes_or_decisions": {"url_pattern": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes...", "desc": "MPC decision dates 2010+ (6B-H2)"},
+        "boe_gilt_yield_curve": {"url": "https://www.bankofengland.co.uk/statistics/yield-curves (last-15-years daily zip)", "desc": "UK nominal gilt yields daily - 6B-H3 gilt-jump filter; PIT caveat: latest-vintage official data, free vintages NOT published -> DECLARED_LAG for vintage-grade use"},
+        "ons_calendar": {"url_pattern": "https://api.ons.gov.uk/releasecalendar/... or www.ons.gov.uk/releasecalendar", "desc": "ONS release calendar (6B-H2; prior 404 disclosed - retry)"},
+        "hmt_fiscal_calendar": {"url": "https://www.gov.uk/government/publications/... (Budget / Autumn Statement / Spring Statement dates)", "desc": "UK fiscal event dates 2010+ - 6B-H3 uk_fiscal_calendar"},
+        "rba_decisions": {"url_pattern": "https://www.rba.gov.au/monetary-policy/int-rate-decisions/{YYYY}/ + latest table", "desc": "RBA decision dates + cash rate changes 2010+ (6A-H1, 6A-H5)", "floor": "2010..2026"},
+        "rba_cash_rate_hist": {"url_pattern": "https://www.rba.gov.au/statistics/cash-rate/ (+ f11hist.xls if reachable)", "desc": "cash rate target series (6A-H5 policy differential)"}
+      },
+      "pit_fields": {"observation_period": "decision date / data date", "released_at": "announcement datetime (RBA 14:30 Sydney/AEDT, BoE 12:00 London, ECB 14:15 CET, BoJ JST afternoon)", "first_available_at": "announcement datetime", "vintage": "as-published records; ONS first prints NOT vintage-archived publicly -> DECLARED_LAG"},
+      "politeness": {"rate_limit_s": 0.8, "retries": 3, "backoff_s": 3}
+    },
+    "noaa_cpc": {
+      "collector": "collect/noaa_cpc.py",
+      "base_urls": ["https://www.cpc.ncep.noaa.gov/", "https://www.ncei.noaa.gov/", "https://registry.opendata.aws/noaa-ndfd"],
+      "access_date": "2026-10-02",
+      "measured_findings_2026_10_02": {
+        "hdd_cdd_weights": "PRE-DECLARED in normalize/hdd_cdd_weights.py: US Census 2010/2020 resident-population state shares (nearest-prior-census anchor, real-time knowable), equal division weighting within state, base 65F on NClimDiv monthly divisional means - fixed BEFORE any use, never tuned.",
+        "cpc_archive": "FTP listing https://ftp.cpc.ncep.noaa.gov/GIS/us_tempprcpfc/ holds 610temp/814temp issued zips DAILY from 2012-09-11 (actual archive start, not 2010-06); small-file regime ~115KB until 2025-06; big-file regime ~3.3MB after ~2025-07 (format change); /products/archives/* HTTP paths return 403 (recorded).",
+        "ndfd_aws": "noaa-ndfd-pds bucket keys carry NO issue dates and the bucket is NOT S3-versioned (ListObjectVersions = single current version) -> NDFD historical forecast vintages NOT retrievable from the free route; official archive is NCEI AIRS (request-based). One current CONUS temp snapshot stored as format evidence. GFS/NDFD multi-year forecast vintages typed MISSING/NOT_RUN_PIT; CPC issued archives (2012-09+) are the PIT-legal forecast series.",
+        "wngsr_archive": "www.eia.gov/naturalgas/weekly/archivenew_ngwu holds 1,506 as-published weekly issues back to 1996 (config floor 1994 -> actual start 1996, disclosed). Issues EMBED the pre-release analyst survey (The Desk median/range) - a free as-published consensus record for NG storage (EIA-reported; disclosed, not a vendor consensus archive).",
+        "wpsr_archive": "www.eia.gov/petroleum/supply/weekly/archive holds 792 as-published weekly issues 2011-01-07..2026-09-30.",
+        "ir_eia_gov": "ir.eia.gov host returns HTTP 403 to this client (ngshistory.xlsx, wpsr csv/xls tables) EXCEPT ngs/schedule.html which served 200; blocker recorded; www.eia.gov archives are the (superior, as-published) fallback.",
+        "mof": "Official FULL daily intervention history CSV exists (foreign_exchange_intervention_operations.csv, April 1991+, Shift-JIS); quarterly English HTML pages exist only for recent years (2019+ pattern), the CSV is the complete record.",
+        "boj": "statements 2010-2017 are PDFs under /en/mopo/mpmdeci/mpr_{YYYY}/k{YYMMDD}a.pdf; 2018+ are HTML under state_{YYYY}/; 181 URLs enumerated.",
+        "rba": "rba.gov.au returns HTTP 403 to automated fetch (recorded gate); RBA decision dates/times + cash-rate FACTs already in-repo (configs/symbols/6A.yaml, fetched 2026-10-02 by the dossier lane).",
+        "ons": "release calendar page serves current window only (server-rendered); historical calendar/first-print route NOT_FOUND this session (previous 404s disclosed in 6B config); typed MISSING for UK CPI release history + first prints.",
+        "govuk": "autumn-statement-documents collection reachable; budget-documents collection 404 (attempts recorded).",
+        "cftc": "TFF archives = fut_fin_txt_{YYYY}.zip (2010+) + fin_fut_txt_2006_2016.zip; disagg = fut_disagg_txt_{YYYY}.zip (2010+) + fut_disagg_txt_hist_2006_2016.zip (patterns from the official HistoricalCompressed page); market names verified in-file incl. renames (CL = WTI-PHYSICAL/NYMEX recent era; NG = NAT GAS NYME recent era; 6B legacy = BRITISH POUND STERLING pre-2022).",
+        "bls": "www.bls.gov + download.bls.gov gated (403/404 to this client); recorded; ALFRED CPIAUCSL/PAYEMS vintage snapshots are the PIT fallback for CPI/NFP first prints (with year-end-snapshot granularity limitation)."
+      },
+      "pit_fields": {"observation_period": "forecast valid window (issued_at + 6..10d)", "released_at": "issued_at (CPC file timestamp; if archive lacks per-file issued time -> NOT_RUN_PIT for that series)", "first_available_at": "issued_at", "vintage": "file issue date; issued != observed != reforecast - separate tables mandatory"},
+      "politeness": {"rate_limit_s": 0.5, "retries": 3, "backoff_s": 2, "noaa_subcap_bytes": 734003200}
+    },
+    "gdelt_subset": {
+      "collector": "collect/gdelt_subset.py (only if budget remains)",
+      "base_urls": ["http://data.gdeltproject.org/gdeltv2/masterfilelist.txt"],
+      "access_date": "2026-10-02",
+      "items": {
+        "events_subset": {"desc": "GDELT 2.0 events CSV subset filtered to relevant categories/actors (commodities/FX/central banks) for bounded sample days; indexed timestamp != publisher first-release (disclosed); NO hypothesis REQUIRES GDELT (checked: zero hypotheses name it) -> OPTIONAL; official primary sources always take priority"}
+      },
+      "decision": "RESOLVED 2026-10-02: SKIPPED - no hypothesis names GDELT; official primary archives cover every named event/series need; free CSV route requires full-day downloads (no server-side filter without paid BigQuery); disk + effort reserved for required sources. Typed OPTIONAL_SKIPPED."
+    }
+  },
+  "hypothesis_to_needs": {
+    "NQ-H1": {"required": [{"family": "fred_alfred", "series": ["DFII10", "DGS10"], "window": "2019+ floor / full available", "pit": "ALFRED realtime vintages mandatory (revised FRED rejected for strict PIT)"}], "optional": []},
+    "NQ-H2": {"required": [{"family": "cftc_cot", "series": ["futures_only_legacy (NQ market)", "tff (equity index NQ)", "disaggregated (if NQ covered)"], "window": "2006+ (config floor)", "pit": "release-timestamped (Fri 15:30 ET), Tuesday as-of separation mandatory; TFF classification-backcast caveat"}], "optional": []},
+    "NQ-H3": {"required": [{"family": "bls_bea_fed", "series": ["bls_cpi_archives", "bls_empsit_archives"], "window": "2015+ (floor)", "pit": "release-to-the-minute archive stamps"}], "blocked": [{"type": "BLOCKED_CONSENSUS", "piece": "PIT consensus archive (commercial; no lawful free as-issued archive exists)"}]},
+    "NQ-H4": {"required": [], "blocked": [], "note": "nonprice inputs none (Globex intraday = vendor price data)"},
+    "NQ-H5": {"required": [], "note": "nonprice inputs none"},
+    "ES-H1": {"required": [], "note": "in hand"},
+    "ES-H2": {"required": [{"family": "fred_alfred", "series": ["DTB3 (~3M USD rate)"], "window": "full available"}], "blocked": [{"type": "PAID_OWNER_WAIT", "piece": "spx_dividend_yield: S&P forward dividend yield (index-provider, paid; config acquisition=owner_declaration)"}]},
+    "ES-H3": {"required": [{"family": "bls_bea_fed", "series": ["bls_cpi_archives", "fomc_calendar"], "window": "2015+"}], "blocked": [{"type": "BLOCKED_CONSENSUS", "piece": "PIT consensus archive"}]},
+    "ES-H4": {"required": [{"family": "bls_bea_fed", "series": ["fomc_calendar", "bls_cpi release dates"], "window": "2010-06+ (event-tag v1)"}], "note": "surprise measure needs consensus (PARAM-GAP ES-H4-P1) - date-based v1 is the legal fallback"},
+    "ES-H5": {"required": [], "note": "in hand"},
+    "CL-H1": {"required": [{"family": "eia", "series": ["wpsr_tables Cushing + crude weekly"], "window": "2010-06+ (scored-run regime split)", "pit": "release schedule + as-of Friday separation"}], "optional": []},
+    "CL-H2": {"required": [{"family": "eia", "series": ["wpsr_tables"], "window": "2010-06+"}], "blocked": [{"type": "BLOCKED_CONSENSUS", "piece": "consensus history (S&P Global/other vendor)"}]},
+    "CL-H3": {"required": [{"family": "eia", "series": ["wpsr detail tables (gasoline/distillate/Cushing/refinery)"], "window": "2010-06+"}], "blocked": [{"type": "VENDOR_PAID", "piece": "RB/HO product futures daily (outside free scope)"}]},
+    "CL-H4": {"required": [{"family": "fred_alfred", "series": ["DTWEXBGS (DXY-class, free; ICE DXY licensed)"], "window": "2010-06+"}]},
+    "CL-H5": {"required": [], "note": "price-side only"},
+    "GC-H1": {"required": [], "note": "serial_contracts_refetch is IBKR-entitlement action (data lane, not nonprice public)"},
+    "GC-H2": {"required": [{"family": "fred_alfred", "series": ["DFII10", "T10YIE"], "window": "2015+"}, {"family": "bls_bea_fed", "series": ["bls_cpi_archives"], "window": "2015+"}], "blocked": [{"type": "BLOCKED_CONSENSUS", "piece": "timestamped CPI consensus"}]},
+    "GC-H3": {"required": [], "note": "in hand"},
+    "GC-H4": {"required": [], "note": "in hand"},
+    "GC-H5": {"required": [{"family": "fred_alfred", "series": ["DFII10", "T10YIE", "DGS10"], "window": "full available (>=5y floor)"}]},
+    "NG-H1": {"required": [{"family": "eia", "series": ["wngsr_history + wngsr_schedule"], "window": "1994+ (config floor)"}], "blocked": [{"type": "BLOCKED_CONSENSUS", "piece": "consensus archive (vendor)"}]},
+    "NG-H2": {"required": [{"family": "noaa_cpc", "series": ["cpc_610day_issued", "cpc_814day_issued", "ndfd_gfs_vintage_pilot"], "window": "2010-06+ for CPC; NDFD 2020-04-16+; GFS multi-year -> WAIT_STORAGE"}, {"family": "eia", "series": ["wngsr_history"], "window": "2010-06+ percentile series"}], "pit": "FORECAST VINTAGES ONLY (realized weather never an entry feature); issued_at missing -> NOT_RUN_PIT"},
+    "NG-H3": {"required": [], "note": "price-side in hand"},
+    "NG-H4": {"required": [{"family": "noaa_cpc", "series": ["cpc issued forecasts + bounded GFS/NDFD pilot"], "window": "same as NG-H2"}]},
+    "NG-H5": {"required": [{"family": "eia", "series": ["wngsr_schedule"], "window": "current + archive"}], "note": "already FACT in config; we archive the schedule page as evidence"},
+    "SI-H1": {"required": [], "note": "in hand"},
+    "SI-H2": {"required": [], "note": "in hand"},
+    "SI-H3": {"required": [{"family": "fred_alfred", "series": ["SOFR", "DTB3"], "window": "full available"}], "blocked": [{"type": "PAID_OWNER_WAIT", "piece": "lbma_lease_rates (LBMA/IBA paid)"}]},
+    "SI-H4": {"required": [], "note": "in hand"},
+    "SI-H5": {"required": [], "note": "in hand"},
+    "6E-H1": {"required": [], "note": "in hand"},
+    "6E-H2": {"required": [{"family": "fred_alfred", "series": ["SOFR"], "window": "2019+ / full"}, {"family": "cb_banks", "series": ["ecb_estr"], "window": "2019+ (ESTR start)"}]},
+    "6E-H3": {"required": [{"family": "bls_bea_fed", "series": ["fomc_calendar", "fomc_statements"], "window": "2010+"}], "blocked": [{"type": "BLOCKED_CONSENSUS", "piece": "PIT consensus archive"}]},
+    "6E-H4": {"required": [{"family": "cb_banks", "series": ["ecb_decisions (+ Eurostat HICP releases optional)"], "window": "2010+"}, {"family": "bls_bea_fed", "series": ["bls archives"], "window": "2010+"}], "blocked": [{"type": "BLOCKED_CONSENSUS", "piece": "consensus BOTH regions"}]},
+    "6E-H5": {"required": [], "note": "structurally blocked on price data (vendor)"},
+    "6J-H1": {"required": [], "note": "in hand"},
+    "6J-H2": {"required": [{"family": "cb_banks", "series": ["mof_feio"], "window": "2010..2026 quarterly + monthly"}], "pit": "intervention amounts publish ~1 month/quarter lag - NOT same-day PIT (config explicit); zone/threshold uses published ops only"},
+    "6J-H3": {"required": [{"family": "cb_banks", "series": ["boj_tona"], "window": "2010+"}, {"family": "fred_alfred", "series": ["DFF", "FEDFUNDS"], "window": "full"}]},
+    "6J-H4": {"required": [{"family": "cb_banks", "series": ["boj_mpm (dates + statements)"], "window": "2010..2026"}]},
+    "6J-H5": {"required": [{"family": "cb_banks", "series": ["mof_feio"], "window": "2010..2026"}]},
+    "6B-H1": {"required": [], "note": "in hand"},
+    "6B-H2": {"required": [{"family": "cb_banks", "series": ["ons_calendar", "boe_bank_rate", "boe_mpc"], "window": "2010+"}], "blocked": [{"type": "BLOCKED_CONSENSUS", "piece": "consensus UK+US"}], "pit": "ONS first prints NOT vintage-archived free -> DECLARED_LAG for revised series"},
+    "6B-H3": {"required": [{"family": "cb_banks", "series": ["hmt_fiscal_calendar", "boe_gilt_yield_curve"], "window": "2010+"}], "pit": "gilt yields latest-vintage official (free vintages absent) -> vintage-grade NOT_RUN_PIT, jump-filter descriptive use only"},
+    "6B-H4": {"required": [], "note": "structurally blocked on price data"},
+    "6B-H5": {"required": [{"family": "bls_bea_fed", "series": ["bls_cpi release-date calendar 2010+ (archives)"], "window": "2010+"}]},
+    "6A-H1": {"required": [{"family": "cb_banks", "series": ["rba_decisions"], "window": "2010..2026 (decision dates + times 14:30 Sydney)"}]},
+    "6A-H2": {"required": [], "blocked": [{"type": "VENDOR_PAID", "piece": "hg_copper_daily (vendor bundle; no free official daily history)"}, {"type": "PAID_OWNER_WAIT", "piece": "iron_ore_primary_price (licensed)"}]},
+    "6A-H3": {"required": [], "note": "in hand"},
+    "6A-H4": {"required": [], "note": "in hand"},
+    "6A-H5": {"required": [{"family": "cb_banks", "series": ["rba_cash_rate_hist"], "window": "2010+"}, {"family": "fred_alfred", "series": ["DFF/DFEDTARU"], "window": "2010+"}]}
+  },
+  "excluded_by_design": {
+    "consensus_surprise_archive (all regions)": "BLOCKED_CONSENSUS - no lawful free as-issued consensus archive exists; NEVER substitute actuals as expected (per dispatch + DATA_ACQUISITION_SPEC §8.6)",
+    "lbma_lease_rates": "paid (LBMA/IBA) - PAID_OWNER_WAIT",
+    "spx_dividend_yield": "index-provider paid - PAID_OWNER_WAIT",
+    "hg_copper_daily": "vendor futures bundle - VENDOR_PAID (not nonprice-public)",
+    "iron_ore_primary_price": "licensed primary price - PAID_OWNER_WAIT",
+    "rb ho product futures": "vendor price data - VENDOR_PAID",
+    "databento_glbd_mdp3": "explicitly out of authority (billable)",
+    "gdelt_bigquery_full": "paid/full-corpus - out of authority; bounded free CSV subset optional only",
+    "noaa_bulk_dumps": "no bulk NOAA dumps; only NG-relevant subsets",
+    "bea_gdp_pce": "no hypothesis names BEA (verified in configs 2026-10-02); optional-skip"
+  }
+}

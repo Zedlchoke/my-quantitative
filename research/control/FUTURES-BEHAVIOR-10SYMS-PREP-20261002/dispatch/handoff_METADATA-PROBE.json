@@ -1,0 +1,100 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+ "cycle_id": "UNREGISTERED_PREP",
+ "role": "lane",
+ "lane": "METADATA-PROBE",
+ "dispatch_sha": "60bbb48b9690897c43487a7dd2f11a9edc2a469c",
+ "actual_start_sha": "60bbb48b9690897c43487a7dd2f11a9edc2a469c",
+ "commit_sha": null,
+ "commit_sha_disclosure": "null by design for this dispatch: lane leaves its new namespace untracked in the worktree (lead/owner integrates); HEAD re-verified 60bbb48b9690897c43487a7dd2f11a9edc2a469c before and after the run (dispatch_sha == actual_start_sha).",
+ "changed_paths": [
+  "databento_metadata_probe/probe_metadata.py",
+  "databento_metadata_probe/metadata_results.json",
+  "databento_metadata_probe/DATABENTO_METADATA_PROBE.md",
+  "databento_metadata_probe/NEXT_OWNER_DECISION.md",
+  "databento_metadata_probe/evidence/databento_client_metadata.py.snapshot",
+  "databento_metadata_probe/evidence/databento_client_symbology.py.snapshot",
+  "dispatch/handoff_METADATA-PROBE.json"
+ ],
+ "tests": [
+  {
+   "command": "probe_metadata.py (real run: 80 sequential metadata-only requests to hist.databento.com; key read in-process from ~/.config/my-quantitative-secrets/databento-api-key)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "sha256:fa9fe26d5d4832f5a60a6283f2d6f40e0e91d0171aa6e348feb0a9af46babe1b (metadata_results.json = the run's evidence; 78x200, 2x422, 0 auth failures)"
+  },
+  {
+   "command": "offline plan verification: import build_plan -> 79 planned + 1 runtime get_cost cross-check = 80 (hard cap honored)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "n/a (console-verified count 80; no artifact)"
+  },
+  {
+   "command": "credential-leak scan: grep -rE 'db-[A-Za-z0-9_-]{12,}' over the namespace + no 'Authorization' string in results JSON",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "scan output empty"
+  }
+ ],
+ "authority_claims": [],
+ "summary": "Metadata-only Databento probe executed within authority: 80 sequential requests (cap 80), zero data bytes downloaded, zero purchases/subscriptions/account changes. Auth OK (no 401/403); dataset GLBX.MDP3 present; entitlement signal via get_dataset_range full 2010-06-06..now per schema; ohlcv-eod NOT exposed; unit prices captured (ohlcv-1m $70/GB, ohlcv-1d $190/GB, bbo-1m $18/GB, definition $1.7/GB, statistics $1.0/GB). PILOT package (PILOT-01..05 exact manifest shapes): 13,728,026 measured records, 2.1999 GB billable, $3.54 at list / ~$3.30 at the measured get_cost ratio 0.9313 (get_cost cross-checked on 2 shapes, identical ratio). EXPANSION measured lines (EXP-01..05): 433,916,711 records, 54.4557 GB, $552.08 list / ~$514 ratio-adjusted; all 10 roots ohlcv-1m > 0 over full line windows. Blockers typed: PILOT-06 + EXP-09 BLOCKED_INVALID_REQUEST (symbology.resolve continuous->raw_symbol unsupported for GLBX.MDP3, HTTP 422; fix = stype_out=instrument_id, free). Corrections found for the prepared probe scripts (NOT modified, frozen for audit): parent symbols must be {ROOT}.FUT; record_count/billable_size/get_cost are POST on hist.databento.com.",
+ "findings": [
+  "OBSERVED: billable_bytes == record_count x DBN record size (520/80/56 B) EXACTLY on every line with both measured \u2014 API numbers reconcile with code/futbt/dbn/spec.py layouts.",
+  "OBSERVED: get_cost = 0.9313 x (billable_size/1e9 x list unit price) on both cross-checked shapes (statistics full line; ohlcv-1m window); mechanism undocumented; get_cost treated as authoritative quote.",
+  "OBSERVED: list_schemas(GLBX.MDP3) has no ohlcv-eod -> P0-1 additional check answered NO; session dailies must be self-aggregated (manifest fallback stands).",
+  "OBSERVED: get_dataset_range returns per-schema 2010-06-06..probe-time for all needed schemas (mbo/cmbp-1/cbbo-* start 2017-05-21); dataset-level entitlement signal OK; no 403 anywhere.",
+  "OBSERVED: EXP-04 ohlcv-1m 2019..2026 per-root records NQ 3,933,682 / ES 4,356,678 / CL 52,904,358 / NG 35,792,075; EXP-05 2021..2026 GC 6,469,794 / SI 4,304,935 / 6E 2,946,494 / 6J 2,707,178 / 6B 2,331,442 / 6A 2,461,135 (all > 0).",
+  "FACT(sourced): billing model is per-byte of delivered uncompressed data (docs usage-pricing page via api.databento.com/v0/docs/search build 01M3QSBT40W79JPVNV0CHMKD5E, 2026-10-02); every endpoint called is metadata-only; symbology.resolve documented free."
+ ],
+ "defects": [],
+ "open_questions": [
+  "Owner: approve/reject the PILOT package and its $10 max-cost ceiling (NEXT_OWNER_DECISION.md); spend approval is a future explicit step \u2014 even $0 quotes stop at the download gate this round.",
+  "Cause of the 0.9313 get_cost/list ratio (account pricing tier vs calculation basis) \u2014 unknown, harmless for decisions at this size.",
+  "data/request/probe_*.py corrections ({ROOT}.FUT, POST methods, hist host) \u2014 owner/audit lane to schedule; files untouched by this lane."
+ ],
+ "known_limitations": [
+  "PILOT-06 and EXP-09 vendor roll tables NOT produced: symbology.resolve BLOCKED_INVALID_REQUEST (HTTP 422, unsupported continuous->raw_symbol combination on GLBX.MDP3); free-endpoint fix documented, not retried (request cap consumed).",
+  "NOT_RUN_DOC_UNCLEAR: whoami/account/balance endpoint \u2014 none verifiable in official docs/client; account credits ($125) not visible via API; auth verified via authenticated metadata calls instead.",
+  "P0-3 earliest-window coverage grid (per root x schema x 2010/2012/2015/2019/2021 windows) NOT_RUN (80-request cap); partially compensated by get_dataset_range per-schema ranges + per-root full-window record counts.",
+  "Record counts for PILOT-03 (ohlcv-1d) and PILOT-05 (bbo-1m) NOT_RUN (cap-bound); sizes/costs measured; derived counts labeled DERIVED.",
+  "EXP-06/07/08 NOT_ENUMERATED by manifest design; excluded from all aggregates.",
+  "Quotes captured 2026-10-02; no documented validity window; re-probe before any spend (manifest discipline).",
+  "Joined-symbol line quotes assume additivity into per-root chunks (arithmetic verified via count x record-size reconciliation, but per-root sizes were not separately measured for PILOT/EXP-01..03).",
+  "Manifest windows passed verbatim: API end dates are EXCLUSIVE, so the two front-strip windows cover through 2026-09-30 only; documented in report caveats."
+ ],
+ "incidents": [
+  "2x HTTP 422 (R005, R080 symbology.resolve) \u2014 typed BLOCKED_INVALID_REQUEST, no retry (4xx terminal), no billing impact (free endpoint), root cause identified and fix documented.",
+  "No credential incidents: key read in-process from the owner-set 0600 file outside the repo; passed only as Basic auth to official endpoints; artifacts scanned clean; no env vars, args, logs or chat exposure."
+ ],
+ "tree_status": "worktree dirty with PRE-EXISTING other-lane modifications (dispatch/handoff_*.json, configs/symbols/6A.yaml, audit/, COOWNER_REVIEW_RESPONSE.md \u2014 untouched by this lane); this lane added only the untracked databento_metadata_probe/ namespace + this handoff; HEAD unchanged at 60bbb48b9690897c43487a7dd2f11a9edc2a469c.",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "databento_metadata_probe/probe_metadata.py",
+   "sha256": "26e4993575e076a2d413c13095955b7e56dbc1bfd4cc02e99f5f338efb4ab6b3"
+  },
+  {
+   "path": "databento_metadata_probe/metadata_results.json",
+   "sha256": "fa9fe26d5d4832f5a60a6283f2d6f40e0e91d0171aa6e348feb0a9af46babe1b"
+  },
+  {
+   "path": "databento_metadata_probe/DATABENTO_METADATA_PROBE.md",
+   "sha256": "1943499e92b40bc85e6f1f877d339f83c2f308e21f54f2b2fedf20d0277bde8b"
+  },
+  {
+   "path": "databento_metadata_probe/NEXT_OWNER_DECISION.md",
+   "sha256": "fdd45c1b105e6b239b5e2b0ab156c1fe3a2e4dfde3a1a395a0d854949753a966"
+  },
+  {
+   "path": "databento_metadata_probe/evidence/databento_client_metadata.py.snapshot",
+   "sha256": "f6e0d1dac704b017597b270a6ef5c7f21d8b446b4bb3b35d4fceddfae524d890"
+  },
+  {
+   "path": "databento_metadata_probe/evidence/databento_client_symbology.py.snapshot",
+   "sha256": "92d919e7d62381c00e06adf42215fb95d11a77740eec6d37f202661e43725ef4"
+  }
+ ],
+ "recommended_next_action": "Owner reads databento_metadata_probe/NEXT_OWNER_DECISION.md and decides on the PILOT package (~$3.30-3.54, ceiling $10, PILOT-06 symbology fix applied first: stype_out=instrument_id). Any actual data request remains a future explicit owner-spend step inside the manifest's chunk/ledger discipline; nothing this round downloaded data or spent money.",
+ "generated_utc": "2026-10-02T10:51:41+00:00"
+}

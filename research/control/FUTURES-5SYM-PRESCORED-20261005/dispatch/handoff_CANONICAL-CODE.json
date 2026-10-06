@@ -1,0 +1,171 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-5SYM-PRESCORED-20261005/CANONICAL-CODE",
+  "cycle_id": "FUTURES-5SYM-PRESCORED-20261005",
+  "role": "LANE-CANONICAL-CODE (wave 4; implement the production canonical-integration layer AS CODE per ERRATUM 2, tested sandbox-isolated through the same code, plus permitted read-only real-state checks)",
+  "lane": "CANONICAL-CODE",
+  "wave": 4,
+  "dispatch_sha": "f1f69c8e18e6d5ba4ab801632e22428251950131",
+  "actual_start_sha": "f1f69c8e18e6d5ba4ab801632e22428251950131",
+  "commit_sha": null,
+  "branch": "prep/futures-5sym-prescored-20261005",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-5sym-prescored/prep",
+  "verdict": "PASS",
+  "verdict_basis": "The canonical-integration layer now EXISTS AS CODE, closing the ERRATUM-2 gap ('CANONICAL_INTEGRATION.md is a documented sequence, not implemented+tested code'). canonical/production_exec.py wraps — never reimplements — the repo's canonical governance APIs (governance/heavy_lock.py flock+registry, cycle_registry.py+atomic_io.py CAS+journal+projection, imported from this worktree exactly as researchctl.py imports them): (a) read_authority() parses the REAL registry format (strict cycle_registry@1 loader), verifies measured HEAD (incl. unmeasured-placeholder class), branch, executable lifecycle, and the real GO artifact convention research/control/<CYCLE>/auth/GO_RECORDED.json (dev1_go_auth@1, cycle-before-phrase, byte-exact 'GO <CYCLE-ID> SCORED EXECUTION', two_key completeness) with codes REGISTRY_ROW_MISSING/HEAD_MISMATCH/BRANCH_MISMATCH/LIFECYCLE_NOT_EXECUTABLE/GO_MISSING/GO_CYCLE_MISMATCH/GO_PHRASE_MISMATCH/TWO_KEY_INCOMPLETE; (b) acquire_canonical_lock() routes the SAME heavy_lock code path to a sandbox governance dir via the one sanctioned override (F5SYM_GOVERNANCE_DIR/target_root -> scoped RUNTIME_DIRNAME redirection; no lock semantics reimplemented), with pre-inspect tri-state gate, canonical acquire, and post-acquire TOCTOU recheck (fresh HELD_PROVEN + every registry field ours: cycle/role/pid/process_start_token; drift => evidence preserved, flock returned, LOCK_POSTACQUIRE_DRIFT); (c) execute_cycle_step() enforces the BUG-class laws: step exception => release ALWAYS attempted + ledger-untouched proof + FAILED non-zero; terminal handoff written INSIDE the guarded path, raised handoff => FAILED with no success token (BUG2); raised release => FAILED non-zero even on completed computation (BUG1); FINAL_STATUS.json machine-readable on EVERY terminal path; (d) registry_cas_update() goes through cycle_registry.update_cycle (CAS on prev sha + journal + projection), refuses REAL targets before any read-modify-write with REGISTRY_WRITE_REAL_REFUSED (hard-compiled PREP_BUILD, TODO naming the owner authorization), surfaces CAS conflicts as no-partial-write CAS_MISMATCH; (e) realstate.py gives read-only real-state checks that ran green against the real surfaces. 14/14 pytest tests (T1-T14) pass through this one code path; sandbox isolation proven at two levels (per-test tmp governance dirs; suite-level real-state sha snapshot byte-identical). Verdict PASS covers the wrapper + its sandbox-through-same-code proofs + read-only real checks; real lock acquisition, real registry writes and real GO consumption remain NOT_RUN behind named owner authorizations; it ratifies no decision, registers nothing, and produces no scored outcome.",
+  "changed_paths": [
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/production_exec.py (new)",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/realstate.py (new)",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py (new)",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/CANONICAL_INTEGRATION_V2.md (new)",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/LOCKS_LOG.jsonl (new)",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/dispatch/handoff_CANONICAL-CODE.json (this file)"
+  ],
+  "tests": [
+    {
+      "name": "T1 happy path: register-row (canonical CAS register_cycle) + CAS activate + valid GO + acquire + step + handoff + release + post-step CAS => exit 0, sandbox heavy registry unlinked, FINISHED history row, FINAL_STATUS success, projection regenerated",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t1_happy_path_full_production_sequence -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "Full production sequence through run_protected_step on a sandbox registry (same cycle_registry@1 schema) + sandbox governance dir; lock released (inspect FREE_PROVEN), registry CAS-updated via cycle_registry.update_cycle."
+    },
+    {
+      "name": "T2 registry row missing => AuthorityError REGISTRY_ROW_MISSING pre-lock",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t2_registry_row_missing -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "Unregistered cycle id refused via cycle_registry.resolve/CycleNotFound mapping."
+    },
+    {
+      "name": "T3 HEAD mismatch (stale + unmeasured-placeholder classes) => HEAD_MISMATCH pre-lock",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t3_head_mismatch -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "row.head != measured HEAD refused; 0*40 placeholder refused as HEAD_MISMATCH kind=unmeasured_placeholder."
+    },
+    {
+      "name": "T4 branch mismatch => BRANCH_MISMATCH pre-lock",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t4_branch_mismatch -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "row.branch != measured branch refused with row/measured evidence."
+    },
+    {
+      "name": "T5 lifecycle not executable (TERMINAL / PAUSED_MAINTENANCE / PLANNED_NOT_STARTED) => LIFECYCLE_NOT_EXECUTABLE pre-lock",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t5_lifecycle_not_executable -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "Only ACTIVE_LIGHT/ACTIVE_HEAVY executable; GO verification ordering proven irrelevant because lifecycle gates first."
+    },
+    {
+      "name": "T6 GO refusals: missing / wrong cycle (checked before phrase) / paraphrased phrase / registered!=typed / two_key missing member / two_key absent => GO_MISSING | GO_CYCLE_MISMATCH | GO_PHRASE_MISMATCH | TWO_KEY_INCOMPLETE",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t6_go_refusals -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "All six GO failure classes fire pre-lock on real dev1_go_auth@1-format artifacts; byte-exact phrase law (no trim/case-fold); a complete GO returns the row."
+    },
+    {
+      "name": "T7 lock held by foreign row => CanonicalLockBusy verdict NOT_RUN_RESOURCE_CONFLICT, no computation",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t7_lock_held_by_foreign_row -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "Foreign acquire through the same wrapper; second acquire refused exit-75 posture; step callable never invoked; registry row stays foreign."
+    },
+    {
+      "name": "T8 post-acquire drift (foreign row injected after acquire, before recheck) => LOCK_POSTACQUIRE_DRIFT, evidence preserved, flock returned",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t8_post_acquire_drift_foreign_row -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "Recheck abort preserves the injected row bytes untouched, returns ONLY the OS flock (never reclaims/rewrites); canonical inspect then fails closed (row under free flock)."
+    },
+    {
+      "name": "T9 step exception => release ALWAYS attempted (lock truly released), ledger untouched, FAILED non-zero",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t9_step_exception_releases_lock_ledger_untouched -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "RuntimeError in step => sandbox heavy registry unlinked, inspect FREE_PROVEN, ledger sha unchanged, FINAL_STATUS FAILED."
+    },
+    {
+      "name": "T10 release-raises (injected) => FAILED non-zero (BUG1 class proof)",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t10_release_raises_failed_nonzero_bug1 -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "Step completed + handoff written but a raised release is a finalization failure: success token false, release_error recorded, exit 3."
+    },
+    {
+      "name": "T11 handoff-write-raises (injected) => non-zero, no success token, lock still released (BUG2 class proof)",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t11_handoff_write_raises_failed_bug2 -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "Terminal handoff write inside the guarded path failed => FAILED exit 3, handoff file absent, no success token, inspect FREE_PROVEN after."
+    },
+    {
+      "name": "T12 real-mode refusal: REGISTRY_WRITE_REAL_REFUSED (real registry + anything in real plans dir), REAL_LOCK_ACQUIRE_REFUSED_PREP (target_root=real gov, no target, env override=real dir), full run_protected_step write-intent => REFUSED exit 2 BEFORE any real write; real registry sha unchanged",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t12_real_mode_refused_before_any_write -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "Hard-compiled PREP_BUILD refusal fires before any real read-modify-write or lock touch; refusal detail carries the TODO naming the owner authorization."
+    },
+    {
+      "name": "T13 CAS conflict: stale prev sha => CAS_MISMATCH refusal, registry byte-identical (no partial write); true prev sha CAS succeeds",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t13_cas_conflict_stale_base_no_partial_write -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "atomic_io CAS law surfaced through the wrapper; head change from..to recorded only on the winning CAS."
+    },
+    {
+      "name": "T14 read-only real-state checks green against the REAL registry: strict parse (cycle_registry@1), 85 cycles / 85 unique ids, FUTURES-5SYM-PRESCORED-20261005 ABSENT as required, real locks-inspect verdict parse FREE_PROVEN, listing digest (lock 0 bytes, registry row ABSENT), before/after sha snapshot identical",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py::test_t14_readonly_real_state_checks_green -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "realstate.py against real surfaces: check_real_registry + real_locks_inspect (actual researchctl.py locks inspect subprocess) + governance_listing_digest; zero writes (sha proof inside the test)."
+    },
+    {
+      "name": "full suite + suite-level isolation proof",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "summary": "14 passed in 0.54s (suite light). Suite-level proof: sha256 snapshot of real plans/CYCLE_REGISTRY.json + plans/ACTIVE_CYCLES.json + all four heavy_runtime files (heavy_worker.lock 0B, heavy_worker.registry.json ABSENT, heavy_worker.history.jsonl, scheduler_jobs.json) BEFORE and AFTER the suite => byte-identical. Locks-inspect bookends: lane start FREE_PROVEN ('no registry row and the lock file is not flocked'), lane end FREE_PROVEN; canonical heavy lock NEVER acquired (real or sandbox beyond per-test tmp dirs)."
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Real heavy_lock.acquire() on ~/.my-quantitative-governance/heavy_runtime/ is NOT_RUN: PREP_BUILD is hard-compiled True and every real-mode acquire is refused before any real lock touch (T12 proves the refusal fires). Unlocked by owner authorization I.",
+    "Real cycle register / cycle update writes to plans/CYCLE_REGISTRY.json are NOT_RUN: registry_cas_update refuses real targets (REGISTRY_WRITE_REAL_REFUSED) before any read-modify-write (T12). Unlocked by owner authorization I.",
+    "Real GO artifact consumption is NOT_RUN: no typed owner GO exists for any FUTURES-5SYM-PRESCORED cycle (the real registry assert-absent check confirms the round is unregistered); GO verification is proven against the real FORMAT (dev1_go_auth@1, real auth/ convention) but sandbox files only. Unlocked by owner authorization II.",
+    "Sandbox tests through the same code path ARE evidence of the wrapper's integration correctness (refusal paths, lock lifecycle, CAS, BUG1/BUG2 laws) but are NOT evidence that the machine-wide canonical lock was exercised on the real runtime — stated explicitly in CANONICAL_INTEGRATION_V2.md §3 (fail-closed until a registered cycle).",
+    "read_authority's git HEAD/branch measurement path is implemented but the suite passes measured values explicitly (sandbox rows are not git branches); the git-measurement branch is exercised only when worktree= is given in production.",
+    "The named fault seam (post_acquire_foreign_row / fail_handoff_write / fail_release) is production-code fault injection mirroring exec/scored_runner_v2.py's --test-fault pattern; production callers pass no faults."
+  ],
+  "incidents": [
+    "Foreign owner write observed on the real registry mid-lane (not by this lane; this lane only read): plans/CYCLE_REGISTRY.json sha256 was 9949effe8baddf0b... at lane start, then b292229770b74844... after an owner action recorded in CYCLE_REGISTRY.events.jsonl at 2026-10-06T00:30:16Z ('update FUTURES-ES-PB1-V1: packet corrected per owner verbatim directive...'; writer 'A1: XAUUSD-SHADOW-V1 owner-directed removal closeout'; cycle count 100 -> 85). The suite-level isolation proof is internally consistent (byte-identical around THIS lane's suite run at sha b2922297... on both sides). No action needed from this lane; noted so the controller attributes the registry change to the owner, not to wave-4 lanes."
+  ],
+  "tree_status": "No commits by this lane (commit_sha null); writes confined to research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/** (all new, untracked) + dispatch/handoff_CANONICAL-CODE.json. Other tracked modifications visible in git status (exec/scored_runner_v2.py, freeze_wiring/wiring/*, freeze_wiring/tests/LOCKS_LOG.jsonl, freeze_wiring/wiring/intent_executor.py) belong to CONCURRENT wave-4 lanes and were not touched by this lane. No other worktrees entered; no network; no S1/GO/registration; real registry/GO/ledger/lock never written; the real heavy lock was never acquired (locks inspect is read-only).",
+  "workers": [],
+  "outputs": [
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/production_exec.py",
+      "sha256": "ccb49bbd34cb558e1961b02abbf26aab56d4222cf557d7421569b2834b71eec0"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/realstate.py",
+      "sha256": "3fdd56ce3b62617806297758a21cf95e37f9423c7cf9de3a22f5fa7a8b3e16fd"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/test_production_exec.py",
+      "sha256": "1fd3a5777f35b36d1c439498e100c02c38cb6208393eed801c7f9119e8d8feac"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/CANONICAL_INTEGRATION_V2.md",
+      "sha256": "4ac571658eb53412cc0415c42a2ef49118cdf7adc727adebeb4bb51293762152"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/canonical/LOCKS_LOG.jsonl",
+      "sha256": "2b42d9214787940d26a04c4197bf56136cee8c69ad4518b64bc97238c8b3e826"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/dispatch/handoff_CANONICAL-CODE.json",
+      "sha256": "SELF-NO-DIGEST (this file; digest computed by the controller after receipt)"
+    }
+  ],
+  "recommended_next_action": "Controller: (1) treat canonical/production_exec.py as the production entrypoint for the future registered FUTURES-5SYM cycle — its run_protected_step() IS the CANONICAL_INTEGRATION §3 sequence as code; (2) the unlock path is now concrete: owner authorization I (explicit owner instruction naming this wrapper + PREP_BUILD flip + a registered ACTIVE_HEAVY row) unlocks real lock acquisition + real CAS registry updates; owner authorization II (typed GO_RECORDED.json at the cycle's own gate, dev1_go_auth@1, byte-exact phrase, complete two_key) unlocks read_authority against the real auth/ artifact; until both land, every real-mode attempt fails closed with REGISTRY_WRITE_REAL_REFUSED / REAL_LOCK_ACQUIRE_REFUSED_PREP (proven by T12); (3) concurrent wave-4 lanes' modifications in exec/freeze_wiring are outside this lane's scope — attribute them to their own handoffs; (4) note the mid-lane owner registry write (incident above) when reconciling cycle counts."
+}

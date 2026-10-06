@@ -1,0 +1,129 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-5SYM-PRESCORED-20261005-EXEC",
+ "cycle_id": "FUTURES-5SYM-PRESCORED-20261005",
+ "role": "LANE-EXEC (relaunch; prior attempt died on infrastructure rate-limit after completing only the git-extraction step)",
+ "lane": "EXEC",
+ "dispatch_sha": "ffed828f73fa19fa0ff4aee3ac1b441909a43940",
+ "actual_start_sha": "b051d61e3a8d061412e1837bfc046a419e16dd10",
+ "actual_start_sha_note": "measured HEAD at lane start (branch prep/futures-5sym-prescored-20261005); HEAD advanced to 059c06653a52ff436935e70f0ce7dfb3ae2d164d by CONTROLLER wave checkpoints during the lane — no lane commits were made (commit law respected)",
+ "commit_sha": null,
+ "changed_paths": [
+  "exec/FIX_LOG.md",
+  "exec/RUNNER_SPEC_V2.md",
+  "exec/SHA256SUMS_exec.txt",
+  "exec/SYMBOL_COMPAT_MATRIX.md",
+  "exec/_upstream_scored_runner.py",
+  "exec/_upstream_scored_runner_spec.md",
+  "exec/_upstream_test_runner_refusals.py",
+  "exec/scored_runner_v2.py",
+  "exec/symbol_contracts.json",
+  "exec/test_runner_v2/conftest.py",
+  "exec/test_runner_v2/test_execution.py",
+  "exec/test_runner_v2/test_isolation.py",
+  "exec/test_runner_v2/test_lock.py",
+  "exec/test_runner_v2/test_refusals.py",
+  "exec/test_runner_v2/test_symbol_laws.py",
+  "dispatch/handoff_EXEC.json"
+ ],
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/futures-5sym-prescored/prep/research/control/FUTURES-5SYM-PRESCORED-20261005/exec && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest /Users/hoangminhlong/my-quantitative/.worktrees/futures-5sym-prescored/prep/research/control/FUTURES-5SYM-PRESCORED-20261005/exec/test_runner_v2 -q",
+   "exit_code": 0,
+   "verdict": "42 passed in 4.09s — ALL PASS (T1 happy path all 5 symbols; T2-T7 refusals; T8 lock conflict 75; T9 post-acquire foreign row; T10 mid-run exception; T11 BUG1 proof fail_release; T12 BUG2 proof fail_handoff_write; T13 publication quarantine; T14 duplicate idempotency; T15 twin drift; T16 real-governance isolation + session snapshot; T17 6A era switch; T18 6J quote direction; T19 missing prior artifact; T20 stale-marker recovery + torn-ledger integrity; upstream refusal lineage cases ported)",
+   "log_digest": "e554c4f340ee862186e1ac9e43db57cab1320045c57ec6f139e8640152ae36a0"
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python /Users/hoangminhlong/my-quantitative/research/researchctl.py locks inspect",
+   "exit_code": 0,
+   "verdict": "PRE-suite verdict: FREE_PROVEN — no registry row and the lock file is not flocked (canonical machine lock never taken by this lane)",
+   "log_digest": "2d389c1f48c9703014453878f5bea712bc90eb2333aa507b7b3c97ebe9cd1e73"
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python /Users/hoangminhlong/my-quantitative/research/researchctl.py locks inspect",
+   "exit_code": 0,
+   "verdict": "POST-suite verdict: FREE_PROVEN — no registry row and the lock file is not flocked (byte-identical output to the pre-suite inspect: digest matches)",
+   "log_digest": "2d389c1f48c9703014453878f5bea712bc90eb2333aa507b7b3c97ebe9cd1e73"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "ALL contract numbers in exec/symbol_contracts.json are VERIFICATION: PLACEHOLDER-PENDING-PER-SYMBOL-LANE — tick sizes/values, multipliers, session masks and the 6A era boundary 2020-11-23 are DATA pending re-derivation against committed exchange-spec evidence by the per-symbol lanes (nq/, fx_eb/, fx_ja/) + VERIFY before any real freeze; the runner applies but never verifies them",
+  "ES contract row is a compatibility reference carried unverified from the upstream FUTURES-ES-PB1-V1 cycle",
+  "the T16 real-governance snapshot DISCLOSED-EXCLUDES the canonical heavy_runtime/ contents (they belong to other cycles' lock lifecycles and can change for reasons outside this suite); everything else under the real governance dir plus plans/CYCLE_REGISTRY.json plus the real ES GO_RECORDED.json is content-sha + size + mtime asserted unchanged across the whole suite",
+  "session_mask_spec is descriptive only in this build: the engine consumes bars as a plain ordered series (no session/PIT filtering) — a lane deliverable before any real freeze",
+  "engine arms are exactly the two deterministic rules (long-if-bar-up / short-if-bar-down, hold_bars>=1) — the ACCOUNTING path is what is under test, no strategy intelligence",
+  "the runner is deliberately unable to reach anything real in this PREP build: REFUSED_REAL_GOVERNANCE_DIR is unconditional and --allow-real-governance is a hard-compiled refusal",
+  "exec/SHA256SUMS_exec.txt excludes __pycache__/ and .pytest_cache/ (transient caches, never evidence)"
+ ],
+ "incidents": [
+  "PRIOR ATTEMPT: died on infrastructure rate-limit after completing only the git-extraction step; the three _upstream_* extracts already existed non-empty — verified byte-exact against `git show prep/futures-es-reg-20261004:<path>` (runner extract = FAIL-record revision c17ab2bf, pre-FINALIZE-FIX; refusals test @999ece60; spec @a855dab8), provenance headers added, extraction NOT repeated",
+  "T16-GUARD CATCH (found and fixed in-lane): an early suite pass wrote refusal_record.json INTO /Users/hoangminhlong/.my-quantitative-governance/ via the T16d case (refusal-record path derived from the final_status parent). The file was MY OWN artifact (real dir held only heavy_runtime/ + mdp_dvc_remote/ before this session); it was deleted, the listing restored to the original two entries and re-verified; the runner was fixed (refusal evidence falls back to the validated sandbox run dir; the real dir is never written by any path) and the suite now proves it (test_T16d + session snapshot). No foreign state was modified",
+  "dev-loop note: HEAD moved mid-lane (controller wave checkpoints); lane made zero commits and zero writes outside exec/ + dispatch/handoff_EXEC.json"
+ ],
+ "tree_status": "worktree futures-5sym-prescored/prep @ branch prep/futures-5sym-prescored-20261005; HEAD 059c06653a52ff436935e70f0ce7dfb3ae2d164d; git status --porcelain over the lane shows the exec/ tree + dispatch/handoff_EXEC.json + dispatch/handoff_CALCOST.json (another lane's, untracked) all untracked — LANE-EXEC committed nothing; canonical heavy lock FREE_PROVEN before and after the suite",
+ "workers": [],
+ "outputs": [
+  {
+   "path": "exec/FIX_LOG.md",
+   "sha256": "b43ac1b88eac703185aeaadd10d86a1db254188ccc4d557f66510aef35f0a60d"
+  },
+  {
+   "path": "exec/RUNNER_SPEC_V2.md",
+   "sha256": "e44781a23450e7a3f536eb8918cda0271328e3d91a362d44a156ba218e24048d"
+  },
+  {
+   "path": "exec/SHA256SUMS_exec.txt",
+   "sha256": "2411d852b12a729858d67e86d0d792bd37bc6755dabd94775c807f4a2381b007"
+  },
+  {
+   "path": "exec/SYMBOL_COMPAT_MATRIX.md",
+   "sha256": "2a2c635aa2ad5ecd2d0aa3a69f62756b24fccc8b915e2f46968b0a88c4bf9817"
+  },
+  {
+   "path": "exec/_upstream_scored_runner.py",
+   "sha256": "f9af9122738d47adc7e70d12dd07cec5b79be1abfa9761252e74bd34177b7502"
+  },
+  {
+   "path": "exec/_upstream_scored_runner_spec.md",
+   "sha256": "c7507c5700b5b0afb421fe7451153f6c07eec99c805778d4dd645869008dd53a"
+  },
+  {
+   "path": "exec/_upstream_test_runner_refusals.py",
+   "sha256": "fe484f656c3b1cd30a46966a7e4b258f2aea10a773bf9dd7efb5ffdb8a107965"
+  },
+  {
+   "path": "exec/scored_runner_v2.py",
+   "sha256": "a0122da9116815bc3bb5b3ea632e60a2977d9e63d713be08029b485e86e2b049"
+  },
+  {
+   "path": "exec/symbol_contracts.json",
+   "sha256": "66bea4930b5faa087faa69ae29f7dd046cb69dd041435c815262a17c51b5b759"
+  },
+  {
+   "path": "exec/test_runner_v2/conftest.py",
+   "sha256": "cf97d46d5db48f12827222b088d5b1e69ffaa9866b872aa32a05fc0826906754"
+  },
+  {
+   "path": "exec/test_runner_v2/test_execution.py",
+   "sha256": "7a29e7aa59ab3aec3399e9337a45ad0ff667888136422481a8d49f9fff05f41e"
+  },
+  {
+   "path": "exec/test_runner_v2/test_isolation.py",
+   "sha256": "aaa95e8a3ba1832d0eb3d3f7f36a9b80b6688e1c3a8496e3e63811c3ec2c67fd"
+  },
+  {
+   "path": "exec/test_runner_v2/test_lock.py",
+   "sha256": "c687e6f9f4acf477d4be5e9e7b316278d6f358023490e04e25e7960830aa50bc"
+  },
+  {
+   "path": "exec/test_runner_v2/test_refusals.py",
+   "sha256": "8049318c8e442f27400456fb1eb1bcdeff72cbc43bab5dfa91effbc386c78ed1"
+  },
+  {
+   "path": "exec/test_runner_v2/test_symbol_laws.py",
+   "sha256": "5837834073315e13b3dedd02173e82ffb15ecb7a767ad6d6dac09f04b323ea4a"
+  }
+ ],
+ "recommended_next_action": "Controller: commit the EXEC lane wave checkpoint by explicit pathspec (research/control/FUTURES-5SYM-PRESCORED-20261005/exec/ + dispatch/handoff_EXEC.json; git add -A forbidden). Per-symbol lanes: consume runner_v2 + exec/symbol_contracts.json and replace every PLACEHOLDER-PENDING-PER-SYMBOL-LANE contract number with lane-verified evidence (SYMBOL_COMPAT_MATRIX.md marks every row OPEN). VERIFY lane: re-run the suite at the committed SHA and check exec/SHA256SUMS_exec.txt. The runner stays PREP-only: no real scored run, no GO consumption, no real governance writes until a registered cycle + typed GO exist."
+}

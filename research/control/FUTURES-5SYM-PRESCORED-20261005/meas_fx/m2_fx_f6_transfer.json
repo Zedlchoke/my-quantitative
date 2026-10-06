@@ -1,0 +1,93 @@
+{
+ "schema": "meas_fx_m2_f6_transfer@1",
+ "item": "WORK_QUEUE A-#9 / HYPO G4 \u2014 FX-F6 fwd-21d-vol -> intraday-sign transfer",
+ "law": "harness + synthetic fixtures ONLY; real-data transfer run is owner-gated NOT_RUN-REAL-DATA (conditional-on-signal); no PnL; PB2 untouched; release-clock control (rows 107-109 precedent) is MANDATORY in any scored future and is wired as a required argument of any real run",
+ "committed_descriptive_inputs": {
+  "6E_signal_side": {
+   "path": "FUTURES-DEEPRESEARCH-V2-20261003/analysis/6E_a5_cot.json:positioning_vs_fwd_vol_descriptive",
+   "n_joined": 347,
+   "n_pctile_ge80": 54,
+   "n_pctile_le20": 36,
+   "fwd21_vol_mean_pct_ge80": 6.5217801000129665,
+   "fwd21_vol_mean_pct_le20": 7.683787027023775,
+   "fwd21_vol_mean_pct_mid": 6.981696034345467,
+   "pit_structure": "CoT net-noncomm 1,082 weeks 2006-01..2026-09; Tue-observe / Fri-15:30 release; percentiles strict-past 3y rolling; release-safe obs+3 join"
+  },
+  "6B_falsifier": {
+   "path": "FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a5_cot.json",
+   "corr_abs_z_fwd_vol20": -0.07445679702265492,
+   "n_obs": 326
+  }
+ },
+ "committed_vs_conditional_split": {
+  "already_committed_descriptive": [
+   "6E signal side: fwd-21d vol by CoT stratum (>=80pct 6.52% vs <=20pct 7.68%, n=347 joined, strict-past percentiles, obs+3)",
+   "6B cross-symbol falsifier: corr(|z|, fwd vol20) = -0.074 (n=326)"
+  ],
+  "remains_conditional_NOT_RUN": [
+   "the INTRADAY transfer itself: host (F1/F4-6E) trigger-conditioned sign-stability / dispersion split by CoT stratum \u2014 this conditions a market observable on the family signal input and is the hypothesis content"
+  ]
+ },
+ "real_data_run": {
+  "status": "NOT_RUN-REAL-DATA",
+  "grounds": "the transfer conditions on the CoT stratum label; executing it on the 1m panels is conditional-on-signal measurement = owner-gated; the descriptive signal-side inputs already committed are reproduced above from the committed JSONs (not recomputed from raw data)",
+  "mandatory_when_owner_gates_it": [
+   "release-clock control arm (COMMNG1-A4-P2 rows 107-109 law)",
+   "mid-pctile (20-80) negative stratum",
+   "6B near-zero cross-symbol falsifier re-check",
+   "block bootstrap (iid forbidden), strict-past percentiles, obs+3 release-safe labels",
+   "sqrt(2) MDE inflation disclosure on the host"
+  ]
+ },
+ "harness": {
+  "statistic": "T = sign_agree_rate(HIGH) - sign_agree_rate(LOW) on consecutive session returns within strata; seeded circular block bootstrap (block=8, 500 draws, seed=20261005) 95% CI",
+  "label_law": "strict-past 156-week percentile (current obs excluded), strata >=80 / <=20, release-safe obs+3 lag",
+  "fixtures": [
+   {
+    "id": "F1-null",
+    "law": "no injection; T must sit inside its own CI",
+    "T": -0.02917376138599126,
+    "ci": [
+     -0.06666742132838763,
+     0.01418702079643182
+    ],
+    "n_high": 964,
+    "n_low": 1004,
+    "pass": true
+   },
+   {
+    "id": "F2-inject+0.10",
+    "law": "HIGH strata shifted toward sign agreement by +0.10 (P(agree|HIGH)->0.60, sequential injection); T must recover a positive value of that order (> 0.02)",
+    "T": 0.06418723446463115,
+    "ci": [
+     0.015628659356463938,
+     0.10051925472129657
+    ],
+    "n_high": 964,
+    "n_low": 1004,
+    "pass": true
+   },
+   {
+    "id": "F3-no-lookahead",
+    "law": "corrupting the last 100 weeks of the positioning series must leave the first 100 strata labels byte-identical (strict-past construction proof)",
+    "pass": true
+   },
+   {
+    "id": "F4-release-lag",
+    "law": "a HIGH percentile at row 0 must not surface in the label before row 3 (obs+3)",
+    "label_rows_0_1_2": [
+     "None",
+     "None",
+     "None"
+    ],
+    "label_row_3": "HIGH",
+    "pass": true
+   }
+  ],
+  "fixtures_all_pass": true
+ },
+ "mde_disclosure": {
+  "host_n_per_stratum": 681,
+  "mde_inflation_factor": 1.4142135623730951
+ }
+}

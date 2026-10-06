@@ -1,0 +1,276 @@
+schema: futures_behavior_symbol_config@1
+task_id: FUTURES-BEHAVIOR-10SYMS-PREP-20261002
+symbol: 6J
+generated_utc: '2026-10-02'
+source_dossier: dossiers/6J_DOSSIER.md
+dossier_sha256: 2976d69dbad5897a4bcba6c0750d5ecf8f4af7ce67cf9102ab2ff028a404e1bc
+provenance_note: >-
+  Hypotheses derived STRICTLY from dossiers/6J_DOSSIER.md S5. 6J = USD per JPY (NOT
+  inverted; 6J price = 1/USDJPY; a USDJPY-long spot idea is a 6J SHORT) - engine orientation
+  guard active. FX-spot transfers must re-derive basis (roll drag -0.22..-0.33%/month
+  measured), costs ($6.25/tick), margin. Snapshot defects encoded: 8 missing serial months
+  (6JV5,6JX5,6JF6,6JG6,6JJ6,6JK6,6JN6,6JQ6) so the literal next-listed rule is NOT
+  executable 2025-09..2026-08; BoJ decisions land US-overnight (outside RTH bars).
+defaults:
+  universe:
+    exchange: CME (Globex)
+    contract_cycle: ~24 consecutive monthlies + HMUZ quarterlies to Sep-2031
+    liquid_chain_rule: 'nearest HMUZ quarterly ONLY (serials dead: 6JV6 total 3,511 lots, 6JX6 775; 2027+ serials zero volume; quarterly 6JZ6 carried 99.73% of concurrent volume Sep-2026)'
+    liquid_chain_evidence: 'OBSERVED 6J S1 serial_coverage + u6_to_z6_liquidity_skip (2026-10-01: 6JX6 26 lots vs 6JZ6 118,886)'
+  roll_rule:
+    baseline: declared_calendar_last_trade_month
+    baseline_definition: hold until last session BEFORE day-1 of the held quarterly's delivery month (last trade 09:16 CT, 2 business days before 3rd Wednesday), roll at that close
+    reference: code/futbt/roll.py + BACKTEST_LAUNCH_DRAFT.md S0
+    target_adjustment: next_HMUZ_quarterly_MANDATORY - literal next-listed routes into dead serials (declared rule is a DEFECT for 6J, not a baseline) and 8 serial targets are absent from the snapshot anyway
+    dossier_finding: 'OBSERVED 6J S1: old quarterly dominant through its final pre-delivery session (no pre-roll crossover within +-10 sessions); new quarterly ramps ~2 weeks post-roll; roll gaps always positive (quarterly +92..+109 ticks; serial +28/+34)'
+    alternative_required: volume/OI-gated rule (OI NOT_RUN); calendar-serial rule recorded as known defect
+  execution_laws:
+    decision_point: session_close_through_pit_view
+    default_fill: next_session_open_tick_rounded_cost_shifted
+    ambiguous_order: same_bar_tp_sl_worst_case_bound_no_point_pnl
+    close_only_bars: never_fill_any_path
+    tb_labels: TRAIN_ONLY_never_validation_features
+    adjusted_series: causal_additive_features_only_never_fills_mtm_pnl
+    attribution: full_path_leave_one_out_only_additive_leg_sums_forbidden
+  cost_model:
+    commission: {usd_per_side: 0.85, provenance: 'PUBLISHED IBKR 2026-10-02'}
+    exchange_fee: {provenance: NOT_RUN_NOT_FETCHED}
+    spread: {median_usd_per_contract: 12.5, provenance: 'MEASURED daily-BBO close proxy: quarterly fronts last-20 1-2 ticks ($6.25-12.50); S6 4-tick row was the serial 6JV6 (quotes tight on dead serials while depth ~nil)', caveat: non-synchronous, not executable}
+    slippage: {provenance: NOT_RUN_NO_DECLARED_VALUE}
+    stress_multipliers: [1.0, 1.5, 2.0]
+hypotheses:
+- id: 6J-H1
+  dossier_ref: 'dossiers/6J_DOSSIER.md S5 H1 (rank 1 in dossier: fully measured already)'
+  hypothesis_kind: construction_rule
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Liquidity lives on the HMUZ quarterly chain exclusively: a roll/selection rule restricted
+    to HMUZ (roll at the declared session = last session before the held quarterly's delivery
+    month) is the only executable baseline; the literal next-listed rule is a defect (serial
+    fronts carry <=0.3% of volume).
+  pit_trigger:
+    mechanizable: true
+    observable: calendar-only - exchange listing calendar + contract delivery months
+    field: HMUZ delivery months (published years ahead)
+    source: S1 chain (resolves to Sep-2031)
+    as_of_rule: no lookahead; fully knowable in advance
+    timestamp_at_decision: deterministic calendar date
+  direction: none (execution/construction choice)
+  entry: the roll switch itself
+  exit: holding ~3 months (quarterly)
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: quarterly cycle
+  universe: 6J HMUZ chain
+  roll_rule_ref: this IS the roll rule (quarterly-restricted)
+  sizing: 1 contract baseline
+  regime_tags: [all_regimes_mechanical]
+  counter_hypothesis: serials someday liquid (CME incentives change)
+  failure_conditions:
+  - any future sample where a serial month carries >20% of the concurrent quarterly's volume over a full front window
+  - vendor volume levels used for absolute liquidity (only relative shares are reliable)
+  minimal_test:
+    kind: construction_rule_check_measured_volumes
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [6J], use: construction_check, floor: 'HAVE daily per-contract TRADES+BID/ASK (2020-12.., real-volume era 2025-05..2026-10)', floor_met: true, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: construction_rule_embedded_in_all_arm_b_cells
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [6J], use: backtest_fill, floor: '>=24m true volume (real-volume era 2025-05-20..2026-10-01, 342 returns)', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps: []
+  feasibility:
+    mechanization: high
+    acquisition_cost: in_hand_now
+    rank_basis_note: 'dossier: fully measured already; budget $0; PARAM-GAP none for the rule itself'
+  rank: 1
+- id: 6J-H3
+  dossier_ref: 'dossiers/6J_DOSSIER.md S5 H3 (measured structure, immediate use)'
+  hypothesis_kind: structural_relation
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Covered-parity carry: the 6J curve embeds a -0.22..-0.33%/month roll drag for longs (100%
+    of sessions near<far). COST-MODEL, not alpha: any FX-spot-derived long-JPY signal must
+    clear ~2.2-2.7%/yr + spread/commission in futures; short-JPY signals receive that
+    tailwind. Spot-corpus PnL does not transfer.
+  pit_trigger:
+    mechanizable: true
+    observable: measured monthly/quarterly adjacent-contract gaps vs US-JPY short-rate differential
+    field: curve gaps (measured) + USD/JPY rate series (vintaged, not fetched)
+    source: raw curve + BOJ TONA + Fed/FRED ALFRED vintages
+    as_of_rule: contemporaneous differentials; real-volume curve agrees 2025+; settlement-derived pre-2025 disclosed
+    timestamp_at_decision: roll sessions / monthly curve points
+  direction: both (hurdle applied to any directional hypothesis)
+  entry: n/a (hurdle model)
+  exit: n/a
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: per roll cycle
+  universe: HMUZ chain
+  roll_rule_ref: defaults.roll_rule (6J-H1)
+  sizing: '1'
+  regime_tags: [usd_jpy_differential_positive, convergence_flip]
+  counter_hypothesis: curve moves are expectations-driven, not covered-parity
+  failure_conditions:
+  - gap sign flips while the differential stays positive
+  - settlement-derived bars misstate the curve pre-2025 (real-volume curve agrees 2025+)
+  minimal_test:
+    kind: descriptive_gap_vs_differential_sign
+    requirements:
+    - {class: derived_roll_gaps, symbols: [6J], use: signal_reference, floor: 'curve measured (100% near<far); rate loop needs vintaged series', floor_met: false, available_today: true, acquisition: in_hand_now}
+    - {class: external_rates_vintages, symbols: [US, JP], use: regime_split_feature, floor: 'BOJ TONA + Fed funds/FRED vintages (free, not fetched)', floor_met: false, available_today: false, acquisition: free_public}
+    nondata_blockers: []
+  scored_run:
+    kind: structural_input_to_arm_b
+    requirements:
+    - {class: derived_roll_gaps, symbols: [6J], use: signal_reference, floor: same, floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: [REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: 6J-H3-P1, piece: rate series tenor pair, reason: 'vintaged USD/JPY series not fetched (free)'}
+  feasibility:
+    mechanization: high
+    acquisition_cost: in_hand_now
+    rank_basis_note: 'measured structure; immediate use as cost-model hurdle for every 6J idea'
+  rank: 2
+- id: 6J-H2
+  dossier_ref: 'dossiers/6J_DOSSIER.md S5 H2'
+  hypothesis_kind: event_reaction
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Intervention debt-repaying flows fade while the rate differential persists and the
+    intervention-risk premium keeps a floor: after a >=2sigma (strict past) MOF-yen-buying
+    up-move, the next 1-5 sessions partially retrace but the 4-8 week path retains a
+    meaningful share of the jump.
+  pit_trigger:
+    mechanizable: true
+    observable: 'day-after a >2sigma(prior-126d) 6J up-move - PRICE-ONLY proxy (MOF amounts publish with ~1 month/quarter lag: NOT same-day PIT; the MOF-conditioned version is a DIFFERENT, blocked hypothesis)'
+    field: 6J daily return vs trailing sigma
+    source: 'raw daily quarterly chain (measured episodes: 2026-04-30 +2.48%, 2026-07-30 +2.75%, 2026-05-06 +0.94%)'
+    as_of_rule: sigma from window ending prior session; entry day-after close->next open; BoJ MPM coincidence (2026-07-30/31) is a confounder to flag, not control away
+    timestamp_at_decision: session close
+  direction: conditional (fade vs follow comparison - pre-registered)
+  entry: day after the >2sigma up-move (daily version; intraday entry PARAM-GAP - no M1)
+  exit: +5 sessions (test-0)
+  take_profit: none in test-0
+  stop_loss: none in test-0
+  time_rules: 1-5 session reversion window; 4-8 week retention descriptive
+  universe: quarterly chain
+  roll_rule_ref: defaults.roll_rule (6J-H1)
+  sizing: '1'
+  regime_tags: [record_intervention_2026, boj_turn_coordinated]
+  counter_hypothesis: moves are BoJ-driven, not MOF (Jul 30-31 coincidence)
+  failure_conditions:
+  - day-after reversion share unstable across the 2026 episode set (n~3 primary ops - TINY sample, disclosed)
+  - same-day PIT condition cannot be defined (MOF lag) - price-proxy is a different hypothesis and must be labeled as such
+  minimal_test:
+    kind: descriptive_post_shock_reversion
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [6J], use: conditional_descriptive, floor: 'daily version $0; episode set tiny (n~3 ops 2026; 2022 not in real-volume era)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    - {class: mof_intervention_archive, symbols: [JP], use: regime_split_feature, floor: 'mof.go.jp feio quarterly archive scripted ($0; 2026 Q1/Q2 + Sep-2020 verified, rest NOT_RUN)', floor_met: false, available_today: false, acquisition: free_public}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [6J], use: backtest_fill, floor: 'more episodes (prospective or vendor history)', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: 6J-H2-P1, piece: intraday entry timing + fade-vs-follow pre-registration, reason: 'no M1 depth for entry timing; tiny episode sample'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: in_hand_now
+    rank_basis_note: mechanism measured at day level; tradability gated; price-proxy version $0
+  rank: 3
+- id: 6J-H4
+  dossier_ref: 'dossiers/6J_DOSSIER.md S5 H4'
+  hypothesis_kind: event_reaction
+  mechanism_class: POSTULATED
+  mechanism: >-
+    BoJ surprises create multi-session momentum when the policy regime changes (2026 had two
+    "Change in the Guideline" MPMs: Jun 16, Sep 18 - titles FACT; levels NOT_RUN).
+  pit_trigger:
+    mechanizable: true
+    observable: BoJ MPM day-2 dates (calendar FACT) + in-house statement classification (buildable $0 from boj.or.jp archives) - decisions announced afternoon JST = US overnight, OUTSIDE RTH files
+    field: MPM decision dates + statement class
+    source: boj.or.jp calendar + statement index (fetched 2026-10-02 for calendar)
+    as_of_rule: statement timestamp (~02:00-05:00 UTC); RTH files cannot time them - measurement limited to session-close granularity
+    timestamp_at_decision: next RTH session open/close after the JST-afternoon decision
+  direction: conditional on surprise sign
+  entry: PARAM-GAP (overnight landing; RTH open proxy only)
+  exit: PARAM-GAP
+  take_profit: 'PARAM_GAP: 6J-H4-P1'
+  stop_loss: 'PARAM_GAP: 6J-H4-P1'
+  time_rules: multi-session momentum window (PARAM-GAP)
+  universe: quarterly chain
+  roll_rule_ref: defaults.roll_rule (6J-H1)
+  sizing: '1'
+  regime_tags: [guideline_change_mpm, plain_statement_mpm]
+  counter_hypothesis: moves are US-driven (FOMC/US CPI adjacency)
+  failure_conditions:
+  - MPM-day moves indistinguishable from unconditional distribution over 2022-2026
+  - no PIT surprise source (in-house classification required - buildable, $0)
+  minimal_test:
+    kind: descriptive_mpm_day_conditional
+    requirements:
+    - {class: boj_statement_archive, symbols: [JP], use: signal_reference, floor: 'statement classification index (buildable $0 from boj.or.jp; not built)', floor_met: false, available_today: false, acquisition: free_public}
+    - {class: daily_trades_per_contract, symbols: [6J], use: conditional_descriptive, floor: 'daily HAVE (day-level context measured: 2026-01-23 +1.61%, 2026-03-19 +1.29% in top-10 moves)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: boj_statement_archive, symbols: [JP], use: backtest_fill, floor: classification + deeper history, floor_met: false, available_today: false, acquisition: free_public}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: 6J-H4-P1, piece: entry timing + TP/SL, reason: 'decisions hit ~02:00-05:00 UTC; RTH files cannot time them; M1 depth ~10 months RTH-only'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: free_public
+    rank_basis_note: calendar FACT; classification buildable $0; intraday timing blocked
+  rank: 4
+- id: 6J-H5
+  dossier_ref: 'dossiers/6J_DOSSIER.md S5 H5'
+  hypothesis_kind: regime_conditional
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Trend-following short-JPY signals degrade as price approaches the historically-acted
+    intervention zone, and realized skew flips (measured hint: the era's two largest up-moves
+    = MOF operation days).
+  pit_trigger:
+    mechanizable: true
+    observable: 'implied USDJPY >= highest level at which MOF has previously acted (per MOF releases) - threshold fixed a priori from action history, never tuned'
+    field: 6J price level (1/USDJPY) + MOF action-history zone
+    source: raw prices + mof.go.jp archive (buildable $0, not scripted beyond 2026 Q1/Q2)
+    as_of_rule: zone definition uses ONLY disclosed operations (publication lag respected); threshold frozen before any run
+    timestamp_at_decision: daily close
+  direction: long 6J near the zone
+  entry: on approach to the frozen threshold (PARAM-GAP approach band)
+  exit: PARAM-GAP
+  take_profit: 'PARAM_GAP: 6J-H5-P1'
+  stop_loss: 'PARAM_GAP: 6J-H5-P1'
+  time_rules: regime-dependent
+  universe: quarterly chain
+  roll_rule_ref: defaults.roll_rule (6J-H1); 6J-H3 hurdle applies against longs
+  sizing: '1'
+  regime_tags: [weak_yen_extreme, intervention_zone]
+  counter_hypothesis: zone is a round-number artifact
+  failure_conditions:
+  - threshold approach with no conditional behavior change across episodes
+  - threshold tuned ex post (forbidden); single-episode zone (2026) over-read
+  minimal_test:
+    kind: descriptive_threshold_conditioned_behavior
+    requirements:
+    - {class: mof_intervention_archive, symbols: [JP], use: signal_reference, floor: 'MOF action-history series (buildable $0 from mof.go.jp archives; not built)', floor_met: false, available_today: false, acquisition: free_public}
+    - {class: daily_trades_per_contract, symbols: [6J], use: conditional_descriptive, floor: 'longer real-volume 6J history (only 2025-05..2026-10)', floor_met: false, available_today: true, acquisition: in_hand_now, note: 'available at 2025-05..2026-10 depth only; multi-year floor unmet'}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [6J], use: backtest_fill, floor: multi-year real-volume, floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: 6J-H5-P1, piece: 'threshold definition + approach band + exits', reason: 'must be fixed a priori from MOF action history (dossier); never tuned'}
+  feasibility:
+    mechanization: low
+    acquisition_cost: free_public
+    rank_basis_note: 'most 6J-specific, least testable now (dossier); free archive build + depth both needed'
+  rank: 5

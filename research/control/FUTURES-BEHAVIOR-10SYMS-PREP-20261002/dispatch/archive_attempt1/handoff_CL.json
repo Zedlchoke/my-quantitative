@@ -1,0 +1,38 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "lane_id": "SYMBOL-DOSSIER-CL",
+  "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+  "status": "COMPLETE",
+  "summary": "CL dossier delivered per DOSSIER_TEMPLATE.md (7 sections, claims tagged FACT/OBSERVED/POSTULATED/NOT_RUN). Descriptive statistics computed from legal raw per-contract daily data with analysis/CL_behavior_stats.py -> CL_behavior_stats.json; no PnL, no event studies, no parameter selection, no purchases. Key measured facts: true market-front real-volume rule-series 2025-08-21..2026-10-01 (280 days, start clamped because CLU5 absent); daily sd 3.17%, 20d annualized vol median 39.8% / max 99.7% (2026-04-06); M2-M1 backwardation on 280/280 days (median -$0.58/bbl); all 14 realized rolls backwardated (median close-gap -$0.51, max -$8.22 on 2026-03-31); declared calendar roll executes median 21 calendar days before last trade with old contract still 3-7x next's volume; genuine volume-leadership switch observed once (CLV6->CLX6, 2026-09-18, 4 calendar days before LTD); intraday RTH-only (volume peak 10:00-12:00 ET hour buckets), overnight NOT_RUN; front spread median 3.0 ticks last-2m (matches data-lane S6); no negative prices anywhere in the CL dataset (min 40.72, 0 bars) though simple-return convention is mandatory. Primary sources verified with URLs + access date 2026-10-02: EIA WPSR schedule (Wed 10:30 ET + holiday shifts), CFTC CoT (Fri 15:30 ET, as-of Tue, no revisions), OPEC MOMR monthly dates (opec.org direct 403, snippet-corroborated), CME CL spec essentials (direct page transport-blocked/timeout; official-page render snippet + 3 independent public mirrors + S1 identity cross-check). Dossier sha256 e7f449a4711e42170bd32d2652f4b0ad659b4f9344ddaf489c837fef6528a232.",
+  "outputs": [
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dossiers/CL_DOSSIER.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/CL_behavior_stats.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/CL_behavior_stats.json"
+  ],
+  "findings": [
+    "Term structure: 100% M2-M1 backwardation days in the true-front window (280/280, median -0.58 USD/bbl, min -8.65 spring-2026); every realized roll close-gap negative (14/14, median -0.51, max -8.22 at 2026-03-31 CLK6->CLM6) - persistent physically-tight regime; predictive content untested (prep prohibition).",
+    "Roll timing: data-lane declared calendar roll (last session before last-trade-month day-1) is ~21 calendar days early vs observed liquidity migration; old contract carried 3-7x next's volume at every realized roll; the single observable leadership switch (CLV6->CLX6 via gap-filled full-life data) occurred 4 calendar days before last trade (2026-09-18 vs LT 2026-09-22).",
+    "Data wall reconfirmed on CL: true market-front real volume only from 2025-08-21 (CLU5 and earlier fronts absent); pre-2025-08 per-contract bars are deferred-contract close-only v=0 settlement quotes (NOT fill prices, NOT the market front) - front stats before 2025-08 correctly NOT_RUN, seasonality NOT_RUN (14 months).",
+    "Intraday H1/M1 files are useRTH=True: only 09:30-17:00 ET bars; overnight/Asia/Europe session share questions are NOT_RUN from this dataset even inside the ~14-month tiling window.",
+    "Weekday |return| descriptive (not an event study): Monday 2.64% > Wed (EIA day) 2.36% > Friday 2.01%; daily lag-1 return/sign autocorrelation ~0 (no measurable daily trend persistence in-window).",
+    "CL transport/CME re-measure from dossier lane: cmegroup.com still un-fetchable for full bodies (WebFetch 60s timeout) but the official spec page is reachable via reader/search render; opec.org direct 403; EIA and CFTC fetched clean. Recorded with URLs + access date 2026-10-02.",
+    "NYMEX month-code trap confirmed in-code: raw expiry_month = lastTradeDate (delivery month = month after the letter code). All 29 contracts' lastTradeDate fields consistent with the 3-business-days-before-25th rule after weekend/holiday shifts (16/29 exact weekday-arithmetic match, 13 within 1-3 calendar days earlier)."
+  ],
+  "defects": [
+    "Per-contract 6Y daily files end at the declared roll boundary (data-lane fetch-window artifact), so within-final-month volume/liquidity is unobservable for 13/14 realized rolls - roll-migration timing rests on n=1 (CLV6 gap-fill).",
+    "Raw metadata lacks multiplier/minTick and OI entirely (S9 C4); OI-based roll rule NOT_RUN; identity fields must always come from S1.",
+    "Daily BID/ASK are non-synchronous close quotes; full-1Y front spread median 5.0 ticks inflated by CLX6's deferred months (last-2m median 3.0 matches S6). Not an executable spread.",
+    "Web reader/search endpoints hit intermittent 429 rate limits; CME spec quoted from official-page render snippet + 3 independent mirrors rather than a full direct fetch; OPEC MOMR dates from snippet of official page (direct 403)."
+  ],
+  "open_questions": [
+    "CL exchange fee per side remains NOT_FETCHED (CME fee page blocked; IBKR per-product table JS-rendered) - cost model for any future cycle must close this or declare a stress band.",
+    "Owner decision needed on vendor purchase for deep per-contract volume+OI (2015->) to unblock H1 regime breadth, roll studies, and event-grade intraday (see dossier section 6 table).",
+    "Consensus (survey) source for EIA surprise definitions not owned - H2 cannot be specified without it (PARAM-GAP).",
+    "corpus-1200 cross-reference intentionally not consulted (outside lane scope) - owner/lead to map any FX->futures idea transfer with explicit basis/roll/cost deltas."
+  ],
+  "sha256_of_key_outputs": {
+    "dossiers/CL_DOSSIER.md": "e7f449a4711e42170bd32d2652f4b0ad659b4f9344ddaf489c837fef6528a232",
+    "analysis/CL_behavior_stats.py": "fc50a6fa0615ce86460c0e168e8808e721dd093109f24a4d7d7a80ce5f851c4f",
+    "analysis/CL_behavior_stats.json": "eda80081587db9a2cb8e6a3f5e48b24dde3e28ab25e10a50f8ad6c4547510de0"
+  }
+}

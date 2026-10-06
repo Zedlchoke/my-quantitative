@@ -1,0 +1,235 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-5SYM-PRESCORED-20261005/CALCOST",
+  "cycle_id": "FUTURES-5SYM-PRESCORED-20261005",
+  "role": "lane agent (CALCOST, completion pass)",
+  "lane": "CALCOST",
+  "dispatch_sha": "ffed828f73fa19fa0ff4aee3ac1b441909a43940",
+  "actual_start_sha": "059c06653a52ff436935e70f0ce7dfb3ae2d164d",
+  "commit_sha": null,
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-5sym-prescored/prep",
+  "branch": "prep/futures-5sym-prescored-20261005",
+  "generated_utc": "2026-10-05T14:05:00Z",
+  "class_statement": "PREP-only, outcome-blind completion pass: 0 scored runs, 0 PnL, 0 registrations, 0 purchases, no commits, no S1/GO/registration writes, no ledger/registry writes, no new network fetches (fetch budget stands at 18/40 as left by the dead lane agent; fetch_log.jsonl treated as final), no P3-quarantine access. This pass AUDITED and VALIDATED the lane deliverables written by the deceased prior agent, re-ran every hash and comparator independently, found the deliverables complete and every checked claim correct, and reconstructed the handoff artifact. Write surface: cal_cost/** + dispatch/handoff_CALCOST.json only.",
+  "changed_paths": [
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/CALENDAR_DELTA.json",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/CAL_COST_REPORT.md",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/COST_STATE_VERIFY.md",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/RESIDUAL_BASELINE.md",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/SHA256SUMS_calcost.txt",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/boe_mpc_live.html",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/boj_mpm_live.html",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/cdx_holidaycal_page_2025plus.txt",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/cdx_holidaydl_all.txt",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/cdx_productcal_all.txt",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/cdx_thbyp_all.txt",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/cdx_tradinghours_all.txt",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/fomc_calendars_live.html",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/hd_download_20250422003144.bin",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/hd_download_20250829195952.bin",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/rba_calendar_live.html",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/rba_decisions_live.html",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/rba_monpol_live.html",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/fetch_lane.py",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/fetch_log.jsonl",
+    "research/control/FUTURES-5SYM-PRESCORED-20261005/dispatch/handoff_CALCOST.json"
+  ],
+  "tests": [
+    {
+      "name": "sha_sums_verify",
+      "command": "cd cal_cost && shasum -a 256 -c SHA256SUMS_calcost.txt",
+      "result": "17/17 OK (13 captures + 4 deliverables)",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "name": "fetch_budget_check",
+      "command": "python: len(fetch_log.jsonl lines) <= 40",
+      "result": "18 lines <= 40; 9x HTTP 200, 9 blocked/failed attempts all logged",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "name": "fetch_tool_whitelist",
+      "command": "python: every line tool in {WebFetch, web_reader, web.archive.org, curl}",
+      "result": "18/18 compliant (line 9 records the WebFetch tool as 'webfetch' — same tool, case-normalized)",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "name": "fetch_per_url_cap",
+      "command": "python: attempts per distinct URL <= 2",
+      "result": "16 distinct URLs, 0 over cap; exactly 2 URLs at cap (the two syntax-400 CDX forms, abandoned and replaced by corrected distinct URLs); trading-hours* wildcard 503'd twice then replaced by narrower per-service URLs",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "name": "calendar_delta_parse",
+      "command": "python json.load(CALENDAR_DELTA.json)",
+      "result": "parses; schema calcost_calendar_delta@1",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "name": "calendar_delta_capture_citations",
+      "command": "python: every closed (cells_obtained) capture exists on disk, sha matches recorded provenance, fetch_log line refs resolve",
+      "result": "4/4 closed cells OK (fomc L13, boj L14, boe L15, rba L16); 13/13 capture files on disk byte-match the final fetch_log sha256 per saved_path; open-cell citations (hd_download x2, rba_monpol, rba_calendar 404 evidence) all resolve to existing SHA256SUMS-pinned files",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "name": "captures_provenance_fresh_no_p3",
+      "command": "cross-check capture mtimes + fetch_log timestamps/urls",
+      "result": "all 13 captures written 2026-10-05T12:36-12:52Z by this lane's own logged fetches; URLs exclusively web.archive.org (CDX + id_ replays) and official domains (federalreserve.gov, boj.or.jp, bankofengland.co.uk, rba.gov.au); no capture sourced from .worktrees/futures-behavior or any P3-quarantined content",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "name": "a7_fee_reaudit_hash",
+      "command": "shasum -a 256 FUTURES-SIX-SCORED-GATE-PREP-20261004/fee_a7/A7_FEE_REAUDIT.md",
+      "result": "2c1095d63af35dda4b231e60d5ef63b71953ddfc207e9ebb02dc4e9884e211ad — MATCHES COST_STATE_VERIFY.md claim and intake/authority_matrix.json (grep -c 2c1095d63af35dda = 2)",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "name": "a7_fee_digest_hash",
+      "command": "shasum -a 256 FUTURES-SIX-SCORED-GATE-PREP-20261004/fee_a7/a7_fee_digest.json",
+      "result": "fa697c691d2914fd927d083321e1750b36ed919120c94ff181172233d327982e — MATCHES the baseline recorded in COST_STATE_VERIFY.md (no external comparator exists; digest carries fdead766 script record + 37/37 step4 verdict, both confirmed)",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "name": "a7_validator_report_hash",
+      "command": "shasum -a 256 FUTURES-SIX-SCORED-GATE-PREP-20261004/fee_a7/a7_validator_report.json",
+      "result": "a9078769531a752b2a6d0e9ceefcffe0ffdd16aa34ffb57b173a41f5dafd6722 — MATCHES claim; content comparator independently reproduced (37 vs 37 statuses, 0 mismatches)",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "name": "validator_37_37_content_compare",
+      "command": "python status-extraction compare a7_validator_report.json vs FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/verify/p0_verify_validator_report.json",
+      "result": "a7=37, p0=37, 0 mismatches — independently reproduced",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "name": "internal_spot_checks",
+      "command": "shasum validate_fee_sources.py, archive_CME.php.html, fees_corrected.json, A7_SPEC.md; shasum 6j_orientation_recheck.json + sed L120-126",
+      "result": "fdead766f845...050 == digest record; 0f726c52...9e85, 7cd65f25...aca8, 0ce63a0d...f5d0 all match COST_STATE_VERIFY truncated records; 6j_orientation_recheck.json = 6ca0baebe85a...ae54 with rt_usd 67.42 @L123 and bp_of_notional 8.4499 @L124 — 4/4 + citation MATCH",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "name": "locks_inspect",
+      "command": "researchctl.py locks inspect",
+      "result": "verdict FREE_PROVEN (no registry row, lock file not flocked)",
+      "status": "PASS",
+      "exit_code": 0
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "PRIOR AGENT DEATH: the CALCOST lane agent died to infrastructure failure after writing the lane deliverables but before writing an authoritative handoff; this handoff was reconstructed by the completion pass from the on-disk artifacts, with every claim independently re-verified (not trusted).",
+    "STALE DRAFT HANDOFF REPLACED: a handoff draft existed at dispatch/handoff_CALCOST.json (written ~2026-10-05T20:00 local) that recorded dispatch_sha f9e7b400dfec5c064494a16c7bec0494b08545caa4a95b4e84736174d999ca7a — not matching the dispatch packet's ffed828f73fa19fa0ff4aee3ac1b441909a43940 (DISPATCH_MANIFEST.json base_sha confirms ffed828f) — and used non-cycle-qualified task_id 'CALCOST'. The completion pass overwrote it with this authoritative version; its content claims were re-verified before reuse.",
+    "actual_start_sha lineage: dispatch base ffed828f73fa19fa0ff4aee3ac1b441909a43940; HEAD measured at lane start (per RESIDUAL_BASELINE.md / COST_STATE_VERIFY.md headers) was b051d61e3a8d061412e1837bfc046a419e16dd10; one wave-1 checkpoint commit 059c0665 (HYPO + NQ lanes) landed on the branch before this completion pass; actual_start_sha recorded as the measured value 059c06653a52ff436935e70f0ce7dfb3ae2d164d.",
+    "NOT_RUN / still-open cells (documented exclusions, never inferred closed): NQ 2026 holiday product-level (id=146) NOT_OBTAINED 0/10 — all permitted routes exhausted fresh (by-product CDX 0 rows, holiday-download 403 x2 byte-identical to three rounds, holiday-calendar HTML zero 200 captures, live cmegroup.com egress sinkhole for curl AND WebFetch); 2 6J expiry cells identity-undetermined NOT_RUN (derivation forbidden); RBA forward 2026 Nov/Dec decision dates NOT_OBTAINED (EV-3 partial: decisions-to-date obtained); 6E 8 aged-out holiday windows INCONCLUSIVE_AGED_OUT (never counted).",
+    "fetch_log.jsonl line 9 records tool as 'webfetch' (lowercase) where the whitelist names 'WebFetch' — same tool per the line's own note; cosmetic normalization only.",
+    "No commits made: lanes never commit; wave checkpoints are controller-owned (commit_sha null). cal_cost/**, dispatch/handoff_CALCOST.json and exec/ (EXEC lane, untouched by this pass) remain untracked."
+  ],
+  "incidents": [
+    "AGENT_DEATH (inherited): prior CALCOST lane agent died to infrastructure failure mid-lane, after writing deliverables (cal_cost/ files 19:35-19:58 local) but before an authoritative handoff; dispatch then launched this completion pass (LANE-CALCOST-COMPLETION) to audit, fill gaps, and write the handoff.",
+    "COMPLETION_PASS: audited all 21 cal_cost files; 13 validation gates all PASS (sha-sums, fetch budget/tool/cap, JSON parse, capture citations, provenance/no-P3, 3x A7 re-hashes, 37/37 validator compare, internal spot-checks, locks); zero corrections required to COST_STATE_VERIFY.md or CAL_COST_REPORT.md (claims complete and correct; no CORRECTION/COMPLETION append needed).",
+    "STALE_DRAFT: found pre-existing handoff_CALCOST.json draft with mismatched dispatch_sha (f9e7b400... vs packet ffed828f...) and non-conforming task_id/role; replaced by this file after independently re-verifying its substantive claims.",
+    "BLOCKED_TRANSPORT (carried, not bypassed): live cmegroup.com ECONNREFUSED at egress (curl + WebFetch); holiday-download archived replays 403 x2; wayback CDX transients 503x2/504x1; RBA /about-rba/calendar/ 404 (kept as evidence); 2 CDX syntax-400s (URLs abandoned at cap)."
+  ],
+  "tree_status": "git status --porcelain: 3 untracked paths only — ?? research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/ (this lane), ?? research/control/FUTURES-5SYM-PRESCORED-20261005/dispatch/handoff_CALCOST.json (this file), ?? research/control/FUTURES-5SYM-PRESCORED-20261005/exec/ (EXEC lane, in flight, untouched). 0 modified tracked files; nothing staged; no commits.",
+  "workers": "locks inspect verdict: FREE_PROVEN — no registry row and the lock file is not flocked (no heavy job held or required by this pass; validation was light single-shot reads).",
+  "outputs": [
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/CALENDAR_DELTA.json",
+      "sha256": "57758b1e9ed4b3e39838b2717d52fc1658f73666fa08c771588fbb0e0782220c"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/CAL_COST_REPORT.md",
+      "sha256": "8a0a5c381f656f70f3e3157b4cecf8cdc2dac70748e2d863924d22f2477e3ec6"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/COST_STATE_VERIFY.md",
+      "sha256": "31e24e4a9c6c2a30c2d3aba194a5df1238214c7da465e12080de4b510f3a83e3"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/RESIDUAL_BASELINE.md",
+      "sha256": "e11354fea6c76d3fddf9556e2e26f5b54a2e310e441d6abeb384de2d74fd89e5"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/SHA256SUMS_calcost.txt",
+      "sha256": "c903a6cc90bb3ee5a8e803fd241879f3b92276377a19cca12574eea53b52fd8f"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/boe_mpc_live.html",
+      "sha256": "2464e2188b11ecebb70767987387e8fbc2ba06bf9103898c498349f4b3580ccd"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/boj_mpm_live.html",
+      "sha256": "a6a7958a71b2cbd2a7bb3bf3e2cf4a80e3f687f25ba64bfd45f160aa1a9cf5dd"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/cdx_holidaycal_page_2025plus.txt",
+      "sha256": "057af0048a3f8588d74a4ad18d8a7df8b5ef1879323187083fd8c902a37df0db"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/cdx_holidaydl_all.txt",
+      "sha256": "ec229b2eed2036665362af66f57b735cc8af3fbb306287f0aa72c9e0996e7801"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/cdx_productcal_all.txt",
+      "sha256": "72efeb08ab5d713396f5e376efb013bfc14a9c9845932d1e8101a8d80e779659"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/cdx_thbyp_all.txt",
+      "sha256": "52bf79fffd07508008b2a73daa8a0f1e8fbd40a170997ad25efdf1fbf93ab23e"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/cdx_tradinghours_all.txt",
+      "sha256": "e084d527921708642a79724e9f0210da659bbc0905c6ce9a3a1f416e4628091c"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/fomc_calendars_live.html",
+      "sha256": "362f22e3361bb065d0e9dff5e33b9df5dd98de10e15d00ea09c1d3be4c8e101f"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/hd_download_20250422003144.bin",
+      "sha256": "f249b63cb2fcb66b47e86f906c98f8fd912e82dd035b4e53d7e72fc1960cfd16"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/hd_download_20250829195952.bin",
+      "sha256": "f249b63cb2fcb66b47e86f906c98f8fd912e82dd035b4e53d7e72fc1960cfd16"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/rba_calendar_live.html",
+      "sha256": "3ca19f914e507198ed771f69fe2228de1ff8f4963ca365985a8e9d7916d80b2a"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/rba_decisions_live.html",
+      "sha256": "fea5ba9901f6b4a91ee49264e862bb0782228efec6cd367e4bb41591449bb7d0"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/captures/rba_monpol_live.html",
+      "sha256": "571fa06b9444b05ec1fde2002a4cf0a5b1ea9449b544f86e932e48334205c955"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/fetch_lane.py",
+      "sha256": "febc81d77df73e985d364b2759e81124e27c09a5b553ce17cd5239f9232891b6"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/cal_cost/fetch_log.jsonl",
+      "sha256": "8af5e529156609adae5fd062a957d53375e00c132717cd3726a2a553ab5f52be"
+    },
+    {
+      "path": "research/control/FUTURES-5SYM-PRESCORED-20261005/dispatch/handoff_CALCOST.json",
+      "kind": "handoff",
+      "note": "this file; self-hash not self-recordable — verify by hashing post-write"
+    }
+  ],
+  "recommended_next_action": "Controller: (1) consume the four EV official event-calendar captures (BoE MPC / BoJ MPM / FOMC remaining-2026; RBA partial) into the round's event-calendar register; (2) adjudicate the four P5-CALC-* owner slots: P5-CALC-NQ-HOLPROD (accept advisory class-level register as operative for NQ holidays with product-level documented exclusion — mutatis mutandis 6B/6J/6A structural absence), P5-CALC-6J-IDENT (owner-defined identity source for the 2 flagged cells), P5-CALC-RBA-FWD (6A contingency forward dates or fail-closed exclusion), P5-CALC-FEE-E14 (e.1-e.4 UNRULED owner slot; dual-variant tracking until ruled); (3) proceed to wave-2 SYNTH/VERIFY — calendar residuals otherwise stand as documented exclusions per CAL_COST_REPORT.md section 3; no further fetch routes exist under the transport law as of 2026-10-05."
+}

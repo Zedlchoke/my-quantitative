@@ -1,0 +1,433 @@
+{
+  "schema": "d2_feesrc_fees_table_es@1",
+  "cycle_id": "FUTURES-DATACONTRACT-QUAL-V1",
+  "lane": "D2-FEESRC",
+  "role": "fee-sources-lane",
+  "run_date": "2026-10-03",
+  "access_session_utc_window": "2026-10-03T07:55Z..2026-10-03T08:10Z",
+  "framing": "MODELED_COST — all numbers are PUBLIC-REFERENCE fee-schedule values. Nothing in this file is a measured cost from any account. D2 account verification is NOT_RUN; the Co-Owner is obtaining redacted account documentation separately.",
+  "boundary_updates_applied": [
+    "Owner boundary update (received mid-run 2026-10-03): table restructured per IBKR pricing-plan variants (Fixed vs Tiered x volume tiers); no single plan/tier is picked as 'the' fee; every row carries plan/tier.",
+    "Every row: SOURCE=PUBLIC_REFERENCE and VERIFIED_VS_ACCOUNT=NOT_RUN. Public sources are REFERENCE ONLY; no account documentation has been seen or is implied to have been seen.",
+    "D6 market-data re-fetch does NOT substitute for account fee evidence (explicit note; D6 is a data-plane freshness lane, unrelated to fee evidence)."
+  ],
+  "instrument": {
+    "symbol": "ES",
+    "name": "E-mini S&P 500 futures",
+    "exchange": "CME (Globex)",
+    "unit": "USD per contract, per side (single transaction leg) unless a row says otherwise"
+  },
+  "sources": [
+    {
+      "source_id": "S1",
+      "label": "LIVE_OFFICIAL",
+      "publisher": "Interactive Brokers LLC",
+      "title": "Commissions — Futures (public pricing page)",
+      "url": "https://www.interactivebrokers.com/en/pricing/commissions-futures.php?re=amer",
+      "access_utc": "2026-10-03T~08:01Z",
+      "route": "mcp web_reader (full render; prior session also used web_reader successfully)",
+      "status": "FETCHED_FULL",
+      "extracted": [
+        "US futures plan variants are two published columns: 'Tiered' and 'Fixed' (no separate Lite/Pro futures commission table appears in the fetched text; the Lite/Pro distinction does not alter the futures tier table on this page).",
+        "Tier table (United States, USD) verbatim: <=1,000 contracts/mo: Tiered USD 0.85/contract, Fixed USD 0.85/contract; 1,001-10,000: Tiered USD 0.65; 10,001-20,000: Tiered USD 0.45; >20,000: Tiered USD 0.25 (Fixed column publishes only the <=1,000 value, 0.85).",
+        "Plan add-on wording verbatim: Tiered = 'Exchange Fees + Regulatory Fees + Overnight Position Fees'; Fixed = 'Exchange Fees + Regulatory Fees'.",
+        "ES worked example (Tiered) verbatim: '1 ES Futures Contract = IBKR Execution Fee USD 0.85 + Exchange Fee USD 1.38 + Clearing Fee USD 0.00 + Regulatory Fee USD 0.00 = USD 2.24'.",
+        "ES worked example (Fixed) verbatim: '1 ES Futures Contract = IBKR Execution Fee USD 0.85 + Exchange Fee USD 1.38 + Clearing Fee USD 0.00 + Regulatory Fee USD 0.01 = USD 2.24'.",
+        "Footnote on tiers: monthly cumulative volume across all futures/FOPs regardless of exchange, applied marginally (verbatim: 'if in a given month, 1,000 contracts are traded and an additional 500 contracts are traded, the first 1,000 contracts would be charged at the USD 0.85 per contract rate and the following 500 contracts would be charged at the USD 0.65 per contract rate').",
+        "Footnote verbatim: tiered-plan offsets 'can be greater than costs paid by IBKR' ('IBKR is not a direct passthrough'); non-member exchange and regulatory fees are the ones applied unless customer pre-qualifies for member/incentive rates.",
+        "Rates changeable: 'IBKR may change these rates at any time in its sole discretion' (page notice)."
+      ],
+      "limitations": [
+        "Per-product exchange/regulatory fee tables and Overnight Position Fee amount tables on this page are JS-driven and did NOT render in either session (2026-10-02 and 2026-10-03): Overnight Position Fee amount = NOT_FETCHED.",
+        "No effective date line for the commission table rendered in the fetched text.",
+        "Printed tiered-example arithmetic: 0.85+1.38+0.00+0.00 sums to 2.23 but the page prints total USD 2.24; recorded as printed, discrepancy noted (possible rounding of a component)."
+      ]
+    },
+    {
+      "source_id": "S2",
+      "label": "LIVE_OFFICIAL",
+      "publisher": "Interactive Brokers LLC",
+      "title": "Fees Charged to Offset CME (Electronic-Globex) Exchange and Regulatory Fees Paid by IBKR",
+      "url": "https://www.interactivebrokers.com/en/accounts/fees/CME.php",
+      "access_utc": "2026-10-03T~08:07Z",
+      "route": "mcp web_reader (full render)",
+      "status": "FETCHED_FULL",
+      "extracted": [
+        "Default view = Non-Members Regular fees (member/incentive alternates exist behind selector links; not rendered).",
+        "Row verbatim: 'E-mini S&P 500 | ES | Equity Index | futures | 1.386 | 0.011' (exchange fee 1.386 USD, regulatory fee 0.011 USD, per contract).",
+        "Same table: 'E-mini Nasdaq-100 | NQ | Equity Index | futures | 1.386 | 0.011'; 'Micro E-mini S&P 500 | MES | Equity Index | futures | 0.353 | 0.002'.",
+        "ES spread-order rows (non-member regular): futures spreads 1.435 / 0.013; implied 1.828 / 0.015; BTIC 0.918 / 0.007; EFP 0.401 / 0.004.",
+        "Fees are charged 'as a fee to offset exchange and regulatory fees paid by IBKR' and can be changed by IBKR at any time in its sole discretion (page footer language)."
+      ],
+      "limitations": [
+        "These are IBKR's published offset rates (what IBKR charges to offset what it pays), not a raw CME tariff transcript; CME incentive-program/member rates not rendered.",
+        "No fee effective date rendered on the page."
+      ]
+    },
+    {
+      "source_id": "S3",
+      "label": "LIVE_OFFICIAL",
+      "publisher": "CME Group",
+      "title": "CME Fee Schedule (PDF, effective 2025-02-01)",
+      "url": "https://www.cmegroup.com/company/files/cme-fee-schedule-2025-02-01.pdf",
+      "access_utc": "2026-10-03T~07:58Z",
+      "route": "mcp web_reader (PDF text)",
+      "status": "FETCHED_FULL_TEXT_COLUMN_SCRAMBLED",
+      "extracted": [
+        "Section header verbatim: 'CME Equity Product Fee Schedules as of February 1, 2025' covering E-mini Equity Index futures (includes ES) by membership category (Individual Members ... Non-Members (Including: CTA/Hedge Fund Incentive Program Participants & CBOE Members)).",
+        "Fee values including tokens 1.16, 1.15 and 1.38 appear inside the E-mini equity section text."
+      ],
+      "limitations": [
+        "PDF-to-text column binding is unreliable (column-major scrambling): the per-cell value for 'ES non-member Globex' could NOT be bound to a column with confidence. Per mission law (no inference), NO cell value from this PDF is asserted in this table. The document's existence, effective date and section structure are the recorded evidence."
+      ]
+    },
+    {
+      "source_id": "S4a",
+      "label": "LIVE_OFFICIAL (dated archive URL on live host)",
+      "publisher": "CME Group",
+      "title": "CME Fee Schedule (PDF, effective 2020-10-01)",
+      "url": "https://www.cmegroup.com/company/files/cme-fee-schedule-2020-10-01.pdf",
+      "access_utc": "2026-10-03T~08:00Z",
+      "route": "mcp web_reader (PDF text)",
+      "status": "FETCHED_FULL_TEXT_COLUMN_SCRAMBLED",
+      "extracted": ["Section header verbatim: 'CME Equity Product Fee Schedules as of October 1, 2020' (E-mini Equity Index section present)."],
+      "limitations": ["Same column-attribution limit as S3: no per-cell value asserted."]
+    },
+    {
+      "source_id": "S4b",
+      "label": "LIVE_OFFICIAL (dated archive URL on live host)",
+      "publisher": "CME Group",
+      "title": "CME Fee Schedule (PDF, effective 2026-02-01)",
+      "url": "https://www.cmegroup.com/company/files/cme-fee-schedule-2026-02-01.pdf",
+      "access_utc": "2026-10-03T~08:00Z",
+      "route": "mcp web_reader (PDF text)",
+      "status": "FETCHED_FULL_TEXT_COLUMN_SCRAMBLED",
+      "extracted": ["Section header verbatim: 'CME Equity Product Fee Schedules as of February 1, 2026' (E-mini Equity Index section present)."],
+      "limitations": ["Same column-attribution limit as S3: no per-cell value asserted."]
+    },
+    {
+      "source_id": "S5",
+      "label": "LIVE_OFFICIAL",
+      "publisher": "National Futures Association (filing to CFTC)",
+      "title": "NFA Bylaw 1301 filing, 2017-11-17 (FCM assessment fee history)",
+      "url": "https://www.nfa.futures.org/news/PDF/CFTC/2010-2019/20171117-Bylaw-1301-FCM-Assessment-Fee-Increase.pdf",
+      "access_utc": "2026-10-03T~08:07Z",
+      "route": "mcp web_reader (PDF text)",
+      "status": "FETCHED_FULL",
+      "extracted": [
+        "Verbatim timeline: '1. Prior to October 1, 2014, the assessment fee was $.02 per side.'",
+        "'2. From October 1, 2014 to December 31, 2017, the assessment fee was $.01 per side.'",
+        "'3. Effective January 1, 2018, the assessment fee was increased to $.02 per side.'",
+        "Context: NFA assessment fee is collected by FCMs on exchange-traded futures/options; the 2017 increase was for reserve funding."
+      ],
+      "limitations": [
+        "This filing covers history through the 2018 change only. Any NFA fee change AFTER 2018-01-01 is not covered by any official document fetched this session. One unverified third-party claim (chartmini.com, via search summary) asserts $0.01/side as of 2026-07-01 with a planned increase to $0.02 — CONFLICTS with the 2017 filing being the last official word fetched, is NOT adopted, and is recorded as an open item."
+      ]
+    },
+    {
+      "source_id": "S6",
+      "label": "PUBLIC_MIRROR",
+      "publisher": "TradeStation Securities (public pricing page)",
+      "title": "Futures Exchange Fees (exchange execution and clearing fees, non-member)",
+      "url": "https://www.tradestation.com/pricing/exchange-execution-and-clearing-fees/",
+      "access_utc": "2026-10-03T~08:05Z",
+      "route": "mcp web_reader (WebFetch to same URL returned HTTP 403)",
+      "status": "FETCHED_FULL",
+      "extracted": [
+        "Row verbatim: 'ES | E-mini S&P 500 | CME | E-Mini Index | $1.38 per side, per contract'.",
+        "Same table: 'MES | Micro E-mini S&P 500 Futures | CME | Micro E-Mini Futures | $0.35 per side, per contract'; 'E7 | E-mini Euro FX | CME | E-Mini Currency | $0.85 per side, per contract'; 'NQ | E-mini Nasdaq-100 ... $1.38 ...'.",
+        "Page description verbatim: 'Exchange execution and clearing fees are passthrough fees charged by the exchange. View non-member pricing for CME, CBOT, NYMEX, ICE, and EUREX.'"
+      ],
+      "limitations": [
+        "No fee effective date published on the page (undated mirror). Page og:image asset path encodes hex timestamp 68f2102c (~2025-09-30 page-asset vintage) — metadata observation only, NOT a fee effective date.",
+        "TradeStation labels the column as combined exchange execution + clearing; IBKR's ES example separates Exchange 1.38 / Clearing 0.00. The two agree on the 1.38 figure."
+      ]
+    },
+    {
+      "source_id": "S7",
+      "label": "ARCHIVED_OFFICIAL (prior in-repo extraction of LIVE_OFFICIAL page)",
+      "publisher": "FUTURES-DATA-10SYMS-V1 cycle (Co-Owner lane), stored in root checkout",
+      "title": "IBKR futures commissions page, fetched 2026-10-02T01:28:41Z via web_reader",
+      "url": "file: research/control/FUTURES-DATA-10SYMS-V1/costs/IBKR_futures_commissions_2026-10-02.json (root checkout /Users/hoangminhlong/my-quantitative; not present in this worktree)",
+      "access_utc": "2026-10-03T08:09Z (local read; original fetch 2026-10-02T01:28:41Z)",
+      "route": "Read tool (local file)",
+      "status": "READ",
+      "extracted": [
+        "Same tier values as S1 (0.85 / 0.65 / 0.45 / 0.25 tiered; 0.85 fixed).",
+        "ES documented example all-in USD 2.24 — retained under label DOC_EXAMPLE_NOT_ACCOUNT_VERIFIED."
+      ],
+      "limitations": ["Prior fetch likewise could not render per-product exchange/regulatory tables or Overnight Position Fee amounts."]
+    }
+  ],
+  "commission_plans_ibkr_es": [
+    {
+      "row_id": "C1",
+      "plan": "Tiered",
+      "volume_tier_contracts_per_month": "<=1,000",
+      "ibkr_execution_fee_usd_per_contract_per_side": 0.85,
+      "SOURCE": "PUBLIC_REFERENCE (S1)",
+      "URL": "https://www.interactivebrokers.com/en/pricing/commissions-futures.php?re=amer",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN",
+      "bundling": "plus Exchange Fees + Regulatory Fees + Overnight Position Fees (offsets; not a direct pass-through; can exceed IBKR's own costs)"
+    },
+    {
+      "row_id": "C2",
+      "plan": "Tiered",
+      "volume_tier_contracts_per_month": "1,001-10,000",
+      "ibkr_execution_fee_usd_per_contract_per_side": 0.65,
+      "SOURCE": "PUBLIC_REFERENCE (S1)",
+      "URL": "https://www.interactivebrokers.com/en/pricing/commissions-futures.php?re=amer",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN",
+      "bundling": "same add-ons as C1"
+    },
+    {
+      "row_id": "C3",
+      "plan": "Tiered",
+      "volume_tier_contracts_per_month": "10,001-20,000",
+      "ibkr_execution_fee_usd_per_contract_per_side": 0.45,
+      "SOURCE": "PUBLIC_REFERENCE (S1)",
+      "URL": "https://www.interactivebrokers.com/en/pricing/commissions-futures.php?re=amer",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN",
+      "bundling": "same add-ons as C1"
+    },
+    {
+      "row_id": "C4",
+      "plan": "Tiered",
+      "volume_tier_contracts_per_month": ">20,000",
+      "ibkr_execution_fee_usd_per_contract_per_side": 0.25,
+      "SOURCE": "PUBLIC_REFERENCE (S1)",
+      "URL": "https://www.interactivebrokers.com/en/pricing/commissions-futures.php?re=amer",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN",
+      "bundling": "same add-ons as C1"
+    },
+    {
+      "row_id": "C5",
+      "plan": "Fixed",
+      "volume_tier_contracts_per_month": "no volume tiers published",
+      "ibkr_execution_fee_usd_per_contract_per_side": 0.85,
+      "SOURCE": "PUBLIC_REFERENCE (S1)",
+      "URL": "https://www.interactivebrokers.com/en/pricing/commissions-futures.php?re=amer",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN",
+      "bundling": "plus Exchange Fees + Regulatory Fees (no Overnight Position Fee line on Fixed)"
+    }
+  ],
+  "notes_on_plan_structure": [
+    "The IBKR public futures page publishes exactly two plan variants for US futures: 'Tiered' and 'Fixed'. No Lite/Pro-specific futures commission schedule appears in the fetched page text; Lite/Pro does not introduce a third futures fee table on this page.",
+    "Tier boundaries are monthly cumulative MARGINAL volumes across all futures/FOPs regardless of exchange (S1 footnote, verbatim example included).",
+    "The account's actual plan/tier is UNKNOWN (owner has not yet provided the redacted documentation). All plan variants are enumerated; none is selected as 'the' fee."
+  ],
+  "components_es_per_contract_per_side_usd": [
+    {
+      "row_id": "X1",
+      "component": "Exchange fee (CME Globex, ES futures, non-member regular)",
+      "value_usd": 1.386,
+      "published_by": "IBKR (offset rate)",
+      "SOURCE": "PUBLIC_REFERENCE (S2)",
+      "URL": "https://www.interactivebrokers.com/en/accounts/fees/CME.php",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN",
+      "bundled_vs_passthrough": "PASS-THROUGH OFFSET — 'fee to offset exchange and regulatory fees paid by IBKR'; commissions-page footnote states tiered offsets are not a direct pass-through and can exceed IBKR's costs"
+    },
+    {
+      "row_id": "X1m",
+      "component": "Exchange fee (CME Globex, ES futures, non-member) — mirror cross-reference",
+      "value_usd": 1.38,
+      "published_by": "TradeStation (non-member exchange execution+clearing)",
+      "SOURCE": "PUBLIC_REFERENCE (S6, PUBLIC_MIRROR)",
+      "URL": "https://www.tradestation.com/pricing/exchange-execution-and-clearing-fees/",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN",
+      "bundled_vs_passthrough": "exchange-described pass-through as presented by mirror; mirror combines execution+clearing in one column"
+    },
+    {
+      "row_id": "X1o",
+      "component": "Exchange fee (CME official tariff for ES non-member)",
+      "value_usd": null,
+      "status": "NOT_EXTRACTED_RELATABLY",
+      "published_by": "CME Group",
+      "SOURCE": "PUBLIC_REFERENCE (S3, S4b — documents obtained; cells not attributable)",
+      "URL": "https://www.cmegroup.com/company/files/cme-fee-schedule-2026-02-01.pdf",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN",
+      "bundled_vs_passthrough": "official tariff documents fetched (effective 2020-10-01 / 2025-02-01 / 2026-02-01) but column binding unreliable in text extraction; no cell value asserted (no-inference law)"
+    },
+    {
+      "row_id": "X2",
+      "component": "Regulatory fee (NFA assessment etc., ES futures, non-member regular)",
+      "value_usd": 0.011,
+      "published_by": "IBKR (offset rate)",
+      "SOURCE": "PUBLIC_REFERENCE (S2)",
+      "URL": "https://www.interactivebrokers.com/en/accounts/fees/CME.php",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN",
+      "bundled_vs_passthrough": "PASS-THROUGH OFFSET (same framing as X1)"
+    },
+    {
+      "row_id": "X2n",
+      "component": "NFA assessment fee on exchange-traded futures (official timeline)",
+      "values_usd_per_side": [
+        {"period": "2010-01-01..2014-09-30 (and prior to 2014-10-01)", "value": 0.02},
+        {"period": "2014-10-01..2017-12-31", "value": 0.01},
+        {"period": "2018-01-01..(open-ended; last official doc fetched)", "value": 0.02}
+      ],
+      "published_by": "NFA (CFTC filing, 2017-11-17)",
+      "SOURCE": "PUBLIC_REFERENCE (S5, LIVE_OFFICIAL)",
+      "URL": "https://www.nfa.futures.org/news/PDF/CFTC/2010-2019/20171117-Bylaw-1301-FCM-Assessment-Fee-Increase.pdf",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN",
+      "bundled_vs_passthrough": "regulatory assessment collected by FCM; open item: post-2018 changes not covered by any official doc fetched this session (one conflicting unverified mirror claim recorded in S5 limitations, NOT adopted)"
+    },
+    {
+      "row_id": "X3",
+      "component": "Clearing fee (ES)",
+      "value_usd": 0.0,
+      "published_by": "IBKR worked example ('Clearing Fee USD 0.00')",
+      "SOURCE": "PUBLIC_REFERENCE (S1)",
+      "URL": "https://www.interactivebrokers.com/en/pricing/commissions-futures.php?re=amer",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN",
+      "bundling_note": "shown as a separate zero line in IBKR's ES example; TradeStation's mirror folds clearing into its $1.38 exchange line"
+    },
+    {
+      "row_id": "X4",
+      "component": "Overnight Position Fee (Tiered plan only)",
+      "value_usd": null,
+      "status": "NOT_FETCHED",
+      "published_by": "IBKR (heading present; amount tables JS-driven, not rendered)",
+      "SOURCE": "PUBLIC_REFERENCE (S1) — availability noted, amounts NOT obtained",
+      "URL": "https://www.interactivebrokers.com/en/pricing/commissions-futures.php?re=amer",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN",
+      "bundling_note": "add-on line unique to Tiered plan; amount unknown from public fetch"
+    }
+  ],
+  "worked_examples_and_modeled_allin": [
+    {
+      "row_id": "E1",
+      "label": "DOC_EXAMPLE_NOT_ACCOUNT_VERIFIED",
+      "plan": "Tiered (<=1,000 tier)",
+      "verbatim": "1 ES Futures Contract = IBKR Execution Fee USD 0.85 + Exchange Fee USD 1.38 + Clearing Fee USD 0.00 + Regulatory Fee USD 0.00 = USD 2.24",
+      "printed_total_usd_per_contract_per_side": 2.24,
+      "arithmetic_note": "printed components sum to 2.23; page prints 2.24 (recorded as printed, not reconciled)",
+      "SOURCE": "PUBLIC_REFERENCE (S1)",
+      "URL": "https://www.interactivebrokers.com/en/pricing/commissions-futures.php?re=amer",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN"
+    },
+    {
+      "row_id": "E2",
+      "label": "DOC_EXAMPLE_NOT_ACCOUNT_VERIFIED",
+      "plan": "Fixed",
+      "verbatim": "1 ES Futures Contract = IBKR Execution Fee USD 0.85 + Exchange Fee USD 1.38 + Clearing Fee USD 0.00 + Regulatory Fee USD 0.01 = USD 2.24",
+      "printed_total_usd_per_contract_per_side": 2.24,
+      "SOURCE": "PUBLIC_REFERENCE (S1)",
+      "URL": "https://www.interactivebrokers.com/en/pricing/commissions-futures.php?re=amer",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN"
+    },
+    {
+      "row_id": "E3",
+      "label": "COMPUTED_FROM_PUBLIC_COMPONENTS (arithmetic on S1 + S2 public values; NOT a broker-published all-in)",
+      "plan": "Tiered <=1,000 / Fixed (both share 0.85 at this tier)",
+      "computation": "0.85 (IBKR execution, S1) + 1.386 (exchange offset, S2) + 0.011 (regulatory offset, S2) = 2.247",
+      "computed_usd_per_contract_per_side": 2.247,
+      "SOURCE": "PUBLIC_REFERENCE (S1, S2)",
+      "URL": "https://www.interactivebrokers.com/en/pricing/commissions-futures.php?re=amer ; https://www.interactivebrokers.com/en/accounts/fees/CME.php",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN",
+      "note": "round-trip = 2x single-side under this framing; Overnight Position Fee (Tiered) NOT_FETCHED and therefore excluded; spread-order/BTIC/EFP order types have different published offsets (see S2)"
+    },
+    {
+      "row_id": "E4",
+      "label": "MODELED_COST summary per plan (single side, <=1,000 tier, non-member regular, no overnight)",
+      "values": {"Tiered": 2.247, "Fixed": 2.247},
+      "note": "at tiers 2/3/4 the IBKR execution component drops to 0.65/0.45/0.25 giving 2.047/1.847/1.647 all-in MODELED single-side values; all components identical framing as E3",
+      "SOURCE": "PUBLIC_REFERENCE (S1, S2)",
+      "access_date": "2026-10-03",
+      "VERIFIED_VS_ACCOUNT": "NOT_RUN"
+    }
+  ],
+  "historical_availability_2010_2026": {
+    "method_note": "Availability evidence only. No past fee value is inferred anywhere. Wayback CDX/direct snapshot fetch was BLOCKED from this session's routes (WebFetch to web.archive.org: connect timeout; web_reader to web.archive.org/cdx: network-500). The lightweight archive.org availability API (exact-URL, closest-snapshot) DID work and is the probe channel below. Probe timestamps requested vs returned snapshots are listed verbatim.",
+    "ibkr_commissions_page": [
+      {"year": 2010, "status": "NOT_FOUND_via_probe", "evidence": "probe @2010-01-01 on /en/pricing/commissions-futures.php -> empty; probe @2010-01-01 and @2015-01-01 on old URL /en/p.php?f=commissions -> empty (exact-URL match only)"},
+      {"year": 2011, "status": "NOT_FOUND_via_probe", "evidence": "same probes; no snapshot returned"},
+      {"year": 2012, "status": "NOT_FOUND_via_probe", "evidence": "same probes; no snapshot returned"},
+      {"year": 2013, "status": "NOT_FOUND_via_probe", "evidence": "same probes; no snapshot returned"},
+      {"year": 2014, "status": "NOT_FOUND_via_probe", "evidence": "same probes; no snapshot returned"},
+      {"year": 2015, "status": "NOT_FOUND_via_probe", "evidence": "old-URL probe @2015-01-01 -> empty"},
+      {"year": 2016, "status": "NOT_PROBED", "evidence": "no probe at this year"},
+      {"year": 2017, "status": "NOT_PROBED", "evidence": "no probe at this year"},
+      {"year": 2018, "status": "NOT_PROBED", "evidence": "no probe at this year"},
+      {"year": 2019, "status": "NOT_PROBED", "evidence": "no probe at this year"},
+      {"year": 2020, "status": "NOT_PROBED (current-URL probes @2020/@2021 returned 2022 snapshot as closest)", "evidence": "availability API found nothing nearer than 2022-01-19"},
+      {"year": 2021, "status": "NOT_FOUND_via_probe", "evidence": "probe @2021-06-01 -> closest snapshot 2022-01-19 (status 200) i.e. nothing in 2021 found"},
+      {"year": 2022, "status": "AVAILABLE_ARCHIVED_OFFICIAL", "evidence": "snapshot 2022-01-19 status 200 (content NOT fetched this session — web.archive.org direct fetch blocked)"},
+      {"year": 2023, "status": "AVAILABLE_ARCHIVED_OFFICIAL", "evidence": "snapshot 2023-03-25 status 200 (content NOT fetched)"},
+      {"year": 2024, "status": "NOT_PROBED", "evidence": "no probe at this year"},
+      {"year": 2025, "status": "AVAILABLE_ARCHIVED_OFFICIAL", "evidence": "snapshot 2025-05-28 status 200 (content NOT fetched)"},
+      {"year": 2026, "status": "AVAILABLE_LIVE_OFFICIAL", "evidence": "live fetches 2026-10-02 (S7) and 2026-10-03 (S1)"}
+    ],
+    "cme_exchange_fee_schedule": [
+      {"year": 2010, "status": "NOT_CONFIRMED", "evidence": "guessed dated PDF cme-fee-schedule-2010-06-01.pdf -> fetch error (not evidence of nonexistence); wayback probe on cmegroup.com/company/fees.html @2010 -> empty"},
+      {"year": 2011, "status": "NOT_CONFIRMED", "evidence": "no obtainable document this session"},
+      {"year": 2012, "status": "NOT_CONFIRMED", "evidence": "no obtainable document this session"},
+      {"year": 2013, "status": "NOT_CONFIRMED", "evidence": "no obtainable document this session"},
+      {"year": 2014, "status": "NOT_CONFIRMED", "evidence": "no obtainable document this session"},
+      {"year": 2015, "status": "NOT_CONFIRMED", "evidence": "guessed dated PDF 2015-12-01 -> fetch error; wayback probe @2015 -> empty"},
+      {"year": 2016, "status": "NOT_CONFIRMED", "evidence": "no obtainable document this session"},
+      {"year": 2017, "status": "NOT_CONFIRMED", "evidence": "no obtainable document this session"},
+      {"year": 2018, "status": "NOT_CONFIRMED", "evidence": "no obtainable document this session"},
+      {"year": 2019, "status": "NOT_CONFIRMED", "evidence": "no obtainable document this session"},
+      {"year": 2020, "status": "AVAILABLE_LIVE_OFFICIAL_DATED", "evidence": "PDF effective 2020-10-01 fetched from live host (S4a); per-cell ES values NOT extractable (column scrambling)"},
+      {"year": 2021, "status": "NOT_CONFIRMED", "evidence": "no dated PDF at guessed URL this session"},
+      {"year": 2022, "status": "NOT_CONFIRMED", "evidence": "no dated PDF obtained this session; a public broker notice of a CME increase effective 2022-02-01 (Edge Clear) was surfaced by search but NOT fetched"},
+      {"year": 2023, "status": "NOT_CONFIRMED", "evidence": "no dated PDF at guessed URL this session"},
+      {"year": 2024, "status": "NOT_CONFIRMED", "evidence": "no dated PDF at guessed URL this session"},
+      {"year": 2025, "status": "AVAILABLE_LIVE_OFFICIAL_DATED", "evidence": "PDF effective 2025-02-01 fetched (S3); per-cell ES values NOT extractable"},
+      {"year": 2026, "status": "AVAILABLE_LIVE_OFFICIAL_DATED", "evidence": "PDF effective 2026-02-01 fetched (S4b); per-cell ES values NOT extractable"}
+    ],
+    "nfa_assessment_fee": [
+      {"years": "2010-2017", "status": "AVAILABLE_OFFICIAL_TIMELINE", "evidence": "S5 verbatim: $0.02/side prior to 2014-10-01; $0.01/side 2014-10-01..2017-12-31"},
+      {"years": "2018-2026", "status": "PARTIAL_OFFICIAL", "evidence": "S5 states $0.02/side effective 2018-01-01 (open-ended); no official post-2018 change document fetched; IBKR's CURRENT published ES regulatory offset is 0.011 (S2) — relationship between the two not resolvable from public fetches this session (open item)"}
+    ],
+    "current_schedule_as_approximation_years": {
+      "definition": "years for which backfill would have to approximate the 2026-10 public schedule because no year-specific public schedule was obtained",
+      "ibkr_commission": ["2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2024"],
+      "cme_exchange": ["2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2021", "2022", "2023", "2024"],
+      "warning": "approximating history with the current schedule is KNOWN-WRONG in at least two documented ways: NFA fee changed at 2014-10-01 and 2018-01-01 (S5), and public references exist to CME fee increases within the window (e.g. effective 2022-02-01, surfaced but unfetched). Approximation must be labeled MODELED_COST with these caveats, never treated as historical fact."
+    }
+  },
+  "attempt_log": [
+    {"attempt": 1, "target": "IBKR commissions-futures.php", "route": "WebFetch", "result": "HTTP 403", "count": "x2 (both prompts)"},
+    {"attempt": 2, "target": "IBKR commissions-futures.php", "route": "mcp web_reader", "result": "SUCCESS full text (S1)", "count": "x2 (one no_cache)"},
+    {"attempt": 3, "target": "cmegroup.com/company/fees.html", "route": "WebFetch", "result": "timeout 60s"},
+    {"attempt": 4, "target": "cmegroup.com/company/fees.html + /trading/fees/", "route": "mcp web_reader", "result": "network-500 x3"},
+    {"attempt": 5, "target": "cmegroup.com/company/files/cme-fee-schedule-2025-02-01.pdf", "route": "WebFetch", "result": "timeout 60s"},
+    {"attempt": 6, "target": "cmegroup.com/company/files/cme-fee-schedule-{2025-02-01, 2020-10-01, 2026-02-01}.pdf", "route": "mcp web_reader", "result": "SUCCESS (S3, S4a, S4b)"},
+    {"attempt": 7, "target": "cmegroup.com/company/files/cme-fee-schedule-{2010-06-01, 2015-12-01}.pdf", "route": "mcp web_reader", "result": "network-500 x2 (guessed filenames; not evidence of nonexistence)"},
+    {"attempt": 8, "target": "tradestation.com exchange-execution-and-clearing-fees", "route": "WebFetch", "result": "HTTP 403"},
+    {"attempt": 9, "target": "tradestation.com exchange-execution-and-clearing-fees", "route": "mcp web_reader", "result": "SUCCESS (S6)"},
+    {"attempt": 10, "target": "interactivebrokers.com/en/accounts/fees/CME.php", "route": "mcp web_reader", "result": "SUCCESS (S2)"},
+    {"attempt": 11, "target": "nfa.futures.org Bylaw 1301 PDF", "route": "mcp web reader", "result": "SUCCESS (S5)"},
+    {"attempt": 12, "target": "web.archive.org/cdx (IBKR + CME fee URLs)", "route": "WebFetch", "result": "connect timeout (10s) x2"},
+    {"attempt": 13, "target": "web.archive.org/cdx (IBKR URL)", "route": "mcp web_reader", "result": "network-500 x3"},
+    {"attempt": 14, "target": "archive.org/wayback/available (exact-URL probes)", "route": "WebFetch", "result": "SUCCESS x9 (see historical_availability evidence fields)"},
+    {"attempt": 15, "target": "WebSearch CME ES fee / NFA fee", "route": "WebSearch", "result": "surface only (led to S2, S5, S6; search-summarizer '$1.55' claim NOT present in any fetched source — NOT adopted)"}
+  ],
+  "limitations": [
+    "No number in this table is verified against any account: D2 account verification NOT_RUN; all rows VERIFIED_VS_ACCOUNT=NOT_RUN.",
+    "D6 market-data re-fetch does NOT substitute for account fee evidence (D6 covers data-plane freshness, not fees).",
+    "CME official per-cell ES tariff values could not be extracted reliably (PDF column scrambling); the ES exchange/regulatory figures used here are IBKR's PUBLISHED offset rates, cross-referenced by one public mirror (TradeStation).",
+    "Overnight Position Fee amounts (Tiered plan) NOT_FETCHED (JS tables never rendered in either session).",
+    "IBKR per-product tables on the CME.php page render the Non-Members Regular (default) view only; member/incentive rates exist but were not rendered.",
+    "Historical IBKR archived snapshots exist (2022/2023/2025) but their CONTENT was not retrievable this session (web.archive.org direct fetch blocked); no historical IBKR number is asserted.",
+    "Post-2018 NFA fee status unresolved from official sources this session (see S5 limitations / X2n open item).",
+    "One accidental unrelated tool call occurred mid-session (tianyancha code-table lookup, fired in a parallel batch by mistake); it made no writes and contributes nothing to this deliverable — recorded for transparency."
+  ]
+}

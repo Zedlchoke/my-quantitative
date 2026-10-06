@@ -1,0 +1,54 @@
+{
+ "schema": "meas_fx_m3_af2_k2_vintage_flip@1",
+ "item": "WORK_QUEUE A-#10 / HYPO G9 \u2014 AF2 K2 vintage-flip test machinery",
+ "law": "flip counts are data-quality facts (label stability), not strategy returns; no PnL; PB3 PARK untouched; owner real-time rates decision outstanding regardless",
+ "k2_kill_rule": "recompute the differential with year-end ALFRED vintages as-of each roll; >=3/16 material-roll sign flips => the conditioning variable is vintage-fragile => AF2 dead (JPY_AUD_HYPOTHESES \u00a75.7 K2; 6E +0.91\u2192\u22120.11 flip is the named bar)",
+ "baseline_committed_latest_vintage": {
+  "source": "FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a3_term.json:roll_gap_vs_rate_differential",
+  "n": 27,
+  "n_material": 16,
+  "material_sign_match_recomputed": "16/16",
+  "all_sign_match_recomputed": "20/27",
+  "reproduces_committed": true,
+  "caveat_committed": "RBA table = as-published decisions (gate HTML); DFF = FRED latest vintage (ALFRED year-end vintages only in corpus) -> CIP check is latest-vintage, not strict-PIT vintages; overnight rates are a proxy (no 3m AUD series in corpus; DTB3 exists for US only)",
+  "note": "on the latest-vintage basis the flip count is 0 by construction (single basis) \u2014 16/16 material sign match is the FLOOR the K2 test stress-tests"
+ },
+ "machinery": {
+  "asof_rule": "for roll date d: latest vintage with as-of stamp <= d, then that vintage's own nearest observation <= d (identical to the committed a7_6e \u00a76 6E method); differential = RBA_effective(d) \u2212 DFF_vintage(d); RBA table revision-free (as-published effective dates)",
+  "flip_definition": "material roll (|diff_latest| >= 0.25pp) with sign(diff_vintage) != sign(diff_latest)",
+  "kill": "n_flips_material >= 3",
+  "synthetic_fixture_proof": {
+   "fixture_law": "6 rolls, RBA flat 1.50, latest DFF 1.00 (all material, diff +0.50); one vintage table (as-of 2020-12-31) with INJECTED opposite-sign observations (DFF 2.00) on rolls #3 (2021-06-01) and #5 (2021-12-01); rolls #1/#2/#4/#6 carry the same-sign vintage value (DFF 1.00)",
+   "expected": {
+    "n": 6,
+    "n_material": 6,
+    "n_flips_material": 2,
+    "dead": false
+   },
+   "got": {
+    "n": 6,
+    "n_material": 6,
+    "n_flips_material": 2,
+    "dead": false
+   },
+   "pass": true,
+   "note": "proves the as-of selection + material band + flip counter recover exactly the injected flips; the >=3/16 kill rule is evaluated but never adjudicated on synthetic data"
+  },
+  "synthetic_fixture_null": {
+   "fixture_law": "vintage identical to latest (no injected flips)",
+   "expected_flips": 0,
+   "got_flips": 0,
+   "pass": true
+  },
+  "fixtures_all_pass": true
+ },
+ "real_vintage_run": {
+  "status": "NOT_RUN_DATA_NOT_IN_TREE",
+  "grounds": "git ls-files finds NO committed DFF/SOFR/DFEDTARU vintage capture under the worktree (only the collector script FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/collect/fred_alfred.py and the BLS vintage captures, which are release-schedule captures, not rate vintages). The vintages live outside the repo at /Users/hoangminhlong/.my-quantitative-data/futures-nonprice-10syms/fred_alfred (subdirs latest/, pit/, vintage_attempts/) \u2014 uncommitted, therefore NOT consumed by this lane; a committed 6E per-roll vintage-as-of recomputation does exist (a7_6e_recompute.json rolls_cip) and is what m1 consumes.",
+  "missing_paths": [
+   "/Users/hoangminhlong/.my-quantitative-data/futures-nonprice-10syms/fred_alfred/vintage_attempts/DFF_<YYYY-MM-DD>.csv (no DFF vintage set exists even on the external disk \u2014 the collector captured SOFR year-end vintages; DFEDTARU/DFF vintages were never captured)",
+   "a committed 6A per-roll vintage-as-of recomputation (none exists; A7_DEEP_6A used DFF latest-vintage only, NOTE-4)"
+  ],
+  "coverage": "0 of the 16 material rolls have a committed vintage-as-of differential; the computable subset from committed artifacts is the latest-vintage baseline only"
+ }
+}

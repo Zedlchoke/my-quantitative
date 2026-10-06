@@ -1,0 +1,145 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-5SYM-PRESCORED-20261005-MEAS-NQ",
+ "cycle_id": "FUTURES-5SYM-PRESCORED-20261005",
+ "role": "LANE-MEAS-NQ (descriptive measurement lane, PREP-only; closes WORK_QUEUE A#11 + harness half of A#3/#4 for NQ)",
+ "lane": "MEAS-NQ",
+ "dispatch_sha": "b2d086ca50996c628ec0373c4a3e8c2f2387c742",
+ "actual_start_sha": "b2d086ca50996c628ec0373c4a3e8c2f2387c742",
+ "commit_sha": null,
+ "changed_paths": [
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m1_rederive_dispersion.py",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m1_session_sigma_v3.md",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m1_session_sigma_v3.json",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m1_per_session_rederived.parquet",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/rebuild_harness.py",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/expected_check.py",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/HARNESS_SPEC.md",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/selfcheck_run1/selfcheck_results.json",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/selfcheck_run1/f3_rebuild_synthetic.json",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/selfcheck_run1/input_manifest.json",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/selfcheck_run1/fixture/fixture_law.json",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/selfcheck_run1/fixture/fixture_held_daily.parquet",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/selfcheck_run1/fixture/fixture_chain.parquet",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/selfcheck_run2/",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/selfcheck_run3/",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/refusal_demo/REAL_RUN_REFUSED.json",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/refusal_demo2/REAL_RUN_REFUSED.json",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m3_mde_refresh_arith.py",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m3_mde_refresh.md",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m3_mde_refresh.json",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/MEAS_NQ_REPORT.md",
+  "research/control/FUTURES-5SYM-PRESCORED-20261005/dispatch/handoff_MEAS-NQ.json"
+ ],
+ "tests": [
+  {
+   "name": "locks discipline (before/after every panel scan; no scan exceeded 2 min => canonical heavy lock not required)",
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/researchctl.py locks inspect",
+   "exit_code": 0,
+   "result": "FREE_PROVEN recorded 5x around lane work (before M1 run 1/2/3, after final M1, after all M2/M3 work): 'no registry row and the lock file is not flocked'; annotated-1m single-shot read measured 16.9s wall max; no heavy lock taken, no foreign worker touched"
+  },
+  {
+   "name": "M1 input integrity: cache_v3 files re-hashed vs adopt pins",
+   "command": "sha256 inside m1_rederive_dispersion.py vs research/control/FUTURES-SIX-ADOPT-PREP-20261004/adopt/cache_v3_hashes.json",
+   "exit_code": 0,
+   "result": "4/4 PASS_ALL_PINNED: nq_annotated_1m_v3 e233da66..., nq_held_daily_v3 b7bd830a..., nq_sessions_v3 30bc1ec3..., held_volume_k5_v3 99ff1ca1..."
+  },
+  {
+   "name": "M1 diff vs committed k6gate artifact (A#11: classification law applied to every delta)",
+   "command": "/Users/hoangminhlong/.venv/bin/python meas_nq/m1_rederive_dispersion.py (workspace venv)",
+   "exit_code": 0,
+   "result": "285/285 comparisons MEASUREMENT_IDENTICAL (bit-exact float equality, 0 deltas != 0.0), 0 DEFECT_CORRECTED, per-session parquet 4219 rows max_abs_delta 0.0 on all 7 measures; NEW session-class decomposition (RTH/Globex/maintenance) has no prior committed value => NEW_MEASUREMENT; G11 defect table vs pre-recovery NQ_a1_regimes.json: sigma proxy median-invariant 112.2984->112.2984 bp (delta 0.0), year-2020 vol_ann 33.5434%->34.8153% (+1.2719 pct-pts, DEFECT_CORRECTED), 16 other years bit-identical"
+  },
+  {
+   "name": "M2 synthetic self-check (deterministic fixture: 2 eras, 3 embedded rolls, hole/thin anomalies, closed-form crash+recovery, DST quirk row)",
+   "command": "python rebuild_harness.py --selfcheck --outdir runs/selfcheck_run1",
+   "exit_code": 0,
+   "result": "SELFCHECK PASS: 39 checks, 0 failed, final=PASS_SYNTHETIC_SELFCHECK (runs/selfcheck_run1/selfcheck_results.json sha256 7a584da98c68a11fb45be18de5995eaadd0ba324b993b2b7e6b1d86877679cb0); checks: exact panel/roll/depleted/clean counts, roll_dates, NaN-aware chain law (12 NaN rets = first + 10 hole + 1 bridge), yearly vol_ann/avg-vol rows, fold slices F1-F4 with warmup 252 reported-not-applied, crash episode trough=crash-end + ULP-level depth + coarse closed-form 30*ln(0.98), quirk_labeled_sessions==1, acf1_abs median, ret cross-check max_abs_ret_diff=0.0"
+  },
+  {
+   "name": "M2 harness determinism (byte-identical outputs on fixed fixture)",
+   "command": "re-run --selfcheck into runs/selfcheck_run2 (fresh fixture) and runs/selfcheck_run3 (--fixture-dir reuse)",
+   "exit_code": 0,
+   "result": "run2 exit 0; run3 exit 0 with f3_rebuild_synthetic.json + selfcheck_results.json + input_manifest.json byte-identical to run1; fixture parquets byte-deterministic across generations (e4862da5... held_daily); run1-vs-run2 JSON differs only in embedded inputs_manifest PATH fields (fixture dir moved), sha256 fields identical"
+  },
+  {
+   "name": "M2 D9 refusal demo (real-data rebuild gated, fail-closed)",
+   "command": "python rebuild_harness.py --real --cache <real cache_v3 dir> [--d9-ratification /tmp/fake_d9.json] --outdir runs/refusal_demo{,2}",
+   "exit_code": 20,
+   "result": "REFUSED_D9_UNSIGNED fired twice: (1) no ratification artifact -> 'no --d9-ratification supplied (ADOPT-D9 default = UNSIGNED)'; (2) wrong-schema artifact -> 'ratification schema != d9_ratification@1'; FINAL status artifacts runs/refusal_demo/REAL_RUN_REFUSED.json (55e85a4e...) and runs/refusal_demo2/REAL_RUN_REFUSED.json (2bb3d05a...), both final=REFUSED_D9_UNSIGNED, real_rebuild_status=NOT_RUN; real-data F3 rebuild NOT_RUN pending ADOPT-D9"
+  },
+  {
+   "name": "M3 MDE refresh arithmetic regenerates and reconciles with the census print",
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python meas_nq/m3_mde_refresh_arith.py",
+   "exit_code": 0,
+   "result": "F2 (n=160 census-declared, sigma 2023-26 pooled 126.33 bp): MDE 27.96 bp (census-proxy sigma 24.86, rth5min 15.74); F3 (armed-n NOT_RUN, optimistic bound n=4219): MDE 4.84 bp lower bound (6.52 bp with defect-corrected F3-fold sigma 151.38); EXPWITCH-NQ reference row n=66: 38.70 -> 38.70 bp delta 0.0 == census committed 'MDE ~ 38.7 bp' (formula quoted from HYPOTHESES_ESNQ_R3.md section 7 F5-K2 / FALSIFICATION_MATRIX.md / ESNQ handoff test record)"
+  },
+  {
+   "name": "lane output digests",
+   "command": "shasum -a 256 over all meas_nq/ outputs (values in outputs[])",
+   "exit_code": 0,
+   "result": "18 outputs hashed with real digests (see outputs[]); no SELF placeholders"
+  }
+ ],
+ "authority_claims": [
+  "PREP-only wave-3 lane under the dispatch interpretation_law: descriptive work only; 0 PnL, 0 scored cells, 0 conditional-on-signal return statistics, 0 registrations, 0 trial identities, 0 typed GO, 0 S1 access, no commits (commit_sha null), no pushes, no registry/ledger writes",
+  "ADOPT-D9 treated as UNSIGNED throughout: cache_v3 consumed ONLY in the descriptive read posture (canonical-CANDIDATE, per-cycle citation of D8_D9_DECISION_SHEET.md), identical to the k6gate NQ lane's read posture; FREEZE consumption NOT_RUN; the real-data F3 rebuild is hard-gated behind a d9_ratification@1 owner artifact (decision ADOPT-D9-OptionA) that does not exist",
+  "P3 quarantine unread; ES finalize cycle untouched; no other worktrees entered; writes confined to meas_nq/ + dispatch/handoff_MEAS-NQ.json",
+  "census MDE formula consumed by quotation (HYPOTHESES_ESNQ_R3.md section 7 F5-K2: two-sided alpha=0.05, power 80%, z=2.80; FALSIFICATION_MATRIX.md 'per-event MDE ~ 2 sigma/sqrt(n)'); family n inputs taken from CENSUS_5SYM.md declarations (~160 for NQ-F2) or explicitly labeled bounds (NQ-F3 4,219 optimistic upper bound on n), never invented",
+  "prior committed artifacts cited, never overwritten: session_dispersion_v3.json + per-session parquet (k6gate M3), nq_f3_rebuild_a1a2.json (k6gate M4), NQ_a1_regimes.json / NQ_a2_sessions.json (pre-recovery, FUTURES-DEEPRESEARCH-V2-20261003)"
+ ],
+ "known_limitations": [
+  "NQ-F3 real-data rebuild on cache_v3: NOT_RUN pending ADOPT-D9 — the harness hard-refuses real inputs (refusal demonstrated, exit 20, FINAL status artifacts recorded); when the owner signs, the ratified path still hash-verifies inputs before any pipeline work",
+  "FREEZE consumption of cache_v3: NOT_RUN (D9 unsigned); M1's reads are descriptive measurement on the canonical-CANDIDATE chain and would need re-citation if D9 fails",
+  "post-freeze per-family MDE tables: NOT_RUN per SPEC_NQ section 7 — m3_mde_refresh is the descriptive feed, not the post-freeze table",
+  "NQ-F3 armed-cell census (runs >= 5 occurrence rate): inherited NOT_RUN (CENSUS_5SYM.md NQ-F3 field 3) — the F3 MDE is a 1/sqrt(n) parameterization with an optimistic n bound",
+  "NQ-F2 exact vintage-correct event-day count: NOT_RUN; n=160 is the census's declared approximation",
+  "M2 coverage honesty: rvol window summaries, variance ratios, vol20-of-vol20 and regime terciles are implement-and-assert (formulas mirrored verbatim from the committed recipes), NOT independently re-derived by expected_check.py; independent checks cover counts, chain NaN law, roll set, fold slices, yearly rows, drawdown episode (incl. closed-form), DST quirk, acf1_abs median",
+  "M1 session-class decomposition is a NEW measurement with no prior committed value (no old/new delta exists for it); maintenance-break class has bars in only 532/4219 sessions (era-dependent)",
+  "all cost references remain MODELED / UNDER REVIEW (SPEC_NQ section 5); no cost number in any lane artifact is measured",
+  "M2 determinism law: byte-identical outputs require identical input paths (the inputs_manifest embeds paths); aggregate outputs are identical across relocating the fixture (verified: sha256 fields identical, JSONs identical modulo manifest)"
+ ],
+ "incidents": [
+  {
+   "id": "MEASNQ-T1",
+   "severity": "LOW",
+   "summary": "first M1 run showed 4 diff cells (<= 7.2e-4 bp): implementation restricted to the held chain BEFORE computing r1 while the committed recipe computes r1 on the full panel then restricts (first held bar of a contract carries the contract-internal diff)",
+   "disposition": "recipe order corrected verbatim; all 285 comparisons went bit-identical; intermediate disclosed in m1_session_sigma_v3.md section 6; no downstream artifact consumed it"
+  },
+  {
+   "id": "MEASNQ-T2",
+   "severity": "LOW",
+   "summary": "first M3 run mislabeled pooled era sigma as bp (returned annualized %) printing F2 MDE 4.44 bp",
+   "disposition": "unit law fixed (daily sigma bp = std*1e4); corrected 27.96 bp; JSON regenerated and re-hashed"
+  },
+  {
+   "id": "MEASNQ-T3",
+   "severity": "INFO",
+   "summary": "dispatch manifest base_sha field reads 0732f22e... while this lane's dispatch packet states wave-3 base b2d086ca... == measured HEAD",
+   "disposition": "lane anchored to its packet's base (b2d086ca50996c628ec0373c4a3e8c2f2387c742, == git rev-parse at start); recorded here; no action beyond disclosure"
+  }
+ ],
+ "tree_status": "worktree clean at lane start (HEAD b2d086ca50996c628ec0373c4a3e8c2f2387c742 == packet base); lane wrote ONLY meas_nq/** and dispatch/handoff_MEAS-NQ.json; nothing staged or committed (lanes never commit); sibling lanes' files present but untouched",
+ "workers": ["LANE-MEAS-NQ (single lane, no sub-workers)"],
+ "outputs": [
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m1_rederive_dispersion.py", "sha256": "1b540a9c693decb85bf93586cd327f003fa84b68dd1a0b6e4e6197fb488530f0"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m1_session_sigma_v3.md", "sha256": "e31fe1f56ed2a0219bf61cc6d64515247ce7e78dc996b498fa8cc335ee0850a0"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m1_session_sigma_v3.json", "sha256": "d44eea4b5e5657949120a273f71ee48dbc4a6d760ca6a419aad8feff4493f1b7"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m1_per_session_rederived.parquet", "sha256": "3f536ede9d99d0b5651495619a0da32b3eabce8ec5501a84805af24e724ee665"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/rebuild_harness.py", "sha256": "4d4e9c63e3177aa70afd01d434a2d23859b9eb52eebe0f766464dbe4ce9c538b"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/expected_check.py", "sha256": "fd7645298a0a1da816fe11d38622e6245e2033f1071ab6a054f1626b14547013"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/HARNESS_SPEC.md", "sha256": "4597f6728b7bb55ca1d33b368c07cc35babaee9deb30a9470c2862f2e4b83028"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/selfcheck_run1/selfcheck_results.json", "sha256": "7a584da98c68a11fb45be18de5995eaadd0ba324b993b2b7e6b1d86877679cb0"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/selfcheck_run1/f3_rebuild_synthetic.json", "sha256": "14087854f5456d9f35b5111e3bb6ad18230b2b0efe3426f43cc90691eff648e0"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/selfcheck_run1/input_manifest.json", "sha256": "76b3c8d991a967b90c366d49be6ca8af4cb6fd5b73ff92245e034b26cb29c698"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/selfcheck_run1/fixture/fixture_law.json", "sha256": "042d987e4c388438d9dea01f3fc5fc5637ef202b18dddfbe9c0d2990ad926399"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/selfcheck_run1/fixture/fixture_held_daily.parquet", "sha256": "e4862da51e9eee62fcb2a0a91433bf7891ef4518b6b792b0fe71162209a9dd9f"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/refusal_demo/REAL_RUN_REFUSED.json", "sha256": "55e85a4e79cdd33af0a754c98aab00e67eec7403f5700d00102f7cc664e355eb"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m2_f3_rebuild_harness/runs/refusal_demo2/REAL_RUN_REFUSED.json", "sha256": "2bb3d05a02bcecb5bed2b68662b75af3752a24114bea651aa97e8aa40ae46118"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m3_mde_refresh_arith.py", "sha256": "1ae602fac8aba5afd42235daf30ef490b3c8e1ea9c18de3d9e86fdb751436401"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m3_mde_refresh.md", "sha256": "d7d3761a0043eb6e2180bd901423bd83045e54520dd088c90457bf231ccf23be"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/m3_mde_refresh.json", "sha256": "f60795b06dbbbda6e4f932574765dfce9970472fbdb71ee88e0d78c02088bde4"},
+  {"path": "research/control/FUTURES-5SYM-PRESCORED-20261005/meas_nq/MEAS_NQ_REPORT.md", "sha256": "351d8a53ade8e075ccbe884d06771c0dffa9b76bc4654187db69d182e0c06dbc"}
+ ],
+ "recommended_next_action": "SYNTH wave consumes meas_nq/: (1) fold the G11 closure into the NQ MDE refresh section of the owner packet — headline: the census sigma proxy (112.30 bp) is defect-INVARIANT at the median; the defect moved only the 2020 stratum (+1.27 ann pct-pts); (2) present the harness's d9_ratification@1 gate as the concrete unlock artifact for the NQ-F3 real rebuild (executes unattended once signed); (3) the F2/F3 MDE rows (27.96 bp @ n~160; 4.84 bp lower bound @ n=4219 optimistic, armed-n NOT_RUN) feed the post-freeze MDE tables after the freeze; no gate, ceiling, budget, or registration action arises from this lane"
+}
