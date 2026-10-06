@@ -1,0 +1,109 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "nfl-winprob-ng-scored-v1-EXEC",
+  "cycle_id": "NFL-WINPROB-NG-SCORED-V1",
+  "role": "implementation-lane",
+  "lane": "EXEC",
+  "branch": "orca/nfl-winprob-ng-scored-v1-integration",
+  "dispatch_sha": "876845e01932393319fcca05924dca0e8243744a",
+  "actual_start_sha": "876845e01932393319fcca05924dca0e8243744a",
+  "commit_sha": null,
+  "changed_paths": [
+    "integration/research/control/NFL-WINPROB-NG-SCORED-V1/recorder/execute_post_go.py",
+    "integration/lanes/EXEC/EXECUTOR_REPORT.md",
+    "integration/lanes/EXEC/VERDICT_TABLE.md",
+    "integration/lanes/EXEC/test_executor_gates.py",
+    "integration/lanes/EXEC/repin_r3.py",
+    "integration/lanes/EXEC/rerun_suites.py",
+    "integration/lanes/EXEC/gate_matrix_evidence.json",
+    "integration/lanes/EXEC/suites_rerun_evidence.json",
+    "integration/lanes/EXEC/pipe_rerun_evidence/e2e_synth_evidence.json",
+    "integration/lanes/FREEZE_ERRATUM_R3/ERRATUM_R3.md",
+    "integration/lanes/FREEZE_ERRATUM_R3/freeze_digests_r3.json",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/exec_fixtures/games_pass.csv",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/exec_fixtures/games_future_score.csv",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/exec_fixtures/games_week4.csv",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/exec_fixtures/prior_e_table.json",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/exec_fixtures/data_manifest.json",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/exec_fixtures/registry_go.json",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/exec_fixtures/registry_consumed.json",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/exec_fixtures/registry_dead.json",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/exec_fixtures/registry_phrase.json",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/exec_fixtures/registry_head.json",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/exec_fixtures/freeze_root/ (fixture freeze-state copies: F_FREEZE + FREEZE_ERRATUM_R2 + FREEZE_ERRATUM_R3, reconciled to a fixture freeze packet)",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/exec_fixtures/freeze_root_g|_h|_n/ (tamper-case freeze-state copies)",
+    "~/.my-quantitative-data/nfl-ng-scored-v1/exec_sandbox/case_a..case_o/ (per-case sandboxes: gate logs; case_b run1/run2 sandbox ledgers + genesis sidecars + registration payloads)",
+    "integration/lanes/DISPATCH/handoff_EXEC.json"
+  ],
+  "tests": [
+    {
+      "command": "lanes/EXEC/test_executor_gates.py (interpreted by /Users/hoangminhlong/my-quantitative/.venv/bin/python)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "NEW 15-case gate-fixture matrix (a)-(o): 83/83 checks, 15/15 cases. Case a: REAL registry refuses at G1 exit 11 with audit-hook zero-read proof. Case b: full synthetic pass 8 games x 3 arms = 24 rows, chain valid, scoring rehearsal 24 VALID_PROSPECTIVE, double-run byte-identical, real freeze digests absent from sandbox bytes. Cases c-o: refusals G1=11 (c,d,e), G2=12 (f,g,h), G3=13 (i), G4=14 (j,k), G5=15 (l incl. 2026_04_ATL_NO canary by name), G6=16 (m), G7=17 (n), G8=18 (o) — each with distinct exit code and nothing-written assertion"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/NFL-WINPROB-NG-SCORED-V1/ledger/test_ledger_synthetic.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "re-run at the EXEC tree: 42/42 passed (unchanged, unweakened)"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest lanes/S_SYNTH/test_successor_synthetic.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "re-run at the EXEC tree: 16/16 passed (unchanged, unweakened)"
+    },
+    {
+      "command": "record_batch.py --mode selftest (in-process via lanes/EXEC/rerun_suites.py)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "PIPE recorder selftest: 10/10 checks"
+    },
+    {
+      "command": "record_batch.py --mode e2e-synth (in-process via lanes/EXEC/rerun_suites.py; evidence write REDIRECTED to lanes/EXEC/pipe_rerun_evidence/ — A7_PRELAUNCH_R2 precedent — so lanes/PIPE files are untouched)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "3 scenarios + scoring rehearsal; double-run BYTE-IDENTICAL; real-ledger paths existing = []; freeze R1 genesis absent from sandbox bytes"
+    }
+  ],
+  "authority_claims": [
+    "execute_post_go.py (sha256 8318a399207e86b2a8f4dee4e88b4e7452a6bb17bb43710e78c3a81979e242d4, pinned in freeze_digests_r3.json) implements the G1-G8 gate chain: G1 registry authority (lifecycle ACTIVE_LIGHT/ACTIVE_HEAVY; go_phrase_state matching ^OWNER_GO_TYPED_LIVE \\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z at head [0-9a-f]{40}$; registered go_phrase equality 'GO NFL WINPROB NG SCORED V1 PROSPECTIVE'); G2 freeze coherence (worktree HEAD from .git files == registry row head == freeze_digests_r3.json head_lineage.expected_sha; arms/select/boot sha pins; 5 ERRATUM_R2 recorder pins; frozen-import pins; executor self-pin; freeze-packet bytes sha; GENESIS payload R2 recompute); G3 heavy lock (real researchctl locks inspect from root cwd, 3x60s); G4 snapshot pin + data-manifest presence + future-with-score abort + kickoff parse; G5 week>=5 Option B law + 2026_04_ATL_NO canary by name; G6 6h margin; G7 exactly 3 frozen arms by import + config digests + no 4th arm; G8 ledger via ported nfl_ng_ledger@1 with GENESIS substitution asserted pre-write, chain validation, recorded_at_utc<kickoff_utc. Distinct exits 11-18; nothing written on refusal except the gate log",
+    "ERRATUM_R3 drafted (ERRATUM_R3.md sha256 977e34b11fa9e5cbf933ed7f1d9d77c2239c23208953e45a0fcf116b7f40e45e; freeze_digests_r3.json sha256 32d3f746e150e32e2cc1628c2a10a821aebf2634466f490c6c778ce468cf52e0): execution-surface addition ruled lawful per ERRATUM_R2 §3 precedent; arm code CODE_FREEZE_SHA 7ec4c539394e68538f74df327d85fa2a477c6eb7 UNCHANGED; EXECUTOR_FREEZE_SHA = PENDING_CONTROLLER_ADDENDUM with the two-step law; canonical GO-recording convention 'OWNER_GO_TYPED_LIVE <utc-iso> at head <40-hex>' recorded by the CONTROLLER via researchctl the moment the owner types the phrase at the gate; G1-G8 spec as the auditable post-GO contract; GENESIS R2 bd94eb77d35077ac7bc1761a2c61031a1cdf2f53c6d8be181de5ddfcefd51483 UNCHANGED and binding; window/arms/grids unchanged",
+    "The executor contains NO wall-clock read: every timestamp is an explicit argument or the GO instant from the registry state line; identical arguments produce byte-identical ledgers (double-run proof, case b)",
+    "GENESIS substitution law implemented and asserted BEFORE any write: rebuilt placeholder-form payload must re-digest to the R2 pin, and substitution may touch EXACTLY created_at (<- registry GO instant) and recorder_freeze_sha (<- 3e52b7b1de64c8e2f04867cee37524886c6b3111 from the ERRATUM_R2 CONTROLLER_ADDENDUM)",
+    "The REAL registry (REGISTERED_NOT_CONSUMED, head 876845e01932393319fcca05924dca0e8243744a) refuses at G1 exit 11 BEFORE any data read — proven with a sys.addaudithook open-audit: the only opens during main() are the registry file and the sandbox gate log; zero reads of schedules/pbp/T_SELECT/freeze files",
+    "No real-game probability was computed in any lane run: pass-path batch games are SYNTH_-prefixed fixtures; the real canary 2026_04_ATL_NO is refused BY NAME at G5 before any computation; no 2019+ outcome evaluation; $0 spent",
+    "git status --porcelain at lane end = exactly lanes/EXEC/, lanes/FREEZE_ERRATUM_R3/, the one new recorder module, plus the pre-existing untracked dispatch packet; lanes/T_SELECT, lanes/F_FREEZE, lanes/PIPE, lanes/S_SYNTH bytes untouched (PIPE e2e evidence write redirected to lanes/EXEC/pipe_rerun_evidence/, A7_PRELAUNCH_R2 precedent); no git write commands; the real registry and real ledger never written; the real machine lock never touched"
+  ],
+  "known_limitations": [
+    "G3 held-lock case (i) is code-path injection only (NOT_RUN_LOCK_SIM for the faithful held-flock subprocess variant): researchctl hard-codes the real lock path and touching it is forbidden. Mitigating evidence: the REAL locks inspect was exercised in BOTH states during the lane — FREE_PROVEN on the pass path (recorded in gate_matrix_evidence.json g3_pass_mode_disclosure = REAL_RESEARCHCTL_FREE_PROVEN) and HELD_PROVEN mid-lane (foreign worker FUTURES-ES-PB1-V1 pid 91472; the executor refused cleanly, exit 13, nothing written; the foreign worker was never touched)",
+    "Tamper cases (g)(h)(n) model tampering on FIXTURE freeze-state copies (pins), never on the real frozen files — byte-equivalent evidence for the same sha-vs-pin checks without violating the no-touch law",
+    "The pass-case sandbox ledger anchors to a FIXTURE freeze packet (real packet bytes + one appended marker line) so the full digest chain recomputes consistently while real freeze digests stay out of sandbox bytes (asserted); the REAL post-GO ledger anchors to the real packet 9978a950cfa52f531c6cc1ccf650ca46cfcecb5a0d38c8468f6a66381ef70f6e",
+    "Controller actions still required before the executor can run live: (1) commit lanes/EXEC + lanes/FREEZE_ERRATUM_R3 + the executor module; (2) two-step addendum: measure the new integration HEAD, backfill EXECUTOR_CONTROLLER_ADDENDUM.md, and re-pin freeze_digests_r3.json head_lineage.expected_sha (G2 refuses until registry head == worktree HEAD == pin, by design); (3) only after the owner types the registered phrase at the gate, record go_phrase_state in the canonical form via researchctl",
+    "The real post-GO predict path uses the REAL pbp state-carry pins (rec_priors.verify_pbp_pins over ~374 MB) — implemented, never executed in lane runs (lane runs use the synthetic prior-E table; PIPE's warmup-check separately proved the real warmup path, aggregate counts only)"
+  ],
+  "incidents": [
+    {
+      "time_utc": "2026-10-06T00:52Z (observed)",
+      "event": "machine-wide heavy lock HELD_PROVEN by a foreign worker (FUTURES-ES-PB1-V1/SCORED-EXECUTION, pid 91472, registry token match, live heartbeat) during an intermediate gate-matrix run",
+      "disposition": "executor behaved per law: G3 refusal, exit 13, NOT_RUN_RESOURCE_CONFLICT, nothing written; the foreign worker was NEVER touched and the lock file never modified; the suite re-run later observed FREE_PROVEN (job completed) and the full matrix passed 15/15 with G3 proven via the REAL researchctl"
+    }
+  ],
+  "tree_status": "uncommitted-by-design",
+  "workers": 0,
+  "outputs": [
+    "integration/lanes/EXEC/EXECUTOR_REPORT.md",
+    "integration/lanes/EXEC/VERDICT_TABLE.md",
+    "integration/lanes/EXEC/test_executor_gates.py",
+    "integration/lanes/EXEC/gate_matrix_evidence.json",
+    "integration/lanes/EXEC/suites_rerun_evidence.json",
+    "integration/lanes/EXEC/rerun_suites.py",
+    "integration/lanes/EXEC/repin_r3.py",
+    "integration/lanes/EXEC/pipe_rerun_evidence/e2e_synth_evidence.json",
+    "integration/research/control/NFL-WINPROB-NG-SCORED-V1/recorder/execute_post_go.py",
+    "integration/lanes/FREEZE_ERRATUM_R3/ERRATUM_R3.md",
+    "integration/lanes/FREEZE_ERRATUM_R3/freeze_digests_r3.json",
+    "integration/lanes/DISPATCH/handoff_EXEC.json"
+  ]
+}
