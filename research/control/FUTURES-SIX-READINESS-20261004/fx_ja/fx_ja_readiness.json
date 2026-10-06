@@ -1,0 +1,152 @@
+{
+ "schema": "fx_ja_readiness@1",
+ "task": "FUTURES-SIX-READINESS-20261004",
+ "lane": "FX-JA-READINESS",
+ "generated_utc": "2026-10-04",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-six-readiness/prep",
+ "base_sha": "d7fc62312947b2613523dd401d44c9ec1a8d166b",
+ "law": "data-ready != scored-authorized; missing evidence = NOT_RUN, never inferred PASS",
+ "labels_binding": "all fees MODELED COST / UNDER REVIEW / VERIFIED_VS_ACCOUNT=NOT_RUN; BBO NOT_RUN (D5 law); no PnL anywhere in this lane",
+ "measurements": {
+  "6j_orientation_recheck": "6j_orientation_recheck.json",
+  "6j_cease_guard_2022": "6j_cease_guard_2022.json",
+  "6j_identity": "6j_identity.json",
+  "6a_tick_adjudication": "6a_tick_adjudication.json",
+  "6a_roll_measured": "6a_roll_measured.json",
+  "ja_event_pit": "ja_event_pit.json",
+  "session_holes_2023": "session_holes_2023.json",
+  "q5_independent_verify": "q5_independent_verify/verify_q5_captures.json"
+ },
+ "6J": {
+  "dim1_identity_tick": {
+   "status": "PASS",
+   "tick_usd_per_jpy": 5e-07,
+   "tick_value_usd": 6.25,
+   "multiplier_jpy": 12500000,
+   "evidence": [
+    "definitions: min_price_increment = 500 int-nano UNIQUE across all 72 6J symbol-definition rows 2023-10+ (6j_identity.json)",
+    "measured increment GCD = 500 int-nano in all three sampled eras (2020-03, 2023-01, 2026-07); the 1e-6 grid FAILS (<=50% of closes on-grid) so the dispatch's 1e-7/$1.25 alternative and any 1e-4/$12.50 legacy are REJECTED on data (6j_identity.json)",
+    "multiplier: definitions unit_of_measure_qty = 12500000000000000 int-nano = 12,500,000 JPY decoded; S1_IDENTITY.json multiplier '12500000' rehashed (sha d217ab9d... match) (6j_identity.json, 6j_orientation_recheck.json)"
+   ],
+   "quote_orientation": "USD per JPY; PROVEN from raw slice: 2024-07-11 6J UP (+1.73% CT-session / +2.07% UTC-day) while implied USDJPY DOWN (160.0 -> 157.3 / 156.8); burst minute 12:42Z front +105 ticks EXACT, front 12:42 volume 17,448 lots EXACT vs dossier (6j_orientation_recheck.json)",
+   "residuals": ["legacy 1e-4 'JY' TradingCharts tick stays unadjudicated vs CME rulebook (BLOCKED_TRANSPORT) — moot on this data: no in-corpus support"]
+  },
+  "dim2_o1m_coverage": {
+   "status": "PASS",
+   "panel": "2,843,938 outright 1m bars 2020-01-01..2026-10-01 (AV1B+AV1R+AV1T; 6J_DEEP_v2.md §8, cited; era table row-counts re-verified this lane at slice level)",
+   "holes_2023_measured": "2 missing weekdays in all-2023: 2023-01-02 (New Year), 2023-12-25 (Christmas) — both exchange holidays; NO unexplained 2023 hole (session_holes_2023.json)",
+   "known_artifact": "2022-09-20 held-chain artifact re-proven from raw (see dim3); the VENDOR PANEL itself has no hole that day (1,466 6J rows across 4 symbols)",
+   "caveats": ["volume definition gap 0.455x law (SHARES/RATIOS only; 6J_qa_ledger cited)", "2026-10-01 partial tail (~2h)", "16:00-17:00 CT break: 1 stray bar in 2.84M (dossier §8)"]
+  },
+  "dim3_roll_expiry": {
+   "status": "PARTIAL",
+   "roll_mechanics": "k=5 volume-crossover chain: 27 rolls 2020-2026 (baseline held_volume_k5.parquet re-cross-checked this lane: held map row 2022-09-20=6JU2_2022, bar-chain drops that session, 1,745 sessions)",
+   "cease_guard_law": "PASS — 6J_DEEP_v2.md §8 ERRATUM M-5 re-proven element-by-element from raw: 2022-09-20 exchange OPEN (Z2 125,303 lots over 1,357 bars; +serials; J1U27 First Trade 2022-09-20 per Q5 capture), k=5 still held ceased U2 (stale trailing-5 mean 92,857.8 > Z2 ramp 88,234.0), switch 2022-09-21, U2 final session 2022-09-19 with 97 bars (6j_cease_guard_2022.json)",
+   "expiry_pointers": "58/68 = 52 official FXCAL 2010-2022 + 6 from Q5 capture (2024Q3..2025Q4); missing: 2023Q1-Q4, 2024Q1-Q2, 2026Q1-Q4 (10 cells NOT_OBTAINED, derivation forbidden)",
+   "official_vs_observed_cross_check": "all 16 extracted official lastTrade dates >= observed last-bar session (q5_independent_verify/verify_q5_captures.json)"
+  },
+  "dim4_session_holiday": {
+   "status": "PARTIAL",
+   "template": "23h CT continuous 17:00->16:00, 1380 tradable minutes, median 1,357 bars/session (dossier §8; no maintenance break)",
+   "2023_holes": "2 weekdays (both holidays) measured this lane",
+   "not_obtained": "FX holiday session TIMES 2017-2023 per FXCAL (early-close minutes), 2024-25 NOT_OBTAINED (JF1/JF3 f4 restated)",
+   "consequence": "holiday-shortened sessions are handled by bar-count exclusion in family specs; exact early-close minutes remain unavailable"
+  },
+  "dim5_event_pit": {
+   "status": "PARTIAL",
+   "boj": "156 statement files 2011-01-25..2026-09-18 (30 dated decisions 2023-2026) + 17 mpmdeci index files 2010-2026; DATES only — NO intraday timestamps in corpus -> PARTIAL; per matrix BoJ stamps = owner decision (ja_event_pit.json); restated, NOT fixed",
+   "mof": "386 daily ops 1991-05-13..2026-05-06 on disk (SOURCE_TIDY_RESOLVED, ERRATUM M-1 upheld — cited); publish-lag law: no same-day PIT signal",
+   "us_side": "FRED DFF: 16 vintage files (year-end 2010-2024 + 2026-09-30; NO 2025-12-31 vintage) + latest snapshot to 2026-09-30; vintage law = available_time is vintage as-of decision date; current-calendar inference FORBIDDEN (ja_event_pit.json)",
+   "rba": "for cross-conditioning: 395 dated decisions 1990-08-02..2026-09-30 (2023:11, 2024:8, 2025:8, 2026:6) as-published, dates only"
+  },
+  "dim6_fee_spread_slippage_bbo": {
+   "status": "MODELED_PLUS_NOT_RUN",
+   "fees": "T1 2.46 / T2 2.26 / T3 2.06 / T4 1.86 USD per side all-in (FEES_CORRECTED erratum, P0-VERIFY upheld; FX fee-group mapping PARTIAL) — MODELED COST / UNDER REVIEW / VERIFIED_VS_ACCOUNT=NOT_RUN",
+   "notional": "12,500,000 JPY x price; representative 0.006383 re-measured from raw 2026 tail (last bar 2026-09-30 23:59Z) = $79,787.50 (6j_orientation_recheck.json)",
+   "rt_table": "T1/slip1 RT $67.42 = 8.4499 bp of $79,787.50; tier range 8.30-12.10 bp; inputs 2x(fee + $25.00 close-proxy spread [4 ticks, high-biased] + n x $6.25 slippage) — arithmetic re-derived this lane, bit-identical to sibling P3 (6j_orientation_recheck.json)",
+   "bbo": "NOT_RUN stands — single-level BBOMsg cannot prove fill/queue (D5 law); true spread/queue/fill-probability/slippage all NOT_RUN; conservative fill law binds (book facts: BoJ window 34 vs 53 median 1m vol; tokyo_am 59 vs ny_am 120)"
+  },
+  "dim7_trial_budget": {
+   "status": "RESTATED_NO_NEW_TRIALS",
+   "census": "6J minimal ~= 29-36 (JF1 11 + JF2 7/host + JF3 11; full-grid 96) per CENSUS_FINAL.md; conventions: 6J6A counts 3 controls inside minimal; NO 6J cap defined — explicit owner ceiling required before any registration",
+   "families": "JF1 BoJ-window / JF2 MOF-regime overlay / JF3 Tokyo-morning (hypo/6j_6a/jpy_aud_hypotheses.json; PB-equivalent gates: orientation proof DONE this lane, BBO ruling NOT_RUN, cost A7 pending)"
+  },
+  "dim8_reproduction_a7": {
+   "status": "PARTIAL",
+   "lane_scripts": ["fx_ja/measure_6j.py", "fx_ja/measure_6a_tick.py", "fx_ja/6a_roll_measure.py", "fx_ja/measure_events.py", "fx_ja/session_holes_2023.py", "fx_ja/q5_independent_verify/verify_q5_captures.py", "fx_ja/fx_ja_lib.py"],
+   "interpreter": "/Users/hoangminhlong/my-quantitative/.venv/bin/python",
+   "inputs_read_only": "vendor parquets + deep-v2 worktree caches (cite-only) + nonprice dot-path root + sibling P3 round (cite-only, hash-verified where used)",
+   "a7": "fee re-verification packet pending (VERIFY-A7READY lane this round, PREPARE ONLY); account verification NOT_RUN"
+  },
+  "blocks_scored_use": [
+   "fee VERIFIED_VS_ACCOUNT=NOT_RUN (A7 pending; owner-authorized verification required)",
+   "BoJ intraday decision stamps NOT_IN_CORPUS (owner decision per matrix; JF1 window anchor stays a declared convention)",
+   "BBO/fill/queue NOT_RUN (standing D5 law — execution modeling stays conservative-fill)",
+   "FX holiday session TIMES 2024-25 NOT_OBTAINED; official expiries 2023 + 2026 quarters NOT_OBTAINED (10/68 cells)",
+   "volume absolute levels unusable (0.455 law) — shares/ratios only"
+  ]
+ },
+ "6A": {
+  "dim1_identity_tick": {
+   "status": "PASS_ADJUDICATED_PER_ERA",
+   "adjudication": "RESOLVED_PER_ERA from data (6a_tick_adjudication.json): traded grid 1e-04 USD/AUD ($10.00/tick at 100,000 AUD) for sessions 2020-01-02..2020-11-20 (231 sessions; zero odd 5e-5 prints in 327k+ closes; era-1 increment GCD = 100,000 int-nano), then 5e-05 USD/AUD ($5.00/tick) from 2020-11-23 to corpus end (~49% odd 5e-5 closes; every era-wide GCD = 50,000); vendor min_price_increment 5e-05 in all 72 definition rows 2023-10+ consistent with era 2",
+   "multiplier_aud": 100000,
+   "multiplier_evidence": "definitions unit_of_measure_qty decoded = 100,000 AUD; S1_IDENTITY.json '100000' (sha-verified snapshot)",
+   "consequence": "tick-denominated cost models must be era-aware ($10/tick in the 2020 sub-era, $5/tick after); baseline's '5e-05 throughout' is correct only from 2020-11-23",
+   "residuals": ["official CME rulebook page BLOCKED_TRANSPORT (unchanged) — adjudication is data-side, labels kept"]
+  },
+  "dim2_o1m_coverage": {
+   "status": "PASS",
+   "panel": "2,703,211 outright bars 2020-01..2026-10-01 on 86 contracts (build_report; 1,584 6BU5 contaminant bars excluded; 0 outright negative prices; 171,473 spread bars kept separate — 6A_DEEP_v2.md §7, cited)",
+   "mar_jun_2023_measured": "ZERO missing weekdays in March 2023 (23 traded) and June 2023 (22 traded) (session_holes_2023.json) — the Mar/Jun 2023 gap is an EXPIRY-pointer cell, not a data hole",
+   "caveats": ["2020-2021 identity rests on instrument_id + delivery-frame (definitions begin 2023-10)", "2026-10-01 partial tail"]
+  },
+  "dim3_roll_expiry": {
+   "status": "MEASURED_WITH_NOT_OBTAINED_CELLS",
+   "k5_measured": "27 rolls 2020-03-17..2026-09-14 (first switch 2020-03-17 H0->M0), 1,746 held sessions, 32 quarterly contracts — built from raw parquets this lane (6a_roll_measured.json); the matrix's BLOCKED(k=5 extrapolation) reason is discharged: k=5 is now MEASURED",
+   "cease_guard": "REAL on 6A: baseline-code k=5 leaves 2 vanished sessions — 2024-12-17 (held dead 6AZ4 while 6AH5 traded 55,675 lots) and 2026-06-16 (held dead 6AM6 while 6AU6 traded 55,533 lots) — same pathology as 6J 2022-09-20; explicit cease-guard variant (hard switch at last-bars date): 27 rolls, 0 violations, identical dates except those two switches land 1 session earlier",
+   "calendar_rule_crossref": "declared calendar rule = 27 rolls (6A_a3_term.json); k=5 crossover dates land ~2 weeks later than declared (§3.1: crossover 9-15d after declared date) — rule choice is material to roll timing, disclosed",
+   "expiry_pointers": "62/68 = 52 official FXCAL 2010-2022 + 10 from Q5 capture (2023Q3..2025Q4); missing: 2023Q1 (Mar), 2023Q2 (Jun), 2026Q1-Q4 (6 cells NOT_OBTAINED, derivation forbidden)"
+  },
+  "dim4_session_holiday": {
+   "status": "PARTIAL",
+   "template": "17:00 CT Sun -> 16:00 CT Fri, 60-min break honored 2020-2026 (dossier §7, cited)",
+   "mar_jun_2023": "clean (0 missing weekdays)",
+   "not_obtained": "CME holiday session TIMES (early-close minutes) NOT_IN_CORPUS for every year incl. 2024-25 (same cell as 6J)"
+  },
+  "dim5_event_pit": {
+   "status": "PARTIAL_PASS_RBA",
+   "rba": "395 dated decisions 1990-2026-09-30 as-published (2023-2026: 33 dated, 12 changes); PASS_EVIDENCED at date granularity; decision TIME not carried by file (14:30 Sydney anchor is the declared convention)",
+   "dff": "16 year-end vintages + latest (no 2025 vintage); vintage law restated (available_time = vintage as-of decision date); NOT a dense PIT series — AF2's declared caveat stands",
+   "not_run": ["ABS CPI/Labour Force historical release dates (no calendar in corpus)", "China Caixin/NBS calendars", "RBA surprise classification"]
+  },
+  "dim6_fee_spread_slippage_bbo": {
+   "status": "MODELED_PLUS_NOT_RUN",
+   "fees": "same corrected fee tier table as 6J (FX group, mapping PARTIAL) — MODELED COST / VERIFIED_VS_ACCOUNT=NOT_RUN",
+   "rt_baseline": "baseline RT 1-tick T1 $54.92 = 8.2 bp (spread proxy $20 = 4 x $5 post-Nov-2020 tick); era caveat: in the 2020 sub-era the tick is $10, so 4-tick close-proxy = $40 and the baseline RT is NOT valid there (era-aware recomputation required before any use)",
+   "bbo": "NOT_RUN (D5 law, as 6J)"
+  },
+  "dim7_trial_budget": {
+   "status": "PB3_PARK_RESTATED",
+   "census": "AF1 11 + AF2 0 + AF3 11 minimal (full-grid 48) per CENSUS_FINAL.md; PB3 PARK stands — 6A is PREP only, no registration, no budget; census is CONTINGENCY ONLY; never reopened by this lane",
+   "gates_updated": "AF1 f4 'k=5 on 6A NOT measured (ERRATUM A7-DC-F3)' — now MEASURED this lane; 'tick conflict UNADJUDICATED' — now RESOLVED_PER_ERA this lane; owner updates the matrix cells, not this lane"
+  },
+  "dim8_reproduction_a7": {
+   "status": "PARTIAL",
+   "lane_scripts": "as 6J (shared fx_ja/ scripts)",
+   "a7": "pending (VERIFY-A7READY)"
+  },
+  "blocks_scored_use": [
+   "PB3 PARK (owner ruling — 6A is contingency-only regardless of data readiness)",
+   "fee VERIFIED_VS_ACCOUNT=NOT_RUN (A7 pending)",
+   "2020 sub-era tick value $10/tick — any cost model must be era-aware (now measured; not yet wired into a frozen cost spec)",
+   "BBO/fill/queue NOT_RUN (D5)",
+   "official expiries 2023Q1/Q2 + 2026 NOT_OBTAINED (6/68); holiday session times NOT_IN_CORPUS",
+   "ABS/China event calendars NOT_RUN (AF3 base spec dies without China calendar per its own K4)"
+  ]
+ },
+ "dispatch_claim_adjudications": {
+  "6j_58_68_and_6a_62_68": "REPRODUCED: 52 FXCAL-official (2010-2022, per JPY_AUD_HYPOTHESES.md 'expiries 208/272 across 4 FX symbols') + 6 (6J) / 10 (6A) from the Q5 captures within the 2023-2025 target window, over a 68-quarterly universe 2010-2026 (q5_independent_verify/verify_q5_captures.json)",
+  "sibling_p3_orientation_numbers": "VERIFIED WITH FRAMING NOTE: 415,392 lots / close 0.0063775 / +2.056% are UTC-calendar-day aggregates; the dossier's CT-trade-date session gives 364,917 lots / 0.0063565 / +1.7284%. Both framings prove the same law (6J UP, USDJPY DOWN); burst minute +105 ticks and 17,448-lot 12:42Z front volume match EXACTLY (6j_orientation_recheck.json)"
+ }
+}

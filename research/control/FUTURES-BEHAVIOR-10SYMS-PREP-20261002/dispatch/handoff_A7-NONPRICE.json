@@ -1,0 +1,78 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "A7-NONPRICE-VERIFY",
+  "dispatch_sha": "8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e",
+  "actual_start_sha": "8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e",
+  "commit_sha": null,
+  "commit_sha_disclosure": "Audit commits nothing by design; both audit artifacts are uncommitted files under the task control dir. HEAD verified unchanged at 8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e across both audit sessions.",
+  "changed_paths": [
+    "audit/nonprice_verify/A7_NONPRICE_VERIFY.md",
+    "dispatch/handoff_A7-NONPRICE.json"
+  ],
+  "tests": [
+    {
+      "command": "cd research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition && /Users/hoangminhlong/my-quantitative/.venv/bin/python tests/test_parse.py",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "ea387d1e0dd5c1566ed40a8996d9165226cd90a12a9f3219bb99bffcd4dea6d0",
+      "note": "DELTA session independent rerun of the post-fix suite: 41/41 PASS (29 original + 12 NONPRICE-FIX regression pins), digest identical to the fix lane's recorded digest."
+    },
+    {
+      "command": "independent signed totals-diff check on rebuilt eia_wngsr_vintages_tidy.parquet (read-only pandas, consecutive-issue linkage <=12d)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": null,
+      "note": "746/758 comparable rows agree exactly on SIGNED net_change_bcf = 98.4% (claim reproduced; pre-fix baseline was 62/561 = 11.1%). 12 residual: 10 OK_PRIOR_WEEK_REVISED (explained) + 2 within the declared 2 Bcf tolerance. 27/27 quarantined rows are NULL with recorded reason; legacy column preserved (962 values); all 5 audit misgrab cases now correct vs raw narrative (2023_01_12 = +11 confirmed verbatim: 'The net injections into storage totaled 11 Bcf for the week ending January 6')."
+    },
+    {
+      "command": "mechanical readiness recount from hypothesis_readiness.json + rules audit of build_readiness.py",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": null,
+      "note": "status_counts reproduce exactly: READY_DATA 27 (was 34), +4 PARTIAL_VINTAGE (NQ-H1, GC-H5, CL-H4, 6E-H2), +3 PARTIAL_MISSING_ROUTE (6J-H3, ES-H4, 6B-H5); every downgrade cites mechanical rule R1/R2; no READY_DATA carries a MISSING piece (6J-H4 READY is benign disclosure text)."
+    },
+    {
+      "command": "delta hygiene re-checks: DFII10 probe sha not in any PIT/latest tidy provenance; BoJ inventory 327 = 180 (114 pdf + 66 html) + 147 FOMC; raw_manifest.jsonl still 12,550 lines (no new downloads); issue_date/storage_week_ending semantics spot-checked (2016_01_14, 2023_01_12)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": null,
+      "note": "All five minors verified addressed; report erratum block carries old->new counts incl. honest re-basing of the pre-fix agreement figure (11.1% totals-basis vs 20.2% table-basis, both stated)."
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Delta audit is read-only and commits nothing; fix-lane outputs were only read and re-executed",
+    "RESIDUAL r-1 (MINOR): survey_median/low/high are UNSIGNED with separate survey_direction (injections 247 / withdrawals 87 / NaN 35); the surprise formula must apply the direction sign (e.g. 2019_03_14 actual -204 vs median 209 withdrawals -> signed surprise +5, naive -413) and handle the 35 no-direction rows - pin before NG-H1 use",
+    "RESIDUAL r-2 (NOTE): 178/1205 WNGSR issues remain net_change NOT_PARSED (2004-2011 phrasings + guard-excluded stale tables); mixed-direction survey ranges still unparseable (2023-01-12 low/high NaN); disclosed by fix lane",
+    "RESIDUAL r-3 (NOTE): one transient parquet read failure observed on the shared raw tree (active acq_pipeline.py writes the same normalized/ area; retry succeeded) - cross-lane read/write races are real, no integrity impact observed",
+    "12 residual totals-diff disagreements are 10 prior-week-revision-explained + 2 within declared 2 Bcf tolerance; my exact-match basis differs slightly from the fix lane's 752-row basis (758 rows here) - same 98.4% result",
+    "WNGSR The Desk survey adjudication unchanged: real free as-published consensus, 2018+, now 369 medians parsed; owner NG-H1 fitness decision still open and should consume r-1's sign convention"
+  ],
+  "incidents": [
+    "Single transient FileNotFoundError reading eia_wngsr_vintages_tidy.parquet mid-audit (shared normalized/ dir contention with the active download lane's pipeline); immediate retry succeeded and all hashes/values were stable - no action needed, noted as r-3"
+  ],
+  "tree_status": "DIRTY (expected: uncommitted lane outputs at 8ce10f7e incl. NONPRICE-FIX's nonprice_acquisition/** updates + this audit's 2 files; nothing committed anywhere; acquisition_download/ never touched)",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "audit/nonprice_verify/A7_NONPRICE_VERIFY.md",
+      "sha256": "c150a3add6fb545e7918b32f6e63394a1cdf54872bb65ff1cf101d6032ef03bb",
+      "note": "now contains the full delta section with per-finding DELTA_VERIFIED adjudications"
+    },
+    {
+      "path": "dispatch/handoff_A7-NONPRICE.json",
+      "sha256": null,
+      "note": "self-hash omitted (self-referential); canonical delta-verdict handoff"
+    }
+  ],
+  "verdict": {
+    "label": "DELTA_VERIFIED",
+    "base_verdict": "PASS_WITH_FINDINGS (0 BLOCKER / 2 MAJOR / 5 MINOR / 4 NOTE)",
+    "delta_counts": {"resolved": "2 MAJOR + 5 MINOR", "residual": "1 MINOR (r-1 survey sign convention) + 2 NOTE (r-2 parse coverage, r-3 shared-dir races)"},
+    "one_line": "NONPRICE-FIX verified end-to-end by independent rerun: M-1 rebuilt WNGSR net_change reproduces at 98.4% signed agreement (was 11.1%) with honest quarantine and preserved legacy column; M-2 readiness taxonomy mechanically honest (READY 34->27, +4 PARTIAL_VINTAGE, +3 PARTIAL_MISSING_ROUTE incl. the 6J-H3 mislabel); 41/41 tests reproduced with identical digest; all 5 minors addressed; residual: pin the survey-median sign convention (r-1) before NG-H1 surprise math."
+  },
+  "recommended_next_action": "Lead: accept NONPRICE-FIX (delta verified). Owner queue unchanged plus r-1: (1) WNGSR survey NG-H1 adjudication must fix the surprise sign convention (sign survey_median by survey_direction; handle 35 no-direction rows) and the 2018+ coverage bound; (2) FRED key decision resolves the 4 PARTIAL_VINTAGE labels; (3) cross-lane BLS CPI-date FACT reconciliation (ES-H4/6B-H5); (4) PAID list per OWNER_ONLY_STEPS.md. GC-H1 serial re-fetch remains time-critical (~Q1-2027). Consider a one-line integration note about normalized/ dir write races between lanes (r-3)."
+}

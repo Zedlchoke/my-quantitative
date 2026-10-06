@@ -1,0 +1,282 @@
+schema: futures_behavior_symbol_config@1
+task_id: FUTURES-BEHAVIOR-10SYMS-PREP-20261002
+symbol: NG
+generated_utc: '2026-10-02'
+source_dossier: dossiers/NG_DOSSIER.md
+dossier_sha256: cabb57169ad5d3c3f897379c77cd647ba2b590a941adc7b5ae54a2e3f0df3a1f
+provenance_note: >-
+  Hypotheses derived STRICTLY from dossiers/NG_DOSSIER.md S5. Common cost model per dossier:
+  median spread $20/side + commission 0.85 + exchange fee NOT_FETCHED + slippage
+  NOT_RUN_NO_DECLARED_VALUE. Common universe: NG monthly, canonical last-trade-month roll
+  basis (audit M2). NG has the best intraday depth in the set (~2.2y M1 requestable, ~14m H1
+  on disk) and EIA WNGSR timing FACT.
+defaults:
+  universe:
+    exchange: NYMEX (CME Globex)
+    contract_cycle: all 12 monthly (listed ~13y deep)
+    liquid_chain_rule: front + winter strip concentration; calendar-nearest baseline (volume-max diverges seasonally)
+    liquid_chain_evidence: 'OBSERVED NG S1: 8/13 matured pairs crossed >=84 days early (winter dominance), 5/13 no crossover within 90d, NGV26->NGX26 6 days'
+  roll_rule:
+    baseline: declared_calendar_last_trade_month
+    baseline_definition: hold until last session BEFORE day-1 of the contract's LAST-TRADE month (raw expiry_month = lastTradeDate; NG fronts cease 3rd-last business day of the month before delivery), roll to next listed at that close
+    reference: code/futbt/roll.py + BACKTEST_LAUNCH_DRAFT.md S0 (canonical basis per audit M2)
+    target_adjustment: next listed monthly (all-12 listing)
+    dossier_finding: 'OBSERVED NG S1: canonical roll NGX26 2026-09-30 precedes NGX26 final session ~4 weeks; expired files cut exactly at canonical sessions; live-front chain divergence ~1 month disclosed'
+    alternative_required: volume-crossover roll (changes exposure seasonally - winter months months-early); OI roll NOT_RUN (no OI)
+  execution_laws:
+    decision_point: session_close_through_pit_view
+    default_fill: next_session_open_tick_rounded_cost_shifted
+    ambiguous_order: same_bar_tp_sl_worst_case_bound_no_point_pnl
+    close_only_bars: never_fill_any_path
+    tb_labels: TRAIN_ONLY_never_validation_features
+    adjusted_series: causal_additive_features_only_never_fills_mtm_pnl
+    attribution: full_path_leave_one_out_only_additive_leg_sums_forbidden
+  cost_model:
+    commission: {usd_per_side: 0.85, provenance: 'PUBLISHED IBKR 2026-10-02'}
+    exchange_fee: {provenance: NOT_RUN_NOT_FETCHED}
+    spread: {median_usd_per_contract: 20.0, provenance: 'MEASURED daily-BBO close proxy 2 ticks = $20 (front era, 294 days; reconciles S6)', caveat: non-synchronous, not executable}
+    slippage: {provenance: NOT_RUN_NO_DECLARED_VALUE}
+    stress_multipliers: [1.0, 1.5, 2.0]
+hypotheses:
+- id: NG-H5
+  dossier_ref: 'dossiers/NG_DOSSIER.md S5 H5 (execution-timing descriptivum, not a signal)'
+  hypothesis_kind: execution_rule
+  mechanism_class: POSTULATED
+  mechanism: >-
+    The Thursday 10:00-11:00 ET bucket carries 25.3% of RTH volume (vs 16-18% other weekdays)
+    and the highest mean |hour-ret| (0.49%) because the 10:30 WNGSR release concentrates
+    repricing; any NG execution design must declare its stance toward the release window.
+  pit_trigger:
+    mechanizable: true
+    observable: weekday/time-of-day execution-window rule (calendar-only)
+    field: session clock + WNGSR Thursday 10:30 ET schedule
+    source: EIA WNGSR schedule (FACT, ir.eia.gov/ngs/schedule.html, accessed 2026-10-02; holiday moves Fri 10:30 / Wed 12:00)
+    as_of_rule: calendar known in advance; no lookahead
+    timestamp_at_decision: order placement time vs 10:29-10:35 ET exclusion band
+  direction: n/a (execution constraint)
+  entry: execution designs must either AVOID 10:29-10:35 ET on WNGSR Thursdays or explicitly event-trade per NG-H1
+  exit: n/a
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: per-order constraint
+  universe: all NG strategies
+  roll_rule_ref: defaults.roll_rule
+  sizing: n/a
+  regime_tags: [all_regimes_mechanical]
+  counter_hypothesis: n/a (measured microstructure fact OBSERVED; the residual hypothesis is only forward persistence of the profile)
+  failure_conditions:
+  - profile measured on RTH-only bars mislabels the true session distribution once Globex data exists
+  - holiday-shifted WNGSR weeks not handled (Fri/Wed moves)
+  minimal_test:
+    kind: execution_constraint_declaration
+    requirements:
+    - {class: event_release_calendars, symbols: [NG], use: event_calendar_descriptive, floor: 'WNGSR schedule + holiday moves (FACT, fetched 2026-10-02)', floor_met: true, available_today: true, acquisition: in_hand_now}
+    - {class: hourly_trades_h1, symbols: [NG], use: conditional_descriptive, floor: 'RTH hourly profile (measured, 291 pooled days)', floor_met: true, available_today: true, acquisition: in_hand_now, note: 'already OBSERVED in dossier S3; forward claim needs prospective verification'}
+    nondata_blockers: []
+  scored_run:
+    kind: execution_constraint_embedded_in_arm_b
+    requirements:
+    - {class: hourly_trades_h1, symbols: [NG], use: construction_check, floor: same, floor_met: true, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: [REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps: []
+  feasibility:
+    mechanization: high
+    acquisition_cost: in_hand_now
+    rank_basis_note: measured already (OBSERVED); a constraint to embed, not an alpha
+  rank: 1
+- id: NG-H3
+  dossier_ref: 'dossiers/NG_DOSSIER.md S5 H3 (rank 3 in dossier; testability NOW highest)'
+  hypothesis_kind: conditional_return
+  mechanism_class: POSTULATED
+  mechanism: >-
+    The m1-m2 spread prices storage scarcity and the expected spot path: steepening/flattening
+    episodes should condition near-term returns (direction two-sided, pre-registered) - with
+    withdrawal vs injection season regime split mandatory.
+  pit_trigger:
+    mechanizable: true
+    observable: 5-session change of front-era m1-m2 spread exceeding threshold s (PARAM-GAP), computed at daily closes
+    field: m1-m2 same-day closes (both legs same session)
+    source: legal corpus per-contract closes incl. deep settlement-derived (flagged; deep bars are strip legs, not contemporaneous fronts pre-2025)
+    as_of_rule: spread state at session close; regime tag (calendar season) known; comparison thresholds from strict past window
+    timestamp_at_decision: daily close; entry next session
+  direction: two-sided pre-registration (direction unresolved a priori by design)
+  entry: next-session open after spread-state close
+  exit: 5-20 day horizon (PARAM-GAP exact value)
+  take_profit: 'PARAM_GAP: NG-H3-P2'
+  stop_loss: 'PARAM_GAP: NG-H3-P2'
+  time_rules: 5-20 session horizon
+  universe: NG front-era m1/m2 (front chain 2025-08-01..2026-10-01 n=281 true-volume)
+  roll_rule_ref: defaults.roll_rule; alternative-roll robustness mandatory (result must not depend on roll convention)
+  sizing: vol-targeted off trailing-20d realized vol (PARAM-GAP target)
+  regime_tags: [withdrawal_season, injection_season, contango_shaped_curve, midwinter_backwardation]
+  counter_hypothesis: 'spread is only a seasonality proxy (control: month dummies); endogenous to weather'
+  failure_conditions:
+  - no conditional structure beyond unconditional winter vol
+  - result depends on roll convention or on the settlement-derived era
+  minimal_test:
+    kind: descriptive_conditional_return
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [NG], use: signal_reference, floor: 'front-era curve stats computed (S3 OBSERVED); single seasonal cycle caveat', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [NG], use: backtest_fill, floor: '>=24m true volume incl. >=2 seasonal cycles', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN, REAL_HOLIDAY_CALENDAR_NOT_RUN]
+  param_gaps:
+  - {id: NG-H3-P1, piece: 'threshold s (USD/MMBtu 5-session change)', reason: no measured basis}
+  - {id: NG-H3-P2, piece: horizon within 5-20d + TP/SL + vol target, reason: pre-registration required}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: in_hand_now
+    rank_basis_note: 'dossier: testability NOW highest (inputs OBSERVED), causal plausibility medium (spread endogenous to weather)'
+  rank: 2
+- id: NG-H2
+  dossier_ref: 'dossiers/NG_DOSSIER.md S5 H2 (rank 2 in dossier)'
+  hypothesis_kind: regime_conditional
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Traders reprice the balance as forecast vintages revise: day-over-day HDD/CDD forecast
+    revisions predict 1-5 day front drift in the demand direction - but only when the storage
+    buffer is thin; ample-storage regimes mute or reverse the response.
+  pit_trigger:
+    mechanizable: true
+    observable: consecutive GFS vintage (00Z vs prior 00Z) population-weighted HDD/CDD forecast change exceeding k degree-days (PARAM-GAP)
+    field: forecast degree-days by run date + cycle hour (immutable vintages)
+    source: NOAA NOMADS archive keyed by run date + cycle dir (FACT archive structure, accessed 2026-10-02); storage percentile from EIA WNGSR
+    as_of_rule: FORECAST VINTAGES ONLY (never realized weather); entry 10:00 ET after vintage availability - per-cycle latency must be MEASURED first (NOT_RUN)
+    timestamp_at_decision: cycle run timestamp; entry gate on measured latency
+  direction: with the revision (demand direction)
+  entry: 10:00 ET after vintage availability (latency-gated)
+  exit: 1-5 days or offsetting revision
+  take_profit: 'PARAM_GAP: NG-H2-P2'
+  stop_loss: 'PARAM_GAP: NG-H2-P2'
+  time_rules: 1-5 day horizon
+  universe: NG front chain
+  roll_rule_ref: defaults.roll_rule
+  sizing: vol-scaled (declared formula)
+  regime_tags: [tight_storage_low_percentile, ample_storage, winter, shoulder]
+  counter_hypothesis: revisions already priced intraday (test entry-delay sensitivity)
+  failure_conditions:
+  - symmetric fade absent / response dies at 2x costs
+  - sign flips by season without percentile control
+  - realized weather accidentally used as a PIT feature (forbidden)
+  minimal_test:
+    kind: descriptive_forecast_revision_conditioned_return
+    requirements:
+    - {class: weather_forecast_vintages, symbols: [NG], use: signal_reference, floor: 'NOMADS vintages collector + latency measurement (not built)', floor_met: false, available_today: false, acquisition: free_public}
+    - {class: eia_wngsr_vintages, symbols: [NG], use: regime_split_feature, floor: 'storage percentile series (free, not pulled)', floor_met: false, available_today: false, acquisition: free_public}
+    - {class: daily_trades_per_contract, symbols: [NG], use: conditional_descriptive, floor: '14m true-volume + deeper settlement reference', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: weather_forecast_vintages, symbols: [NG], use: backtest_fill, floor: multi-year vintages, floor_met: false, available_today: false, acquisition: free_public}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: NG-H2-P1, piece: 'k degree-days threshold', reason: no measured basis}
+  - {id: NG-H2-P2, piece: exit/TP/SL + vol-scaling formula, reason: pre-registration required}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: free_public
+    rank_basis_note: weather vintages + storage both free; collector build effort only
+  rank: 3
+- id: NG-H4
+  dossier_ref: 'dossiers/NG_DOSSIER.md S5 H4 (rank 4 in dossier)'
+  hypothesis_kind: regime_conditional
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Risk premium unwinds faster than fundamentals justify: extreme k-day front moves driven by
+    a cold-forecast spike that then normalizes in the next vintage should partially retrace
+    over 1-3 days; strongest in winter, weakest when normalization confirms a physical shock
+    (freeze-off).
+  pit_trigger:
+    mechanizable: true
+    observable: 'front k-day return extreme AND cold-forecast spike that normalizes in the next GFS vintage'
+    field: k-day front return (strict past threshold) + forecast-vintage normalization flag
+    source: daily futures + NOMADS vintages
+    as_of_rule: entry only after the NORMALIZING vintage is available (not after the price move); freeze-off confirmation is a disclosed failure regime
+    timestamp_at_decision: normalizing-vintage availability timestamp
+  direction: against the spike (retrace)
+  entry: after normalizing vintage
+  exit: 1-3 days (PARAM-GAP)
+  take_profit: 'PARAM_GAP: NG-H4-P2'
+  stop_loss: 'PARAM_GAP: NG-H4-P2'
+  time_rules: 1-3 day horizon
+  universe: NG front chain
+  roll_rule_ref: defaults.roll_rule
+  sizing: vol-scaled (declared formula)
+  regime_tags: [winter, freeze_off_confirmed, normal]
+  counter_hypothesis: drift continues (underreaction)
+  failure_conditions:
+  - retrace <= declared costs
+  - freeze-off weeks (normalization = physical shock) dominate the sample
+  minimal_test:
+    kind: descriptive_premium_reversion
+    requirements:
+    - {class: weather_forecast_vintages, symbols: [NG], use: signal_reference, floor: vintages collector (not built), floor_met: false, available_today: false, acquisition: free_public}
+    - {class: daily_trades_per_contract, symbols: [NG], use: conditional_descriptive, floor: '>=3y daily true-volume for episode count (have 14m)', floor_met: false, available_today: true, acquisition: in_hand_now, note: 'available at 14m depth only; floor >=3y unmet'}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [NG], use: backtest_fill, floor: '>=3y true volume', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: NG-H4-P1, piece: 'k-day extreme threshold + normalization definition', reason: no measured basis}
+  - {id: NG-H4-P2, piece: retrace fraction target + TP/SL, reason: pre-registration required}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: free_public
+    rank_basis_note: free weather vintages gate it; daily depth also thin for episode count
+  rank: 4
+- id: NG-H1
+  dossier_ref: 'dossiers/NG_DOSSIER.md S5 H1 (rank 1 in dossier by testability x causal plausibility)'
+  hypothesis_kind: event_reaction
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Inventory is the binding state variable of a storable commodity: WNGSR print vs consensus
+    at 10:30:00 ET Thursday moves the front in the surprise direction over minutes-to-hours,
+    strongest at low storage percentile and in withdrawal season.
+  pit_trigger:
+    mechanizable: true
+    observable: 'WNGSR print deviating from consensus by more than X Bcf (PARAM-GAP: X has no measured basis)'
+    field: weekly storage Bcf + consensus median
+    source: EIA WNGSR (schedule FACT; holiday moves Fri 10:30 / Wed 12:00) + consensus archive (vendor, not owned)
+    as_of_rule: 'release 10:30 ET; stocks "as of Friday" prior week; weekly estimates are preliminary - vintages, never revised history; consensus as-known-before-release'
+    timestamp_at_decision: first bar >= 10:31 ET
+  direction: with the surprise
+  entry: first bar >= 10:31 ET in surprise direction
+  exit: time-stop same session or 1-3 days (PARAM-GAP)
+  take_profit: none pre-registered (PARAM-GAP until post-release vol measured)
+  stop_loss: none pre-registered (PARAM-GAP)
+  time_rules: same-session to 1-3 days
+  universe: NG front chain
+  roll_rule_ref: defaults.roll_rule
+  sizing: vol-scaled (PARAM-GAP)
+  regime_tags: [low_storage_percentile, withdrawal_season, injection_season_weak]
+  counter_hypothesis: 'reaction is a weather-revision proxy (control: same-week forecast deltas)'
+  failure_conditions:
+  - median post-event move <= costs at 1.5x
+  - edge only on delayed (>=5 min) entries disappearing
+  - only one winter in sample
+  minimal_test:
+    kind: descriptive_event_reaction
+    requirements:
+    - {class: eia_wngsr_vintages, symbols: [NG], use: signal_reference, floor: 'WNGSR vintages 1994+ (free, not pulled)', floor_met: false, available_today: false, acquisition: free_public}
+    - {class: consensus_surprise_archive, symbols: [NG], use: signal_reference, floor: 'consensus archive (vendor)', floor_met: false, available_today: false, acquisition: owner_declaration}
+    - {class: minute_trades_m1, symbols: [NG], use: intraday_event, floor: 'M1 >=5y around 10:30 (corpus has only 2-day M1 windows; ~2.2y requestable)', floor_met: false, available_today: false, acquisition: vendor_paid, note: '>=100 events floor'}
+    nondata_blockers: [CONSENSUS_LICENSE_OWNER_DECISION]
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: minute_trades_m1, symbols: [NG], use: intraday_execution, floor: multi-year M1, floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN, CONSENSUS_LICENSE_OWNER_DECISION]
+  param_gaps:
+  - {id: NG-H1-P1, piece: 'surprise threshold X Bcf', reason: no measured basis (dossier explicit)}
+  - {id: NG-H1-P2, piece: exit time-stop + TP/SL, reason: 'PARAM-GAP until post-release vol is measured'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: vendor_paid
+    rank_basis_note: highest causal plausibility in dossier but consensus (paid) + M1 depth gate it
+  rank: 5

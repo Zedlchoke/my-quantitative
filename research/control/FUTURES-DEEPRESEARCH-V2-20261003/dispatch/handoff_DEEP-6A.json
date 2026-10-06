@@ -1,0 +1,103 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-DEEPRESEARCH-V2-20261003",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "DEEP-6A",
+  "dispatch_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "actual_start_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dossiers_v2/6A_DEEP_v2.md",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_deep_lib.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_build_cache.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a1_regimes.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a1_regimes.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a2_sessions.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a2_sessions.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a3_term.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a3_term.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a4_events.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a4_events.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a5_cot.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a5_cot.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a6_hypo_quality.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a6_hypo_quality.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_cache/build_report.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_cache/*.parquet (derived caches, regenerable)",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dispatch/handoff_DEEP-6A.json"
+  ],
+  "tests": [
+    {
+      "command": ".venv/bin/python (root checkout) research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_build_cache.py",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "401b384d6c1f0c74fd643470cae5576cfe894bbc35ccdcd32ccc9e144ba66137"
+    },
+    {
+      "command": ".venv/bin/python research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a1_regimes.py (and A2/A3/A4/A5/A6 in sequence)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "b9f92cfed1662a82891f6c72cc37b324a3d2ce19f00d8fbba184f9b50f3786cf"
+    },
+    {
+      "command": "registry identity cross-check vs vendor definitions (2023-10+ window)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "0 mismatches out of 86 contracts (build_report.json registry block)"
+    },
+    {
+      "command": "negative-price law re-measurement: outrights vs calendar-spread instruments, 2020-2026",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "0 outright negative bars in 2,704,795; 32,694 negative bars on 171,473 spread-instrument bars (dispatch's 5,067 = the 2020-21 backfill-era subset, exact match)"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "commit_sha null by dispatch instruction: all lane artifacts are uncommitted working-tree files on branch prep/futures-behavior-10syms-20261002 (HEAD 26d96eb4 unchanged); owner/lead must commit them.",
+    "NO PnL evaluation, NO signal selection, NO conditional mean-return event tables (dispatch law) — all event reads are volume/volatility/range timing descriptives; anything PnL-linked remains NOT_RUN pending a registered budget/freeze.",
+    "CIP check (roll gap vs rate differential) uses DFF latest-vintage (ALFRED vintages year-end-only in corpus) and overnight tenor as proxy — not strict-PIT vintages; RBA table is as-published.",
+    "ABS historical release dates NOT in nonprice corpus (dispatch packet erratum): ABS CPI/Labour Force event anatomy NOT_RUN; only the 11:30-Sydney window's all-day profile is measured. US CPI/NFP (bls_gate empty) and Caixin/NBS China calendars also NOT_RUN.",
+    "Vendor panel caveats: 1,584 '6BU5' contaminant bars excluded; 1 instrument (7084 '6AM5') carries negligible pre-activation stray clusters (914 bars, excluded from frame stats); 2 serial months never traded (6AK0/6AQ0 2020) so the literal next-listed chain truncates May-2020; trade date 2026-10-01 present only through ~18:59 CT Sep-30 (partial tail; full-session stats end 2026-09-30).",
+    "ES beta block (H4 support) reuses sibling lane DEEP-ES's ES_cache/es_chain_DECL.parquet read-only (disclosed); 6E USD-beta control NOT_RUN.",
+    "6A_cache/*.parquet caches are derived artifacts regenerable by rerunning 6A_build_cache.py (~4 min); only build_report.json is digest-bound in outputs."
+  ],
+  "incidents": [
+    "Vendor contamination inside the 6A parent request: symbol '6BU5' (6B family, instrument 1318) printed 1,584 bars 2020-05-12..2020-08-17 with 4,888 volume; excluded from every 6A stat and recorded in build_report.json — flag to DATA/QA lanes for the other FX roots if the same leak pattern appears there.",
+    "Dispatch-packet vs corpus discrepancies recorded: (a) 'ABS release calendar in nonprice' — no ABS family exists in the corpus; (b) 'negative prices: 5,067 bars' — that number is exactly the 2020-2021 backfill2-era subset; full 2020-2026 corpus count is 32,694 (spread instruments only; 0 on outrights)."
+  ],
+  "tree_status": "HEAD 26d96eb4 unchanged on prep/futures-behavior-10syms-20261002; no commits made by this lane; git status: modified COMPLETION_LEDGER.json (FX-BACKFILL lane's append, not mine) + untracked backfill_20261003/ (FX-BACKFILL) and untracked FUTURES-DEEPRESEARCH-V2-20261003/ (this lane's artifacts plus sibling lanes' concurrent additions); nothing staged, nothing deleted.",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dossiers_v2/6A_DEEP_v2.md", "sha256": "84c1366002118dc7eb9a164b3077cd30f1d8a576d7289418609084f12ecadc5b"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_deep_lib.py", "sha256": "6056144692e08d14650f4359408d90b386f57dcd869a39785b77679763c62e55"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_build_cache.py", "sha256": "29b7374dfa423e7a07d2c6924f8bedea7dc7220edd26ca6932e2949ec3a2ad0b"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a1_regimes.py", "sha256": "cdb940b1da8d5733428aad1e8fad67309eab3d3aa77c1480d9c21dd14e4660d4"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a1_regimes.json", "sha256": "b9f92cfed1662a82891f6c72cc37b324a3d2ce19f00d8fbba184f9b50f3786cf"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a2_sessions.py", "sha256": "6fcfa088f5c88dc1194dd8de7b4ac84acf6f5d7e92932c03d1e4f6f87f43ec9f"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a2_sessions.json", "sha256": "d93995b58c99e977d45f2e2e2700445580bcf0d40794957fcda55ad1d0cda3f0"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a3_term.py", "sha256": "8fd6f70cb003964cf0ae67c76c91aa725dddb845b3b93789b6ae8d4f71ac8ce7"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a3_term.json", "sha256": "c20b90c762c9de060123104fd41aad92ba46343d4880c8f2f96cd7a9dc5dc77b"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a4_events.py", "sha256": "25a10d24398cf0cf03d880d3b4d65db66eb2723586e9ece40485d3b2a5964efe"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a4_events.json", "sha256": "429f60323dde3c660f995681507fb78ab952ba67bf31bf2f75447f5391cd21bd"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a5_cot.py", "sha256": "7801e103950caca8095b7479b4ec7875bf482070b9cbb01cfd679d3ed51b42cf"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a5_cot.json", "sha256": "0740ccb033c309eae30efb01cf4bda3981004beaf75de6e0631052461e2125fd"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a6_hypo_quality.py", "sha256": "49d519d3136a3d785ae8fbfe10c02240fe5c12c7bc16ef335c8953d6af8e7c7b"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_a6_hypo_quality.json", "sha256": "49b3227e4b9d4b05b61f4d11e1c4eacc2b9fe13ee62db5408fa026d2baf66255"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6A_cache/build_report.json", "sha256": "401b384d6c1f0c74fd643470cae5576cfe894bbc35ccdcd32ccc9e144ba66137"}
+  ],
+  "result_summary": {
+    "mission": "6A deep descriptive research v2 on the 2020-2026 vendor panel (6.8y incl COVID + 2021-22 China/commodity cycle) + nonprice PIT sets",
+    "analyses": {
+      "A1_regimes": "1,746 sessions / 27 rolls; vol by year 12.1/8.9/13.4/10.8/8.4/9.5/8.4%; worst DD -25.2% (2021-02..2025-04) vs COVID -18.0%; COVID week -6.83%; persistence 47-52% every year (coin flip); 85 strict-past large-move days",
+      "A2_sessions": "v1 RTH-blindness fixed: RTH core 38-43% of volume, Sydney day 26%, London ~51%, Tokyo ~19%, Shanghai data window 2.2%/30min; bimodal intraday vol (US 09:00 CT + Sydney 19-20 CT peaks)",
+      "A3_term": "27 rolls: median gap +0.41% ann; CIP sign 100% on 16 material-differential rolls (74% all); OI leads volume by 2-3 sessions; negative prices 0 outrights / 32,694 spread bars (curve sign itself)",
+      "A4_events": "RBA (67): 9.0x volume / 4.8x vol at +/-5min; change-days 59-tick range vs hold 29 vs non-event 19. FOMC (59): 8.2x volume at +/-5min, day range 53.5 vs 19. No mean-return tables (law)",
+      "A5_cot": "2006-2026 series; specs net-short 2021-25 (-33k..-66k) flipping net-long 2026 (+16k mean, OI 278k); no monotone extremes->vol gradient in 2020+ overlap",
+      "A6_hypo": "H1 floor met (decision minute measured; P2 dissolved, P1 open); H2 still HG/iron-ore gated; H3 measured end-to-end (serials 51.5 lots/day, 52/54 months present); H4 spec frozen (beta 0.35 risk-on vs 0.25 risk-off); H5 floor dissolved (CIP verified)"
+    },
+    "headline": "6A is now measurable as a two-hemisphere book: home-session events (RBA) and the CIP curve both measured cleanly for the first time; nothing here is a signal selection - all descriptive per dispatch law"
+  },
+  "recommended_next_action": "Lead: (1) commit lane artifacts on prep/futures-behavior-10syms-20261002; (2) A7-DEEP-AUDIT should re-run 6A_build_cache.py + the five A-scripts and diff the JSONs (digests above); (3) escalate the two incidents (6BU5 contamination pattern across other FX roots; ABS/5,067 dispatch-packet errata) to the owner for the packet fix; (4) owner decision for any future registered cycle: RBA surprise-classification source (6A-H1-P1) and ABS historical release dates are the two acquisitions that unlock the remaining event families."
+}

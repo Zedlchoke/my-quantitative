@@ -1,0 +1,124 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+ "cycle_id": "UNREGISTERED_PREP",
+ "role": "lane",
+ "lane": "EXEC-FIX",
+ "status": "COMPLETE",
+ "round": "co-owner-review-fix-1 (2026-10-02)",
+ "summary": "Reproduced all four findings on base eae8c3d2 with failing tests first, then fixed and proved green. R1: engine exec_cost called commission_cash_usd(1) dropping quantity (ES qty3 roundtrip $4.48 vs required $13.44) and zeroed ALL known fees when any commission component was missing (CL $0.00/side vs known $0.85) while cost_incomplete only covered commission components (NOT_RUN slippage left records complete-flagged) -> quantity-scaled commissions, allow_incomplete_costs law covering ALL cost components with NULL+source-class disclosure for missing ones, fail-fast refusal at construction when allow_incomplete_costs=False on an incomplete book. R2: roll old-leg gross (275 in the es_universe repro) vanished from journal records (ledger 700 vs journal 425; net 691.04 vs 416.04) -> lifecycle gross_segments accumulation incl. roll fees, per-contract mae_mfe_segments, per-bar AND end-of-run reconciliation of journal<->cash<->events<->inventory<->MTM with the ledger checked against an INDEPENDENT recomputation from journal records (CashLedger.sums_by_kind). R3: end-of-session roll ran BEFORE intraday barriers, firing the gap-rebased stop off the OLD bar's low and filling on the NEW contract at 184.75 outside its [198,205] range (MAE -5612.5 cross-frame) -> barriers evaluate on the OLD position/contract first (old-bar extrema only; stopped positions never roll; repro now exits 94.75 on ESH6, 0 rolls, gross -275, MAE -512.5), TIME exit also precedes the roll, and the new contract's segment counts bars only AFTER the close-time roll fill. R4: stop-market fills at the barrier even when the bar gapped through it (long SL95 into O80/H90/L70/C85 filled 94.75, outside the bar) -> stop reference = open when gapped (long min(o,sl) / short max(o,sl)) with adverse cost shift after (long stop never fills above open); TP is a limit (barrier or better: long max(o,tp) / short min(o,tp)); same-bar TP+SL stays AMBIGUOUS_ORDER with gap-aware scenario bounds, order never inferred from OHLC. Review-extra items typed in code/README.md execution-disclosures section (8 items: expiry/last-contract wall IMPLEMENTED/TESTED; finite-OHLC validation IMPLEMENTED/TESTED engine-side incl. non-chain per-conid bars; date-vs-release PIT NOT_IMPLEMENTED; same_close PARTIAL with entry-same_close honestly NOT_IMPLEMENTED; MTM/DD/margin/portfolio caps NOT_IMPLEMENTED scaffold; roll-gap no-double-count IMPLEMENTED/TESTED; serial-vs-quarterly spread selection NOT_IMPLEMENTED; risk-cap freeze law NOT_IMPLEMENTED engine-side). Also added Decision.qty validation (integer >= 1). 35 new adversarial tests (5 files); full suite 211 OK (147 base + 35 EXEC-FIX + 29 concurrent WF-PIT-FIX lane) with 0 regressions.",
+ "dispatch_sha": "eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7",
+ "actual_start_sha": "eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7",
+ "commit_sha": null,
+ "changed_paths": [
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/engine.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/costs.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/journal.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/accounting.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_exec_costs.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_exec_roll_accounting.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_exec_barrier_ordering.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_exec_barrier_fills.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_exec_data_validation.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/README.md"
+ ],
+ "tests": [
+  {
+   "command": "cd research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m unittest discover -s tests -t .",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "Ran 211 tests in 1.980s — OK (147 base + 35 EXEC-FIX + 29 concurrent WF-PIT-FIX lane files present in the shared worktree at verification time; final green run after the WF lane's edits settled — see incidents)",
+   "log_digest": "sha256:51dd0bcc595e3f62992b6ba7359e1ac223a7cd5ba408ab7747eb82625053e21d"
+  },
+  {
+   "command": "cd research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m unittest tests.test_exec_costs tests.test_exec_roll_accounting tests.test_exec_barrier_ordering tests.test_exec_barrier_fills tests.test_exec_data_validation",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "Ran 35 tests — OK (the R1-R4 reproducing + adversarial suite; all 35 failed/errored on base eae8c3d2 before the fixes: 21 failures + 10 errors + 4 incidental passes)",
+   "log_digest": "sha256:d1ef7b296f5a47c9dab64e2875f6a28eb6d08bb7b9ef98ea1cbd985b4258ebd9"
+  },
+  {
+   "command": "cd research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m unittest tests.test_engine tests.test_costs tests.test_journal tests.test_accounting",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "Ran 68 tests — OK (existing suites over every module EXEC-FIX touched: 0 regressions)",
+   "log_digest": "sha256:97f2be282e0eff1ee1ac159d3772874ed847b06a6ed792763b814203562edb4b"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "commit_sha is null by design this round: the Lead commits lane work and rewrites commit_sha at integration (dispatch COOWNER_REVIEW_DISPATCH.json handoff rule); dispatch_sha == actual_start_sha == eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7 verified equal.",
+  "code/README.md is a shared file: EXEC-FIX added the 'Execution disclosures' section and updated the accounting/costs/journal/engine table rows; the WF-PIT-FIX lane concurrently edited the test-count line and its own section — both edits are present in the working tree and both disclosed.",
+  "ENTRY fill_timing='same_close' is NOT implemented (entries always fill next open; the config only stamps OPTIMISTIC_SAME_CLOSE) — typed PARTIAL/NOT_IMPLEMENTED in README disclosures rather than silently trusted.",
+  "Finite-OHLC validation is enforced at ENGINE construction only; rawdata.Bar.validate still checks just h>=l (adapter-level validation NOT_RUN; rawdata.py outside EXEC-FIX ownership).",
+  "MTM/drawdown/margin/portfolio caps are NOT wired into the engine (MarginModel and PortfolioRiskCaps remain standalone tested scaffolds); per-bar MTM is only a reconciliation tripwire.",
+  "CostBook applies one front-measured (daily-BBO proxy) spread per symbol to all contracts incl. serials; serial-dead-book spread selection + freeze NOT_RUN; MEASURED execution not claimable from bar-side proxy spreads.",
+  "PIT pinning is session-DATE granularity only; date-asof vs timestamp-release distinction NOT_IMPLEMENTED (no release timestamps in the raw snapshot).",
+  "Risk-cap freeze law independence from economic gates is declared at the composition layer only; engine-side enforcement NOT_RUN.",
+  "allow_incomplete_costs defaults True (prep law: all 10 symbols have NOT_RUN components — slippage everywhere, exchange fees on 9 symbols); every engine record therefore carries cost_incomplete=True and cost_missing_components until a complete book is declared.",
+  "commit_sha null by design: lane does not commit; Lead integrates and commits (round rule in COOWNER_REVIEW_DISPATCH.json/STEERING_ROUND2_DISPATCH.json)",
+  "outputs sha256 refreshed (3) by Lead after cross-lane post-publication edits (validator re-run)"
+ ],
+ "incidents": [
+  "Two transient full-suite failures were observed, both from the CONCURRENT WF-PIT-FIX lane's in-flight edits to its OWN files (never EXEC-FIX files): (a) tests.test_walkforward::test_embargo_drops_test_cells_right_after_train during a mid-edit read of walkforward.py/test files (13:45-13:52 mtimes bracket the run) — passed in isolation immediately after; (b) tests.test_wf_pit_prefix::TestCounterLookaheadTeeth::test_leaky_roll_table_reader_is_detected at ~13:59, one minute after that file's 13:58 mtime. Both resolved on re-run once the WF lane's edits settled; the FINAL full-suite run is green (exit 0, 211 OK, digest sha256:51dd0bcc595e3f62992b6ba7359e1ac223a7cd5ba408ab7747eb82625053e21d). walkforward.py does not import engine.py, so EXEC-FIX changes cannot cause these.",
+  "Concurrent-lane coexistence: WF-PIT-FIX and HANDOFF-RESEARCH modified files in the same worktree during EXEC-FIX (walkforward.py, test_walkforward.py, test_wf_*.py, dossiers/, dispatch/ handoffs, INTEGRATION_SUMMARY.md, REPORT_VI.md). EXEC-FIX touched none of them (git diff confirms engine/costs/journal/accounting/README + 5 new test_exec_* files only; instruments.py and test_engine.py untouched)."
+ ],
+ "tree_status": {
+  "branch": "prep/futures-behavior-10syms-20261002",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior/prep",
+  "base_commit": "eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7",
+  "dirty": true,
+  "dirty_reason": "uncommitted lane work from three concurrent fix lanes (EXEC-FIX files listed in changed_paths; WF-PIT-FIX: futbt/walkforward.py, tests/test_walkforward.py, tests/test_wf_pit_prefix.py, tests/test_wf_window_integrity.py, README WF section; HANDOFF-RESEARCH: dossiers/, dispatch/ handoff replacements, INTEGRATION_SUMMARY.md, REPORT_VI.md, RESEARCH_MATRIX.md, analysis/research_lane/) plus untracked dispatch/COOWNER_REVIEW_DISPATCH.json — Lead commits per lane at integration",
+  "head": "eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7 (unchanged; no commits made by this lane)"
+ },
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/engine.py",
+   "sha256": "17a98b8aa91ae1ec55fcb40914df2f4ba92c3f9772fc4aeb0863007b03a4c3e9"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/costs.py",
+   "sha256": "a140b4d4e080bf9fb74063c751cb28857a1e9a956a99efe93978bd6933236083"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/journal.py",
+   "sha256": "f7de8c11e213e7c05c342195c92435cc90b3a389fabc949388e61275933230a7"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/accounting.py",
+   "sha256": "83a1f6df2442b2d1619f1b28d28286f517711ff846eed8f415ea735fd9be6954"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_exec_costs.py",
+   "sha256": "9ff486658da966c19aafd32b6cfdc3347839414bec2dab410342fcf69ef3052b"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_exec_roll_accounting.py",
+   "sha256": "f49c1c9c13af74ccd340e09bd0730ee3eaa2df35f7fd1f832058f7ce4c26f261"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_exec_barrier_ordering.py",
+   "sha256": "4eb8d27c8867d9390d8a3aafe8b90545a85828d474ef9b6bcc2a493afd59e560"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_exec_barrier_fills.py",
+   "sha256": "981851304c1931e1bc9b02d8ca959e23c08c677d4653f94035b992a32ccc04a7"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_exec_data_validation.py",
+   "sha256": "01aad046fa796ddee65b8ad5b1f55408510f16fdae170b2b99cf78b1ca55e0e7"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/README.md",
+   "sha256": "f21a3a8db9cfd90a0eeab08425fdcb3747438e7f0281fb5526df8eaf92e93a33"
+  }
+ ],
+ "recommended_next_action": "Lead: (1) integrate EXEC-FIX and WF-PIT-FIX lane trees (both suites green in the shared worktree, 211 OK), commit per lane and rewrite commit_sha in each handoff; (2) dispatch the A7 fresh-context audit per COOWNER_REVIEW_DISPATCH.json (reproduce R1-R6 at eae8c3d2, verify fixes + adversarial regressions + full suite + leak/lock/ownership, no self-fix); (3) resolve the shared-file README merge consciously (both lanes' disclosure sections present).",
+ "workers_detail": {
+  "heavy_lock": "FREE_PROVEN (research/researchctl.py locks inspect at handoff time: no registry row, flock free)",
+  "heavy_jobs_run": 0,
+  "subagents_spawned": 0,
+  "notes": "all work was offline synthetic-fixture unittest runs (~2s); no real-data strategy runs, no registration/GO/S1, no purchases, no push/merge, no credentials"
+ }
+}

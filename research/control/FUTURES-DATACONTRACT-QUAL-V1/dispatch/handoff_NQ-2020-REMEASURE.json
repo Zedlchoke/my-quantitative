@@ -1,0 +1,49 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "NQ-2020-REMEASURE",
+  "cycle_id": "FUTURES-DATACONTRACT-QUAL-V1",
+  "role": "remeasure-lane",
+  "lane": "NQ-2020-REMEASURE",
+  "dispatch_sha": "b71c837d1f72d17b35475ab5e2795f6d113c1f9f",
+  "actual_start_sha": "b71c837d1f72d17b35475ab5e2795f6d113c1f9f",
+  "commit_sha": "",
+  "changed_paths": [
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/nq2020_remeasure/nq2020_remeasure.py",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/nq2020_remeasure/nq2020_remeasure.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/nq2020_remeasure/NQ2020_ADDENDUM.md",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_NQ-2020-REMEASURE.json"
+  ],
+  "summary": "Applied the frozen ERRATUM F1 alias view rule (instrument_id==16908 AND utc_date<2020-06-01 -> 'NQM0') and re-measured the dossier's 2020 NQ aggregates on the recovered series. Headline old->new (all OBSERVED, script nq2020_remeasure.py, window 2020-01-02..2020-12-31): yearly log ret +13.20% -> +38.43% (+25.23pp; recovered hole rets +32.65pp, roll-week restatement -7.42pp); ann vol 33.54% -> 34.88% ('lower bound' resolves upward); worst day unchanged -11.15% (2020-03-12 — the dossier's '03-16' label is a date error); best day unchanged +8.85% (03-13); max DD -32.28% -> -34.12% with COVID trough 2020-03-16 -> 2020-03-20 (close 6,920.25, corroborated by NQU0 6,900.00 vs a stale 6,248-contract NQH0 print at 7,453.50), fall 12 -> 16 sessions, recovery 58* -> 54 real sessions, recovery DATE 2020-06-05 unchanged; rvol20 max 92.41% @03-27 -> 88.65% @03-30 (down: stale 03-20 print inflated the old window), rvol60 max 57.13% @04-13 -> 60.24% @05-18 (up: recovered Apr-May vol enters the window). Methodology control: the old-behavior rebuild reproduces the v2 chain with 0 held-contract mismatches over 537 sessions and matches the v2 yearly ret/worst/best/DD/COVID/rvol maxima exactly (only ann vol differs +0.08pp from a v2-cache phantom session on the 2020-11-01 DST fall-back night — documented). Alias bars pass all integrity checks (duplicates 0, high<low 0, negative 0, close-outside-range 0, zero-volume 0). Front verified: held = NQM0_2020 on all 49 hole sessions, all bars instrument_id 16908; NQH0->NQM0 roll 2020-03-19; NQU0 front from 2020-06-18 (same as v2).",
+  "tests": [
+    {"name": "alias fact reproduction vs ERRATUM F1/A7-NQ", "verdict": "PASS", "detail": "alias rows 92,075 / 24,686,121 contracts 2018-08-15..2020-05-31; 'NQM0' rows 19,406 / 5,159,596 2020-06-01..06-19; hole 58 trading dates, 21,824,572 contracts, max day 690,803 — all exactly as adjudicated"},
+    {"name": "alias bar integrity (0 expected)", "verdict": "PASS", "detail": "dup (instrument_id,minute) 0 (incl. across chunk boundary); dup (symbol,minute) 0; high<low 0; negative 0; close outside [low,high] 0; zero-volume 0; hole closes 7,082.50..9,586.75 with max |daily logret| 5.70%"},
+    {"name": "front-chain verification (mission)", "verdict": "PASS", "detail": "held NQM0_2020 on all 49 hole sessions 2020-03-23..05-29, underlying ids == {16908}; NQH0->NQM0 at close 2020-03-19 (trail5 357k vs 229k); NQU0 from 2020-06-18 (identical to v2 cache)"},
+    {"name": "methodology control OLD' vs v2 cache", "verdict": "PASS", "detail": "0 held-contract mismatches / 537 sessions 2019-01-02..2021-01-31; yearly ret, worst/best day, max DD, COVID episode, rvol20/60 maxima all reproduce EXACTLY; only gap: ann vol 33.62 vs 33.54 (+0.08pp) and 259 vs 260 session rows, fully explained by the v2-cache phantom session 2020-11-01 (DST fall-back; current lib code does not reproduce it) — documented, accepted as approximate-reproduction per dispatch"},
+    {"name": "return-delta decomposition closes", "verdict": "PASS", "detail": "+13.2046 + 32.653 (recovered hole rets 03-23..06-01) - 7.423 (roll-week restatement) = +38.434 == new yearly ret"},
+    {"name": "no PnL / no signals / descriptive only", "verdict": "PASS", "detail": "script computes descriptive aggregates only; no conditional tables; vendor data and all FUTURES-DEEPRESEARCH-V2-20261003 artifacts read-only"}
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Build window 2018-06-01..2021-01-31 (chain warmup from chunk start): the dossier §1 full-era distribution rows (rvol percentiles, medians, ACF/VR, per-year table outside 2020) were NOT re-measured — only the flagged 2020 aggregates and rvol20/60 maxima",
+    "Returns remain unadjusted (v2 convention): switch-day returns absorb calendar roll spreads (Mar/Jun spread -0.28pp inside the 2020-03-19 return); no back-adjustment or stitching",
+    "Dossier's worst-day date label '(2020-03-16)' is wrong (value is the 2020-03-12 return, in both the v2 cache and this rebuild) — flagged in the addendum for the Lead; dossier NOT edited per lane law",
+    "Old series' last pre-hole return (2020-03-20, +3.39%) rested on a stale 6,248-contract NQH0 expiry print (7,453.50) vs liquid NQM0 6,920.25 / NQU0 6,900.00 the same session — the recovered view supersedes it via the 03-19 roll; incidental, disclosed",
+    "Two 1e7-scale stray bars on id 16908 (2018-08-15, 2018-09-13; 2 contracts) sit in a <50-bar stray cluster outside the held path — disclosed for the QA ledger",
+    "Relabeled alias bars create thin NQM0_2020 sessions in H2-2019 (~40 bars/day, spread-scale); they never win the k=5 comparison and are never held — no numeric effect"
+  ],
+  "incidents": [],
+  "tree_status": {
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior/prep",
+    "branch": "prep/futures-behavior-10syms-20261002",
+    "head": "b71c837d1f72d17b35475ab5e2795f6d113c1f9f",
+    "lane_paths_untracked_new": true,
+    "note": "all four lane outputs are new untracked files under the lane's owned paths; no other paths touched; no commit made (lane does not commit)"
+  },
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/nq2020_remeasure/nq2020_remeasure.py", "kind": "script", "note": "self-contained; vendor parquet read-only; rebuilds NEW (alias-recovered) and OLD' (v2 dash-filter) series, integrity + front verification + aggregates + methodology control"},
+    {"path": "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/nq2020_remeasure/nq2020_remeasure.json", "kind": "machine-results", "note": "old vs new tables, integrity, front verification, reconciliation notes, provenance"},
+    {"path": "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/nq2020_remeasure/NQ2020_ADDENDUM.md", "kind": "prose-report", "note": "method, old->new table, dossier-claim impact, incidental findings, limitations — the addendum the ERRATUM F1 consequence requires"},
+    {"path": "research/control/FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_NQ-2020-REMEASURE.json", "kind": "handoff", "note": "this file"}
+  ]
+}

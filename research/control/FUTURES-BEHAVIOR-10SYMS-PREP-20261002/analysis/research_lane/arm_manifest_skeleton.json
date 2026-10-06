@@ -1,0 +1,89 @@
+{
+  "schema": "futures_behavior_10syms_arm_manifest_skeleton@0-draft",
+  "status": "SKELETON ONLY — DRAFT, NOT A GO. No cells are enumerated, no real-data runs exist, R and K are NOT frozen. Mirrors BACKTEST_LAUNCH_DRAFT.md sections 1-2 (sha256 at eae8c3d2: 5413d36e93613564579c1511fbf7f70c2e2de6d7772b83b67c280839b921d501). Any launch requires (1) owner data-depth decision, (2) a REGISTERED cycle with frozen trial budget before a single scored run.",
+  "written": "2026-10-02",
+  "written_by": "lane HANDOFF-RESEARCH, round co-owner-review-fix-1 (work item R3K2)",
+  "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+
+  "symbols": ["NQ", "ES", "CL", "NG", "GC", "SI", "6E", "6J", "6B", "6A"],
+
+  "arms": {
+    "A_signal_research_descriptive": {
+      "window": "full per-contract daily depth 2019/20->2026-10",
+      "price_use": "settlement-derived closes DECLARED as reference prices",
+      "fills": "none",
+      "selection_free": true,
+      "logging": "every computed statistic logs script + window (OBSERVED taxonomy)"
+    },
+    "B_daily_backtest_narrow_depth": {
+      "window": "true-volume front chain 2025-08->2026-10 (declared-roll chains; per-dossier real-volume eras start 2025-05..2025-09 depending on chain construction)",
+      "price_use": "raw TRADES prices; close-only bars never fill",
+      "fills": "next-session open, tick-rounded, cost-shifted; same-bar TP+SL => AMBIGUOUS_ORDER bounds-only",
+      "selection_free": false,
+      "note": "gated on DAILY_BT admission bar: >=24 months true-volume + PIT roll + complete costs incl. declared slippage — currently BLOCKED 10/10 (~14 months)"
+    },
+    "C_intraday_mechanism_descriptive": {
+      "window": "H1/M1 ~10 months (NG ~2.2y), RTH-only (useRTH=true)",
+      "price_use": "raw TRADES",
+      "fills": "none",
+      "selection_free": true
+    }
+  },
+
+  "variant_dimensions": {
+    "V1_roll_rule": ["calendar_baseline_declared", "pit_volume_migration_cutoff_t_minus_1_confirm_2"],
+    "V2_cost_stress": [1.0, 1.5, 2.0],
+    "V3_slippage_scenarios": "S0 = none declared (costs flagged incomplete) + S1..Sk owner-declared nonzero values (REQUIRED before any Arm B pass/fail statement) — K is the count of declared nonzero scenarios",
+    "V4_entry_delay_sessions": [0, 1, 2]
+  },
+
+  "cell_enumeration_formula": {
+    "arm_B_primary_cells": "10 symbols x R rule_sets x 2 roll_rules x 3 stress x K slippage_scenarios x 3 entry_delays = 180*R*K",
+    "baselines": "flat=1 + always_on=2 + single_leg=10 => 13",
+    "ablations": "leave_one_leg=10 + leave_one_rule=R => 10+R",
+    "ablation_law": "each ablation/baseline is a FULL-PATH re-run; additive leg-PnL attribution is forbidden",
+    "illustrative_example_R3_K2": { "R": 3, "K": 2, "primary_cells": 1080, "baselines": 13, "ablations": 13, "arm_B_total_cells": 1106 },
+    "freeze_rule": "exact R and K freeze at registration; the example numbers are ILLUSTRATIVE and must not be quoted as a budget"
+  },
+
+  "determinism": {
+    "master_seed": 20261002,
+    "per_cell_seed": "20261002 + cell_index (stable enumeration: symbol -> rule -> roll -> stress -> slippage -> delay)",
+    "synthetic_fixture_seed": 20261002,
+    "replay_law": "byte-identical re-runs; prefix-determinism and future-mutation invariance hooks must pass at every reported cutoff"
+  },
+
+  "multiplicity_note": {
+    "problem": "With R=3, K=2 the Arm-B grid alone is 1,108 cells (1,080 primary + 13 baselines + 13 ablations). Any per-cell pass/fail reading multiplies selection risk ~10^3; multiple-testing control is NOT specified here and is itself a registration-time freeze item.",
+    "laws_already_fixed": [
+      "no parameter selection outside nested TRAIN (walk-forward scaffolding enforces; nested selection stamped at train_end)",
+      "no performance-reason fold suppression (only INSUFFICIENT_COVERAGE, recorded)",
+      "marginal contributions only via full-path leave-one-out re-runs",
+      "combine weights DECLARED ex ante (fitted weights labeled IN_SAMPLE_MASQUERADE)",
+      "ambiguous-bar trades reported as bounds only; censored trades never netted into point totals"
+    ],
+    "registration_gates": [
+      "owner data-depth decision (BACKTEST_LAUNCH_DRAFT s6 a/b/c)",
+      "registered cycle with frozen trial budget = the frozen R, K and this formula's output",
+      "owner-declared nonzero slippage per symbol + exchange fees where fetchable",
+      "real exchange holiday calendar (or empirical bar calendar with stamped caveat)",
+      "rule set R + hypothesis sheets frozen from dossiers s5"
+    ]
+  },
+
+  "compute_budget_note": {
+    "engine": "stdlib-only offline; 147-test suite runs ~2s at eae8c3d2 (re-verified 2026-10-02)",
+    "per_cell_cost": "daily-bar replay over <=410 sessions x 10 symbols — negligible CPU; dominates nothing",
+    "arm_B_estimate": "1,108 cells x (seconds/cell) => minutes-scale on one machine; the binding costs are DATA (owner-gated) and TRIAL ACCOUNTING (registration), not compute",
+    "storage": "raw snapshot 36 MB read-only + journals per cell (small); fixtures ~10 MB temp"
+  },
+
+  "pass_bars_reference": "owner framework 00_MASTER_FRAMEWORK.md s6 (15 tests) mapped to prep status in RESEARCH_MATRIX.md section 6; engine laws in BACKTEST_LAUNCH_DRAFT.md s7",
+
+  "explicit_non_claims": [
+    "no cell has been run on real data",
+    "no GO is granted or implied by this skeleton",
+    "no multiplicity correction method is chosen here (registration item)",
+    "counts in the illustrative example must be recomputed at registration from frozen R and K"
+  ]
+}

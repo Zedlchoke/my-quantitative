@@ -1,0 +1,20 @@
+import json, time
+now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+retro = [
+ {"utc":now,"phase":"retro-logged (session-end reconstruction; times of actual execution approximated)","url":"https://web.archive.org/cdx/search/cdx?url=www.cmegroup.com/tools-information/holiday-calendar/files/ (prefix inventory, 1920 rows)","tool":"curl_default_ua","outcome":"SUCCESS","detail":"full per-holiday file inventory 2009-2025; OVERTURNED parent A2 claim that 2017+ per-holiday schedules were unarchived"},
+ {"utc":now,"url":"CDX exact probes: trading/{fx,metals,energy,interest-rates}/rolldates.html","tool":"curl_default_ua","outcome":"FX exists 2008-2015(200)/301-2016+; metals 404; energy/rates none","detail":"FX rolldates retired 2016 (301 -> markets/fx.html?redirect=...); NOT usable for 2019-2026"},
+ {"utc":now,"url":"https://web.archive.org/web/20221226021343/http://www.cmegroup.com/trading/fx/rolldates.html (redirect resolve)","tool":"curl_default_ua","outcome":"SUCCESS_301_resolve + 1 connection-fail retry","detail":"redirect target = markets/fx.html hub; rolldates content gone"},
+ {"utc":now,"url":"CDX: gold/silver_product_calendar_futures.html full capture lists; euro-fx/british-pound/japanese-yen/australian-dollar _product_calendar_futures.html lists","tool":"curl_default_ua","outcome":"SUCCESS","detail":"discovered _futures URL variant (parent used non-suffix URL only); static era ends 2018-02/04"},
+ {"utc":now,"url":"CDX: CmeWS/mvc prefix + CmeWeb prefix probes","tool":"curl_default_ua","outcome":"SUCCESS-empty/irrelevant","detail":"no archived product-calendar API responses; event.dld captures 2008-2011 only"},
+ {"utc":now,"url":"CDX: markets/...productCalendar.html + cn-s variants (euro-fx, gold)","tool":"curl_default_ua","outcome":"EMPTY (no captures)","detail":"new-URL product calendar never archived"},
+ {"utc":now,"url":"GC calendar captures 20180227093156 (static, 22 rows), 20190328183304/20190908124623/20191120151956 (shells); SI 20180227093206 (static 20 rows), 20180428160150/20180429115735 (shells); FX _futures captures: ec 20180228224018 (static), 20180418031922/20180602091610/20180620144031/20191019063942/20200805071908/20210612170350 (shells); bp 20180226190632 (static), bp 20100219101527 (old-format static); jy 20180226182137+20141015223742 (static), jy 20100120181108+20100814205214 (old-format static); ad 20180301074633 (static); ec 20150111002610 (static), ec 20110527042052 (old-format static)","tool":"curl_default_ua","outcome":"SUCCESS-16-static/9-shell","detail":"all saved under captures/ with sha256"},
+ {"utc":now,"url":"https://www.cmegroup.com/CmeWeb/event.dld?PROD_CODE=EC&...CNTR_CODE=ECZ5&DATE_TYPE=LAST_TRADE (live legacy data endpoint)","tool":"web_reader","outcome":"FAIL -500 upstream network error x2","detail":"BLOCKED_TRANSPORT; 2-attempt etiquette stop"},
+ {"utc":now,"url":"same event.dld URL","tool":"WebFetch","outcome":"FAIL ECONNREFUSED","detail":"1 attempt; stop"},
+ {"utc":now,"url":"WebSearch: CME FX IMM/roll-dates official page","tool":"WebSearch","outcome":"NO official modern FX roll-dates page found","detail":"third-party results only; not usable as authority"},
+ {"utc":now,"url":"batch: 107 files from manifest (2011-2015 per-holiday PDFs + 2017-2023 per-holiday XLS) via web.archive.org","tool":"curl_default_ua","outcome":"107/107 SUCCESS sig-verified","detail":"logged individually in preceding lines by fetch_batch.py; pacing 2.5s"},
+ {"utc":now,"url":"2020-good-friday-schedule.xls / 2020-independence-day-schedule.xls / 2020-mlk-day-schedule.xls + 2014/2015-columbus-day-holiday-schedule.xls (5 follow-up files)","tool":"curl_default_ua","outcome":"SUCCESS x5","detail":"CDX-resolved ts; logged individually"},
+ {"utc":now,"url":"2019-thanksgiving-day-holiday-schedule-arragements.xlsx","tool":"curl_default_ua+stdlib_zip_xml","outcome":"FETCH OK; CONTENT = NYMEX BALMO/PRA settlement list, NO Globex hours","detail":"not usable for hours; retained as evidence of absence"}
+]
+with open('fetch_log.jsonl','a') as f:
+    for r in retro: f.write(json.dumps(r)+"\n")
+print("retro entries:", len(retro))
