@@ -1,0 +1,59 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "VERIFY_20261006_TRIPLE_LANE",
+  "cycle_id": "NFL-WINPROB-NG-SCORED-V1+WNBA-PLAYERFEAT-SCORED-V1+NBA-WINPROB-NG-SCORED-V1",
+  "lane": "independent-verification",
+  "role": "independent-verifier",
+  "objective": "Adversarially verify the final post-sync state of the 2026-10-06 three-lane controller round: C6 BINDING v3 old-A7 selection-path closure (NFL+WNBA), twin law, suites; NBA new-cycle registration, freeze re-measure, quarantined dry-run, PIT, A7_R1; cross-cutting registry/doctor/locks/tree state",
+  "dispatched_base_sha": "8288a25e420a175c81af7a4d98e908e54b772c36",
+  "actual_start_sha": "8288a25e420a175c81af7a4d98e908e54b772c36",
+  "commit_sha": null,
+  "tree_status": "clean (verifier wrote only under research/control/VERIFY_20261006_TRIPLE_LANE/ and /tmp/verify_triple; all three lane worktrees and ROOT tracked tree re-verified clean at close)",
+  "workers": 0,
+  "changed_paths": [
+    "research/control/VERIFY_20261006_TRIPLE_LANE/verify_report.md",
+    "research/control/VERIFY_20261006_TRIPLE_LANE/verify_handoff.json"
+  ],
+  "changed_files": [
+    "research/control/VERIFY_20261006_TRIPLE_LANE/verify_report.md",
+    "research/control/VERIFY_20261006_TRIPLE_LANE/verify_handoff.json"
+  ],
+  "tests": [
+    {"id": "BASE", "command": "git -C <each of 3 worktrees> rev-parse HEAD; branch --show-current; status --porcelain", "exit_code": 0, "verdict": "PASS", "note": "heads 8288a25e / e4ea2a1f / ee4fc0b5 == registry rows; 0 dirty lines each"},
+    {"id": "NFL-A1-source", "command": "read research/control/NFL-WINPROB-NG-SCORED-V1/recorder/record_owner_go.py + grep flags/env", "exit_code": 0, "verdict": "PASS", "note": "argparse = --cycle/--phrase/--registry/--worktree/--execute only; no --a7-series-dir/--a7-verdict (removal prose only); no env/config channel; series dir derived from row (L709-711); C5 binding L550-581 exit 25; anti-symlink L294-345; highest series mandatory"},
+    {"id": "NFL-A2-attack", "command": "record_owner_go.py --phrase '<GO NFL…>' --registry /tmp/verify_triple/a2_nfl/CYCLE_REGISTRY.json --worktree <nfl wt> --a7-series-dir /tmp/verify_triple/a2_nfl/alt_lanes", "exit_code": 2, "verdict": "PASS", "note": "argparse 'unrecognized arguments' BEFORE any read/write; registry byte-copy sha256 5eca4e0d… identical after; alt dir carried real A7_R3 verdict bytes (A7_R3_PASS + audited sha)"},
+    {"id": "NFL-A3-worktree", "command": "… --worktree /tmp/verify_triple/decoy_worktree --registry <copy>", "exit_code": 25, "verdict": "PASS", "note": "C5 WORKTREE BINDING refused; registry byte-identical"},
+    {"id": "NFL-A4-symlink", "command": "fixture repo /tmp/verify_triple/a4_fixture + mutated registry copy: lanes-symlink / A7_R9-entry-symlink / verdict-file-symlink probes + baseline", "exit_code": 26, "verdict": "PASS", "note": "all three attacks refused C6 exit 26; baseline exit 0 DRY_RUN_OK selecting A7_R1 from row-derived dir"},
+    {"id": "NFL-A5-dryrun", "command": "record_owner_go.py --phrase 'GO NFL WINPROB NG SCORED V1 PROSPECTIVE' (real registry, no other flags)", "exit_code": 0, "verdict": "PASS", "note": "DRY_RUN_OK; C6 selects A7_R7 audited 22d930f0…; registry 5eca4e0d… + journal b7870e27… byte-identical before/after; state still REGISTERED_NOT_CONSUMED"},
+    {"id": "NFL-A6-ancestry", "command": "git cat-file blob HEAD:lanes/A7_R7/A7_R7_VERDICT.md + cmp + git merge-base --is-ancestor 22d930f0… HEAD", "exit_code": 0, "verdict": "PASS", "note": "disk == HEAD blob; canonical block audited_sha=22d930f0… is ancestor of 8288a25e"},
+    {"id": "NFL-A7-suites", "command": "NOT RUN (suites hard-write receipts into worktree: test_record_owner_go_v3.py:810, test_executor_gates_v3.py:220) — verified committed receipts instead", "exit_code": null, "verdict": "NOT_RUN", "note": "receipt go_tool_v3_test_evidence.json 105/105 with tool_sha256_v3 == current tool bytes; controller_executor_rerun_at_addendum.json 102/102 with executor_sha256 == current bytes and empty diff f0117a2e..HEAD on executor; §R5.3 addendum at HEAD anchors EXECUTOR_COMMIT_SHA_R5=f0117a2e, go-tool pin f196c765 == current"},
+    {"id": "WNBA-A1-source", "command": "read …/WNBA-PLAYERFEAT-SCORED-V1/runner/record_owner_go.py + grep", "exit_code": 0, "verdict": "PASS", "note": "exit map 0/1/2/10-16/70; no A7-selection inputs (--repo-root only picks governance import root for C7 write, cannot steer discovery); series_dir_from_row() row-derived; C5 exit 14; anti-smuggle exit 15; highest-N mandatory"},
+    {"id": "WNBA-A2-attack", "command": "… --a7-series-dir /tmp/verify_triple/a2_wnba/alt_lanes (real A7_R5 verdict bytes)", "exit_code": 2, "verdict": "PASS", "note": "argparse refusal pre-read; registry copy byte-identical"},
+    {"id": "WNBA-A3-worktree", "command": "… --worktree /tmp/verify_triple/decoy_worktree", "exit_code": 14, "verdict": "PASS", "note": "C5 WORKTREE-NOT-BOUND-TO-REGISTRY-ROW; registry byte-identical"},
+    {"id": "WNBA-A4-symlink", "command": "fixture /tmp/verify_triple/a4_fixture_wnba: lanes-symlink / entry-symlink / verdict-file-symlink + baseline", "exit_code": 15, "verdict": "PASS", "note": "all three refused C6 exit 15; baseline exit 0 with is-ancestor binding"},
+    {"id": "WNBA-A5-dryrun", "command": "runner/record_owner_go.py --phrase 'GO WNBA PLAYERFEAT SCORED V1 EVALUATION' (real registry)", "exit_code": 0, "verdict": "PASS", "note": "ALL CHECKS PASS; C6 A7_R7 canonical-block audited d8c81abe…; registry+journal unchanged"},
+    {"id": "WNBA-A6-ancestry", "command": "cat-file blob HEAD:lanes/A7_R7/A7_R7_VERDICT.md + merge-base --is-ancestor d8c81abe… HEAD", "exit_code": 0, "verdict": "PASS", "note": "disk == HEAD blob; CONFIRMED_PASS addendum present"},
+    {"id": "WNBA-A7-fixr4", "command": "cwd=/tmp python lanes/FIX_R4/test_record_owner_go_v3.py", "exit_code": 0, "verdict": "PASS", "note": "13 cases PASS 0 FAIL; CASE B: frozen v2 accepted old verdict (exit 0), v3 refuses argparse exit 2; REAL registry byte-identical: True; worktree stayed clean"},
+    {"id": "WNBA-A7-runner", "command": "cwd=/tmp python lanes/EXEC/test_runner_gates.py", "exit_code": 0, "verdict": "PASS", "note": "13 case-groups PASS 0 FAIL incl. real-registry G1 refusal case k; worktree stayed clean"},
+    {"id": "NBA-B1-identity", "command": "sha256 plans/PLAN_nba_winprob_ng_scored_v1.md ROOT vs worktree; git log c795a292/5c60f880; registry row dump", "exit_code": 0, "verdict": "PASS", "note": "plan identical 56a91dfd…; registration commits present ('NOT a typed GO'); row head ee4fc0b5 == measured, budget 0/9, REGISTERED_NOT_CONSUMED"},
+    {"id": "NBA-B2-freeze-rehash", "command": "shasum -a 256 of _download_provenance.tsv + GAME_UNIVERSE_SPEC + PIT_AUDIT_NBA + MECHANISMS_NBA_NG live files, vs §4 packet pins and FREEZE_MANIFEST.json", "exit_code": 0, "verdict": "PASS", "note": "all four == 6bf3e729…/b9ee812c…/33d18311…/9acee28d… in all three places; md blobs also == HEAD blobs; RE_MEASUREMENT ALL-MATCH"},
+    {"id": "NBA-B3-evidence", "command": "git ls-tree -r HEAD -- …/NBA-WINPROB-NG-SCORED-V1/ + content reads + merge-base --is-ancestor 50135f61… HEAD", "exit_code": 0, "verdict": "PASS", "note": "FREEZE/, SYNTH 5/5, DRYRUN (PASS, 2710 rows, 10 arms, book recomputed: 2710 distinct (arm,fold,game), 0 written>=tip, 99* namespace, zero_scored_cells_real PASS), PIT re-adopted (spread UNVERIFIED_PIT 0 harness refs; H-C3 NOT_RUN_PIT), A7_R1 PASS 7/7 0 HIGH/CRITICAL audited 50135f61 ancestor of HEAD"},
+    {"id": "NBA-B4-negative", "command": "grep scans playerfeat/spread/scored/outcome/real-paths in harness+evidence; K/HCA/gamma constants; arms table", "exit_code": 0, "verdict": "PASS", "note": "playerfeat 2 hits both ban statements; spread 0 harness refs; no real data paths in harness; K=32/HCA=100/γ=0.75 verbatim in FREEZE_PACKET + arms.py; slots 8-9 RELEASED never reallocated"},
+    {"id": "B5-no-go", "command": "grep -c OWNER_GO_RECORDED plans/CYCLE_REGISTRY.events.jsonl; scan three control trees for execute receipts", "exit_code": 0, "verdict": "PASS", "note": "0 OWNER_GO_RECORDED events in the journal; our cycles only CYCLE_REGISTERED/CYCLE_UPDATED; state.json phases all PRELAUNCH_READY_PENDING_OWNER_GO"},
+    {"id": "C-doctor", "command": "researchctl.py cycle doctor --json", "exit_code": 0, "verdict": "PASS", "note": "0 findings reference our cycles except 1 LOW STALE_HEARTBEAT (NFL, expected-stale label); the 14 HIGH FROZEN_ARTIFACT_DRIFT all belong to legacy PAUSE_CRYPTO_V17"},
+    {"id": "C-locks", "command": "researchctl.py locks inspect", "exit_code": 0, "verdict": "PASS", "note": "FREE_PROVEN"},
+    {"id": "C-trees", "command": "git status ROOT + 3 worktrees at open and close", "exit_code": 0, "verdict": "PASS", "note": "ROOT tracked clean (only ?? .my-quantitative-data/); three worktrees 0 dirty at expected HEADs; registry+journal hashes identical at open and close (5eca4e0d… / b7870e27…)"}
+  ],
+  "outputs": [
+    {"path": "research/control/VERIFY_20261006_TRIPLE_LANE/verify_report.md", "result": "full per-lane battery: every check PASS/FAIL/NOT_RUN with command + observed output", "evidence": "this report"},
+    {"path": "/tmp/verify_triple/", "result": "attack sandboxes retained: a2_nfl/a2_wnba (registry copies + old A7_R3/A7_R5 verdicts), a4_fixture/a4_fixture_wnba (symlink fixtures), all probe stdout/stderr captures", "evidence": "a2_hashes_before.txt, a5_hashes_before/after.txt, a2/a3/a4/a5 *.out/*.err"},
+    {"path": "plans/CYCLE_REGISTRY.json", "result": "unchanged by verification: sha256 5eca4e0d52302468b668367e19ffb094d24e25e30dfe40a287e3d53a66e03e4e at open and close; journal b7870e27… unchanged; zero OWNER_GO_RECORDED events", "evidence": "a5_hashes_before.txt == a5_hashes_after.txt"}
+  ],
+  "incidents": [],
+  "known_limitations": [
+    "NFL FIX_R6 + FIX_R5 executor suites NOT physically re-run: they hard-write receipt JSONs inside the lane worktree (test_record_owner_go_v3.py:810-811, test_executor_gates_v3.py:218-221); modifying a lane worktree is forbidden to the verifier. Compensated per battery by verifying the committed receipts in full (105/105 with tool sha == current bytes; 102/102 with executor sha == current bytes, empty diff f0117a2e..HEAD on the executor).",
+    "go_tool_v3_test_evidence.json live_head eb820842 predates A7_R7/§R5.3 control commits (ancestor of HEAD); tool bytes unchanged since (sha256 f196c765… == current file), so the 105/105 binds the exact bytes that would gate a GO.",
+    "GO_READY in the report is a readiness label only: it is NOT a command to run scored and NOT a GO; the owner's typed GO phrase at each cycle's own gate remains the only trigger (all three rows REGISTERED_NOT_CONSUMED, 0/9, zero scored cells)."
+  ],
+  "recommended_next_action": "Round verified GO_READY on all three lanes (NFL: old-A7 attack dead at argparse exit 2 on verifier replay, suites receipt-verified 105/105 + 102/102; WNBA: attack dead + both suites re-run 13/13 + 13/13 by verifier; NBA: freeze ALL-MATCH independently re-hashed, quarantined dry-run with zero scored cells, A7_R1 PASS ancestry-verified). Controller may commit this report; next event is the OWNER typing each registered GO phrase verbatim at the cycle's own gate — nothing else authorizes scoring."
+}
