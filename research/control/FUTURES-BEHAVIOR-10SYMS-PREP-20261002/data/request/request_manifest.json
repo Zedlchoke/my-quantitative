@@ -1,0 +1,349 @@
+{
+  "schema": "futures_behavior_10syms_databento_request@1",
+  "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+  "lane": "REQUEST-PACKET",
+  "created_utc": "2026-10-02T14:00:00Z",
+  "status": "REQUEST_SPECIFICATION_ONLY — nothing purchased, subscribed, downloaded or billed by this lane; every cost/price/quote below is NOT_RUN_NO_CALL until the free metadata probes are run by the owner (see probe_cost.py / probe_record_count.py); this manifest is NOT authorization to spend.",
+  "claims_basis": {
+    "vendor_facts": "FACT(sourced): current official Databento documentation, URLs + access dates in sources[]; docs pages are JS-rendered, so vendor facts were verified through Databento's own docs search API (api.databento.com/v0/docs/search, build 01M3QSBT40W79JPVNV0CHMKD5E) over the same published pages on 2026-10-02, plus the partially-rendered dataset landing page.",
+    "local_facts": "OBSERVED: data/COVERAGE_MANIFEST.json (measure_coverage.py over the IBKR corpus) + per-symbol dossiers dossiers/*_DOSSIER.md + BACKTEST_LAUNCH_DRAFT.md + DATA_ACQUISITION_SPEC.md (this cycle).",
+    "no_inference_rule": "anything unmeasured is NOT_RUN / ASSUMED, never inferred PASS; no prices are invented — unit prices come only from list_unit_prices (free) at Phase 0."
+  },
+  "vendor_context": {
+    "dataset": "GLBX.MDP3",
+    "venues_covered": ["CME", "CBOT", "NYMEX", "COMEX"],
+    "venue_note": "All four CME Group venues are inside the single dataset GLBX.MDP3, so the dataset does not change per symbol. Expected venue per root (from FUTURES-DATA-10SYMS-V1 S1 identity, to be re-verified per instrument from vendor definition records at pilot): NQ CME, ES CME, CL NYMEX, NG NYMEX, GC COMEX, SI COMEX, 6E CME, 6J CME, 6B CME, 6A CME.",
+    "history_upper_bound": "2010-06-06 (dataset-level statement on the catalog page, access 2026-10-02 via DATA_ACQUISITION_SPEC.md §2; docs pages verified today state history begins 'in June 2010'). CRITICAL CAVEAT (vendor's own wording): 'Historical data availability could vary between schemas' — per-symbol x per-schema start dates are NOT assumed and MUST be measured with free get_record_count probes (phase0_free_verification) before any spend.",
+    "pre_2017_quality_notes": [
+      "Data before May 2017 originates from the legacy FIX/FAST protocol (docs venues-and-datasets/glbx-mdp3, access 2026-10-02).",
+      "Timestamps prior to 2015-11-20 are limited to millisecond resolution; data prior to 2017-05-21 has no capture timestamp ts_recv (ts_event present) — same docs page + normalization page, access 2026-10-02. Relevant to HC4 event studies on 2010-2017 windows."
+    ]
+  },
+  "conventions": {
+    "stype_policy": {
+      "bulk": "stype_in=parent — requests ALL listed expiries of a root in one request; matches our 'store raw individual contracts' law (00_MASTER §8) and HC1/HC3 need for adjacent contracts.",
+      "named_windows": "stype_in=raw_symbol — for enumerated per-contract pilot/roll/event windows where the exact contract is known (venue-native symbols identical to our IBKR localSymbol convention, e.g. NQZ5, CLX6; docs: raw symbols are 'the original string symbols used by the publisher', examples 'AAPL, ESH3').",
+      "continuous": "NEVER purchased as a price series (DATA_ACQUISITION_SPEC.md §4 rule 1: vendor continuous is never the backtest price series). Continuous symbols {ROOT}.c.0/.n.0/.v.0 are used ONLY through the FREE symbology.resolve endpoint, (i) as declared-convention signal FEATURES if ever needed and (ii) as vendor-roll measurement objects for the HC3 alternative-roll test. Declared convention for any feature use: rank-0, roll rule n (open interest at previous day's close, per docs symbology page), unadjusted, feature-only, never fills/MTM."
+    },
+    "roll_policy": "Our declared execution roll (hold until last session before day-1 of the expiry month, roll to next listed contract at that close; canonical basis = last-trade month, audit M2) is built by US from per-contract data + definition expiration. Vendor c/n/v roll tables are measurement objects only (HC3); divergences are documented, never silently adopted.",
+    "month_code_patterns_liquid_cycle": {
+      "NQ": {"pattern": "HMUZ (quarterly)", "source": "NQ_DOSSIER.md §5 H1/H5 universe ('declared calendar rule ... quarterly'); contract list HMUZ 2025-2027 in COVERAGE_MANIFEST.json"},
+      "ES": {"pattern": "HMUZ (quarterly)", "source": "ES_DOSSIER.md §5 H1/H2 ('ES HMUZ')"},
+      "CL": {"pattern": "all 12 months listed/traded (monthly cycle)", "source": "CL_DOSSIER.md §1; 29 contiguous delivery-month contracts in COVERAGE_MANIFEST.json"},
+      "NG": {"pattern": "all 12 months (monthly cycle)", "source": "NG_DOSSIER.md §1; 29 contiguous contracts in COVERAGE_MANIFEST.json"},
+      "GC": {"pattern": "GJMQVZ cycle months liquid (~6/yr); serials thin/missing", "source": "GC_DOSSIER.md §1 ('22-contract dataset is exactly the GJMQVZ chain'); SI_DOSSIER.md §5 H2 ('GC GJMQVZ ~6/yr')"},
+      "SI": {"pattern": "H/K/N/U/Z cycle (~5.4 rolls/yr); serials measured dead (max 944 lots vs 26k-178k cycle)", "source": "SI_DOSSIER.md §5 H1"},
+      "6E": {"pattern": "HMUZ quarterly only liquid (serials median 0-115 lots/day)", "source": "6E_DOSSIER.md §1/§5 H1 ('front = nearest HMUZ contract')"},
+      "6J": {"pattern": "HMUZ quarterly only liquid (serial fronts <=0.3% of volume)", "source": "6J_DOSSIER.md §1/§5 H1"},
+      "6B": {"pattern": "HMUZ quarterly only liquid (serials 2-3 OOM thinner)", "source": "6B_DOSSIER.md §1/§5 H1"},
+      "6A": {"pattern": "HMUZ quarterly liquid; serials listed but thin", "source": "6A_DOSSIER.md §1 (liquid maturity = nearest HMUZ quarterly)"}
+    },
+    "timezone_and_session_notes": [
+      "All DBN timestamps are nanoseconds since UNIX epoch, UTC; ts_event = matching-engine event time (docs common-fields, access 2026-10-02).",
+      "ohlcv bar timestamp semantics (docs schemas-and-data-formats/ohlcv, access 2026-10-02): ts_event is 'The inclusive start time of the bar aggregation period' — ingestion must align bars by bar-START; IBKR bar timestamps must be re-based before comparison.",
+      "CRITICAL: 'Our ohlcv-1d schema is based on UTC dates' (docs ohlcv page, access 2026-10-02) — vendor daily bars are UTC-day, NOT exchange-session-day. Session-aligned dailies must be self-aggregated from ohlcv-1m (or taken from statistics official OHLC, which is venue-session-based). ohlcv-1d lines below are requested for the UTC-day reference panel + roll-cost close gaps; session dailies come from our own aggregation.",
+      "GLBX.MDP3 covers the FULL Globex week (Sun evening open through Fri close, incl. overnight); our IBKR intraday corpus is RTH-only (useRTH=true) — overlap validation is on the RTH subset and session-boundary handling is itself a validation target (DATA_ACQUISITION_SPEC.md §5).",
+      "Statistics publish timing (docs glbx-mdp3 page, access 2026-10-02): cleared-volume and open-interest statistics normally publish on the FOLLOWING UTC date (Friday's session publishes Sunday); settlement publishes preliminary then final, 'the final message ... is the one you should use'. PIT consequence: OI for session t is observable earliest t+1 — consistent with our PIT roll cutoff (decisions use data strictly earlier than the decision session)."
+    ],
+    "schema_choice_discipline": "smallest depth that satisfies the need (DATA_ACQUISITION_SPEC.md §3): ohlcv-1m not trades where bars suffice; bbo-1m not mbp-1 where top-of-book at 1m suffices; trades/tbbo only on named event/roll windows; mbp-1 NOT REQUESTED in this round (reserved for surviving execution-microstructure hypotheses); mbo/mbp-10 NOT REQUESTED (no hypothesis class justifies full-book depth)."
+  },
+  "estimation_method": {
+    "records": "No records/day figures are published per symbol in the docs (NOT_FOUND_IN_DOCS 2026-10-02); therefore record counts are MEASURED, not estimated: get_record_count (free, metadata-only) per exact request line at Phase 0. Planning BOUNDS only: ohlcv-1m bars/contract-day <= session minutes (<= 1380 min for a 23h Globex weekday session, ASSUMED upper bound; bars without activity may not be emitted — emission policy NOT verified in docs); definition records ~ order 1-10 per contract lifecycle (ASSUMED); statistics ~ order 5-20 records/instrument/day across stat_types incl. preliminary+final settlement (ASSUMED); ohlcv-1d <= active contracts/day per root (NQ/ES ~10, CL/NG ~30, GC/SI ~20-24, 6* ~24 listed per the IBKR resolved chains in the dossiers — listing breadth on the vendor side ASSUMED equal until definitions are delivered).",
+    "storage": "billable bytes are MEASURED with get_billable_size (free; billable UNCOMPRESSED bytes; vendor caveat: 'may not be accurate for time ranges that are not discrete multiples of 10 minutes'). Byte-exact DBN record sizes are FACT(sourced) via this cycle's DBN-ADAPTER lane (code/futbt/dbn/spec.py, layouts from the official github.com/databento/dbn reference implementation, main@2026-10-02): OhlcvMsg (ohlcv-1s/1m/1h/1d) = 56 B, TradeMsg (trades) = 48 B, Mbp1Msg (mbp-1/tbbo) = 80 B, StatMsg (statistics) = 80 B, InstrumentDefMsg (definition) = 520 B, BboMsg (bbo-1m) = 80 B; 16-byte RecordHeader included. Sparse emission CONFIRMED for OHLCV (docs ohlcv page via adapter lane's same-day verification: 'If no trade occurs within the interval, no record is printed') — so records/contract-day < session minutes, and get_record_count/billable_size, not formulae, set the real sizes. On-disk zstd-compressed DBN ASSUMED ~0.4-0.6 x billable (vendor claims 'high compression ratios' without publishing ratios — measure at pilot and re-project). Worked formula (NQ ohlcv-1m, 1y, front+1 contracts, UPPER BOUND): 252 days x 1380 bars x 2 contracts x 56 B = ~39 GB uncompressed bound; the real number comes from P0-5.",
+    "compute": "POSTULATED trivial for L0 lines (definition/statistics/ohlcv-1d: single-pass parse + QA on a laptop). ohlcv-1m multi-year x 10 roots is the only non-trivial job (parse + sessionize + QA; minutes-scale per delivered GB, single core, ASSUMED) — re-estimated after pilot with the measured GB/s ingestion rate.",
+    "prices": "NOT_RUN_NO_CALL for every line. Method (docs api-reference-historical/metadata + usage-pricing pages, access 2026-10-02): cost = billable_GB (get_billable_size) x unit price (list_unit_prices, 'US dollars per gigabyte' per schema per mode). 'Every dataset or data feed is priced in $/GB. Every month, you pay only for the data that you've used.' No per-GB number for GLBX.MDP3 is quoted anywhere in this manifest. New-user credit $125 exists (docs set-up + landing page, access 2026-10-02) and is noted for the owner's pilot funding decision only."
+  },
+  "disk_and_checkpoint": {
+    "disk_cap_gb_internal": 200,
+    "disk_cap_note": "INTERNAL_ASSUMPTION engineering cap for raw delivered DBN + zstd on this workstation (not a vendor number). Hard stop + owner consult if Phase-0 billable-size projections exceed it; cap revisable by owner.",
+    "batch_boundaries": "Every billable line is chunked into requests keyed (line_id, root, schema, calendar quarter) for EXPANSION full-range lines, or (line_id, root, schema, named window) for pilot/event windows. Chunk = the unit of request, delivery, QA and resume.",
+    "resume_and_idempotency": "A local completion ledger (data/request/completion_ledger.json, created at delivery time, NOT in this round) records per chunk: exact request params, batch job id, billable size reported, file list + checksums. States: SUBMITTED (job id recorded before anything is assumed delivered) -> DELIVERED (checksums verified). Resume = consult ledger; DELIVERED chunks are never re-requested; SUBMITTED-but-unverified chunks are resolved by listing batch files for the job id (enumerate what exists) instead of blind re-submission.",
+    "double_billing_hazards": [
+      "Re-submitting a chunk whose delivery succeeded but whose ledger write failed — mitigated by SUBMITTED-first ledger writes + file enumeration on resume.",
+      "Overlapping windows between lines (e.g. an event window inside a full-range chunk) — mitigated by the one-owner rule: each (root, schema, quarter) is requested by exactly one line; event/roll windows that fall inside an already-delivered quarter are carved from local data, never re-bought.",
+      "Live re-requests / retries with a different time granularity (10-minute-window caveat on get_billable_size/get_record_count accuracy) — estimates re-checked per exact chunk params before each phase spend gate."
+    ],
+    "concurrency": "Vendor historical rate limits (docs rate-limits, access 2026-10-02): 100 concurrent connections, 100 time series req/s, 100 symbology req/s per IP. Scripts stay single-flight; bulk delivery via batch/FTP paths, not hammering streaming."
+  },
+  "phase0_free_verification": {
+    "note": "All metadata-only, free of data charges; requires owner-created API key (env var DATABENTO_API_KEY). NOT_RUN this round; implemented in probe_cost.py / probe_record_count.py --dry-run.",
+    "probes": [
+      {"id": "P0-1", "call": "metadata.list_datasets + metadata.list_schemas + metadata.get_dataset_range", "purpose": "confirm dataset, schema set and dataset range as of request date (re-confirmation of the JS-rendered catalog facts). ADDITIONAL CHECK: does GLBX.MDP3 expose 'ohlcv-eod' (session-end daily bars, DBN rtype 0x24 per the adapter lane's spec)? If yes, session-aligned dailies may come from the vendor directly instead of self-aggregation from ohlcv-1m — then EXP-03 switches schema subject to pilot acceptance."},
+      {"id": "P0-2", "call": "metadata.list_unit_prices(GLBX.MDP3)", "purpose": "capture CURRENT USD/GB per schema per mode; the only legitimate price source"},
+      {"id": "P0-3", "call": "metadata.get_record_count per root x {ohlcv-1m, ohlcv-1d, definition, statistics} x probe windows [2010-06-01..2010-09-30, 2012-01-01..2012-03-31, 2015-01-01..2015-03-31, 2019-01-01..2019-03-31, 2021-01-01..2021-03-31]", "purpose": "actual per-symbol per-schema coverage table (earliest window with count>0); resolves the 'availability could vary between schemas' caveat; also feasibility check for the 2019/2021 M1 tier starts"},
+      {"id": "P0-4", "call": "symbology.resolve {ROOT}.c.0/.n.0/.v.0 for all 10 roots, 2010-01-01..2026-10-01 (stype_out=raw_symbol)", "purpose": "vendor roll tables; diff vs our declared rule; roll-date mismatch counts per symbol-year feed HC3 (free per docs: 'Databento offers symbology resolution for free')"},
+      {"id": "P0-5", "call": "metadata.get_billable_size for the exact PILOT lines and candidate EXPANSION chunk shapes", "purpose": "cost + disk projection table for the owner spend gate"}
+    ]
+  },
+  "lines": [
+    {
+      "line_id": "PILOT-01",
+      "phase": "PILOT",
+      "need": "IBKR-overlap identity validation: PIT instrument universe + exact listing/expiration for every NQ/CL contract alive in the pilot windows (join vendor definition.expiration to IBKR lastTradeDate; SI-class identity traps re-verified here on NQ/CL first).",
+      "hypothesis_classes": ["HC1", "HC3"],
+      "hypothesis_ids": ["NQ-H1", "NQ-H5", "CL-H1", "CL-H5"],
+      "symbols": ["NQ", "CL"],
+      "stype_in": "parent",
+      "schemas": [{"name": "definition", "justification": "smallest schema carrying activation/expiration/tick/multiplier; tiny volume; L0"}],
+      "date_spec": {"start": "2024-12-01", "end": "2026-10-01", "basis": "pilot window union + 2 months lead for listings"},
+      "engine_or_qa_note": "feeds acceptance checks Identity + Roll conventions (DATA_ACQUISITION_SPEC.md §5)"
+    },
+    {
+      "line_id": "PILOT-02",
+      "phase": "PILOT",
+      "need": "Official venue truth for the overlap windows: settlement (stat_type 3, final flag), open interest (9), cleared volume (6) per contract-day — the class absent from IBKR entirely.",
+      "hypothesis_classes": ["HC1", "HC3"],
+      "hypothesis_ids": ["NQ-H2", "NQ-H5", "CL-H1", "CL-H5"],
+      "symbols": ["NQ", "CL"],
+      "stype_in": "parent",
+      "schemas": [{"name": "statistics", "justification": "single L0 schema covering settlement+OI+cleared volume+official OHLC reconciliation"}],
+      "date_spec": {"start": "2025-08-01", "end": "2026-10-01", "basis": "IBKR measurable overlap era (front-chain real-volume run 2025-05..2026-09)"},
+      "engine_or_qa_note": "feeds acceptance checks Settlement + OI sanity"
+    },
+    {
+      "line_id": "PILOT-03",
+      "phase": "PILOT",
+      "need": "Daily per-contract panel across the roll-critical windows incl. ADJACENT contracts simultaneously (roll cost = adjacent close gap; volume handover shape).",
+      "hypothesis_classes": ["HC1", "HC3"],
+      "hypothesis_ids": ["NQ-H5", "CL-H1", "CL-H5"],
+      "symbols": ["NQ", "CL"],
+      "stype_in": "parent",
+      "schemas": [{"name": "ohlcv-1d", "justification": "cheapest per-contract daily panel; UTC-day caveat declared (conventions.timezone_and_session_notes); session dailies re-aggregated locally from PILOT-04"}],
+      "date_spec": {"windows": [
+        {"label": "NQ-U5->Z5", "start": "2025-08-25", "end": "2025-09-19"},
+        {"label": "NQ-Z5->H6", "start": "2025-11-17", "end": "2025-12-19"},
+        {"label": "NQ-H6->M6", "start": "2026-02-23", "end": "2026-03-20"},
+        {"label": "NQ-M6->U6", "start": "2026-05-25", "end": "2026-06-19"},
+        {"label": "CL-roll-1", "start": "2025-09-22", "end": "2025-10-03"},
+        {"label": "CL-roll-2", "start": "2025-12-22", "end": "2026-01-02"},
+        {"label": "CL-roll-3", "start": "2026-03-24", "end": "2026-04-03"},
+        {"label": "CL-roll-4", "start": "2026-06-24", "end": "2026-07-03"}
+      ], "basis": "DATA_ACQUISITION_SPEC.md §5 roll-critical windows (quarterly NQ / monthly CL liquidity handover)"},
+      "engine_or_qa_note": "feeds acceptance checks Daily OHLCV + Daily volume + Roll conventions"
+    },
+    {
+      "line_id": "PILOT-04",
+      "phase": "PILOT",
+      "need": "Full-session M1 on the exact days IBKR M1 exists, to validate session-boundary handling, bar alignment (bar-START ts semantics) and RTH-subset equality.",
+      "hypothesis_classes": ["HC2"],
+      "hypothesis_ids": ["NQ-H4", "CL-H2"],
+      "symbols": ["NQ", "CL"],
+      "stype_in": "raw_symbol",
+      "symbols_explicit": ["NQU5", "NQZ5", "NQH6", "NQM6", "NQU6", "NQZ6", "NQH7", "CLV5", "CLX5", "CLZ5", "CLF6", "CLJ6", "CLN6", "CLU6", "CL front strip 2026-09-30..10-01 (resolve via definition P0/symbology)"],
+      "schemas": [{"name": "ohlcv-1m", "justification": "matches IBKR M1 granularity for overlap; smallest schema satisfying session-stat and alignment checks"}],
+      "date_spec": {"windows": [
+        {"label": "NQU5", "start": "2025-08-28", "end": "2025-08-29", "symbols": ["NQU5"]},
+        {"label": "NQZ5", "start": "2025-11-26", "end": "2025-11-28", "symbols": ["NQZ5"]},
+        {"label": "NQH6", "start": "2026-02-26", "end": "2026-02-27", "symbols": ["NQH6"]},
+        {"label": "NQM6", "start": "2026-05-28", "end": "2026-05-29", "symbols": ["NQM6"]},
+        {"label": "NQU6", "start": "2026-08-28", "end": "2026-08-31", "symbols": ["NQU6"]},
+        {"label": "NQZ6/NQH7", "start": "2026-09-30", "end": "2026-10-01", "symbols": ["NQZ6", "NQH7"]},
+        {"label": "CLV5", "start": "2025-08-28", "end": "2025-08-29", "symbols": ["CLV5"]},
+        {"label": "CLX5", "start": "2025-09-29", "end": "2025-09-30", "symbols": ["CLX5"]},
+        {"label": "CLZ5", "start": "2025-10-30", "end": "2025-10-31", "symbols": ["CLZ5"]},
+        {"label": "CLF6", "start": "2025-11-26", "end": "2025-11-28", "symbols": ["CLF6"]},
+        {"label": "CLJ6", "start": "2026-02-26", "end": "2026-02-27", "symbols": ["CLJ6"]},
+        {"label": "CLN6", "start": "2026-05-28", "end": "2026-05-29", "symbols": ["CLN6"]},
+        {"label": "CLU6", "start": "2026-07-30", "end": "2026-07-31", "symbols": ["CLU6"]},
+        {"label": "CL front strip", "start": "2026-09-30", "end": "2026-10-01", "symbols": ["CLV6", "CLX6"]}
+      ], "basis": "DATA_ACQUISITION_SPEC.md §5 M1 windows (exactly where IBKR M1 exists, useRTH=true)"},
+      "engine_or_qa_note": "feeds acceptance check M1 alignment; RTH subset 08:30-16:00 CT compared, full-session delta itself a validation target"
+    },
+    {
+      "line_id": "PILOT-05",
+      "phase": "PILOT",
+      "need": "Synchronous top-of-book at 1m on the M1 windows — first executable-spread measurement vs our non-synchronous IBKR daily BID/ASK; L1 usage confined to narrow windows.",
+      "hypothesis_classes": ["HC2"],
+      "hypothesis_ids": ["NQ-H3", "NQ-H5", "CL-H2", "CL-H5"],
+      "symbols": ["NQ", "CL"],
+      "stype_in": "raw_symbol",
+      "symbols_explicit": "same contracts as PILOT-04 windows",
+      "schemas": [{"name": "bbo-1m", "justification": "smallest depth satisfying 'synchronous executable spread' (mbp-1 not needed for spread medians; mbo/mbp-10 unjustified)"}],
+      "date_spec": {"windows": [
+        {"label": "NQU5", "start": "2025-08-28", "end": "2025-08-29", "symbols": ["NQU5"]},
+        {"label": "NQZ5", "start": "2025-11-26", "end": "2025-11-28", "symbols": ["NQZ5"]},
+        {"label": "NQH6", "start": "2026-02-26", "end": "2026-02-27", "symbols": ["NQH6"]},
+        {"label": "NQM6", "start": "2026-05-28", "end": "2026-05-29", "symbols": ["NQM6"]},
+        {"label": "NQU6", "start": "2026-08-28", "end": "2026-08-31", "symbols": ["NQU6"]},
+        {"label": "NQZ6/NQH7", "start": "2026-09-30", "end": "2026-10-01", "symbols": ["NQZ6", "NQH7"]},
+        {"label": "CLV5", "start": "2025-08-28", "end": "2025-08-29", "symbols": ["CLV5"]},
+        {"label": "CLX5", "start": "2025-09-29", "end": "2025-09-30", "symbols": ["CLX5"]},
+        {"label": "CLZ5", "start": "2025-10-30", "end": "2025-10-31", "symbols": ["CLZ5"]},
+        {"label": "CLF6", "start": "2025-11-26", "end": "2025-11-28", "symbols": ["CLF6"]},
+        {"label": "CLJ6", "start": "2026-02-26", "end": "2026-02-27", "symbols": ["CLJ6"]},
+        {"label": "CLN6", "start": "2026-05-28", "end": "2026-05-29", "symbols": ["CLN6"]},
+        {"label": "CLU6", "start": "2026-07-30", "end": "2026-07-31", "symbols": ["CLU6"]},
+        {"label": "CL front strip", "start": "2026-09-30", "end": "2026-10-01", "symbols": ["CLV6", "CLX6"]}
+      ], "basis": "identical windows as PILOT-04 (DATA_ACQUISITION_SPEC.md §5 M1 windows)"},
+      "engine_or_qa_note": "feeds acceptance check spread sanity; informs whether EXP-06 event-window bbo is worth buying"
+    },
+    {
+      "line_id": "PILOT-06",
+      "phase": "PILOT",
+      "need": "Vendor roll tables for NQ/CL (c/n/v) vs our declared rule — divergence table before any bulk purchase.",
+      "hypothesis_classes": ["HC3"],
+      "hypothesis_ids": ["NQ-H5", "CL-H1", "CL-H5"],
+      "symbols": ["NQ", "CL"],
+      "stype_in": "continuous",
+      "schemas": [{"name": "symbology.resolve only", "justification": "free endpoint; NO data purchase; continuous used as measurement object / declared-convention feature only, never as backtest price series"}],
+      "date_spec": {"start": "2010-01-01", "end": "2026-10-01", "basis": "full mapping history"},
+      "engine_or_qa_note": "cost: FREE per docs (symbology page, access 2026-10-02)"
+    },
+    {
+      "line_id": "EXP-01",
+      "phase": "EXPANSION",
+      "need": "Full PIT definitions universe for all 10 roots: listing/activation, expiration (canonical roll-rule input), tick size, contract size, add/modify/delete history — replaces CLASS_PARTIAL_DEFINITIONS; instrument identity authority (SI 5000oz class, 6J USD-per-JPY orientation).",
+      "hypothesis_classes": ["HC1", "HC3"],
+      "hypothesis_ids": ["NQ-H1", "NQ-H2", "ES-H1", "ES-H2", "CL-H1", "NG-H3", "GC-H1", "GC-H3", "SI-H1", "SI-H2", "6E-H1", "6E-H2", "6J-H1", "6J-H3", "6B-H1", "6B-H2", "6A-H1", "6A-H2"],
+      "symbols": ["NQ", "ES", "CL", "NG", "GC", "SI", "6E", "6J", "6B", "6A"],
+      "stype_in": "parent",
+      "schemas": [{"name": "definition", "justification": "the only schema carrying PIT instrument actions; low volume; cheapest class"}],
+      "date_spec": {"start": "2010-06-06", "end": "2026-10-01", "basis": "dataset upper bound; per-symbol actual start measured by P0-3 BEFORE spend; request trimmed to verified starts"},
+      "engine_or_qa_note": "enables PIT roll tables (old/new, decision ts, reason) per 00_MASTER §8; year-by-year and regime-split tests need >= 5y (HC1 floor)"
+    },
+    {
+      "line_id": "EXP-02",
+      "phase": "EXPANSION",
+      "need": "Official statistics for all 10 roots: daily OI (stat 9) for PIT contract selection + liquidity migration, official settlement (3) separable from trade close, cleared volume (6) — fills CLASS_ABSENT_OPEN_INTEREST + CLASS_ABSENT_STATISTICS in one schema.",
+      "hypothesis_classes": ["HC1", "HC2", "HC3"],
+      "hypothesis_ids": ["NQ-H2", "NQ-H5", "ES-H1", "ES-H2", "CL-H1", "NG-H3", "GC-H1", "GC-H3", "GC-H4", "SI-H1", "SI-H3", "6E-H1", "6E-H2", "6J-H1", "6J-H3", "6B-H1", "6B-H2", "6A-H1", "6A-H2"],
+      "symbols": ["NQ", "ES", "CL", "NG", "GC", "SI", "6E", "6J", "6B", "6A"],
+      "stype_in": "parent",
+      "schemas": [{"name": "statistics", "justification": "venue-official OI/settlement/cleared-volume; L0; no other schema carries OI"}],
+      "date_spec": {"start": "2010-06-06", "end": "2026-10-01", "basis": "same verified-start discipline as EXP-01; note next-UTC-day publish timing for PIT (OBSERVABLE t+1)"},
+      "engine_or_qa_note": "OI-based roll variant (00_MASTER §6.11) becomes testable; settlement separable from trade close fixes SETTLEMENT_ONLY_DEEP_BARS ambiguity"
+    },
+    {
+      "line_id": "EXP-03",
+      "phase": "EXPANSION",
+      "need": "Multi-year REAL-VOLUME per-contract daily panel for all 10 roots incl. adjacent contracts — the core HC1 depth fix (true-volume front chain currently 13.5-17 months; deep IBKR dailies 65-88% settlement-only).",
+      "hypothesis_classes": ["HC1", "HC3"],
+      "hypothesis_ids": ["NQ-H1", "NQ-H2", "NQ-H5", "ES-H2", "ES-H4", "ES-H5", "CL-H1", "NG-H3", "NG-H4", "GC-H3", "GC-H4", "SI-H2", "SI-H3", "SI-H4", "6E-H2", "6J-H1", "6J-H2", "6J-H3", "6B-H1", "6B-H2", "6A-H2"],
+      "symbols": ["NQ", "ES", "CL", "NG", "GC", "SI", "6E", "6J", "6B", "6A"],
+      "stype_in": "parent",
+      "schemas": [{"name": "ohlcv-1d", "justification": "cheapest real-volume daily depth; UTC-day basis declared — session dailies self-aggregated from EXP-04/05 where 1m is bought, or from EXP-02 statistics official OHLC"}],
+      "date_spec": {"start": "2010-06-06", "end": "2026-10-01", "basis": "HC1 floor '>= 5y continuous' (COVERAGE_MANIFEST HC1 needs); SI-H2 floor >= 10y two-leg daily; trimmed to P0-3 verified per-symbol starts"},
+      "engine_or_qa_note": "unblocks DAILY_BT admission bar (>= 24 months true-volume front chain, BACKTEST_LAUNCH_DRAFT §6) for all 10 symbols"
+    },
+    {
+      "line_id": "EXP-04",
+      "phase": "EXPANSION",
+      "need": "Multi-year M1 for tier-A roots: event-window returns at 1m/5m/15m/1h, session statistics, delayed-entry tests, overnight-Globex behavior (NQ-H4 explicitly requires full-session M1 >= 2y; ES-H3 floor M1 from >= 2019 with >= 40 events/class; NG-H1 floor >= 100 EIA events; CL-H2 10:30 ET reaction).",
+      "hypothesis_classes": ["HC2", "HC4"],
+      "hypothesis_ids": ["NQ-H3", "NQ-H4", "NQ-H5", "ES-H3", "ES-H5", "CL-H2", "CL-H3", "NG-H1", "NG-H5"],
+      "symbols": ["NQ", "ES", "CL", "NG"],
+      "stype_in": "parent",
+      "schemas": [{"name": "ohlcv-1m", "justification": "framework §10 phase-1 ask; smallest schema satisfying event/session studies without tick data"}],
+      "date_spec": {"start": "2019-01-01", "end": "2026-10-01", "basis": "ES-H3 'M1 from >= 2019' + event-count floors (>= 40 events/class ES; >= 100 events NG-H1); P0-3 verifies per-symbol 1m coverage from 2019 (FIX/FAST era caveat applies 2019 is post-2017 so OK)"},
+      "engine_or_qa_note": "largest single line; chunked by quarter; billable-size projected per chunk BEFORE spend; enables Arm C mechanism work beyond descriptives"
+    },
+    {
+      "line_id": "EXP-05",
+      "phase": "EXPANSION",
+      "need": "Multi-year M1 for tier-B roots: HC2 session statistics + overnight-gap/tail behavior (SI-H5 explicitly needs >= 2y front-scale + overnight session data; FX BoE/RBA/BoJ event sessions fall outside IBKR RTH bars).",
+      "hypothesis_classes": ["HC2", "HC4"],
+      "hypothesis_ids": ["GC-H2", "SI-H5", "6E-H3", "6J-H2", "6B-H2", "6B-H3", "6A-H1"],
+      "symbols": ["GC", "SI", "6E", "6J", "6B", "6A"],
+      "stype_in": "parent",
+      "schemas": [{"name": "ohlcv-1m", "justification": "same as EXP-04; 5y window matches HC2 floors at lower volume roots"}],
+      "date_spec": {"start": "2021-01-01", "end": "2026-10-01", "basis": "~5y to 2026; >= 2y floors (SI-H5) with margin; cheaper than tier-A; extendable by owner decision after Phase-0 cost table"},
+      "engine_or_qa_note": "chunked by quarter; enables 6A/6J hidden-session (Globex) event studies currently NOT_RUN on RTH-only corpus"
+    },
+    {
+      "line_id": "EXP-06",
+      "phase": "EXPANSION",
+      "need": "SELECTIVE synchronous BBO at 1m around named macro/EIA events only (spread response around releases; HC4's spread+volume response measurement).",
+      "hypothesis_classes": ["HC2", "HC4"],
+      "hypothesis_ids": ["NQ-H3", "ES-H3", "CL-H2", "NG-H1", "6E-H3", "6B-H2"],
+      "symbols": ["NQ", "ES", "CL", "NG", "6E", "6B", "6J", "6A"],
+      "stype_in": "raw_symbol",
+      "symbols_explicit": "front contract per event date resolved PIT via free symbology.resolve {ROOT}.n.0 at T-1",
+      "schemas": [{"name": "bbo-1m", "justification": "synchronous executable spread at the smallest depth; L1 cost confined to named windows"}],
+      "date_spec": {"windows_rule": "event dates x [release_ts - 30 min, release_ts + 120 min] where event dates = FOMC 14:00 ET, CPI/NFP 08:30 ET (NQ/ES/6*), EIA WPSR/WNGSR 10:30 ET Wed/Thu (CL/NG) from PIT calendars (BLS/FOMC/EIA — DATA_ACQUISITION_SPEC.md §8); materialized AFTER Phase-1 pilot acceptance, chunked per event", "basis": "HC4 event floors; PILOT-05 validates the measurement first"},
+      "engine_or_qa_note": "PHASE-2 GATED: bought only after pilot acceptance green and signal work identifies surviving event families; per-event billable size probed before spend"
+    },
+    {
+      "line_id": "EXP-07",
+      "phase": "EXPANSION",
+      "need": "Tick trades on roll-critical weeks (volume/OI-crossover measurement inside sessions; roll-week microstructure: GC-H1 crossover 1-2 sessions before calendar roll, 6B-H1 crossover ~8-9 sessions after, CL-H5 spread-paid-at-switch) and on event windows where bar granularity is insufficient.",
+      "hypothesis_classes": ["HC2", "HC3", "HC4"],
+      "hypothesis_ids": ["GC-H1", "6B-H1", "CL-H5", "NQ-H3", "ES-H3", "NG-H1"],
+      "symbols": ["NQ", "ES", "CL", "NG", "GC", "SI", "6E", "6J", "6B", "6A"],
+      "stype_in": "raw_symbol",
+      "symbols_explicit": "old + new contract pair per roll week (from our roll tables / free resolve)",
+      "schemas": [{"name": "trades", "justification": "tick prints without book depth — smallest schema satisfying crossover timing and event-path needs"}],
+      "date_spec": {"windows_rule": "declared-roll session +/- 5 sessions per root, ~4-7 roll events/root/year 2021->2026 (~6.4k window-days total upper bound, ASSUMED count; exact enumeration from our roll calendar after EXP-01/02 delivery) plus named event windows shared with EXP-06", "basis": "dossier roll-window findings (GC/6B/SI/FX migration shapes)"},
+      "engine_or_qa_note": "PHASE-2 GATED like EXP-06; roll-week enumeration finalized only after definitions/statistics are in-house (no lookahead, no double-buy)"
+    },
+    {
+      "line_id": "EXP-08",
+      "phase": "EXPANSION",
+      "need": "RESERVED: tbbo (trades + best bid/offer at trade time) for fill-realism validation windows IF execution-microstructure hypotheses survive to named-window stage.",
+      "hypothesis_classes": ["HC2"],
+      "hypothesis_ids": ["NQ-H4", "ES-H3", "CL-H5"],
+      "symbols": ["NQ", "ES", "CL"],
+      "stype_in": "raw_symbol",
+      "schemas": [{"name": "tbbo", "justification": "smaller than mbp-1 for spread-at-fill context; only schema class smaller than mbp-1 that carries both prints and top-of-book"}],
+      "date_spec": {"windows_rule": "named execution windows TBD by the future registered cycle; NOT enumerated now", "basis": "DATA_ACQUISITION_SPEC.md §3 phase-2 selective L1"},
+      "engine_or_qa_note": "NOT REQUESTED THIS ROUND — placeholder so the tier logic is explicit; mbp-1 and mbo/mbp-10 remain NOT REQUESTED (no current hypothesis class justifies full-book depth)"
+    },
+    {
+      "line_id": "EXP-09",
+      "phase": "EXPANSION",
+      "need": "Vendor roll tables for ALL roots (c/n/v) — HC3 alternative-roll test inputs + declared-convention continuous features if ever needed (feature-only).",
+      "hypothesis_classes": ["HC3"],
+      "hypothesis_ids": ["ES-H1", "CL-H1", "CL-H5", "NG (chain divergence §1)", "GC-H1", "SI-H1", "6E-H1", "6J-H1", "6B-H1", "6A quarterly adaptation"],
+      "symbols": ["NQ", "ES", "CL", "NG", "GC", "SI", "6E", "6J", "6B", "6A"],
+      "stype_in": "continuous",
+      "schemas": [{"name": "symbology.resolve only", "justification": "free; NO vendor continuous price series is ever bought or used as backtest input (DATA_ACQUISITION_SPEC.md §4 rule 1)"}],
+      "date_spec": {"start": "2010-01-01", "end": "2026-10-01", "basis": "full mapping history"},
+      "engine_or_qa_note": "cost: FREE per docs (symbology page, access 2026-10-02)"
+    }
+  ],
+  "phases": {
+    "PILOT": {
+      "purpose": "IBKR-overlap validation per DATA_ACQUISITION_SPEC.md §5 (NQ + CL: hardest quarterly + monthly roll regimes) using L0 + narrow bbo-1m only, sized to fit within the new-user credit if the owner so decides (POSTULATED, must be confirmed by P0-5 get_billable_size — no number asserted).",
+      "gate_before": "owner creates account/key (owner decision), runs P0-1..P0-5, reviews evidence pack, explicitly approves spend",
+      "gate_after": "acceptance table (DATA_ACQUISITION_SPEC.md §5 / DATA_ACCEPTANCE_CHECKLIST.md) green or adjudicated by owner before ANY EXPANSION line is bought"
+    },
+    "EXPANSION": {
+      "order": ["EXP-01", "EXP-02", "EXP-03 (cheapest first: definitions/statistics unlock roll tables, OI, settlement, PIT universe)", "EXP-04", "EXP-05 (ohlcv-1m by engine demand priority)", "EXP-06", "EXP-07", "EXP-08 (phase-2 selective L1 only on surviving named windows)"],
+      "gate_before_each_line": "owner reviews the per-line cost table produced by probe_cost.py against this manifest and approves; ohlcv-1m tier starts trimmed to P0-3 verified coverage",
+      "gate_after": "delivery accepted per DATA_ACCEPTANCE_CHECKLIST.md, freeze + budget registration + cycle gate + fresh-context A7"
+    }
+  },
+  "not_requested": [
+    {"item": "mbo", "reason": "no hypothesis class in the framework justifies full-book order data; cost-dominant"},
+    {"item": "mbp-10", "reason": "same; MBP-10 is a convenience schema (docs what's-a-schema)"},
+    {"item": "mbp-1", "reason": "reserved for named execution windows if microstructure hypotheses survive (DATA_ACQUISITION_SPEC.md §3); tbbo/bbo-1m cover shallower needs first"},
+    {"item": "ohlcv-1s / ohlcv-1h bulk", "reason": "1s is cost-heavy and unjustified by current floors; 1h derivable locally from 1m; ohlcv-1h optional add-on only if marginal cost proves trivial at Phase 0"},
+    {"item": "vendor continuous OHLCV series (any schema)", "reason": "never bought (00_MASTER §8 + DATA_ACQUISITION_SPEC.md §4 rule 1); continuous used only via free symbology.resolve with declared convention"},
+    {"item": "status schema", "reason": "session-halt states not required by any current hypothesis; revisit only if halt-conditioned behavior becomes a hypothesis"},
+    {"item": "live feed / CME license", "reason": "out of scope for this program (DATA_ACQUISITION_SPEC.md §3 licensing note)"}
+  ],
+  "sources": [
+    {"url": "https://databento.com/docs/venues-and-datasets/glbx-mdp3", "access_date": "2026-10-02", "what": "GLBX.MDP3 = CME Group MDP 3.0 for CME/CBOT/NYMEX/COMEX; history begins June 2010; May 2017 full MBO granularity; pre-May-2017 legacy FIX/FAST; timestamp caveats; statistics publish timing (cleared volume/OI next UTC date, Friday->Sunday; settlement preliminary->final)"},
+    {"url": "https://databento.com/docs/schemas-and-data-formats/ohlcv", "access_date": "2026-10-02", "what": "schema names ohlcv-1s/1m/1h/1d; ts_event = inclusive START of bar aggregation period from trade ts_recv; ohlcv-1d based on UTC dates (session dailies must be self-aggregated)"},
+    {"url": "https://databento.com/docs/standards-and-conventions/symbology", "access_date": "2026-10-02", "what": "raw_symbol (publisher-native, e.g. ESH3) / parent / continuous stypes; continuous format [ROOT].[ROLL_RULE].[RANK]; c = calendar (NG.c.0 held NGV2 to end of trading 2022-09-28), n = open interest at previous day's close (CL.n.1 = second-highest OI), v = volume rank; symbology.resolve is FREE"},
+    {"url": "https://databento.com/docs/schemas-and-data-formats/statistics", "access_date": "2026-10-02", "what": "statistics schema fields stat_type/stat_flags; cleared volume stat_type 6; preliminary vs final messages ('the final message ... is the one you should use'); official open interest + settlement prices (stat codes 3 settlement / 9 OI as documented on the same page per DATA_ACQUISITION_SPEC.md §3, access 2026-10-02)"},
+    {"url": "https://databento.com/docs/api-reference-historical/metadata/list-unit-prices", "access_date": "2026-10-02", "what": "list_unit_prices: 'List unit prices for each feed mode and data schema in US dollars per gigabyte'"},
+    {"url": "https://databento.com/docs/api-reference-historical/metadata/get-billable-size", "access_date": "2026-10-02", "what": "get_billable_size: 'billable uncompressed raw binary size'; accuracy caveat for non-multiples of 10 minutes"},
+    {"url": "https://databento.com/docs/api-reference-historical/metadata/get-record-count", "access_date": "2026-10-02", "what": "get_record_count; same 10-minute accuracy caveat"},
+    {"url": "https://databento.com/docs/pricing/usage-based-pricing-and-data-credits", "access_date": "2026-10-02", "what": "'Every dataset or data feed is priced in $/GB. Every month, you pay only for the data that you've used'; $125 free credits at signup"},
+    {"url": "https://databento.com/docs/api-reference-historical/basics/authentication", "access_date": "2026-10-02", "what": "API-key auth; Python client auto-reads DATABENTO_API_KEY env var"},
+    {"url": "https://databento.com/docs/api-reference-historical/basics/rate-limits", "access_date": "2026-10-02", "what": "historical: 100 concurrent connections, 100 time series req/s, 100 symbology req/s per IP"},
+    {"url": "https://databento.com/docs/api-reference-historical/batch", "access_date": "2026-10-02", "what": "batch downloads (portal + API); FTP supported for large reliable bulk downloads"},
+    {"url": "https://databento.com/docs/schemas-and-data-formats/databento-binary-encoding", "access_date": "2026-10-02", "what": "DBN: 16-byte RecordHeader (length in 32-bit words); fixed struct set"},
+    {"url": "https://databento.com/docs", "access_date": "2026-10-02", "what": "home: 'most of our data messages are designed to be small (56 bytes)'; zstd compression recommended"},
+    {"url": "https://databento.com/datasets/GLBX.MDP3", "access_date": "2026-10-02", "what": "dataset landing (partially rendered): $125 free credits; CME Globex coverage; pricing via catalog"},
+    {"url": "https://databento.com/catalog/cme/GLBX.MDP3", "access_date": "2026-10-02", "what": "catalog page (JS-rendered; facts carried by DATA_ACQUISITION_SPEC.md §2 same-day access): available from 2010-06-06 UTC; per-schema availability caveat; tier prices (L0 16y on Standard; L1 1y Standard)"},
+    {"url": "api.databento.com/v0/docs/search (docs search API, build 01M3QSBT40W79JPVNV0CHMKD5E)", "access_date": "2026-10-02", "what": "extraction channel for the JS-rendered docs pages above; all quoted snippets come from the current published docs build served through this vendor endpoint"}
+  ],
+  "local_evidence": [
+    "data/COVERAGE_MANIFEST.json (OBSERVED, measure_coverage.py, 2026-10-02)",
+    "DATA_ACQUISITION_SPEC.md (DATA-PIT-ACQUISITION-PREP lane, 2026-10-02)",
+    "BACKTEST_LAUNCH_DRAFT.md (BACKTEST-ENGINE-PREP lane, 2026-10-02)",
+    "INTEGRATION_SUMMARY.md (A1 lead, 2026-10-02)",
+    "dossiers/{NQ,ES,CL,NG,GC,SI,6E,6J,6B,6A}_DOSSIER.md §1 §5 (symbol lanes, 2026-10-02)"
+  ]
+}

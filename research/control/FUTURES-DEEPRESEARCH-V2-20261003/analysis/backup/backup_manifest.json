@@ -1,0 +1,52 @@
+{
+ "schema": "backup_manifest@1",
+ "task_id": "FUTURES-DEEPRESEARCH-V2-20261003",
+ "lane": "DATA-BACKUP",
+ "generated_utc": "2026-10-02T23:30:38+00:00",
+ "owner_instruction": "backup l\u1ea1i d\u1eef li\u1ec7u \u1edf \u0111\u00e2u \u0111\u00f3 \u2014 mirror ALL datasets to iCloud with verification",
+ "icloud_root": "/Users/hoangminhlong/Library/Mobile Documents/com~apple~CloudDocs/my-quantitative-futures",
+ "datasets": [
+  {
+   "dataset": "databento-av1trim (ohlcv-1m + definition/statistics raw dbn.zst, parquet, per-chunk qa/ledger evidence)",
+   "source": "/Users/hoangminhlong/my-quantitative-data/futures-databento-av1trim/",
+   "icloud_path": "/Users/hoangminhlong/Library/Mobile Documents/com~apple~CloudDocs/my-quantitative-futures/av1-trim/",
+   "files": 504,
+   "bytes": 2695144303,
+   "sha_verified_count": 504,
+   "mismatch_count": 0,
+   "missing_count": 0,
+   "fixed_this_run": 0,
+   "verification": "per-file SHA256 vs BOTH on-disk source AND vendor sha256 recorded in COMPLETION_LEDGER.json (source_vs_ledger_sha_disagreements=0); ledger_entry.json verified by existence + JSON-parse",
+   "scope": "72/72 MIRRORED chunks x 7 files = 504 files; 20 additional ledger chunks are DROPPED_BY_OWNER_RESCOPE (GC/SI/CL/NG \u2014 never downloaded, nothing to mirror)",
+   "sync_state": "COPIED + SYNC_PENDING_UNVERIFIED",
+   "verified_utc": "2026-10-02T23:30:38+00:00"
+  },
+  {
+   "dataset": "futures-nonprice-10syms (raw PIT families + normalized parquet + raw_manifest.jsonl)",
+   "source": "/Users/hoangminhlong/.my-quantitative-data/futures-nonprice-10syms",
+   "icloud_path": "/Users/hoangminhlong/Library/Mobile Documents/com~apple~CloudDocs/my-quantitative-futures/nonprice/",
+   "files": 10535,
+   "bytes": 1361587677,
+   "sha_verified_count": 10535,
+   "mismatch_count": 0,
+   "missing_count": 0,
+   "fixed_this_run": 0,
+   "verification": "FULL hash of every file source-vs-mirror (exceeds the sampled floor; all 4,565 NOAA files hashed fully); raw_manifest.jsonl cross-check: 10520 agree / 0 disagree; 0 raw files lack a manifest row",
+   "scope": "13 family dirs (incl. empty bls_gate) + normalized/ (14 tidy parquet) + raw_manifest.jsonl; manifest lives in the data dir (repo path in dispatch does not exist \u2014 noted)",
+   "sync_state": "COPIED + SYNC_PENDING_UNVERIFIED",
+   "verified_utc": "2026-10-02T23:30:38+00:00"
+  }
+ ],
+ "git_evidence_note": "In-git evidence (research/control/** manifests, ledgers, QA reports, dossiers) is NOT mirrored to iCloud: the git branch prep/futures-behavior-10syms-20261002 is its own backup. Push is not allowed by lane law; owner should push/remote-archive when they choose (worktree-local commits only so far).",
+ "disk_space_note": "Measured impact: mirrors occupy 2.51 GiB (av1-trim) + 1.29 GiB (nonprice) = 3.80 GiB ADDITIONAL local disk (iCloud mirrors keep a full local copy until evicted; 0 evicted placeholders at verification time). Data volume free space was 30 GiB before the nonprice copy, 26 GiB after all lanes' concurrent activity. Once macOS finishes uploading, `brctl evict` can reclaim the ~3.8 GiB while iCloud retains the data.",
+ "honesty": "COPIED = file present in the local CloudDocs folder with SHA256 equal to source. Actual cloud upload is macOS/iCloud's job and is NOT verified here -> SYNC_PENDING_UNVERIFIED. Eviction policy is macOS/owner-controlled.",
+ "concurrency": "FX-BACKFILL lane was actively adding chunks during this task (backfill_20261003 evidence dir created mid-run). Final delta pass at 2026-10-02T23:30:38+00:00 found no newly-completed un-mirrored chunks; in-flight chunks remain the FX lane's own mirror responsibility per its pipeline.",
+ "reports": {
+  "av1_trim": "av1_verify_report.json",
+  "nonprice": "nonprice_mirror_report.json"
+ },
+ "scripts": {
+  "av1_trim": "verify_av1_mirror.py (modes: verify|fix; exit 0 iff all verified)",
+  "nonprice": "mirror_nonprice.py (idempotent copy+full-sha-verify; exit 0 iff all verified)"
+ }
+}

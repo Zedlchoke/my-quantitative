@@ -1,0 +1,59 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-DEEPRESEARCH-V2-20261003",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "INTEGRATION-FIX-V2",
+  "dispatch_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "actual_start_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "commit_sha": null,
+  "commit_sha_disclosure": "No commit made: prep-class integration-fix lane on shared branch prep/futures-behavior-10syms-20261002 with sibling lanes writing concurrently; commit not requested by dispatch. Edits: 3 tracked files modified (nonprice normalize/tests/report, all within the LIMITED-edit grant of dispatch item 1) + new files under lane-owned analysis/integration/.",
+  "changed_paths": [
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/normalize/cftc_normalize.py (MODIFIED - item 1 exact-name fix)",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/tests/test_parse.py (MODIFIED - 7 new regression checks, 2 updated)",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/PUBLIC_DATA_ACQUISITION_REPORT_VI.md (MODIFIED - new ERRATUM 2026-10-03 block)",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/contaminant_scan.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/contaminant_scan.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/contaminant_scan.md",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/nq2020_hole_probe.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/nq2020_hole_probe.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/nq2020_hole_probe.md",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dispatch/handoff_INTEGRATION-FIX-V2.json",
+    "OUT-OF-TREE (data dir, documented in erratum): ~/.my-quantitative-data/futures-nonprice-10syms/normalized/cftc_legacy_tidy.parquet regenerated sha256 4f9cd789... -> f7a2719e...; cftc_tff_disagg_tidy.parquet d798ed27... -> 1dbb5e93...; old legacy tidy preserved as cftc_legacy_tidy.parquet.bak_prefix_mixed_20261003"
+  ],
+  "tests": [
+    {"command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/normalize/cftc_normalize.py", "exit_code": 0, "verdict": "PASS", "log_digest": "legacy rows 15,347; all 10 canonical COT_LEGACY_{SYM} = 1,082 rows / 0 dup dates (generation-time assert_canonical_clean gate); +14 __ALT__ sibling series 4,527 rows; tff/disagg 15,170 = 10,766 canonical + 4,404 ALT"},
+    {"command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/tests/test_parse.py", "exit_code": 0, "verdict": "PASS", "log_digest": "48/48 tests passed (was 41/41; +7 new: canonical zero-dup-dates pinned vs pre-fix counts ES=1126/CL=928/NQ=548/GC=164/NG=10/SI=5, 1,082 weeks x 10, ALT-never-mixes, DEEP-ES/DEEP-NQ/DEEP-6B spot-checks exact, CL/GC/SI/NG contaminants only under ALT)"},
+    {"command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/contaminant_scan.py", "exit_code": 0, "verdict": "PASS", "log_digest": "six roots 28,212,754 bars classified read-only; sibling-lane strays reconcile exactly (6A 6BU5=1584, 6E 6JZ7=4831 + SIJ5=1869, 6B GCQ4=2139); NEW stray 6J 6AV3=1237; NQ/ES zero foreign"},
+    {"command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/nq2020_hole_probe.py", "exit_code": 0, "verdict": "PASS", "log_digest": "metadata-only probe (7 free calls, 0 downloads): window total ours 169,992 == vendor parent 169,992; NQM0-equiv(id16908) 100,034 == 100,034; NQH0 17,932 == 17,932; NQU0 30,204 == 30,204; NQJ0 HTTP422 redacted; requote $0.62 NOT executed; no key material in any output"}
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "CFTC fix: the tidy is a DERIVED table regenerated from immutable raw zips; the pre-fix mixed tidy is preserved as .bak (sha 4f9cd789...) and the erratum records old->new for every affected series. DEEP lanes' frozen caches were built pre-fix with their own local filters - all still reproduce (ES exact-filter == new canonical; NQ consolidated == new ALT id; 6B as-is == canonical), verified by pinned regression tests.",
+    "Contaminant scan covers the six roots' ohlcv-1m parquet (the delivered, QA-passed representation of raw dbn.zst); raw zips were not independently re-parsed (immutable, sha-bound in ledger). Spread/strip rows are structural vendor delivery (6-15% FX, 8-10% NQ/ES), documented as a view rule - vendor parquet NOT rewritten per dispatch.",
+    "NQ 2020 probe: vendor symbology labels are time-of-delivery values; the id 16908 remap is corroborated by the vendor's CURRENT raw-symbol record_count (100,034 exact) but the alias root cause (vendor-side symbology mapping change) is not independently explainable from our data. NQJ0 HTTP422 = April serial unresolvable - consistent with serial contracts not being in the GLBX feed that window.",
+    "NQ dossier (DEEP-NQ lane output) NOT edited by this lane: its 'VENDOR HOLE' limitation and 2020 lower-bound caveats need an owner/A7 erratum (documented in nq2020_hole_probe.md Impact section); recomputing DEEP-NQ 2020 aggregates requires the 16908 view-rule remap, not executed here (dossier rebuild is DEEP-NQ/A7 territory).",
+    "Item-3 API law held: key read in-process from owner secrets file only, errors redacted to type+HTTP code, artifacts scanned for 'db-' token (clean); 7 metadata calls only (record_count x6, billable_size x1, get_cost x1 -> 8 calls total), all free, zero data downloaded, budget untouched."
+  ],
+  "incidents": [
+    "CFTC defect was BROADER than dispatched: dispatch named NQ/ES mixing, measurement found CL also mixed NYMEX WTI with ICE Europe WTI (928 dup dates - different VENUE, worse than sibling-line mixing), GC/SI/NG carried Micro/E-mini strays, and NQ's true e-mini line ('NASDAQ-100 STOCK INDEX (MINI)' 2006-2021) had NEVER been captured (canonical NQ started 2010-06-15 at Consolidated's birth). All fixed by the same exact-name table; erratum discloses each.",
+    "NQ 2020 'vendor hole' adjudicated as A_ALIAS_NOT_ABSENCE with a twist: the records were never missing from our delivery - instrument_id 16908 is the Jun-2020 future labeled 'NQU8-NQM9' until 2020-06-01; dash-excluding outright filters (all six DEEP lanes') quarantined the front bars. Exact 1:1 vendor reconciliation; $0 fix; the dispatch's anticipated backfill spend is unnecessary (quote $0.62 recorded, NOT executed).",
+    "Sibling-lane cross-checks all reconcile exactly (6BU5/6JZ7/SIJ5/GCQ4 counts 1:1 vs DEEP-6A/6E/6B handoffs); one NEW stray found (6AV3, 1,237 bars in 6J, 2020-03-24..07-13) that no lane had reported - excluded from DEEP-6J's panel anyway by its outright regex."
+  ],
+  "tree_status": "Worktree prep at 26d96eb4, branch prep/futures-behavior-10syms-20261002. This lane: 3 tracked files modified (within item-1 grant) + new untracked files in analysis/integration/ + this handoff. Foreign lane changes present, untouched: COMPLETION_LEDGER.json modified + backfill_20261003/ untracked (FX-BACKFILL), sibling DEEP/backup outputs untracked under FUTURES-DEEPRESEARCH-V2-20261003/.",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/contaminant_scan.py", "sha256": "b6733f124985e9362d85ed4062b599fa541a8a8e81630980c7c69ba167765904"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/contaminant_scan.json", "sha256": "86483de5d943a16cc2ff68100cdd040ebb417805ed4104e7f99d2d32047434af"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/contaminant_scan.md", "sha256": "918daf7e708aef7bd58f990b3393a8f3aeedcfb1b9f5f2fd7a81b660e4bbf839"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/nq2020_hole_probe.py", "sha256": "fd1de7b001e0fa9b022e96a92bbdd8dce39b068e4a944e014987a2fecfaae51c"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/nq2020_hole_probe.json", "sha256": "7494224355d94cb71e36ea9c15eeda96a03d80ae83bcf965a1e462f5f8df9083"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/nq2020_hole_probe.md", "sha256": "5f0990bc1f6afb94953cd19bf8c13f280fa7efe6a06797b3216079aee933bf94"},
+    {"path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/normalize/cftc_normalize.py", "sha256": "575028224914dac707df2d407df7708b98a617f56d8d5bb5f1f5960f104bb1db"},
+    {"path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/tests/test_parse.py", "sha256": "9e22ba2fca5867caee7bd36650df44f5f758a93127f2f41b0679437cd41e935c"},
+    {"path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/PUBLIC_DATA_ACQUISITION_REPORT_VI.md", "sha256": "3f4e93ee6a9d192bb4d967b0c4675cd8b5062e6904e0236e063e90d6ba967ed1"}
+  ],
+  "recommended_next_action": "(1) A7-DEEP-AUDIT: fold this lane's three artifacts into the audit - verify the 48/48 suite, the CFTC erratum old->new sha chain (4f9cd789 -> f7a2719e legacy; d798ed27 -> 1dbb5e93 fin), and the exact 1:1 NQ probe reconciliation; (2) owner: CANCEL the planned NQ 2020 backfill spend ($0.62 quote unneeded - view-rule remap instrument_id 16908 < 2020-06-01 -> 'NQM0' recovers 100% of the window at $0) and have DEEP-NQ's 2020 vol/liquidity lower-bound caveats regraded post-remap; (3) downstream consumers: adopt the per-root canonical regex from contaminant_scan.json before any outright panel build; (4) nothing here is a GO - all descriptive/infrastructure, prep law intact.",
+  "summary": "Three integration fixes delivered: (1) CFTC tidy defect fixed at source (exact market-name mapping; 10 canonical series 1,082 weeks x 0 dup dates each; pre-fix dups ES 1,126 / CL 928 / NQ 548 / GC 164 / NG 10 / SI 5 -> all 0; ALT ids preserve sibling lines; suite 41 -> 48 green); (2) six-root contaminant scan: 11,660 foreign-outright bars quarantined-listed (6JZ7 4,831 + SIJ5 1,869 in 6E; GCQ4 2,139 in 6B; 6BU5 1,584 in 6A; NEW 6AV3 1,237 in 6J; NQ/ES clean) + 2,637,950 spread/strip rows documented with a per-root canonical filter view rule; vendor data untouched; (3) NQ 2020 hole = A_ALIAS_NOT_ABSENCE: vendor parent record_count 169,992 == our delivered bars 169,992; raw NQM0 100,034 == our id-16908 bars 100,034 (labeled 'NQU8-NQM9' until 2020-06-01); $0 remap fix; requote $0.62 recorded, NOT executed.",
+  "generated_utc": "2026-10-03T09:30:00+00:00"
+}

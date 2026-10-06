@@ -1,0 +1,72 @@
+{
+  "schema": "futures_p3_quarantine_f7_correction@1",
+  "task_id": "FUTURES-P3-QUARANTINE-20261004",
+  "cycle_id": "UNREGISTERED_PREP",
+  "lane": "Q2-FIX-VERIFY",
+  "generated_utc": "2026-10-04T01:06:04Z",
+  "corrects": {
+    "finding_id": "F-7",
+    "original_severity": "MEDIUM",
+    "source_lane": "P2B-CALGAP-FXCOMM",
+    "findings_record": "research/control/FUTURES-OVERNIGHT-PREP-20261003/verify2/findings.json",
+    "stale_claim": "energy/metals 2011-2015: 43/45 cells OBTAINED (ARCHIVED_OFFICIAL)"
+  },
+  "artifact_of_record": {
+    "path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/cme_cal_gap/fx_comm/fxcomm_gapfill_coverage.json",
+    "sha256": "91c0f0d939b2e63042465458823f50da15106bc798d426ab1b1bc98eff2d89e9",
+    "section": "gap4_energy_metals_holiday_times_2011_2015",
+    "untouched": true
+  },
+  "definitive_counts": {
+    "raw_grid_cells": 60,
+    "raw_grid_shape": "5 years (2011-2015) x 12 holiday slots",
+    "obtained": 52,
+    "not_transcribed": 1,
+    "not_obtained": 7,
+    "anachronistic_slots_excluded_from_universe": 5,
+    "anachronistic_slot": "Juneteenth (US federal holiday only from 2021; no CME per-holiday schedule file archived for 2011-2015 per the lane's CDX inventory)",
+    "in_universe_cells": 55,
+    "in_universe_obtained": 52,
+    "headline_fraction_correct": "52/55",
+    "raw_fraction": "52/60",
+    "per_year": {
+      "2011": {"obtained": 11, "in_universe": 11, "non_obtained": []},
+      "2012": {"obtained": 11, "in_universe": 11, "non_obtained": []},
+      "2013": {"obtained": 11, "in_universe": 11, "non_obtained": []},
+      "2014": {"obtained": 9, "in_universe": 11, "non_obtained": ["MLK NOT_TRANSCRIBED", "Veterans NOT_OBTAINED"]},
+      "2015": {"obtained": 10, "in_universe": 11, "non_obtained": ["Veterans NOT_OBTAINED"]}
+    },
+    "in_universe_non_obtained_cells": [
+      {"year": 2014, "holiday": "MLK", "status": "NOT_TRANSCRIBED", "reason": "2014-martin-luther-king-holiday-schedule.pdf fetched (sha256 pinned, capture 20140326160215) but pypdf extraction garbled; artifact retained for re-parse"},
+      {"year": 2014, "holiday": "Veterans", "status": "NOT_OBTAINED", "reason": "archived file is a settlement-procedures document, not a Globex hours schedule"},
+      {"year": 2015, "holiday": "Veterans", "status": "NOT_OBTAINED", "reason": "archived file is a settlement-procedures document, not a Globex hours schedule"}
+    ]
+  },
+  "headline_error_mechanism": {
+    "established": "The '43/45' fraction exists only as a hardcoded string literal in build_coverage.py's gap4 'headline' dict value; it is never computed. The same script's computed cell_status_counts (11/11/11/9/10 -> 52) and cells disagree with it.",
+    "derivation_reproducible": false,
+    "classification": "INFERENCE: hand-arithmetic slip at headline composition (consistent with SYNTH-VERIFY 'arithmetic slip'); numerator/denominator deltas (52-43=9 vs 55-45=10) are inconsistent with any single universe redefinition",
+    "direction": "understatement of measured coverage by 9 obtained cells on a 10-smaller denominator; conservative; no gate/ranking/decision worsened"
+  },
+  "reproduction": [
+    {"command": "recount gap4 cells from committed fxcomm_gapfill_coverage.json (iterate cells dict; count statuses; exclude Juneteenth slots)", "exit_code": 0, "result": "OBTAINED 52, NOT_OBTAINED 7, NOT_TRANSCRIBED 1 of 60 raw; 52/55 in-universe"},
+    {"command": "sandbox rerun of build_coverage.py (temp dir; captures/ symlinked read-only)", "exit_code": 0, "result": "regenerated fxcomm_gapfill_coverage.json byte-identical to committed (sha256 91c0f0d939b2e63042465458823f50da15106bc798d426ab1b1bc98eff2d89e9); stdout computed per-year counts 11/11/11/9/10 = 52; no 43/45 in any computed output"}
+  ],
+  "supersession": {
+    "committed_files_edited": 0,
+    "rule": "append-only r2 correction; supersedes the stale headline BY REFERENCE; original committed files remain verbatim as historical evidence",
+    "stale_headline_propagation_sites_left_untouched": [
+      "research/control/FUTURES-OVERNIGHT-PREP-20261003/cme_cal_gap/fx_comm/FXCOMM_GAPFILL_EVIDENCE.md (Gap-4 headline row)",
+      "research/control/FUTURES-OVERNIGHT-PREP-20261003/cme_cal_gap/fx_comm/build_coverage.py (headline string literal)",
+      "research/control/FUTURES-OVERNIGHT-PREP-20261003/cme_cal_gap/fx_comm/fxcomm_gapfill_coverage.json (headline field only; cells and cell_status_counts in the same file are correct)",
+      "research/control/FUTURES-OVERNIGHT-PREP-20261003/dispatch/handoff_P2B-CALGAP-FXCOMM.json (authority_claims entry 4 + summary)",
+      "research/control/FUTURES-OVERNIGHT-PREP-20261003/hypo/comm/comm_hypotheses.json",
+      "research/control/FUTURES-OVERNIGHT-PREP-20261003/hypo/comm/COMM_HYPOTHESES.md"
+    ],
+    "already_correct_downstream": [
+      "research/control/FUTURES-OVERNIGHT-PREP-20261003/synth/BLOCKER_MATRIX.md (52/55 in-universe, cites F-7)",
+      "research/control/FUTURES-OVERNIGHT-PREP-20261003/synth/blocker_matrix.json (corrected count + F-7 note)"
+    ]
+  },
+  "human_readable": "research/control/FUTURES-P3-QUARANTINE-20261004/fixes/F7_CORRECTION.md"
+}

@@ -1,0 +1,40 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "lane_id": "DATA-PIT-ACQUISITION-PREP",
+  "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+  "status": "COMPLETE",
+  "summary": "Coverage manifest + Databento acquisition spec produced with zero purchases/registrations/credentials. HAVE side measured by script over the full legal IBKR raw corpus (1160 files, 0 parse errors): 10/10 symbols have daily per-contract TRADES (65-88% close-only settlement-derived bars; front-chain real-volume runs 14-17 months), ~1y non-synchronous daily BID/ASK, M1=2 trading days and H1=~30 days per contract (snapshots, not history), definitions minimal, OI/statistics/settlement-official NOT_AVAILABLE. NEED side tied to framework hypothesis classes HC1-HC4 (daily deep history, intraday execution, roll windows, event studies); 7 typed gap classes. DATA_ACQUISITION_SPEC.md verifies Databento GLBX.MDP3 against current official docs (catalog + feed spec + symbology + statistics + definitions + metered pricing; URLs + access date 2026-10-02): dataset available-from 2010-06-06 with verbatim caveat 'Historical data availability could vary between schemas', schemas incl. ohlcv-1m/definition/statistics (statistics carries stat_type 3 settlement, 9 open interest), continuous roll rules c/n/v with free symbology.resolve, no license needed for historical, L0 16y on Standard $199/mo but L1 deep only usage-based/Plus/Unlimited, $125 new-user credit, unit prices via free list_unit_prices and exact bytes via get_billable_size. Vendor roll conventions (c=hold-to-expiry calendar, n=OI-ranked, v=volume-ranked) explicitly forbidden as our execution roll (our declared rule: roll at last session before day-1 of expiry month); build own continuous from raw contracts per 00_MASTER §8. Includes NQ+CL IBKR-overlap pilot (4 roll-critical daily windows + 6-8 full-session M1 windows per symbol, acceptance thresholds), cost/bytes methodology (no fabricated per-GB prices; OPRA example deliberately not applied), phased request plan with owner gates (Phase 0 free verification incl. per-symbol schema-start probes via get_record_count, then pilot, then staged bulk L0), and NOT_SOLVED_BY_VENDOR list with lawful public primary sources verified live: ALFRED (macro vintages), BLS schedule (search-verified, fetch 403), CFTC CoT (Friday 15:30 ET, prior-Tuesday data), NOAA NDFD archive (AIRS; AWS bulk only from 2020-04-16), EIA NG weekly; consensus archives and broker slippage have no free public substitute (prospective collection / own audit trail).",
+  "outputs": [
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/data/COVERAGE_MANIFEST.json",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/data/coverage_measured.json",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/data/scripts/measure_coverage.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/data/scripts/build_coverage_manifest.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/DATA_ACQUISITION_SPEC.md"
+  ],
+  "findings": [
+    "OBSERVED: front-month real-volume chain runs 17 months for NQ/ES/CL/NG/SI (2025-05..2026-09), 16 GC, 14 for 6E/6J/6B/6A; consistent with FUTURES-DATA-10SYMS-V1 ~14-month claim given different front-gating method (method recorded in coverage_measured.json).",
+    "OBSERVED: close-only (settlement-derived, O=H=L=C v=0) fraction of on-disk daily bars: NQ 76%, ES 82%, CL 76%, NG 65%, GC 73%, SI 71%, 6E 83%, 6J 87%, 6B 87%, 6A 88% - deep bars unusable as fill prices.",
+    "OBSERVED: M1 depth on disk = 2 trading days RTH per contract, H1 = ~30 days per contract; union spans look longer only because per-contract windows are staggered.",
+    "FACT(sourced, 2026-10-02): GLBX.MDP3 available-from 2010-06-06 UTC with explicit caveat 'Historical data availability could vary between schemas' - per-symbol x schema start dates must be probed free via metadata.get_record_count before any purchase; spec Phase 0 defines the probe grid.",
+    "FACT(sourced, 2026-10-02): Databento statistics schema carries open interest (stat_type 9) and settlement (stat_type 3) - single cheapest fill for our two NOT_AVAILABLE classes; definition schema carries activation/expiration/tick/size with PIT add/modify/delete.",
+    "FACT(sourced, 2026-10-02): continuous roll rules c (calendar to expiry), n (OI at prev close), v (prev-day volume); symbology.resolve is free; none equals our declared roll rule - vendor continuous forbidden as backtest price series.",
+    "FACT(sourced, 2026-10-02): historical data needs no license; Standard tier $199/mo includes 16y of L0 only - deep L1 (trades/mbp-1/bbo) is usage-based per-GB or Plus/Unlimited; $125 free credits for new users can fund the pilot (owner decision).",
+    "NOT_SOLVED_BY_VENDOR verified public options: ALFRED vintages, CFTC CoT (Fri 15:30 ET, prior-Tue data), NOAA NDFD (AIRS; AWS bulk only 2020-04-16+ -> NG weather-vintage hypotheses bounded to that start), EIA NG weekly, BLS schedule; consensus archives + broker slippage have no free public substitute.",
+    "Prior-run recovery: data/scripts/measure_coverage.py and data/coverage_measured.json existed from an earlier interrupted run of this lane; script was reviewed, re-executed by this session (identical results), and kept; all other deliverables newly written."
+  ],
+  "defects": [],
+  "open_questions": [
+    "Per-symbol x per-schema actual start dates in GLBX.MDP3 (esp. ohlcv-1m and statistics for the 10 roots in 2010-2015) - answerable only via Phase 0 free probes; NOT_RUN (no account, correctly not created).",
+    "GLBX.MDP3 unit prices (USD/GB per schema) as of today - only obtainable via list_unit_prices with an API key; public docs example is OPRA.PILLAR and was deliberately not reused; no cost number should be quoted until Phase 0.",
+    "FOMC calendar URL and EIA weekly NG release time stated in spec from general knowledge/pending verification (EIA page fetched 200 but release-time line not re-quoted); flagged VERIFY in spec §8.2/§8.4.",
+    "Whether Databento BID/ASK-derived or statistics fields reconcile with IBKR close-only settlement bars within 1 tick - pilot acceptance check, not yet run.",
+    "SIL vs SI trading-class identity inside Databento definitions (expected resolvable via definition probe; flagged in spec §4.4/§5)."
+  ],
+  "sha256_of_key_outputs": {
+    "DATA_ACQUISITION_SPEC.md": "455295e436b6bf7d2b74e84ae0d406507f33147d8ce56c0c7349d6fcdbbc2730",
+    "data/COVERAGE_MANIFEST.json": "11097002a56fe14681bb60a98c75cc168623d3b00db88e91704015081335309a",
+    "data/coverage_measured.json": "6f30f704a9b8620e58638189e7f8e422455017be1ded853ef8adcd09c85b1488",
+    "data/scripts/measure_coverage.py": "3b5aaebcbee56bc07a1577c0e2690c89ab6cd54142e101038ed54f6878be3b23",
+    "data/scripts/build_coverage_manifest.py": "6be8699c21049b3f0bd93f94d4f5eb277b71db0db3bae6f3d479403d4ec0965d"
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "task": "FUTURES-OVERNIGHT-PREP-20261003",
+  "lane": "P2A-CALGAP-EQ",
+  "acquired_utc_date": "2026-10-03",
+  "scope": "equity-family calendar gaps left by parent round: (1) ES expirations 2010Q3-2011Q3, (2) ES-specific 2026 Globex session times, (3) NQ-specific 2026 Globex session times",
+  "parent_evidence_re_read": [
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/nq_es/NQ_CALENDAR_EVIDENCE.md",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/nq_es/ES_EXPIRATIONS_GAPFILL.md",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/nq_es/nq_cal_coverage.json",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/nq_es/es_expiry_coverage.json",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/nq_es/fetch_log.jsonl",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d3_cmecalendar/ES_CALENDAR_EVIDENCE.md"
+  ],
+  "gap1_es_expirations_2010_2011": {
+    "verdict": "CLOSED",
+    "source_class": "ARCHIVED_OFFICIAL_PRODUCT",
+    "mechanism": "Wayback CDX enumeration of the ES product-calendar DATA page (e-mini-sandp500_product_calendar_futures.html) revealed a static-era capture set 2009-10-16..2017-06 never enumerated by D3 (base URL) or A1 (2017+ probes); two captures cover the gap window",
+    "page_url_pattern": "https://www.cmegroup.com/trading/equity-index/us-index/e-mini-sandp500_product_calendar_futures.html",
+    "page_heading_verbatim": "Product Calendar for E-mini S&P 500 (Dollar) Futures",
+    "quarters": {
+      "2010-09": {"code": "ESU10", "first_trade": "2010-06-19", "last_trade_settle": "2010-09-17", "captures": ["20100528164817", "20100418154051"]},
+      "2010-12": {"code": "ESZ10", "first_trade": "2009-09-18", "last_trade_settle": "2010-12-17", "captures": ["20100528164817", "20100418154051"]},
+      "2011-03": {"code": "ESH11", "first_trade": "2009-12-18", "last_trade_settle": "2011-03-18", "captures": ["20100528164817", "20100418154051"]},
+      "2011-06": {"code": "ESM11", "first_trade": "2010-03-19", "last_trade_settle": "2011-06-17", "captures": ["20100528164817", "20100418154051"]},
+      "2011-09": {"code": "ESU11", "first_trade": "2010-06-18", "last_trade_settle": "2011-09-16", "captures": ["20100528164817"]}
+    },
+    "cross_checks": [
+      "G1a (20100528164817) vs G1b (20100418154051), independent captures 6 weeks apart: exact agreement on the 4 overlapping quarters",
+      "NQ product-calendar same-quarter dates identical (NQU10 09/17/2010, NQZ10 12/17/2010, NQH11 03/18/2011, NQM11 06/17/2011, NQU11 09/16/2011): zero divergence",
+      "OBSERVED consistency (not used as authority): all five dates are the 3rd Friday of the contract month per the verbatim rule already on file from ES spec captures 20150319105531/20200317052532"
+    ],
+    "mission_hypothesis_test": "Parent-lead hypothesis 'NQ captures carry ES column/sibling rows' REFUTED first-hand: NQ captures 20091207203237 + 20110305184630 re-fetched and mined; page = 'Product Calendar for E-mini NASDAQ-100 Futures', NQ-only rows, zero ES product codes (S&P strings are site nav only)",
+    "es_total_after_gapfill": {"quarters_2010_2026": 68, "obtained": 68, "product_specific": 42, "family_rolldates": 26, "not_obtained": 0}
+  },
+  "gap2_es_2026_globex_times": {
+    "verdict": "NOT_OBTAINED",
+    "gap_definition": "ES-specific 2026 Globex holiday session (open/early-close) times; product times not present in any static official HTML or archived artifact",
+    "attempts": [
+      "CDX prefix enumeration of cmegroup.com/tools-information/holiday-calendar/files (673 URLs): complete official 2026 file set = clearing advisories + settlement-times PDFs + OTC advisories; NO Globex session-hours file archived (globex-holiday-calendar.pdf naming exists only 2009/2010)",
+      "3 official 2026 settlement-times PDFs fetched+parsed (mlk/good-friday/thanksgiving): they state settlement-PRICE derivation times (e.g. 'Equity & Crypto Products Settlement Time: 12:00:00 CT'), NOT trading session hours; no inference drawn",
+      "live trading-hours.html via web_reader with link enumeration: static content = family/venue tables + same file links; product hours behind DATE widget (verbatim note saved in capture 20260924120320); all 'Holiday Schedule' links resolve to in-page anchor #trading-holiday-hours; zero downloadable-Globex-hours hrefs in source",
+      "all 23 static tables of trading-hours capture 20260924120320 extracted: no product-named session-times table (no ES/E-mini/S&P/Nasdaq session rows); family 'Equity' strings only in notes",
+      "widget host /holidaycalendar: web_reader -500 (1 attempt this lane; parent x2) => BLOCKED_TRANSPORT; no CmeWS endpoint in page source (0 refs)",
+      "ES spec page capture 20260114231448 (old URL -> new contractSpecs content): spec scaffolding present ({title: Trading Hours}) but values client-rendered; 0 static hours text; ES identity JSON (globexGroupCode ES) present",
+      "ES product page capture 20261001064354: nav links only",
+      "rulebook.cmegroup.com: zero Wayback captures (2 CDX forms); live -500 (parent)",
+      "notices: archived /notices/ inventory has no 2026 holiday trading-hours notice; live notices.html = JS search tool; 'Thanksgiving Day 2026.docx' on cmegroup.com surfaced by search engine but URL not recoverable (domain-wide CDX regex 502 x2, stopped per etiquette)",
+      "third-party hits (camovia/ampfutures/ninjatrader): cross-check class only, never authority"
+    ],
+    "authority_backed_instead": ["11 holiday windows", "floor early closes 12:00 CT 2026-05-22/07-02/11-27/12-24/12-31", "Good Friday 2026-04-03 floor close 10:00 CT", "ClearPort closures + 13:15 ET prior-day pattern", "family Holiday Notes (Equity+IR normal on MLK/Presidents)", "TAS early closes", "all four 2026 ES expirations (rollover R4)"]
+  },
+  "gap3_nq_2026_globex_times": {
+    "verdict": "NOT_OBTAINED",
+    "attempts_nq_specific": [
+      "old spec URL capture 20251102121109 (latest): 2.2KB 'Access Denied' block page",
+      "NQ product page capture 20260930171821: nav links only, no hours values",
+      "NQ new contractSpecs captures exist through 2026-10-01 but same AEM/React class measured as shell (ES sibling this lane + parent's NQ live measurement 2026-10-03)"
+    ],
+    "shared_evidence": "identical widget/files/page-table evidence base as gap2 (product-agnostic; no NQ-named session rows anywhere static)"
+  },
+  "saved_captures": {
+    "dir": "captures/",
+    "files": {
+      "es_pcal_20100528164817.html": {"sha256": "bb996a77e8f7e56f54fcf07d57f80b39a34e83897227686d865bdc5fa5e9072b", "role": "gap1 primary (all 5 quarters)"},
+      "es_pcal_20100418154051.html": {"sha256": "b2e2e13512843277c0087e802092e669cf5131d4ac616b7c1c46df1c5fa5cd8d", "role": "gap1 cross-check (4/5)"},
+      "nq_pcal_20110305184630.html": {"sha256": "038d649d8badbf978e8fc269b47e5de7e6637cb66800c0bda02c0e827b3f7775", "role": "hypothesis test: NQ rows only, no ES rows"},
+      "nq_pcal_20091207203237.html": {"sha256": "e660fbeb105192acd20086fb89fb71a1113fc5c303ae4747c151b4e07d2e1e2e", "role": "hypothesis test: NQ rows only, no ES rows; NQ cross-check dates"},
+      "tradinghours_20260924120320.html": {"sha256": "fedf3e33e06ef02254733b7dae4abfcc7f3dcac8a3e39adf264c30a2373e4f08", "role": "gap2/3 proof: all 23 static tables + widget note + 2026 file href inventory"},
+      "es_olspec_20260114231448.html": {"sha256": "49244a22b0eabb8623f31026e1d3facd908bd4aa3c098c51695c7a2ae269241f", "role": "gap2 proof: spec scaffolding, hours client-rendered"},
+      "nq_olspec_20251102121109.html": {"sha256": "d278bdf5bf2a729c0344053d9e2a2cde0fd5fbbb00007ff2213b28949a8efb07", "role": "gap3 proof: Access Denied"},
+      "es_prod_20261001064354.html": {"sha256": "4a6b318e3b54f5008493a3e4e0d7be3762f310233e3f54106bc0f503bb350875", "role": "gap2 proof: nav only"},
+      "nq_prod_20260930171821.html": {"sha256": "cc5d762c2ee13f10be968cd4ce83e01cbb417affb1ff9a29e5cbedcfaab9c28e", "role": "gap3 proof: nav only"},
+      "mlk-day-holiday-settlement-times-2026.pdf": {"sha256": "9a9e3b1e4bf16d6551003ed7f507bb0f9898a0bf46746d3b7eee9ec4d258a4f4", "role": "official 2026 settlement-price-times advisory (not session hours)"},
+      "good-friday-holiday-settlement-times-2026.pdf": {"sha256": "fed0b2d58bee1f25b10f7682756f803ad15f7263c5db468603f506c235e1a35d", "role": "official 2026 settlement-price-times advisory (not session hours)"},
+      "thanksgiving-holiday-settlement-times-2026.pdf": {"sha256": "560e905d4c70605f0e1a8d0a6b780db594befbc074114ac11225e504c9ba3b14", "role": "official 2026 settlement-price-times advisory (not session hours)"}
+    }
+  },
+  "attempt_log": "fetch_log.jsonl (40 lines, every fetch/query with utc+url+tool+outcome)",
+  "limits": [
+    "2026 product Globex times exist only inside the DATE widget / widget-exposed downloadable calendars; widget host BLOCKED_TRANSPORT (web_reader -500); browser automation unavailable in subagent (parent measurement)",
+    "settlement-times PDFs are settlement-PRICE times; deliberately NOT interpreted as session times",
+    "a 'Thanksgiving Day 2026.docx' official document exists per search-engine snippet but its URL was not recoverable within etiquette budget (domain-wide CDX regex 502 x2)"
+  ]
+}

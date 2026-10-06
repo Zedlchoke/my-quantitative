@@ -90,9 +90,8 @@ carries its feasibility row (SAMPLE_FEASIBILITY_MATRIX.md); cells
 structurally underpowered are PRE-TYPED (S017 refutation expected
 NOT_RUN_THIN, P(meet floor) ~= 0.03%; S023/VC2-JPY LOL pre-typed thin;
 HN-3 pooled coin-flip 33-65% with the evaluation UNIT frozen at FREEZE-1;
-HN-1 LEARN grids expected NOT_RUN_GRID_THIN; a family-level DESCRIPTIVE
-pooled read may accompany — it satisfies no per-symbol floor and is not
-shared-mechanism evidence). No floor is loosened to make a cell pass.
+HN-1 LEARN grids expected NOT_RUN_GRID_THIN, family-pooled read is the
+rescue). No floor is loosened to make a cell pass.
 
 ## 2. Rule stack (what actually trades)
 
@@ -189,7 +188,7 @@ be traded off against, any hypothesis's economics.
 | id | what | why |
 |---|---|---|
 | B0 | FLAT | absolute-zero reference (DAILY precedent: it dominated) |
-| B1S | always-on same-ADMITTED-legs wall (S017 retired) | PRIMARY baseline (seven-deaths law; beat it on net AND DD). SCOPE: measures hygiene-on-admitted-set only — the retirement's value vs the ORIGINAL 12-leg always-on is measured by the exploratory replay program (B1_ORIG12 comparator), not this battery |
+| B1S | always-on same-legs wall | PRIMARY baseline (seven-deaths law; beat it on net AND DD) |
 | B2S | equal-weight | sizing-null |
 | B3S | best-single chosen on LEARN | concentration-null |
 | C2 | random dwell-matched battery (≥100 seeds, ≤128, own ledger line; counted in the multiple-testing/compute denominator) | cadence-as-value guard (prior: DP §2.3's 128/128 duty-matched random DIAGNOSTIC beat the frozen policy's objective — a diagnostic, not a scored battery; PC12A's B4 never executed) |

@@ -1,0 +1,72 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-OVERNIGHT-PREP-20261003",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "P0B-FEEIMPACT",
+  "dispatch_sha": "a8cd06f2603a8df5a2db5999c63ab09c3a7134e7",
+  "actual_start_sha": "a8cd06f2603a8df5a2db5999c63ab09c3a7134e7",
+  "commit_sha": null,
+  "commit_sha_disclosure": "READ-ONLY append-only lane: no commits, no push; all outputs are untracked files inside research/control/FUTURES-OVERNIGHT-PREP-20261003/ only. HEAD re-measured before work and after work = a8cd06f2603a8df5a2db5999c63ab09c3a7134e7 (no drift).",
+  "changed_paths": [
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/impact/FEE_ERRATUM_DRAFT.md",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/impact/validate_fee_sources.py",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/impact/GATE_REVIEW_NOTE.md",
+    "research/control/FUTURES-OVERNIGHT-PREP-20261003/dispatch/handoff_P0B-FEEIMPACT.json"
+  ],
+  "tests": [
+    {
+      "name": "propagation grep re-run (prep worktree root)",
+      "command": "grep -rln -E \"1\\.386|2\\.247|0\\.011|2\\.461|2\\.37\\b|2\\.47\\b\" research/control/FUTURES-ES-V1-PACKET research/control/FUTURES-DATACONTRACT-QUAL-V1 research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003",
+      "exit_code": 0,
+      "result": "26 files (Lead chat list = 26; DISPATCH_MANIFEST.json mission text says '27 files' — off-by-one vs measured truth at this HEAD). 1 of 26 is a false positive (events_bbo_coverage/coverage_remeasure.json L1784 sub-second timestamp 00:00:00.011588) => 25 genuine fee-value sites = 22 FROZEN-HISTORICAL + 3 LIVING-DOC; PLAYBOOKS_DRAFT.md added as supplementary living site (rounded doc values 2.24/0.85 at L75/185/210, not matched by the pattern)."
+    },
+    {
+      "name": "typo grep full worktree research/",
+      "command": "grep -rn \"2026-10-13\" research/",
+      "exit_code": 0,
+      "result": "1 hit = dispatch/DISPATCH_MANIFEST.json:22 — self-referential mission text ('2026-10-13 typo check'), NOT an artifact instance of the typo."
+    },
+    {
+      "name": "typo grep excluding own round dir (pre-existing artifacts)",
+      "command": "grep -rn \"2026-10-13\" research/ --exclude-dir=FUTURES-OVERNIGHT-PREP-20261003",
+      "exit_code": 1,
+      "result": "0 hits — confirms Lead pre-check: the typo existed only in a chat message, not in any committed/pre-existing artifact."
+    },
+    {
+      "name": "validator self-test",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/impact/validate_fee_sources.py --self-test",
+      "exit_code": 0,
+      "result": "SELF-TEST PASS, 6/6 cases: 1.386 and 0.011 vs marker-preserving synthetic capture -> FOOTNOTE_GLUED (FAIL-class, exit 2 in real mode); 1.38 and 0.01 -> LITERAL with marker_adjacent flag; 1.60 -> LITERAL clean; 2.5 -> NOT_LOCATED (exit 1 class). First run caught and fixed a trailing-zero bug (canonical 1.6 vs printed '1.60'); second run green. Real mode NOT run — real captures belong to P0A."
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "No raw captures exist yet (A4 saved none; P0A re-reads live pages) — every value statement in the erratum is carried as two side-by-side scenarios, neither adopted; final numbers locked by P0-VERIFY.",
+    "Owner-provisional scenario B is not mechanism-uniform: ES/NQ/FX deltas fit single-digit superscript glue, but CL/NG imply regulatory 0.02->0.01 which appending-glue alone cannot produce from '0.02'; P0A must adjudicate each cell individually.",
+    "Validator cannot detect glue if the capture pipeline already destroyed superscript markers (flattened '1.386' is textually identical to true '1.386'); it emits capture-quality flag MARKERS_ABSENT_CANNOT_DISAMBIGUATE_GLUE and requires marker-preserving captures.",
+    "Validator run in self-test mode only; real-mode behavior on P0A captures is untested against production HTML noise.",
+    "Grep-pattern sites are literal-value matches; derived values (SPEC §5 21.006/33.506/46.006 family, tier-2/3/4 cells) do not match the pattern and are covered in the erratum by derivation, not by grep count.",
+    "DISPATCH_MANIFEST.json says '27 files' vs measured 26 — reported, not reconciled (Lead's manifest is Lead-owned)."
+  ],
+  "incidents": [],
+  "tree_status": "prep worktree prep/futures-behavior-10syms-20261002 clean at a8cd06f2603a8df5a2db5999c63ab09c3a7134e7; only untracked path is research/control/FUTURES-OVERNIGHT-PREP-20261003/ (round dir, shared with sibling lanes). No committed file touched.",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/impact/FEE_ERRATUM_DRAFT.md",
+      "sha256": "3796579d51027d951f527d6989b3da9fcdd3f1395ed4925085782303ce39e5d1"
+    },
+    {
+      "path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/impact/validate_fee_sources.py",
+      "sha256": "fdead766f84521337ff4b7af3a861437a24317831bda9874494fc2c8fe780050"
+    },
+    {
+      "path": "research/control/FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/impact/GATE_REVIEW_NOTE.md",
+      "sha256": "5d50ac79c9bca82c696caa7315cbc9c81bcdd4e9a2c09745c6a713efd11161d0"
+    }
+  ],
+  "recommended_next_action": "P0A: feed marker-preserving captures into validate_fee_sources.py (real mode; expected-JSON per erratum §2 grid). Then P0-VERIFY locks scenario A vs B per cell (note the CL/NG regulatory 0.02-vs-0.01 mechanism question). Then: new A7 re-audits SPEC §5 cost arithmetic with corrected sources (unlocks UNDER REVIEW status); owning lanes update the three living docs (DATACONTRACT_QUALIFICATION §3 r6 sentence, SUMMARY_QUAL_ACTIONS D2 row, OWNER_DECISION_PACKET D2 row) and parent-round expectations only via a new committed round — no retro edits.",
+  "summary": "Propagation map re-measured: 26 grep files (1 false positive -> 25 genuine sites = 22 frozen-historical + 3 living-doc, plus PLAYBOOKS_DRAFT as supplementary rounded-value site). Both value scenarios mapped side by side with per-site line quotes: under correction ES/NQ 2.247->2.24 (SPEC §5 all-in 21.006-family -> 21.00-family), FX 2.461->2.46, CL 2.37->2.36, NG 2.47->2.46, GC/SI 2.51 unchanged; commission ladder 0.85/0.65/0.45/0.25, NFA timeline, MODELED_COST status and VERIFIED_VS_ACCOUNT=NOT_RUN unchanged. In-repo corroboration surfaced: IBKR's own printed ES example is 0.85+1.38+0.00+0.01=2.24 (fees_table_es.json:326) — the correction scenario converges to it. Erratum drafted append-only (no committed file edited; SPEC freeze-ready + all 2.247-derived gates recorded UNDER REVIEW). Independent source-text validator written and green in self-test: locates row-label-scoped numeric cells, detects footnote-glue (base+marker) as FAIL-pending-adjudication, fails on un-locatable values, and has no arithmetic pass path by construction. Typo '2026-10-13': zero occurrences in pre-existing artifacts (only self-referential mention in this round's own dispatch manifest).",
+  "generated_utc": "2026-10-03T15:15:26Z"
+}

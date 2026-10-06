@@ -1,0 +1,94 @@
+{
+  "schema": "nq_reconstruction_check@1",
+  "task": "FUTURES-P3-QUARANTINE-20261004 / Q4-DATA-CHECKS",
+  "generated_utc": "2026-10-04T00:00:00Z",
+  "inputs_under_test": {
+    "artifacts": [
+      "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/NQ_build_cache.py",
+      "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/NQ_deep_lib.py",
+      "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/NQ_a3_term.py",
+      "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/NQ_a3_term.json",
+      "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/integration/nq2020_hole_probe.md",
+      "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dossiers_v2/NQ_DEEP_v2.md",
+      "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dossiers_v2/6J_DEEP_v2.md (2022-09-20 cease-guard law, section 8 ERRATUM M-5)"
+    ],
+    "caches_on_disk": {
+      "present": true,
+      "files": [
+        "NQ_cache/nq_outright_1m.parquet (147517755 B)",
+        "NQ_cache/nq_annotated_1m.parquet (176114434 B)",
+        "NQ_cache/held_volume_k5.parquet (26033 B)",
+        "NQ_cache/held_calendar.parquet",
+        "NQ_cache/nq_sessions.parquet",
+        "NQ_cache/nq_held_daily.parquet",
+        "NQ_cache/contract_registry.json"
+      ],
+      "note": "all checks below are OBSERVED-from-disk; none NOT_RUN-per-disk"
+    }
+  },
+  "a_alias_view_rule": {
+    "rule": "instrument_id == 16908 AND date < 2020-06-01 -> raw_symbol = 'NQM0'",
+    "rule_documented_at": [
+      "analysis/integration/nq2020_hole_probe.md (adjudication A_ALIAS_NOT_ABSENCE, section 'Required fix (VIEW RULE)')",
+      "dossiers_v2/NQ_DEEP_v2.md section 7 + section 10 ERRATUM F1"
+    ],
+    "applied_in_v2_chain_build": false,
+    "applied_finding": "NQ_deep_lib.py:73-84 load_outright_1m() drops all rows with '-' in raw_symbol; no relabel view in NQ_build_cache.py or NQ_deep_lib.py; documented decision (ERRATUM F1): hole-window sessions carry NaN closes, no synthetic jumps; 2020 aggregates MUST be re-measured via the view rule before any registered cycle",
+    "bar_counts_lineage_disk_recheck": {
+      "method": "pyarrow predicate-pushdown counts, NQ_cache/nq_outright_1m.parquet",
+      "rows_raw_symbol_NQU8_NQM9_in_cached_panel": 0,
+      "rows_instrument_id_16908": 19406,
+      "id16908_symbols": ["NQM0"],
+      "id16908_span_utc": "2020-06-01T00:00Z -> 2020-06-19T13:29Z",
+      "cached_panel_total_rows": 6688533,
+      "expected_from_artifacts": {"alias_bars_excluded": 92075, "relabeled_NQM0_bars": 19406, "dossier_total_rows": 6688533},
+      "verdict": "MATCH: 92,075 alias bars absent (dash-filtered), exactly 19,406 relabeled NQM0 bars retained with the documented span, panel total equals dossier section 0"
+    },
+    "open_obigation": "apply view rule + re-measure 2020 aggregates before any registered cycle (ERRATUM F1)"
+  },
+  "b_k5_roll_rule_and_cease_guard": {
+    "rule_location": "NQ_deep_lib.py front_by_volume_crossover(sess, k=5); called at NQ_build_cache.py:83",
+    "rolls_artifact": {"NQ_a3_term.json n_rolls": 66},
+    "rolls_disk_recheck": {
+      "method": "full read of NQ_cache/held_volume_k5.parquet; switch = held != shift(held)",
+      "rolls": 66,
+      "sessions": 4219,
+      "span": "2010-06-07 -> 2026-10-01",
+      "first_roll": "2010-06-15 NQM0_2010 -> NQU0_2010",
+      "last_roll": "2026-09-17 NQU6_2026 -> NQZ6_2026",
+      "verdict": "MATCH artifact and dossier section 0 (66 rolls / 4,219 sessions)"
+    },
+    "cease_guard_presence": "IMPLICIT-WEAK ONLY: NQ_deep_lib.py:266-267 switches when current contract trailing-k mean is NaN (i.e., after a full 5-session absence). A ceased contract with a stale trailing-5 mean exceeding the successor ramp is held past cessation.",
+    "cease_guard_artifact_law_2022_09_20": {
+      "established_on": "6J (same rule family), dossiers_v2/6J_DEEP_v2.md section 8 ERRATUM M-5: 2022-09-20 exchange open, Z2 traded 125,303 lots over 1,357 bars, k=5 still held ceased U2; session silently vanishes from the chain; 09-21 rolled return spans two calendar days off a 97-bar stale U2 close",
+      "nq_manifestation": "NONE FOUND: NQ rolled NQU2_2022 -> NQZ2_2022 on 2022-09-15, one day before the 2022-09-16 expiry (held-map slice 2022-09-12..23 shows NQZ2_2022 held 09-15 onward); 2022 roll set 03-16/06-15/09-15/12-14 all clean"
+    },
+    "structural_recommendation": "any future chain builder must add an explicit expiry/cessation guard; the 6J 2022-09-20 law proves the failure mode in this code family"
+  },
+  "c_phantom_drift_new4": {
+    "corr_gap_vs_trailing10_spread": {"artifact_quote": 0.999, "disk_value": 0.9990802440849986, "n_rolls_with_valid_gap": 65, "verdict": "PRESENT_AND_MATCHING"},
+    "unadjusted_chain_embedded_pts_per_year_disk": {"2023": 722.8, "2024": 1014.0, "2025": 906.8, "2026": 809.5, "era_2010_2016": [-5.0, -16.2, -17.2, -21.8, -28.0, -30.8, -21.2], "era_2018_2019": [95.2, 109.5], "verdict": "matches dossier section 3 (+723/+1014/+907/+810)"},
+    "no_adjusted_series_as_price": {
+      "finding": "no adjustment/stitching code in any NQ analysis script; NQ_deep_lib.py header law 'No vendor-stitched continuous series'; NQ_a1_regimes.py:26-32 'keep NaN closes so diff() yields NaN, never a synthetic jump'; only 'unadjusted' usage is NQ_a3_term.py:141-144 HAZARD MEASUREMENT (sum of gaps/yr), not a price series",
+      "verdict": "PASS"
+    }
+  },
+  "d_disk_spot_checks": {
+    "method": "date-filtered slices of NQ_cache/nq_annotated_1m.parquet (session_date in {roll, prior business day})",
+    "rolls": [
+      {"roll_session": "2010-06-15", "old": "NQM0_2010", "new": "NQU0_2010", "prior": "2010-06-14", "closes_prior": {"NQM0_2010": 1847.75, "NQU0_2010": 1846.75}, "closes_roll": {"NQM0_2010": 1893.0, "NQU0_2010": 1891.75}, "volumes_roll": {"NQM0_2010": 27756, "NQU0_2010": 300116}, "both_legs_have_bars_both_days": true},
+      {"roll_session": "2022-09-15", "old": "NQU2_2022", "new": "NQZ2_2022", "prior": "2022-09-14", "closes_prior": {"NQU2_2022": 12169.0, "NQZ2_2022": 12250.0}, "closes_roll": {"NQU2_2022": 11904.0, "NQZ2_2022": 11973.0}, "volumes_roll": {"NQU2_2022": 132245, "NQZ2_2022": 712732}, "both_legs_have_bars_both_days": true},
+      {"roll_session": "2026-06-17", "old": "NQM6_2026", "new": "NQU6_2026", "prior": "2026-06-16", "closes_prior": {"NQM6_2026": 29986.5, "NQU6_2026": 30300.5}, "closes_roll": {"NQM6_2026": 29839.75, "NQU6_2026": 30141.75}, "volumes_roll": {"NQM6_2026": 34849, "NQU6_2026": 531548}, "close_gap_pts": 302.0, "matches_json_max_gap": true, "both_legs_have_bars_both_days": true}
+    ],
+    "alias_boundary": {
+      "2020-05-28": {"NQU0_2020": {"vol": 595, "bars": 217, "close_pts": 9442.0}, "NQZ0_2020": {"vol": 3, "bars": 3}},
+      "2020-05-29": {"NQU0_2020": {"vol": 687, "bars": 181, "close_pts": 9570.0}, "NQZ0_2020": {"vol": 4, "bars": 2}},
+      "2020-06-01": {"NQM0_2020": {"vol": 326956, "bars": 1245, "close_pts": 9592.5}, "NQU0_2020": {"vol": 393, "bars": 194}, "NQZ0_2020": {"vol": 2, "bars": 2}},
+      "2020-06-02": {"NQM0_2020": {"vol": 384069, "bars": 1365, "close_pts": 9657.5}, "NQU0_2020": {"vol": 793, "bars": 263}},
+      "finding": "front absent 05-28/29 (alias chunk dash-filtered); NQM0 front appears exactly at 2020-06-01 with front-scale volume -- relabel boundary exact"
+    },
+    "hole_window_held_map": {"window": "2020-03-18..2020-06-24", "held": "NQH0_2020 through >=2020-03-27 ... NQM0_2020 by 2020-06-15 -> NQU0_2020 from 2020-06-18", "note": "a3 quarantines hole-window rolls from the DTE stat (dte>45 excluded, n=62 of 66) -- NQ_a3_term.py:104"}
+  },
+  "overall_verdict": "CLEAN_AS_BUILT with two disclosed obligations: (1) open ERRATUM F1 obligation -- apply alias view rule + re-measure 2020 aggregates before registered-cycle use; (2) structural rule-family defect -- weak implicit cease-guard (failure mode proven on 6J 2022-09-20; not manifested in NQ's 66 rolls)",
+  "taxonomy": "every dated/numeric claim above is OBSERVED(script+window, this lane's disk re-measurements) or FACT(artifact, cited file:section); no NOT_RUN items except the explicitly-open obligations"
+}

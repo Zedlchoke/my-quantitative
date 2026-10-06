@@ -1,0 +1,95 @@
+{
+  "schema": "6j_orientation_check@1",
+  "task": "FUTURES-P3-QUARANTINE-20261004 / Q4-DATA-CHECKS",
+  "generated_utc": "2026-10-04T00:00:00Z",
+  "labels_binding": "MODELED COST / UNDER REVIEW / VERIFIED_VS_ACCOUNT=NOT_RUN on every cost number; fill/queue claims impossible (no BBO data)",
+  "a_orientation_law": {
+    "law": "6J quoted USD per JPY (JPY/USD convention), NOT USDJPY; 6J UP = yen appreciation; long 6J = long JPY / short USD; USDJPY-long spot idea = 6J SHORT",
+    "artifact_evidence": [
+      "dossiers_v2/6J_DEEP_v2.md header 'Quote-orientation trap' (band 0.0061095-0.0099205, implied USDJPY 100.80-163.68, extremes dated)",
+      "v1 dossiers/6J_DOSSIER.md section 1 Mechanics (12,500,000 JPY, quoted USD per JPY, CME JPY/USD framing, S1_IDENTITY multiplier 12500000 / minTick 5e-07)",
+      "6J_DEEP_v2.md section 8: tick-grid violations 0 across 2,843,938 bars (all OHLC on the 5e-7 grid)"
+    ],
+    "disk_reproof": {
+      "method": "predicate-filtered slice of research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6J_cache/6j_outright_1m.parquet, window 2024-07-10T00:00Z..2024-07-12T23:59Z, 4,730 rows, front = 6JU4 by volume",
+      "date_rationale": "2024-07-11 is the dossier-cited MOF JPY-buying intervention date (US-morning burst 12:42 UTC london_pm/ny_am; 6J_DEEP_v2.md section 0-6 and section 2 leg 2024-07-10->08-05)",
+      "results": {
+        "2024-07-11_open": 0.006249,
+        "2024-07-11_close": 0.0063775,
+        "session_return_pct": 2.056,
+        "day_range": [0.006242, 0.006411],
+        "volume_vs_prior_day": 4.73,
+        "burst_minute": "2024-07-11T12:42Z close 0.0062800 -> 0.0063325 = +5.25e-5 = 105 ticks in one minute (matches the dossier's cited 12:42 UTC burst timestamp exactly)",
+        "implied_usdjpy": {"open": 160.03, "close": 156.8, "note": "USDJPY DOWN ~2.0% (yen STRONG) while 6J price UP +2.056% -- the law, confirmed"}
+      },
+      "direction_note": "the dispatch draft's tentative 'price DOWN while yen strengthens' is the USDJPY-spot reflex; in 6J quote units yen strength = price UP, which is what the data shows; session return +2.056% sits inside the dossier's op-day band +0.78..+2.35%",
+      "scale_note": "panel closes are price x 1e9 (e.g. 6,377,500 -> 0.0063775 USD/JPY), on the 5e-7 grid"
+    },
+    "verdict": "PROVEN (artifact + fresh disk slice; burst-minute corroboration)"
+  },
+  "b_bbo_execution": {
+    "d5_law": "floor ratio r = RT(S2-mid) / MDE(n); RT built ONLY from corrected fees + close-proxy spread + 1-tick-pair slippage; NOT an expectancy/breakeven/PnL estimate; words 'measured/complete cost' FORBIDDEN (RANKING_FRAMEWORK.md section D5, FUTURES-OVERNIGHT-PREP-20261003)",
+    "book_thinness_facts": {
+      "mpm_window_median_1m_vol": 34,
+      "full_day_median_1m_vol": 53,
+      "thinning_pct": 35.85,
+      "source": "6J_a2_sessions.json boj_decision_window (window 12:00-15:30 JST; 9.50% of session volume; 349,656 bars); 6J_DEEP_v2.md section 3 + 6-H4",
+      "tokyo_vs_ny": "tokyo_am median 1m vol 59 vs ny_am 120 (section 6-H6: Asia-hours execution ~2x thinner)"
+    },
+    "volume_definition_gap": {
+      "median_ratio_1m_summed_vs_cleared": 0.45543311419499427,
+      "p10_p90": [0.29364243731235884, 0.479081697817285],
+      "n_days": 752,
+      "source": "6J_qa_ledger.json volume_scale_check_2023plus",
+      "law": "volume SHARES and RATIOS only, never absolute levels"
+    },
+    "bbo_status": "NOT_RUN (no BBO/quote data in panel; true spread, queue position, fill probability, slippage all NOT_RUN; standing register 6J_DEEP_v2.md section 9)",
+    "conclusion": "no fill/queue claims possible; conservative fill law binds (high-biased close-proxy spread + assumed slippage tiers + stress x1.0/1.5/2.0)"
+  },
+  "c_cost_layers": {
+    "labels": "MODELED COST / UNDER REVIEW / VERIFIED_VS_ACCOUNT=NOT_RUN",
+    "fee_layer": {
+      "source": "FUTURES-OVERNIGHT-PREP-20261003/fees_erratum/source/FEES_CORRECTED.md section 2 (glued-superscript erratum, P0-VERIFY upheld)",
+      "all_in_usd_per_side": {"T1": 2.46, "T2": 2.26, "T3": 2.06, "T4": 1.86},
+      "t1_composition": "commission 0.85 + exchange 1.60 + reg 0.01",
+      "caveats": "FX fee-group mapping PARTIAL (6J not printed verbatim on the 1.60 row); A7 re-verification packet pending (Q3-FEE-A7-READY, PREPARE ONLY)"
+    },
+    "tick_arithmetic": {
+      "mintick_quote_units": 5e-7,
+      "multiplier_jpy": 12500000,
+      "tick_value_usd": 6.25,
+      "derivation": "5e-7 USD/JPY x 12,500,000 JPY = $6.25/tick (S1_IDENTITY 6J multiplier 12500000 / minTick 5e-07; corroborated by 0 tick-grid violations in 2.84M bars and dossier section 4 arithmetic -138 ticks ~= -$863 -> $6.254/tick)",
+      "legacy_conflict": "1e-4/$12.50 legacy JY tick (TradingCharts) unadjudicated vs CME rulebook (transport-blocked); broker secdef + raw grid agree on 5e-7/$6.25"
+    },
+    "spread_close_proxy_usd_per_side": 25.0,
+    "spread_basis": "4 ticks x $6.25; DC section 1.7 6J column (20d median close-proxy); high-biased; BBO NOT_RUN",
+    "slippage_tiers_ticks_per_side": [1, 2, 3],
+    "representative_price": 0.006383,
+    "representative_price_basis": "2026-10-01 panel close, 6J_DEEP_v2.md section 2",
+    "notional_usd": {
+      "representative": 79787.5,
+      "band_low_at_0.0061095": 76368.75,
+      "band_high_at_0.0099205": 124006.25
+    },
+    "round_trip_table": {
+      "formula": "RT = 2 x (fee + 25.00 + n_ticks x 6.25); bp = RT / notional x 1e4",
+      "at_representative_notional": {
+        "T1": {"slip1": {"per_side": 33.71, "rt_usd": 67.42, "bp": 8.45}, "slip2": {"per_side": 39.96, "rt_usd": 79.92, "bp": 10.02}, "slip3": {"per_side": 46.21, "rt_usd": 92.42, "bp": 11.58}},
+        "T2": {"slip1": {"per_side": 33.51, "rt_usd": 67.02, "bp": 8.4}, "slip2": {"per_side": 39.76, "rt_usd": 79.52, "bp": 9.97}, "slip3": {"per_side": 46.01, "rt_usd": 92.02, "bp": 11.53}},
+        "T3": {"slip1": {"per_side": 33.31, "rt_usd": 66.62, "bp": 8.35}, "slip2": {"per_side": 39.56, "rt_usd": 79.12, "bp": 9.92}, "slip3": {"per_side": 45.81, "rt_usd": 91.62, "bp": 11.48}},
+        "T4": {"slip1": {"per_side": 33.11, "rt_usd": 66.22, "bp": 8.3}, "slip2": {"per_side": 39.36, "rt_usd": 78.72, "bp": 9.87}, "slip3": {"per_side": 45.61, "rt_usd": 91.22, "bp": 11.43}}
+      },
+      "band_sensitivity_T1": {
+        "band_low_notional_76368.75_bp": {"slip1": 8.83, "slip2": 10.47, "slip3": 12.1},
+        "band_high_notional_124006.25_bp": {"slip1": 5.44, "slip2": 6.44, "slip3": 7.45},
+        "note": "same price move costs ~1.6x more bp in the weak-yen regime (band low) than at the 2020 high"
+      },
+      "headline": "T1 / 1-tick slip: RT $67.42 = 8.45 bp on $79,787.50 -- reconciles exactly with the prior artifact's $67.42 / ~8.5 bp (JPY_AUD_HYPOTHESES.md JF1 cost level)"
+    }
+  },
+  "verdicts": {
+    "a_orientation": "PROVEN (artifact + fresh disk slice; 12:42Z burst-minute exact match)",
+    "b_bbo": "CONFIRMED impossible on this evidence; conservative fill law binds",
+    "c_costs": "COMPUTED, MODELED, UNDER REVIEW, VERIFIED_VS_ACCOUNT=NOT_RUN; headline RT $67.42 = 8.45 bp (T1/1-tick) on 2026 notional; 8.30-12.10 bp across tiers"
+  }
+}

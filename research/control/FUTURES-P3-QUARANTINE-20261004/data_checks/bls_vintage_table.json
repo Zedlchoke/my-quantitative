@@ -1,0 +1,182 @@
+{
+  "schema": "bls_vintage_table@1",
+  "task": "FUTURES-P3-QUARANTINE-20261004 / Q4-DATA-CHECKS",
+  "generated_utc": "2026-10-04T00:00:00Z",
+  "provenance": "machine normalization of research/control/FUTURES-OVERNIGHT-PREP-20261003/bls_vintage/{BLS_VINTAGE_INVESTIGATION.md, bls_vintage_evidence.json, captures/, fetch_log.jsonl}; no new fetches performed by this lane",
+  "claim_class": "FACT(source+capture) for every dated field, per the P2C evidence chain; NOT_PINNED / NOT_RUN marked explicitly",
+  "pit_rule": {
+    "statement": "for decision-time t, use the schedule vintage as-of t: as-first-published until the revision's official announcement date, as-revised (or CANCELED) after",
+    "formula": "expected_release(R, t) = first_published(R) if t < announce(R) else revised(R)",
+    "announce_definition": "official announcement date, pinned independently by the notice page's own Last-modified date + first wayback capture (NOT the schedule-page edit window)",
+    "release_time_convention": "08:30 AM US-Eastern on every affected release; wayback capture timestamps UTC",
+    "current_calendar_inference_for_historical_pit": "FORBIDDEN",
+    "forbidden_rationale": "the current calendar silently erases canceled events (2025-11-13 CPI, 2025-11-07 EMPSIT) and backfills revised dates, injecting look-ahead bias and phantom/missing events",
+    "as_known_equals_current_from": "2025-11-21"
+  },
+  "vintage_keying_recipe": {
+    "key": ["source_page_url", "capture_timestamp_utc", "sha256_raw_bytes"],
+    "pit_join": "for decision time t select the vintage with the LATEST capture/announcement timestamp <= t; never the latest-available vintage",
+    "notes": [
+      "store raw bytes (curl-direct or web.archive.org id_ replay) + sha256; wayback TS in the replay URL is machine-verifiable",
+      "expect silent in-place edits: detect via byte-diff of adjacent captures; bound edit instants by the capture pair; pin announcements independently",
+      "a release absent from the successor vintage (cancellation) is an expectation to model, not a gap to repair"
+    ]
+  },
+  "releases": [
+    {
+      "release_id": "CPI-2025-09-REF",
+      "series": "CPI",
+      "ref_month": "2025-09",
+      "as_first_published": "2025-10-15T08:30 ET",
+      "as_revised": "2025-10-24T08:30 ET",
+      "canceled": false,
+      "announce_date": "2025-10-10",
+      "announce_evidence": "092025-cpi-reschedule-notice.htm last-modified 2025-10-10, first archived 20251010153854 (captures/wb_20251010153854_cpi_reschedule_notice.htm)",
+      "schedule_page_edit_window_utc": "(2025-10-03T09:29:09Z, 2025-10-11T01:27:56Z] single in-place edit Oct.15->Oct.24 + appended Dec-ref tail row",
+      "capture_evidence": {
+        "first_published": ["captures/wb_20250104044048_cpi.htm sha256=943d94b0...", "captures/wb_20250910071545_cpi.htm sha256=39056af3...", "captures/wb_20251002120859_cpi.htm sha256=9aabec51... rows unchanged"],
+        "revised": ["captures/wb_20251011012756_cpi.htm", "captures/wb_20251025032156_cpi.htm", "captures/wb_20251113143722_cpi.htm all sha256=1f738e9e... (Oct-24 vintage)"]
+      },
+      "decision_date_ranges": [
+        {"range": "through 2025-10-09", "expected": "2025-10-15"},
+        {"range": "2025-10-10 onward", "expected": "2025-10-24"}
+      ],
+      "cause_official": "special one-off release during suspension for SSA statutory COLA deadlines (reschedule notice verbatim)"
+    },
+    {
+      "release_id": "CPI-2025-10-REF",
+      "series": "CPI",
+      "ref_month": "2025-10",
+      "as_first_published": "2025-11-13T08:30 ET",
+      "as_revised": "CANCELED (never published)",
+      "canceled": true,
+      "announce_date": "2025-11-21",
+      "announce_evidence": "RD page (2025-lapse-revised-release-dates.htm) entry 'Consumer Price Index | October 2025 | ... | Canceled' present at capture 20251121165438 (page last-modified 2025-11-21); absent at 20251119035927 (last-modified 2025-11-18)",
+      "schedule_page_edit_window_utc": "(2025-11-13T14:37:22Z, 2025-11-21T18:55:34Z] Oct-ref row deleted + Dec.10->Dec.18",
+      "capture_evidence": {
+        "first_published": ["row present in every CPI capture wb_20250104044048 through wb_20251113143722"],
+        "revised": ["captures/wb_20251121185534_cpi.htm sha256=f438037f...", "captures/wb_20251121165438_revised_dates.htm"]
+      },
+      "decision_date_ranges": [
+        {"range": "through 2025-11-20", "expected": "2025-11-13 (expected-but-canceled event; non-arrival was information)"},
+        {"range": "2025-11-21 onward", "expected": "no event (CANCELED)"}
+      ],
+      "cause_official": "October 2025 reference-period survey data could not be collected due to the lapse and cannot be collected retroactively (RD-page CPI note verbatim)"
+    },
+    {
+      "release_id": "CPI-2025-11-REF",
+      "series": "CPI",
+      "ref_month": "2025-11",
+      "as_first_published": "2025-12-10T08:30 ET",
+      "as_revised": "2025-12-18T08:30 ET",
+      "canceled": false,
+      "announce_date": "2025-11-21",
+      "announce_evidence": "RD page CPI row 'Nov 10 -> Dec 18' by capture 20251121165438",
+      "schedule_page_edit_window_utc": "(2025-11-13T14:37:22Z, 2025-11-21T18:55:34Z] same edit as CPI-2025-10-REF",
+      "capture_evidence": {
+        "first_published": ["captures/wb_20250104044048_cpi.htm through wb_20251113143722_cpi.htm"],
+        "revised": ["captures/wb_20251121185534_cpi.htm", "captures/wb_20251121165438_revised_dates.htm"]
+      },
+      "decision_date_ranges": [
+        {"range": "through 2025-11-20", "expected": "2025-12-10"},
+        {"range": "2025-11-21 onward", "expected": "2025-12-18"}
+      ],
+      "cause_official": "extended processing; no 1-month pct changes where October data missing (RD-page CPI note verbatim)"
+    },
+    {
+      "release_id": "EMPSIT-2025-09-REF",
+      "series": "EMPSIT",
+      "ref_month": "2025-09",
+      "as_first_published": "2025-10-03T08:30 ET",
+      "as_revised": "2025-11-20T08:30 ET",
+      "canceled": false,
+      "announce_date": "2025-11-14",
+      "announce_evidence": "RD page last-modified 2025-11-14, first dated entries at capture 20251115003655 (stub only at 20251113205426)",
+      "schedule_page_edit_window_utc": "(2025-10-06T22:38:43Z, 2025-11-18T19:10:21Z] Sep-ref row rewritten Oct.03->Nov.20; intermediate captures 20251118191021/20251119144405 still carried the stale Oct-ref row",
+      "capture_evidence": {
+        "first_published": ["captures/wb_20250104044052_empsit.htm sha256=f0ade86c...", "captures/wb_20250910073017_empsit.htm = wb_20250917054731_empsit.htm sha256=9e1fcdf3...", "captures/wb_20251006223843_empsit.htm sha256=1cf76cb4... still original on Oct 6"],
+        "revised": ["captures/wb_20251118191021_empsit.htm = wb_20251119144405_empsit.htm sha256=c5df0f6c...", "captures/wb_20251115003655_revised_dates.htm"]
+      },
+      "decision_date_ranges": [
+        {"range": "through 2025-11-13", "expected": "2025-10-03"},
+        {"range": "2025-11-14 onward", "expected": "2025-11-20"}
+      ],
+      "cause_official": "2025 lapse in appropriations"
+    },
+    {
+      "release_id": "EMPSIT-2025-10-REF",
+      "series": "EMPSIT",
+      "ref_month": "2025-10",
+      "as_first_published": "2025-11-07T08:30 ET",
+      "as_revised": "CANCELED (never published)",
+      "canceled": true,
+      "announce_date": "2025-11-21",
+      "announce_evidence": "RD page entry 'Employment Situation | October 2025 | ... | Canceled' by capture 20251121165438",
+      "schedule_page_edit_window_utc": "(2025-11-19T14:44:05Z, 2025-11-21T18:55:40Z] Oct-ref row deleted + Dec.05->Dec.16",
+      "capture_evidence": {
+        "first_published": ["captures/wb_20250104044052_empsit.htm through wb_20251119144405_empsit.htm"],
+        "revised": ["captures/wb_20251121185540_empsit.htm", "captures/wb_20251123023725_empsit.htm", "captures/wb_20251218182154_empsit.htm all sha256=6ae82ecc...", "captures/wb_20251121165438_revised_dates.htm"]
+      },
+      "decision_date_ranges": [
+        {"range": "through 2025-11-20", "expected": "2025-11-07 (expected-but-canceled event; non-arrival was information)"},
+        {"range": "2025-11-21 onward", "expected": "no event (CANCELED)"}
+      ],
+      "cause_official": "CPS household data for October 2025 not collected due to the lapse, not collected retroactively; CES October data published with November data (RD-page EMPSIT note verbatim)"
+    },
+    {
+      "release_id": "EMPSIT-2025-11-REF",
+      "series": "EMPSIT",
+      "ref_month": "2025-11",
+      "as_first_published": "2025-12-05T08:30 ET",
+      "as_revised": "2025-12-16T08:30 ET",
+      "canceled": false,
+      "announce_date": "2025-11-21",
+      "announce_evidence": "RD page EMPSIT row 'Dec 5 -> Dec 16' by capture 20251121165438",
+      "schedule_page_edit_window_utc": "(2025-11-19T14:44:05Z, 2025-11-21T18:55:40Z] same edit as EMPSIT-2025-10-REF",
+      "capture_evidence": {
+        "first_published": ["captures/wb_20250104044052_empsit.htm through wb_20251119144405_empsit.htm"],
+        "revised": ["captures/wb_20251121185540_empsit.htm", "captures/wb_20251121165438_revised_dates.htm"]
+      },
+      "decision_date_ranges": [
+        {"range": "through 2025-11-20", "expected": "2025-12-05"},
+        {"range": "2025-11-21 onward", "expected": "2025-12-16"}
+      ],
+      "cause_official": "extended collection period and extra processing time (RD-page EMPSIT note verbatim)"
+    },
+    {
+      "release_id": "CPI-2026-01-REF",
+      "series": "CPI",
+      "ref_month": "2026-01",
+      "as_first_published": "2026-02-11T08:30 ET",
+      "as_revised": "2026-02-13T08:30 ET",
+      "canceled": false,
+      "announce_date": "NOT_PINNED",
+      "announce_evidence": "NOT_RUN: the 2026-lapse section's own last-modified date / first-archived capture was NOT captured in the existing artifact set",
+      "schedule_page_edit_window_utc": "NOT_RUN (no archived captures of the 2026 schedule-page window exist in the artifact set)",
+      "capture_evidence": {
+        "first_published": ["RD page 2026-lapse section as quoted in fetch_log.jsonl WebFetch 2026-10-03T15:31:28Z: 'CPI Jan 2026 Feb 11->Feb 13' (live textual rendering; no raw-bytes archive)"],
+        "revised": ["captures/live_bls_ics_20261003_subset.txt VEVENT DTSTART;TZID=US-Eastern:20260213T083000 SUMMARY:Consumer Price Index (live capture 2026-10-03)"]
+      },
+      "decision_date_ranges": [
+        {"range": "through announce (UNPINNED)", "expected": "2026-02-11", "caveat": "vintage-ambiguous until the 2026 announcement is pinned; exclude or sensitivity-split decision dates 2026-01..02"},
+        {"range": "from announce (UNPINNED)", "expected": "2026-02-13"}
+      ],
+      "required_followup": "CDX the 2026-01/02 window of bls.gov/schedule/news_release/cpi.htm; byte-diff adjacent captures for the Feb.11->Feb.13 edit; capture the RD-page 2026-lapse section with its last-modified date; permitted routes only (TRANSPORT LAW)",
+      "cause_official": "2026 lapse in appropriations (RD page title: 'Revised news release dates following the 2025 and 2026 lapses in appropriations')"
+    }
+  ],
+  "sibling_out_of_scope": {
+    "EMPSIT-2026-01-REF": "revised 2026-02-06 -> 2026-02-11 (same evidence set: RD page 2026-lapse section + ics VEVENT 20260211T083000 Employment Situation); same NOT_PINNED-announcement caveat; recorded for completeness, outside the 7 mandated rows"
+  },
+  "grid_consequences": {
+    "cpi_2025_events": 11,
+    "empsit_2025_events": 10,
+    "note": "any backtest assuming 12/12 prints in 2025 is structurally wrong; October-reference print never published for either series"
+  },
+  "limitations": [
+    "calendar/schedule evidence only; actual-publish-latency verification vs downstream feeds (BLS API / ALFRED first print) NOT_RUN, inherited from P2C",
+    "schedule-page edit instants bounded by adjacent wayback captures; true instants lie inside the stated windows",
+    "announcement dates pinned by notice-page last-modified + first archived capture; intraday announcement times use the first-archived-capture timestamps listed in the investigation",
+    "2026-row evidence is live-fetch grade (no raw-bytes archives) and its announcement date is NOT_PINNED"
+  ]
+}

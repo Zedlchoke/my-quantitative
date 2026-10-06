@@ -1,0 +1,98 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-P3-QUARANTINE-20261004",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "Q4-DATA-CHECKS",
+  "generated_utc": "2026-10-04T09:05:00Z",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior/prep",
+  "branch": "prep/futures-behavior-10syms-20261002",
+  "dispatch_sha": "0225b3c25bf1cf269dae5a835853b5b3904125a0",
+  "actual_start_sha": "0225b3c25bf1cf269dae5a835853b5b3904125a0",
+  "head_drift": "NONE (re-measured via git -C at start and again before writing this handoff: dispatch == actual_start == final HEAD 0225b3c2; tracked tree clean; only untracked round-dir outputs incl. concurrent sibling lanes' handoffs)",
+  "commit_sha": null,
+  "commit_disclosure": "No commit made by this lane (dispatch law: Lead commits by pathspec after waves; lanes never commit/push/merge).",
+  "changed_paths": [
+    "research/control/FUTURES-P3-QUARANTINE-20261004/data_checks/BLS_VINTAGE_NORMALIZATION.md",
+    "research/control/FUTURES-P3-QUARANTINE-20261004/data_checks/bls_vintage_table.json",
+    "research/control/FUTURES-P3-QUARANTINE-20261004/data_checks/NQ_RECONSTRUCTION_CHECK.md",
+    "research/control/FUTURES-P3-QUARANTINE-20261004/data_checks/nq_reconstruction_check.json",
+    "research/control/FUTURES-P3-QUARANTINE-20261004/data_checks/6J_ORIENTATION_COST_CHECK.md",
+    "research/control/FUTURES-P3-QUARANTINE-20261004/data_checks/6j_orientation_check.json",
+    "research/control/FUTURES-P3-QUARANTINE-20261004/dispatch/handoff_Q4-DATA-CHECKS.json"
+  ],
+  "tests": [
+    {
+      "name": "NQ_a3_term.json full read (roll table integrity)",
+      "kind": "venv python json.load",
+      "exit_code": 0,
+      "result": "n_rolls=66; corr_gap_vs_spreadmed10=0.99908 (n=65); embedded pts/yr 2023=722.8 2024=1014.0 2025=906.8 2026=809.5; daily-crossover DTE n=62 median 7; max-gap roll 2026-06-17 = 302.0 pts"
+    },
+    {
+      "name": "held_volume_k5.parquet full read + roll recount",
+      "kind": "venv python pandas",
+      "exit_code": 0,
+      "result": "4,219 sessions 2010-06-07..2026-10-01; 66 switches (independent recount matches artifact); 2022-09 slice: NQU2->NQZ2 rolled 2022-09-15 (pre-cessation); 2020 hole slice: NQH0 held through >=03-27, NQM0 by 06-15"
+    },
+    {
+      "name": "nq_outright_1m.parquet predicate-pushdown counts (alias lineage)",
+      "kind": "venv python pyarrow filters (no full scan)",
+      "exit_code": 0,
+      "result": "raw_symbol=='NQU8-NQM9': 0 rows (92,075 alias bars dash-excluded); instrument_id==16908: exactly 19,406 rows, all 'NQM0', span 2020-06-01T00:00Z..2020-06-19T13:29Z; panel total 6,688,533 rows (== dossier section 0)"
+    },
+    {
+      "name": "nq_annotated_1m.parquet 6-session-date slices",
+      "kind": "venv python arrow-dataset filter session_date in {...}",
+      "exit_code": 0,
+      "result": "rolls 2010-06-15 / 2022-09-15 / 2026-06-17: both legs have bars+closes on roll and prior session; new-contract volume dominant on roll day; 2026-06-17 close gap 302.0 pts == JSON max-gap; alias boundary: front absent 05-28/29 (NQU0 trickle only), NQM0 appears 06-01 with 326,956 contracts"
+    },
+    {
+      "name": "6j_outright_1m.parquet 3-day slice (orientation re-proof)",
+      "kind": "venv python arrow-dataset filter ts_event in 2024-07-10..12",
+      "exit_code": 0,
+      "result": "front 6JU4: 2024-07-11 open 0.006249 -> close 0.0063775 (+2.056%); burst minute 12:41->12:42Z +105 ticks (matches dossier-cited 12:42Z burst); implied USDJPY 160.03 -> 156.80 (yen strong = 6J UP, law confirmed)"
+    },
+    {
+      "name": "6J_a2_sessions.json + 6J_qa_ledger.json reads",
+      "kind": "venv python json.load",
+      "exit_code": 0,
+      "result": "boj_decision_window median 1m vol 34 vs full-day 53 (thinning 35.85%); volume_scale_check median_ratio 0.45543 (n=752, p10-p90 0.29-0.48)"
+    },
+    {
+      "name": "6J cost-layer arithmetic",
+      "kind": "venv python arithmetic",
+      "exit_code": 0,
+      "result": "tick $6.25 = 5e-7 x 12,500,000; T1/1-tick RT $67.42 = 8.45 bp on $79,787.50 (price 0.006383) — reconciles with prior artifact $67.42/~8.5bp; full tier x slip grid 8.30-12.10 bp; band sensitivity 5.44-12.10 bp"
+    },
+    {
+      "name": "output JSON validity",
+      "kind": "venv python json.load x3",
+      "exit_code": 0,
+      "result": "all three machine companions parse clean"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "BLS: CPI Jan-2026 row is live-fetch grade (no raw-bytes archive of the 2026-lapse section or the 2026 schedule page); its announcement date is NOT_PINNED — decision dates 2026-01..02 remain vintage-ambiguous until a permitted-routes CDX/capture pass; actual-publish-latency vs downstream feeds remains NOT_RUN (inherited)",
+    "BLS: schedule-page edit instants are capture-bounded windows; announcement dates pinned independently by notice-page last-modified + first archived capture",
+    "NQ: alias view rule documented but intentionally NOT applied in the v2 chain build (ERRATUM F1 open obligation: re-measure 2020 aggregates before any registered cycle)",
+    "NQ: the k=5 cease-guard weakness is structural to the rule family (proven on 6J 2022-09-20); NQ's own 66 rolls show no manifestation but only spot-checked quarters were verified, not all 66 against cessation dates",
+    "6J: cost numbers are MODELED COST / UNDER REVIEW / VERIFIED_VS_ACCOUNT=NOT_RUN; spread is a high-biased close proxy; slippage assumed; FX fee-group mapping PARTIAL; BBO NOT_RUN so no fill/queue claims",
+    "6J: disk orientation re-proof used one dossier-cited op date (2024-07-11) with UTC-day windows (not CT session-date convention) — direction-proof grade, not a session-statistics recompute"
+  ],
+  "incidents": [],
+  "tree_status": "tracked tree clean at HEAD 0225b3c2; untracked: research/control/FUTURES-P3-QUARANTINE-20261004/** (this round's lane outputs + siblings)",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-P3-QUARANTINE-20261004/data_checks/BLS_VINTAGE_NORMALIZATION.md", "sha256": "adadf1b1de2da64065e36d8e38d3cc8535246273f7e9ce3a60342a5ba47ee8c1"},
+    {"path": "research/control/FUTURES-P3-QUARANTINE-20261004/data_checks/bls_vintage_table.json", "sha256": "c77250ed8b0cc16e8e6da130d87b0c9986e154adcd0311dfb5cc3dc1d2d4d793"},
+    {"path": "research/control/FUTURES-P3-QUARANTINE-20261004/data_checks/NQ_RECONSTRUCTION_CHECK.md", "sha256": "671e4fa908040968392df66697640d8f65412db9f42c6994327720fdd2215cf4"},
+    {"path": "research/control/FUTURES-P3-QUARANTINE-20261004/data_checks/nq_reconstruction_check.json", "sha256": "2b07c73b333596417abd325c26bd9091d842e5de68e7d9da9ad321e51a01ac7d"},
+    {"path": "research/control/FUTURES-P3-QUARANTINE-20261004/data_checks/6J_ORIENTATION_COST_CHECK.md", "sha256": "dd251c90a7d05d67b0b3365ed9a9ab382134cd87751716324cc2bcbc4ba4ca88"},
+    {"path": "research/control/FUTURES-P3-QUARANTINE-20261004/data_checks/6j_orientation_check.json", "sha256": "550e33cab4234766b5e81cb7914cd07ca9e704afb399d22ed141857cf5519f42"},
+    {"path": "research/control/FUTURES-P3-QUARANTINE-20261004/dispatch/handoff_Q4-DATA-CHECKS.json", "sha256": "SELF"}
+  ],
+  "recommended_next_action": "Wave B (Q6-SYNTH-VERIFY): verify these three check sets, then (1) fold the BLS vintage rule + machine table into any future BLS-event PIT spec — current-calendar inference for historical PIT is FORBIDDEN, and the CPI Jan-2026 announcement date needs a permitted-routes capture pass before 2026-01..02 decision windows are usable; (2) carry the NQ ERRATUM F1 obligation (apply alias view rule + re-measure 2020 aggregates) and the k=5 cease-guard requirement into any registered-cycle precondition list; (3) propagate the 6J cost table (headline RT $67.42 = 8.45 bp T1/1-tick, range 8.30-12.10 bp) as MODELED/UNDER REVIEW pending the Q3 A7 fee packet — no fill/queue claims.",
+  "summary": "Three read-only checks delivered. (1) BLS: P2C investigation normalized into a concrete PIT vintage rule (first-published until official announcement date, revised after; current-calendar inference FORBIDDEN) + machine table for 7 releases (CPI Sep/Oct/Nov-2025, EMPSIT Sep/Oct/Nov-2025, CPI Jan-2026) with per-version capture evidence, cancellation flags, decision-date ranges, and a general as-of keying recipe (source page + capture timestamp + sha256); CPI Jan-2026 announcement NOT_PINNED flagged. (2) NQ reconstruction: CLEAN as built — alias rule documented with exact 92,075/19,406/6,688,533 lineage re-verified from disk (rule intentionally NOT applied; ERRATUM F1 obligation open); 66 rolls verified twice; corr(gap, spread)=0.99908 and per-year phantom-drift table verified; no adjusted series used as price; 3 roll dates + alias boundary spot-verified from parquet caches; k=5 cease-guard weakness disclosed as structural (6J 2022-09-20 law) though not manifested in NQ. (3) 6J: orientation law re-proven from dossier + fresh disk slice (2024-07-11 op day: 6J +2.056% UP, implied USDJPY 160.0->156.8, burst minute exactly 12:42Z, 105 ticks); BBO impossibility confirmed (34-vs-53 MPM book, 35.85% thinner; 0.455x volume-definition gap); corrected-fee cost layers computed with full arithmetic: headline RT $67.42 = 8.45 bp (T1 fee $2.46/side, 1-tick slip, $25 spread proxy, notional $79,787.50 at price 0.006383), tier range 8.30-12.10 bp — all MODELED COST / UNDER REVIEW / VERIFIED_VS_ACCOUNT=NOT_RUN.",
+  "generated_utc_note": "single generated_utc field above is authoritative"
+}
