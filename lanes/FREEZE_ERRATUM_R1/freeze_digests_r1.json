@@ -1,0 +1,70 @@
+{
+  "schema": "wnba_playerfeat_scored_v1_freeze_digests_r1@1",
+  "cycle_id": "WNBA-PLAYERFEAT-SCORED-V1",
+  "lane": "EXEC",
+  "recorded_utc": "2026-10-06",
+  "dispatch_sha": "3bbd2b79190a162d1386f65e2a9c8ffb91d6c455",
+  "branch": "orca/wnba-playerfeat-scored-v1-integration",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/wnba-playerfeat-scored-v1/integration",
+  "runner_freeze_sha": "PENDING_CONTROLLER_ADDENDUM",
+  "runner_freeze_sha_law": "two-step: lane pins per-file digests now; the controller's addendum sets RUNNER_FREEZE_SHA (sha256 of run_oos.py) at its own freeze step; G2 already enforces the per-file pins below",
+  "execution_surface": {
+    "run_oos_py": "1bfc951a08182dfa9e549764e1b05c4c84cf129f5e3db56b934ac3fdbb14cd2e",
+    "exec_fixture_builder_py": "cd505c6b15e9b8f16ea3c74ee57b8b90fec449f132603424b941cf7c19b9e1c3",
+    "test_runner_gates_py": "b92ce6d6c445f6d4cbadb7c95a28da57b99f232ea476f919d739bde2aa65f5d1"
+  },
+  "frozen_engine_pins_g2": {
+    "arms_py": "82263eab713258b09ef920500a56d1fbf36ef9b9b8ea20965c6b4fd99b04cdd3",
+    "harness_py": "b9446f7699ce2e29c8ce66490fc0f9941cc38dda0ed02e8e7fc108e65373485e",
+    "note": "T_SELECT-era bytes; arm code untouched by this ERRATUM"
+  },
+  "frozen_data": {
+    "feature_table_parquet": {
+      "path": "~/.my-quantitative-data/playerfeat-prep-v1/wnba/features/wnba_player_features_2002_2026.parquet",
+      "sha256": "ceaf10ba33e705b9569a11cec2aa33e1875e372c35d643ed5d80d5e757ffc7bf",
+      "bytes": 826415
+    },
+    "frozen_census_oos": {
+      "2020": 147, "2021": 210, "2022": 240, "2023": 261,
+      "2024": 263, "2025": 311, "2026": 341
+    },
+    "frozen_census_source": "COVERAGE_AUDIT.md (B_WNBA_FEAT) per-season universe list, identical row-by-row to the predecessor census; universe total 5988; warm-up 1997-2001 = 1022 rows"
+  },
+  "frozen_constants": {
+    "B0_p_home": 0.603755,
+    "B1_WNBA": { "k": 32.0, "hca": 50.0, "gamma": 0.65 },
+    "accepted_arms": "B0,B1-WNBA",
+    "phi_law": "feature arms (WF-A/WF-B/WF-C) have NO arming path in the runner; arm_feature_phi() refuses unconditionally"
+  },
+  "window": {
+    "oos_seasons": [2020, 2021, 2022, 2023, 2024, 2025, 2026],
+    "binding_doc": "lanes/EXEC/WINDOW_RESOLUTION.md",
+    "warmup": "1997-2001 stats-side (1022 rows)",
+    "train_stream": "2002-2019 universe",
+    "2026_census": 341,
+    "2026_max_tip_utc": "2026-10-03T01:00:00Z",
+    "freeze_anchor_earliest_utc": "2026-10-05T09:26:30Z",
+    "future_tipped_universe_games_at_freeze": 0,
+    "run_time_law": "every OOS game tip_utc < run time at post-GO execution; stale corpus refuses (exit 5)"
+  },
+  "metrics": {
+    "primary": "mean log loss (LL), pooled + per-season folds",
+    "secondary": ["Brier", "10-bin reliability", "calibration slope band [0.85, 1.15] (B0 slope = honest nan, constant predictor)"],
+    "paired_dll": "LL(B1-WNBA) - LL(B0), tip-date-cluster bootstrap, 10000 resamples, seed 20261005",
+    "falsifier": "REJECT-vs-B0 iff pooled 95% CI of dLL includes 0 OR >= half of season folds non-negative (7 folds -> threshold 4)"
+  },
+  "gate_chain": {
+    "G1": { "exit": 2, "law": "ACTIVE_* + go_phrase_state canonical OWNER_GO_TYPED_LIVE <utc-iso> at head <40-hex> + registered phrase equality + GO-head==row-head; fires pre-read" },
+    "G2": { "exit": 3, "law": "worktree HEAD == registry head; arms/harness sha pins; B1 (32,50,0.65) and B0 0.603755 asserted against in-gate law literals; no phi-arming path" },
+    "G3": { "exit": 4, "law": "researchctl locks inspect FREE_PROVEN, 3x60s retry" },
+    "G4": { "exit": 5, "law": "seasons law (real == 2020..2026 exactly; synth >= 2027 == manifest); tip_utc < run time; census no-silent-shrink; universe set identity" },
+    "G5": { "exit": 6, "law": "single batch, identical game sets, pairwise-distinct exact-arm ids, non-vacuous" }
+  },
+  "go_recording_convention": {
+    "canonical": "OWNER_GO_TYPED_LIVE <utc-iso> at head <40-hex>",
+    "registered_phrase": "GO WNBA PLAYERFEAT SCORED V1 EVALUATION",
+    "identical_to": "NFL ERRATUM_R3 convention",
+    "writer": "controller only; the runner never writes the registry"
+  },
+  "pre_go_law": "with the REAL registry as-is (REGISTERED_NOT_CONSUMED) the runner refuses at G1 pre-read; all proof runs are synthetic (SYNTH_ ids, seasons 2027/2028); no real OOS metric computed in this round; $0"
+}
