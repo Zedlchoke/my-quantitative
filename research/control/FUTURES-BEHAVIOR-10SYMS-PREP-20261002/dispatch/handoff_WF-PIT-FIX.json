@@ -1,0 +1,100 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+ "cycle_id": "UNREGISTERED_PREP",
+ "role": "lane",
+ "lane": "WF-PIT-FIX",
+ "round": "co-owner-review-fix-1",
+ "status": "COMPLETE",
+ "dispatch_sha": "eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7",
+ "actual_start_sha": "eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7",
+ "commit_sha": null,
+ "summary": "R5 fixed in code/futbt/walkforward.py with reproduce-first evidence: at base eae8c3d2 the co-owner case (weekday calendar 2026-01-01..2026-06-30 = 129 sessions, 4 folds, train_frac 0.7, horizon 2) planned fold1 test window 2026-05-08..2026-05-20 but apply_purge_embargo emitted TEST cells through 2026-06-30 (38 cells, 29 excess sessions, 29-session overlap with fold2, 31 label-immature cells kept) — reproduced as failing tests (12 failures + 1 error at pure base). Fix enforces per-window integrity: test_end enforced (post-test cells excluded from the fold and audited out_of_fold/POST_TEST_WINDOW), label maturity (test cells whose horizon extends past the fold boundary or the calendar end are dropped/censored LABEL_CENSORED, never truncated silently), purge >= true horizon kept (validation moved BEFORE any fold mutation), planner is the single horizon authority (mismatched Fold.true_horizon_sessions refused), NO overlapping folds (WalkForwardPlanner.validate_no_overlap in plan; emitted cell sets disjoint), final fold test window extended to calendar end (coverage completion only, never performance-based; 'no fold-total-floor suppression' law intact). After fix the same fold1 emits exactly 7 evaluated cells 2026-05-08..2026-05-18 with 2 LABEL_CENSORED (May 19/20), 1 PURGE, 29 POST_TEST_WINDOW; fold4 window reaches 2026-06-30 with its last 2 cells censored. New PIT producer-prefix tests truncate/mutate ALL producer channels (bars + roll table REBUILT via RollEngine from truncated bars + per-session metadata + nested TRAIN selection inputs): honest replay reproduces the decision prefix on the truncated producer and post-cutoff garbage in every channel changes nothing at or before the cutoff; counter-lookahead tests prove teeth (leaky bar/roll-table/metadata/selection implementations are each caught). README gains a typed WF/PIT disclosures section (IMPLEMENTED/TESTED/NOT_IMPLEMENTED one-liners incl. date-asof vs timestamp-release = NOT_IMPLEMENTED). Full suite 211 OK twice (147 base + 29 WF-PIT-FIX + 35 concurrent EXEC-FIX).",
+ "changed_paths": [
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/walkforward.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_walkforward.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_wf_window_integrity.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_wf_pit_prefix.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/README.md"
+ ],
+ "tests": [
+  {
+   "command": "REPRODUCE (pure base): git -C <worktree> archive eae8c3d2 research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code | tar -x -C /tmp/wf_base_repro; cd /tmp/wf_base_repro/research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m unittest tests.test_wf_window_integrity",
+   "exit_code": 1,
+   "verdict": "FAIL",
+   "verdict_note": "INTENDED pre-fix reproduction of R5 at base commit (isolated git-archive copy; shared worktree untouched): 19 tests, 12 failures + 1 error — incl. fold1 emitted test 38 != 7 cells and label window index 100 > 99 kept at 2026-05-19.",
+   "log_digest": "sha256:e3e0adab18a9baffdeefc6f285ca01f855b30d39207393f561a752529cf986cf"
+  },
+  {
+   "command": "cd /tmp/wf_base_repro/research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m unittest tests.test_wf_pit_prefix",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "verdict_note": "PIT producer-prefix file also green at pure base commit (engine-version robustness of the harness).",
+   "log_digest": "sha256:9595da2233186da57e8da1288d3748a82ae8a4b010ecd7de72b2868d4a14a9bf"
+  },
+  {
+   "command": "cd research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m unittest tests.test_wf_window_integrity tests.test_walkforward tests.test_wf_pit_prefix",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "verdict_note": "42 tests (19 window-integrity + 13 base walkforward + 10 PIT producer-prefix) after the fix.",
+   "log_digest": "sha256:d827ed0ccb38964178a4ef1390e61cdad5385af6b2fec7429cd982d075a413cc"
+  },
+  {
+   "command": "cd research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m unittest discover -s tests -t .",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "verdict_note": "Ran 211 tests ... OK (147 base + 29 this lane + 35 concurrent EXEC-FIX lane test_exec_*); measured green twice for stability amid concurrent lane edits.",
+   "log_digest": "sha256:76e0d182a937fb969fb1c9adcf40d3d8671f5e53e850cb151b26ec2711a6b44e"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "date-asof vs timestamp-release distinction at the WF layer: NOT_IMPLEMENTED — WF asof is DATE-granular (sessions atomic at daily close); no intraday release-time registry exists; typed in README WF/PIT disclosures.",
+  "Label-window convention: a label at session index ci needs data through ci + horizon INCLUSIVE (matches the base suite's gap >= horizon convention); test cells with ci + horizon > test_end are censored.",
+  "Anchored-expanding folds: a later fold's TRAIN lawfully contains earlier folds' TEST sessions (past data by then); per-fold integrity is enforced per fold, not globally exclusive — disclosed in README.",
+  "test_walkforward.py::test_embargo_drops_test_cells_right_after_train assertion tightened (test-phase drops now also include LABEL_CENSORED); the embargo law itself is unchanged and asserted exactly (README erratum line).",
+  "Full-suite count 211 depends on the shared worktree state: 35 of those tests belong to the concurrent EXEC-FIX lane's new files; Lead must re-measure at integration HEAD.",
+  "Producer-prefix PIT tests run the engine on synthetic fixtures only; no real-data runs (prep laws).",
+  "commit_sha null by design: lane does not commit; Lead integrates and commits (round rule in COOWNER_REVIEW_DISPATCH.json/STEERING_ROUND2_DISPATCH.json)",
+  "outputs sha256 refreshed (1) by Lead after cross-lane post-publication edits (validator re-run)"
+ ],
+ "incidents": [
+  "Concurrent EXEC-FIX lane edited engine.py/accounting.py/costs.py/journal.py in this shared worktree mid-task: transient engine breakage observed (mae UnboundLocalError; tests.test_engine 4 errors around 13:52 local); resolved by the lane before my final runs (full suite 211 OK twice). This lane touched none of their files.",
+  "Transient harness-only failures during bring-up: base engine's 1e-9 cash-reconcile drift with extreme garbage mutation prices, and a first README edit that accidentally dropped the 'What is deliberately NOT implemented' heading — both fixed within my own files during the task (dyadic ~5300-level garbage; heading restored; net README diff scoped to WF/PIT section + counts + walkforward row).",
+  "No machine-wide lock needed or held: researchctl locks inspect = FREE_PROVEN; only offline synthetic-fixture tests were run."
+ ],
+ "tree_status": "branch prep/futures-behavior-10syms-20261002, HEAD eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7 (lanes do not commit); worktree dirty as expected for a multi-lane round: 29 modified + 22 untracked paths total, of which this lane contributed exactly the 5 changed_paths above (all others belong to concurrent EXEC-FIX / HANDOFF-RESEARCH lanes or pre-existing untracked dispatch artifacts); no commits, no merges, no push by this lane.",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/walkforward.py",
+   "sha256": "a5d350f4a2b1ec6918ec1298f4f7d224e330213c6a60900cb1e97c5825606b02"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_walkforward.py",
+   "sha256": "a0dabfa0f68b44957c381c3c7b05ba8f71500d0ccd45d5e5b677628a0339d1b1"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_wf_window_integrity.py",
+   "sha256": "b087a49e73daf5d37b624d6013ebd6205c249e4e47f8a2f3b45ed0f37c8c91bc"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_wf_pit_prefix.py",
+   "sha256": "7b4a00f07bd3dd002f362d7805e361b7145542a572d3a526f0323714ef0eedcd"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/README.md",
+   "sha256": "f21a3a8db9cfd90a0eeab08425fdcb3747438e7f0281fb5526df8eaf92e93a33"
+  }
+ ],
+ "findings": [
+  "R5 root cause: apply_purge_embargo classified every cell after train_end as TEST with no test_end bound; plan() arithmetic was non-overlapping but the EMITTED cell sets overlapped (fold1/fold2 shared 29 sessions in the co-owner case).",
+  "Post-fix co-owner case numbers: fold1 planned test [2026-05-08..2026-05-20]; emitted evaluated test = 2026-05-08..2026-05-18 (7 cells); drops: 1 PURGE (2026-05-07), 2 LABEL_CENSORED (2026-05-19/20), 29 POST_TEST_WINDOW (2026-05-21..2026-06-30); all four folds' emitted test sets pairwise disjoint; fold4 window extended to 2026-06-30 with last 2 cells censored at the calendar end.",
+  "Label-maturity boundary artifact surfaced by the PIT tests: a decision near a boundary whose label cannot mature inside it resolves differently on full vs truncated data (TIME vs END_OF_DATA/SL) — the harness applies the R5 law at the evaluation layer (immature outcomes compared as LABEL_CENSORED, never as resolved exits).",
+  "Base engine (pre-EXEC-FIX) ledger reconciles at 1e-9; test garbage was chosen dyadic at a ~5300 level so this lane's tests stay green at both base and current engine versions (verified at pure base archive)."
+ ],
+ "defects": [],
+ "open_questions": [],
+ "recommended_next_action": "Lead: integrate this lane's 5 paths (commit and rewrite commit_sha), re-run the full suite at integration HEAD (count depends on concurrent lanes' files), then hand to the A7 fresh-context audit: re-verify the fold1 window numbers (7 evaluated / 2 censored / 29 excluded), the no-overlap law, the counter-lookahead teeth tests, and the README typed disclosures (esp. date-asof vs timestamp-release NOT_IMPLEMENTED).",
+ "workers_detail": "Single worker (this lane agent, no subagents spawned). Concurrent lane agents observed active in the same worktree: EXEC-FIX (engine/accounting/costs/journal + 5 new test_exec_*.py) and HANDOFF-RESEARCH (dispatch/, dossiers/, REPORT_VI.md, INTEGRATION_SUMMARY.md). Machine-wide heavy-job lock: FREE_PROVEN."
+}

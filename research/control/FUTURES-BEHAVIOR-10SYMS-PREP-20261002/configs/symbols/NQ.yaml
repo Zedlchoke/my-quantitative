@@ -1,0 +1,284 @@
+schema: futures_behavior_symbol_config@1
+task_id: FUTURES-BEHAVIOR-10SYMS-PREP-20261002
+symbol: NQ
+generated_utc: '2026-10-02'
+source_dossier: dossiers/NQ_DOSSIER.md
+dossier_sha256: a52dd60b7b2f37f3f1d0c278e3145cf891101143bac118f81140e47256424ec8
+provenance_note: >-
+  Every hypothesis below is derived STRICTLY from dossiers/NQ_DOSSIER.md S5 (sha256 above).
+  All mechanisms are POSTULATED and unmeasured; no parameter is invented (missing rule pieces
+  are PARAM-GAP entries). Rank basis = minimal-legal-test feasibility, NOT PnL.
+defaults:
+  universe:
+    exchange: CME (Globex)
+    contract_cycle: HMUZ quarterly
+    liquid_chain_rule: front HMUZ quarterly only (deferred quarterlies dead until promotion)
+    liquid_chain_evidence: 'OBSERVED NQ dossier S1: 2nd quarterly median 6 lots/day, 3rd+ dead (NQM7 lifetime 4 lots); front 348k-430k/day'
+  roll_rule:
+    baseline: declared_calendar_last_trade_month
+    baseline_definition: hold until last session BEFORE day-1 of the held contract's last-trade
+      month (raw expiry_month header = lastTradeDate month, canonical basis per audit M2), roll
+      to next listed at that close
+    reference: code/futbt/roll.py + BACKTEST_LAUNCH_DRAFT.md S0
+    target_adjustment: next_HMUZ_quarterly (liquid chain is quarterly; serials not applicable to NQ HMUZ listing)
+    dossier_finding: 'OBSERVED NQ S1: under declared rule the promoted contract is thin (p10 ~1.1k-10.6k vs ~380-430k median) for ~2 first weeks of each quarter'
+    alternative_required: volume-triggered roll using ONLY the new contract's trailing (past) volume, PIT
+  execution_laws:
+    decision_point: session_close_through_pit_view
+    default_fill: next_session_open_tick_rounded_cost_shifted
+    ambiguous_order: same_bar_tp_sl_worst_case_bound_no_point_pnl
+    close_only_bars: never_fill_any_path
+    tb_labels: TRAIN_ONLY_never_validation_features
+    adjusted_series: causal_additive_features_only_never_fills_mtm_pnl
+    attribution: full_path_leave_one_out_only_additive_leg_sums_forbidden
+  cost_model:
+    commission: {usd_per_side: 0.85, provenance: 'PUBLISHED IBKR standard futures 2026-10-02 (costs/IBKR_futures_commissions_2026-10-02.json)'}
+    exchange_fee: {provenance: 'NOT_RUN_NOT_FETCHED (only ES all-in 2.24 documented); use ES 2.24 as declared placeholder ceiling class, never a measured NQ cost'}
+    spread: {median_usd_per_contract: 32.5, provenance: 'MEASURED daily-BBO close proxy, 6.5 ticks, S6 + NQ dossier S3 (identical)', caveat: 'non-synchronous, not an executable spread; no intrabar/capacity proof'}
+    slippage: {provenance: NOT_RUN_NO_DECLARED_VALUE, note: 'proposed-for-discussion 1 tick/side is a DECLARED assumption pending owner; zero/silent rejected by cost book'}
+    stress_multipliers: [1.0, 1.5, 2.0]
+hypotheses:
+- id: NQ-H2
+  dossier_ref: 'dossiers/NQ_DOSSIER.md S5 H2'
+  hypothesis_kind: conditional_distribution
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Crowded CFTC equity-index leveraged-fund net length unwinds faster than it accumulates:
+    at extreme trailing percentiles of positioning, the forward 1-2-week NQ |return|
+    distribution widens and skews toward the unwind direction.
+  pit_trigger:
+    mechanizable: true
+    observable: 'CFTC CoT equity-index futures report: NQ futures-only leveraged-fund net position in an extreme trailing percentile bucket (strict past window)'
+    field: leveraged-fund net position (futures-only), percentile vs trailing history
+    source: cftc.gov CoT archive (release Friday 15:30 ET, positions as-of prior Tuesday; FACT schedule per NQ dossier S4)
+    as_of_rule: earliest legal observability = Friday 15:30 ET release timestamp; position-date (Tuesday) values used earlier are look-ahead and FORBIDDEN
+    timestamp_at_decision: CoT release_ts <= decision session close; feature carries release timestamp, not position date
+  direction: two-sided conditional (distribution test FIRST; any later rule = extreme-percentile entry in the unwind direction)
+  entry: conditional-distribution comparison first (no trade rule until descriptive evidence exists); later-rule entry at next-session open after extreme-percentile classification
+  exit: later-rule only - 5-10 session hold (PARAM-GAP exact value)
+  take_profit: 'PARAM_GAP: NQ-H2-P2'
+  stop_loss: opposite-decile re-cross (per dossier; exact deciles PARAM-GAP)
+  time_rules: 5-10 session hold, time exit 10 sessions; entry-delay sensitivity 0/1/2 sessions mandatory
+  universe: NQ front HMUZ chain (defaults.universe)
+  roll_rule_ref: defaults.roll_rule (baseline declared calendar; volume-triggered alternative arm required)
+  sizing: risk-parity vs 20-day ATR on strict past window (exact risk unit PARAM-GAP)
+  regime_tags: [stressed_liquidity, trending_meltup, normal]
+  counter_hypothesis: extremes persist (momentum) - no mean reversion / no distributional widening
+  failure_conditions:
+  - distributional difference absent year-by-year
+  - effect disappears when using release timestamp (Fri 15:30 ET) instead of position date (Tue) - PIT discipline failure
+  - any trade-rule version dies at 1.5x declared costs
+  minimal_test:
+    kind: descriptive_conditional_distribution
+    requirements:
+    - {class: cftc_cot_archive, symbols: [NQ], use: signal_reference, floor: 'CoT historical archive 2006+ futures-only, release-timestamped', floor_met: false, available_today: false, acquisition: free_public, note: 'public/free; NOT acquired in prep (no purchases; retrieval is a next-phase $0 task)'}
+    - {class: daily_trades_per_contract, symbols: [NQ], use: conditional_descriptive, floor: 'true-volume front chain for return distribution (have 2025-05-30..2026-10-01, ~16 months)', floor_met: false, available_today: true, acquisition: in_hand_now, note: 'year-by-year invalidation needs >=2y; single-regime rally window caveat'}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [NQ], use: backtest_fill, floor: '>=24 months true-volume front chain (DAILY_BT admission bar; have ~17)', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN, REAL_HOLIDAY_CALENDAR_NOT_RUN]
+  param_gaps:
+  - {id: NQ-H2-P1, piece: 'extreme percentile threshold (bucket definition)', reason: 'no measured basis; must be fixed by pre-registered rule before any run, never tuned'}
+  - {id: NQ-H2-P2, piece: holding period (5-10 sessions) and TP level, reason: dossier leaves open; pre-registration required}
+  feasibility:
+    mechanization: high
+    acquisition_cost: free_public
+    rank_basis_note: 'dossier: "cheapest fully-PIT-testable hypothesis" - CoT archive free + release schedule FACT; both minimal-test inputs free'
+  rank: 1
+- id: NQ-H1
+  dossier_ref: 'dossiers/NQ_DOSSIER.md S5 H1'
+  hypothesis_kind: cross_asset_relative_value
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Nasdaq-100 cash flows are longer-duration and more rate-sensitive than S&P 500: a 10y
+    TIPS real-yield shock should make NQ underperform ES over the following 1-5 sessions.
+  pit_trigger:
+    mechanizable: true
+    observable: 10y TIPS real-yield day-over-day change exceeding a trailing-quantile threshold (strict past window)
+    field: DFII10 daily level -> day change vs trailing quantile
+    source: FRED DFII10/DGS10 with ALFRED vintages (first-release values)
+    as_of_rule: feature as-of <= decision session close; ALFRED first-release vintage mandatory (revised FRED series rejected for strict PIT)
+    timestamp_at_decision: series release date <= decision session; vintage stamp recorded with each feature value
+  direction: short NQ / long ES ratio
+  entry: next-session RTH open after signal session close; entry-delay 1-5 min sensitivity mandatory in event-adjacent variants; 0/1/2 session slots in daily pilot
+  exit: 5-session time exit or revert of yield condition (whichever first)
+  take_profit: 'PARAM_GAP: NQ-H1-P3 (none pre-registered)'
+  stop_loss: 'PARAM_GAP: NQ-H1-P3 (none pre-registered)'
+  time_rules: horizon t+1..t+5 sessions
+  universe: NQ + ES front HMUZ chains
+  roll_rule_ref: defaults.roll_rule both symbols; thin-first-2-weeks caveat disclosed; volume-triggered roll as robustness arm
+  sizing: volatility-targeted on past-window realized vol (target level PARAM-GAP)
+  regime_tags: [tightening, high_rate_vol, easing, ai_capex_boom]
+  counter_hypothesis: yield moves proxy growth-news that lifts NQ (sign ambiguity of growth-vs-rates decomposition)
+  failure_conditions:
+  - relative-return sign flips in >=2 individual years
+  - edge dies at 1.5x declared costs
+  - conclusion depends on revised (non-vintage) yield data
+  minimal_test:
+    kind: descriptive_conditional_return
+    requirements:
+    - {class: external_rates_vintages, symbols: [US], use: signal_reference, floor: 'FRED DFII10/DGS10 daily 2019+ with ALFRED vintage stamps', floor_met: false, available_today: false, acquisition: free_public}
+    - {class: daily_trades_per_contract, symbols: [NQ, ES], use: conditional_descriptive, floor: 'daily returns both fronts; have ~16-17 months true-volume', floor_met: false, available_today: true, acquisition: in_hand_now, note: 'dossier FLOOR: needs >=2y vendor history or explicit acceptance of 16-month window'}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [NQ, ES], use: backtest_fill, floor: '>=24 months true-volume front chains both symbols', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN, REAL_HOLIDAY_CALENDAR_NOT_RUN]
+  param_gaps:
+  - {id: NQ-H1-P1, piece: trailing-quantile-threshold level, reason: 'must be fixed by pre-registered rule, not tuned'}
+  - {id: NQ-H1-P2, piece: vol-target level, reason: no measured basis; pre-registration required}
+  - {id: NQ-H1-P3, piece: TP/SL rules, reason: dossier leaves open (time-exit primary); pre-registration required}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: free_public
+    rank_basis_note: free inputs (FRED/ALFRED) but vintage discipline + cross-symbol alignment + two-leg cost placeholders make it second to CoT per dossier
+  rank: 2
+- id: NQ-H4
+  dossier_ref: 'dossiers/NQ_DOSSIER.md S5 H4'
+  hypothesis_kind: regime_conditional
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Overnight information diffusion is incomplete when participation is thin: after large
+    Globex overnight moves, the RTH session continues the overnight direction in supportive
+    liquidity regimes; gaps mean-revert in stress regimes.
+  pit_trigger:
+    mechanizable: true
+    observable: overnight NQ move exceeding a trailing-quantile threshold + liquidity-regime label from strict-past data
+    field: Globex session open/close path (17:00 CT open to 08:30 CT RTH open)
+    source: full-session M1/H1 bars incl. Globex (useRTH=false)
+    as_of_rule: overnight session must be COMPLETE before the 08:30 CT entry decision; regime label from trailing window only
+    timestamp_at_decision: entry 08:30 CT with the overnight close known
+  direction: with overnight sign (continuation)
+  entry: 08:30 CT RTH open
+  exit: 16:00 CT same session (session-time exit only; event-style description first)
+  take_profit: none (session-time exit only)
+  stop_loss: none (session-time exit only)
+  time_rules: single-session hold; effect must vanish-check with 30-min delayed entry
+  universe: NQ front HMUZ chain
+  roll_rule_ref: defaults.roll_rule
+  sizing: vol-scaled declared formula (PARAM-GAP)
+  regime_tags: [normal_liquidity, stressed_funding, high_vix]
+  counter_hypothesis: overnight gaps mean-revert in stress (sign flips by regime)
+  failure_conditions:
+  - continuation sign flips across regimes
+  - effect vanishes with 30-min delayed entry
+  - measured on RTH-only data mislabeled as overnight (data defect)
+  minimal_test:
+    kind: descriptive_session_profile
+    requirements:
+    - {class: full_session_globex_intraday, symbols: [NQ], use: intraday_event, floor: 'M1/H1 with FULL Globex sessions >=2 years (S7 probes n=0 pre-2026; raw hourly RTH-only 30D)', floor_met: false, available_today: false, acquisition: vendor_paid, note: 'dossier marks $0 partial unlock via useRTH=false re-pull for last ~10 months'}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: full_session_globex_intraday, symbols: [NQ], use: intraday_execution, floor: 'multi-year full-session intraday for entry realism', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: NQ-H4-P1, piece: overnight-move trailing-quantile threshold, reason: no measured basis}
+  - {id: NQ-H4-P2, piece: liquidity-regime labeling rule, reason: 'must be declared ex ante (e.g. funding/VIX proxy); VIX data NOT_RUN in repo'}
+  feasibility:
+    mechanization: high
+    acquisition_cost: vendor_paid
+    rank_basis_note: mechanism crisp but requires full-session Globex data (top NQ acquisition priority per dossier)
+  rank: 3
+- id: NQ-H3
+  dossier_ref: 'dossiers/NQ_DOSSIER.md S5 H3'
+  hypothesis_kind: event_reaction
+  mechanism_class: POSTULATED
+  mechanism: >-
+    NQ reacts to the discounting channel, not the news label: the interaction of CPI/NFP
+    surprise with the same-morning ZN/rate response should predict NQ 1-day direction better
+    than the surprise alone.
+  pit_trigger:
+    mechanizable: true
+    observable: 'surprise (actual - consensus) x same-morning rate response interaction, at 08:30 ET release'
+    field: consensus vs actual + ZN/rate same-window move
+    source: PIT consensus archive (MISSING - not published by BLS/CFTC; commercial or licensed scrape, owner decision) + deep intraday M1
+    as_of_rule: consensus snapshot as-known-before-release; actual at release timestamp; interaction computed at 09:00 CT (30 min post-release)
+    timestamp_at_decision: release_ts recorded to the minute; entry 09:00 CT
+  direction: conditional on interaction sign
+  entry: 09:00 CT (30 min post-release); 1-5 min entry-delay sensitivity mandatory
+  exit: session close / 1d
+  take_profit: 'PARAM_GAP: NQ-H3-P2'
+  stop_loss: 'PARAM_GAP: NQ-H3-P2'
+  time_rules: 1-session horizon
+  universe: NQ front chain (events never in delivery month for the front under declared roll)
+  roll_rule_ref: defaults.roll_rule
+  sizing: unit-risk per event (PARAM-GAP exact unit)
+  regime_tags: [inflation_surprise_dominant, growth_surprise_dominant]
+  counter_hypothesis: rate response already prices everything (no residual information in the interaction)
+  failure_conditions:
+  - interaction adds no year-stable information
+  - edge dies with 1-5 min entry delay
+  - same-bar execution assumed at 08:30 (forbidden)
+  minimal_test:
+    kind: descriptive_event_interaction
+    requirements:
+    - {class: consensus_surprise_archive, symbols: [US], use: signal_reference, floor: 'PIT consensus + actual + release ts, CPI/NFP >=2015', floor_met: false, available_today: false, acquisition: owner_declaration, note: 'data floor MISSING per dossier; BLOCKED on data'}
+    - {class: minute_trades_m1, symbols: [NQ], use: intraday_event, floor: 'M1 around 08:30 ET >= several years (~10 months RTH-only present)', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [CONSENSUS_LICENSE_OWNER_DECISION]
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: consensus_surprise_archive, symbols: [US], use: backtest_fill, floor: same as minimal, floor_met: false, available_today: false, acquisition: owner_declaration}
+    - {class: minute_trades_m1, symbols: [NQ], use: intraday_execution, floor: multi-year M1, floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN, CONSENSUS_LICENSE_OWNER_DECISION]
+  param_gaps:
+  - {id: NQ-H3-P1, piece: interaction functional form, reason: no measured basis}
+  - {id: NQ-H3-P2, piece: TP/SL for any trade version, reason: must be pre-declared}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: vendor_paid
+    rank_basis_note: BLOCKED on consensus archive + deep intraday (dossier)
+  rank: 4
+- id: NQ-H5
+  dossier_ref: 'dossiers/NQ_DOSSIER.md S5 H5'
+  hypothesis_kind: structural_relation
+  mechanism_class: POSTULATED
+  mechanism: >-
+    The adjacent-quarter calendar premium (~0.8-1.1%/quarter OBSERVED) embeds
+    financing-minus-dividends; it should compress/persist predictably around macro rate
+    repricing, and roll-week microstructure (spread widening, volume handoff) should be
+    systematic at quarterly cadence.
+  pit_trigger:
+    mechanizable: true
+    observable: adjacent-quarter spread change series vs FRED rate changes (descriptive clustering)
+    field: new-minus-old adjacent-quarter closes per session + daily rate changes
+    source: per-contract real-volume closes (>=2y needed) + FRED rates
+    as_of_rule: both series as-of <= decision session close; settlement-derived deferred closes flagged, never fills
+    timestamp_at_decision: daily close-to-close
+  direction: n/a (descriptive-first; no rule specifiable yet per dossier)
+  entry: none until spread series exists on >=2y real-volume data (dossier)
+  exit: none (descriptive-first)
+  take_profit: 'PARAM_GAP: none specifiable until spread series computed on >=2y real-volume data'
+  stop_loss: 'PARAM_GAP: none specifiable'
+  time_rules: quarterly cadence clustering
+  universe: NQ adjacent quarterly pairs
+  roll_rule_ref: defaults.roll_rule (roll table is the object of study)
+  sizing: n/a
+  regime_tags: [rate_repricing_windows, roll_week]
+  counter_hypothesis: premium behavior dominated by settlement-quote noise (snapshot caveat)
+  failure_conditions:
+  - spread levels dominated by settlement-quote noise on deeper data
+  - no clustering vs rate changes beyond chance
+  minimal_test:
+    kind: descriptive_term_structure_clustering
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [NQ], use: signal_reference, floor: '>=2y real-volume per-contract for spread series (have ~16 months front + settlement-derived deep flagged)', floor_met: false, available_today: true, acquisition: in_hand_now, note: 'available at 16m depth only; floor 24m unmet - depth acquisition is the vendor line in scored_run'}
+    - {class: synchronous_bbo, symbols: [NQ], use: cost_evidence, floor: synchronous quotes >=2y for spread execution realism, floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [NQ], use: backtest_fill, floor: '>=24m true volume', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: NQ-H5-P1, piece: any trade rule (entry/exit/TP/SL), reason: 'dossier: none specifiable until spread series is computed on >=2y real-volume data'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: vendor_paid
+    rank_basis_note: descriptive-first; enabling OBSERVED structure exists but floors need vendor depth
+  rank: 5

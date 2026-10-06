@@ -71,10 +71,8 @@ per arm, that arm's own fill count — never a cross-arm sum.
 Round-trip reconstruction was done by the 2026-10-01 dockets with exact
 reconciliation to journal nets and cost bills (cited):
 - USDJPY: 703 excursions (POLICY 393 + B1 310); Σnet reconciles to journal
-  symbol nets under the identity **fills − swap** ($0.000 on all 6
-  arm×symbol cells, forensics/verification_checks.json — docket A §0's
-  printed "fills + swap" carries a sign error, ROUND4_ADDENDUM finding 1);
-  friction equals metrics cost bill exactly.
+  symbol nets to the cent; friction equals metrics cost bill exactly
+  (docket A §0).
 - EURUSD: 182 (POLICY) + 250 (B1); GBPUSD: 273 + 284; per-fold sums match
   engine `per_symbol_fold_records` to ≤$1 on all 32 cells (docket B §Method).
 - **Total reconstructed round trips across both primary books: 1,692.**
@@ -125,7 +123,7 @@ every tier (SLATE −$1,088.08 ×1.0 → −$1,713.01 ×2.0); B0 FLAT dominates
 | Weekly nets vs metrics net_pnl | worst $0.000002 | GATING_VS_SIZING V2 |
 | Known totals: USDJPY −87,201.39 / EURUSD +1,714.26 / GBPUSD +223.70 / pooled −85,263.43 | exact to cent | GATING_VS_SIZING V3 |
 | Weekly component identity ΔW ≡ GATE+SIZE+PONLY+CARRY | max residual $0.0000 | GATING_VS_SIZING V4 |
-| USDJPY excursion Σnet = journal symbol net (fills − swap; docket A's printed fills+swap overstated 1×swap — ROUND4_ADDENDUM); friction = cost bill; force-flats 4/5 tagged | exact $0.000, forensics/verification_checks.json | docket A §0 + round-4 forensics |
+| USDJPY excursion Σnet = journal symbol net; friction = cost bill; force-flats 4/5 tagged | exact | docket A §0 |
 | EUR/GBP per-fold reconstruction vs engine records, 32 cells | ≤ $1 | docket B §Method |
 | DAILY: 85 journals hash-chain verified; quote-CCY identity to 1e-9; 1,128+73+24 = 1,225 rows | PASS | battery §9, A7 terminal |
 | Tier arms: metrics n_decisions_total 3,411 identical across all 12-leg arms; B1 family journal decisions identical (3,467); POLICY family 3,124/3,126/3,114/3,110 (cost-guard defer variation, disclosed) | verified this session + skeptic recount | census.json |

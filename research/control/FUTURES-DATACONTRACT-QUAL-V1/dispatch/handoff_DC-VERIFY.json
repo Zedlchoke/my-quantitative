@@ -1,0 +1,57 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "DC-VERIFY",
+  "cycle_id": "FUTURES-DATACONTRACT-QUAL-V1",
+  "role": "verify-lane",
+  "lane": "DC-VERIFY",
+  "dispatch_sha": "b71c837d1f72d17b35475ab5e2795f6d113c1f9f",
+  "actual_start_sha": "b71c837d1f72d17b35475ab5e2795f6d113c1f9f",
+  "run_date": "2026-10-03",
+  "commit_sha": "",
+  "changed_paths": [
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/VERIFICATION_LOG.md",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/verify_results.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/check1_2_mof_cftc.py",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/check3_cot_alt.sh",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/check4_nq_alias.py",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/check5_6e_oi.py",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/check6_inventory.py",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/check6_inventory.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/check8_ibkr_freshness.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/out_check1_2.txt",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/out_check3.txt",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/out_check4.txt",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/out_check5.txt",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_DC-VERIFY.json"
+  ],
+  "tests": [
+    {"id": 1, "name": "MOF tidy 386 rows + 2022-10-24 row (7296 x100m JPY, JPY_buying) + 81-row backup", "verdict": "FACT"},
+    {"id": 2, "name": "CFTC fixed tidy sha256 prefix f7a2719e745c2f6f + pre-fix backup exists", "verdict": "FACT"},
+    {"id": 3, "name": "NQ CoT ALT loader: 850 rows, window 2010-06-15..2026-09-22 (exit 0)", "verdict": "FACT"},
+    {"id": 4, "name": "NQ alias: NQU8-NQM9 92075 bars / NQM0 19406 bars / 58 dates / 21,824,572 volume", "verdict": "FACT"},
+    {"id": 5, "name": "6E venue-OI dedupe: sum 671736 exact; raw non-deduped sum 1,343,543 (retracted artifact reproduced as different)", "verdict": "FACT"},
+    {"id": 6, "name": "Vendor inventory: all 6 symbols within ballparks (max delta 0.36%, honest deltas recorded)", "verdict": "OBSERVED"},
+    {"id": 7, "name": "Data roots: physical av1trim EXISTS (76 parquet), dotted alias MISSING, nonprice EXISTS, IBKR raw EXISTS (1160 files)", "verdict": "FACT"},
+    {"id": 8, "name": "IBKR front-file freshness: max mtimes 2026-10-02 09:37..10:46 per family recorded", "verdict": "OBSERVED"}
+  ],
+  "summary": {"checks_total": 8, "fact": 6, "observed": 2, "not_run": 0},
+  "authority_claims": [],
+  "known_limitations": [
+    "Check 6 'outright' is a proxy (raw_symbol contains no '-'); metadata totals are raw per-file sums across AV1B/AV1R/AV1T dirs, not a deduplicated time-union; ES raw parent (8,710,520) recorded since 'after filter' comparator was the ballpark only.",
+    "Check 5 statistics schema has no explicit venue column; venue-OI interpreted as stat_type==9 with latest-publication-per-(contract, ref_date) dedupe exactly as the erratum prescribes.",
+    "Check 8 mtimes are file-local timestamps; the 'time-critical re-fetch' reading is advisory interpretation, not a measured fact.",
+    "All checks are point-in-time on 2026-10-03; data roots are mutable and results can drift."
+  ],
+  "incidents": [
+    "Check 1 initial exploratory probe exited 1 (IndexError from date-column name assumption; column is observation_period); adapted re-run exit 0. No data touched.",
+    "Check 3 anticipated column-name deviation confirmed (obs_date derived; report_date_as_yyyy_mm_dd absent); loader NOT modified.",
+    "Surprise finding: /Users/hoangminhlong/.my-quantitative-data/futures-databento-av1trim (dotted alias) does NOT exist - vendor root lives only on the non-dotted physical path."
+  ],
+  "tree_status": "?? research/control/FUTURES-DATACONTRACT-QUAL-V1/  (only entry in git status; contains pre-existing dispatch/DISPATCH.json plus this lane's artifacts under analysis/verify/ and dispatch/handoff_DC-VERIFY.json)",
+  "workers": 0,
+  "outputs": [
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/VERIFICATION_LOG.md",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/verify_results.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_DC-VERIFY.json"
+  ]
+}

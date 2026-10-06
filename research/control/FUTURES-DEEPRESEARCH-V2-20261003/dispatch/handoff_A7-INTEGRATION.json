@@ -1,0 +1,56 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-DEEPRESEARCH-V2-20261003",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "A7-INTEGRATION",
+  "dispatch_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "actual_start_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "commit_sha": null,
+  "commit_sha_disclosure": "No commit made: A7-INTEGRATION is a read-only audit lane; commit not requested by dispatch. Writes confined to FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/** (report + auditor scripts + pre-fix normalizer sandbox rerun outputs) and this handoff. Verified worktree HEAD 26d96eb4 at start; no repo/raw/data files modified, no network, no key use.",
+  "changed_paths": [
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/A7_INTEGRATION.md (NEW - audit report, verdict PASS_WITH_FINDINGS)",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/a7_cot_rederive.py (+.json) (NEW - independent deacot census)",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/a7_contaminant_rescan.py (+.json) (NEW - six-root full rescan + symbol census)",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/a7_nq2020_verify.py (+.json) (NEW - NQ 2020 alias evidence + alias-uniqueness sweep)",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/old_cftc_normalize_from_git.py (NEW - git-HEAD pre-fix normalizer copy, OUT redirected to oldtidy_sandbox/; its two output parquet are BIT-IDENTICAL to the pre-fix shas 4f9cd789 (legacy) and d798ed27 (fin), independently confirming the old-state reproduction)",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dispatch/handoff_A7-INTEGRATION.json"
+  ],
+  "tests": [
+    {"command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/tests/test_parse.py", "exit_code": 0, "verdict": "PASS", "log_digest": "48/48 rerun by auditor as shipped; includes 7 INTEGRATION-FIX-V2 regression checks; pre-fix dup pins (ES 1126/CL 928/NQ 548/GC 164/NG 10/SI 5) independently re-measured from .bak and from bit-identical git-code rerun"},
+    {"command": ".venv/bin/python .../audit/a7_integration/a7_cot_rederive.py", "exit_code": 0, "verdict": "PASS", "log_digest": "independent keyword census of 21 deacot zips: rename unions 840+242=1,082 for NQ/ES/6B/CL/NG, single-line 1,082 for 6E/6J/6A/GC/SI; delivered tidy 10x1,082 rows, 0 dup dates, contiguous weekly grid 2006-01-03..2026-09-22; NQ canonical starts 2006-01-03 (restored); ALT 14 series/4,527 rows; no in-scope family line dropped"},
+    {"command": ".venv/bin/python .../audit/a7_integration/a7_contaminant_rescan.py", "exit_code": 0, "verdict": "PASS", "log_digest": "full rescan all six roots 28,212,754 bars: every per-root/per-class/per-symbol number matches contaminant_scan.json exactly (foreign 11,660 = 6E 6,700 [6JZ7 4,831+SIJ5 1,869], 6B 2,139 GCQ4, 6A 1,584 6BU5, 6J 1,237 6AV3, NQ/ES 0); regex census: 0 unclassifiable, 0 multi-digit-year symbols; true spread total 2,537,950 (artifacts' prose says 2,637,950 - F-4)"},
+    {"command": ".venv/bin/python .../audit/a7_integration/a7_nq2020_verify.py", "exit_code": 0, "verdict": "PASS", "log_digest": "from delivered parquet only: id16908 NQU8-NQM9 92,075 bars/24,686,121 vol 2018-08-15..2020-05-31 + NQM0 19,406/5,159,596; hole 2020-03-23..05-29 = 58 dates, 0 calendar gaps (49 weekdays + 9 Sundays, Good Friday closed), 21,824,572 contracts, Mar-23 625,650; window totals 169,992/100,034/17,932/30,204 == vendor record_counts recorded in probe json; regex-visible hole view = NQU0 trickle only; alias sweep: second dash->outright instrument NQ:2563 (NQH5-NQM5 -> NQU6, 5,946 bars/395,166 vol) - F-5"}
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Vendor-side numbers (live record_count 169,992/100,034/17,932/30,204, $0.62 quote) were NOT re-queried (A7 ran network-free); they are accepted as recorded evidence in nq2020_hole_probe.json and reconcile exactly against my local recomputation of the same quantities.",
+    "Raw dbn.zst were not independently re-parsed (immutable, sha-bound); immutability verified via 6-file sha comparison against the DATA-BACKUP iCloud mirror verified 2026-10-02 23:30 UTC (pre-lane) plus mtime sweep of nonprice raw.",
+    "The pre-fix fin tidy has no .bak; its old state was verified via the iCloud mirror copy (sha d798ed27, 13,898 rows) AND a bit-identical rerun of the git-HEAD pre-fix normalizer in the audit sandbox."
+  ],
+  "incidents": [
+    "F-1 (MAJOR): regenerated cftc_tff_disagg_tidy.parquet canonical DISAGG series (CL/GC/NG/SI) still have 365 value-identical duplicate dates each (2010-01-05..2016-12-27) from double-reading fut_disagg_txt_hist_2006_2016.zip + annual 2010-2016 zips; same defect class the fix targeted; undisclosed in erratum; assert_canonical_clean + new tests cover legacy only; TFF clean. Needs dedupe + gate/test extension + erratum line.",
+    "F-2 (MAJOR): nq2020_hole_probe.json records NQJ0 error as BentoServerError HTTP504 (gateway timeout) but the md + handoff claim 'HTTP 422 unresolvable / April serial not in feed' - inferred conclusion from absent evidence, contradicts the recorded artifact; not load-bearing (parent-total 169,992==169,992 carries the adjudication); handoff call-count also says 7, actual 8 (all free).",
+    "F-3 (MINOR): erratum's old fin tidy row count 17,337 is wrong - actual pre-fix file (sha d798ed27, mirror + bit-identical rerun) has 13,898 rows; old sha itself correct.",
+    "F-4 (MINOR): spread/strip prose total 2,637,950 in contaminant_scan.md + handoff vs true 2,537,950 (per-root numbers correct).",
+    "F-5 (MINOR): 'only such alias in the six-root panel' is false - NQ instrument_id 2563 also transitions dash->outright (NQH5-NQM5 2014-12..2016-05, 5,946 bars/395,166 vol -> NQU6); impact negligible (deferred-scale), but the id-16908-only remap leaves it quarantined; recommend generalizing the view rule.",
+    "N-1/N-2 (NOTE): A7 dispatch said 'NQ restored from 2006-06-15' - actual 2006-01-03 (erratum already correct); probe md aside 'DEEP-NQ 51 = weekday count' - actual 49 weekdays + 9 Sundays."
+  ],
+  "tree_status": "Worktree prep at 26d96eb4, branch prep/futures-behavior-10syms-20261002 (verified at audit start). This lane wrote ONLY under FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/** and dispatch/handoff_A7-INTEGRATION.json. INTEGRATION-FIX-V2's edits (3 tracked files + analysis/integration/**) and foreign-lane changes (FX-BACKFILL COMPLETION_LEDGER/backfill dir, DEEP/backup outputs) present and untouched by this audit.",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/A7_INTEGRATION.md", "sha256": "b37ce3bb6c704cb932e36e06ae8e18fd79fb8848c95196a5a95d57777b0c92ef"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/a7_cot_rederive.py", "sha256": "afd19680e4bf8e40d066309fe64686166a1877a7ab5cf5e8ef64872fb5984b8e"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/a7_cot_rederive.json", "sha256": "c4a0a6abf5b4d8bd31f0d57590417d680925fda71b54a578a59fcf7e7cf86266"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/a7_contaminant_rescan.py", "sha256": "ce976beb76a4c8f8f7e62aaab8d1c0ff60380eac8a8a52683b79c533f53a9d04"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/a7_contaminant_rescan.json", "sha256": "520f1b75536e9141e5d6e542daf078d6999ce57909e940dae64f45c54f9fbed5"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/a7_nq2020_verify.py", "sha256": "78cd27012b97cc934a57d34dc327f563ecc11a954ea4471edd92d4ecf731129c"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/a7_nq2020_verify.json", "sha256": "38b0c10f0faf5bcf04d75aeae21f6b4e203c021f72c5d62779ad2602594419a0"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/old_cftc_normalize_from_git.py", "sha256": "737b50dd79cc07e14b53d67a050beda522038e6d87365b8d3f2dacee6b4d5ee9"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/oldtidy_sandbox/cftc_legacy_tidy.parquet", "sha256": "4f9cd78944ee79dcbe2c5df5cf8689fd9ad63e9f4263810c98cd1af0f3b43073"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_integration/oldtidy_sandbox/cftc_tff_disagg_tidy.parquet", "sha256": "d798ed2782f084c7f4ec36599319c607b6f62face21a0ab2f0fb6f775e62ba02"}
+  ],
+  "recommended_next_action": "(1) INTEGRATION-FIX-V2 (or owner) applies the 3 errata + DISAGG dedupe: correct old-fin rows to 13,898, spread total to 2,537,950, NQJ0 to HTTP504-timeout/NOT_RUN with 8 calls, add instrument 2563 to the alias view rule, dedupe disagg hist+annual overlap and extend assert_canonical_clean + one regression test to the fin tidy; (2) owner confirms cancellation of the NQ 2020 backfill spend ($0.62 unneeded) and the $0 id-16908 view-rule remap before DEEP-NQ recomputes 2020 aggregates; (3) downstream consumers adopt the per-root canonical regex (verified complete against every observed symbol); (4) nothing here is a GO - descriptive/infrastructure, prep law intact.",
+  "summary": "Independent audit of INTEGRATION-FIX-V2: all three load-bearing deliveries verify exactly - (1) CoT exact-name fix: 10 canonical legacy series x 1,082 weeks x 0 dup dates (mapping re-derived from raw deacot zips; NQ restored to 2006-01-03; ALT 14/4,527 preserved; pre-fix dups ES 1,126/CL 928/NQ 548/GC 164/NG 10/SI 5 re-measured from .bak and bit-identical git rerun; suite 48/48 rerun PASS; DEEP-NQ/ES/6B reconcile 1:1); (2) contaminant scan: full six-root rescan matches to the bar (11,660 foreign: 6E 6,700, 6B 2,139, 6A 1,584, 6J 1,237, NQ/ES 0; regex wrongly excludes/includes nothing observed); (3) NQ 2020 = A_ALIAS_NOT_ABSENCE agreed (id 16908 front bars fully present under NQU8-NQM9 alias; 58 sessions/0 gaps/21.8M contracts verified locally; window totals == vendor record_counts; $0 remap sound; $0.62 re-request correctly cancelled). VERDICT PASS_WITH_FINDINGS: 0 BLOCKER, 2 MAJOR (residual 365 dup dates in regenerated DISAGG canonical series, undisclosed/ungated; NQJ0 504 misreported as 422 with unsupported not-in-feed inference), 3 MINOR (erratum old-fin rows 17,337 vs true 13,898; spread prose total +100k; second dash-alias instrument 2563), 2 NOTE. Errata list consolidated in A7_INTEGRATION.md.",
+  "generated_utc": "2026-10-03T02:19:00+00:00"
+}

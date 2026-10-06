@@ -1,0 +1,98 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "A5-EVENTS-BBO-COVERAGE",
+  "dispatch_sha": "7149425df83b7c47f34848fc83d36e450b802bc5",
+  "actual_start_sha": "7149425df83b7c47f34848fc83d36e450b802bc5",
+  "head_remeasured_utc": "2026-10-03T13:47:56Z",
+  "head_remeasured_matches_dispatch": true,
+  "branch": "prep/futures-behavior-10syms-20261002",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior/prep",
+  "commit_sha": null,
+  "commit_sha_disclosure": "No commit made: $0 read-only lane; commits/pushes forbidden by dispatch. All outputs are untracked files inside the cycle control directory.",
+  "changed_paths": [
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/BLS_PIT_EVIDENCE.md",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/bls_dates.json",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/BBO_AVAILABILITY_DOC.md",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/COVERAGE_REMEASURE.md",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/coverage_remeasure.json",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/coverage_remeasure_meta.py",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/fetch_log.jsonl",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/dispatch/handoff_A5-EVENTS-BBO-COVERAGE.json"
+  ],
+  "tests": [
+    {
+      "name": "coverage_remeasure_meta.py run",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/coverage_remeasure_meta.py",
+      "result": "PASS — runtime 0.11s, footer-only parquet reads (70 files, 930MB, zero data scans), wrote coverage_remeasure.json (valid JSON)"
+    },
+    {
+      "name": "bls_dates.json validation",
+      "command": "python -c json.load + date parse + uniqueness",
+      "result": "PASS — CPI 204/204 and EMPSIT 204/204 dates, 17/17 years each, all ISO dates parse, all unique"
+    },
+    {
+      "name": "fetch_log.jsonl validation",
+      "command": "python -c per-line json.loads",
+      "result": "PASS — 75 lines, all valid JSONL"
+    },
+    {
+      "name": "HEAD drift check",
+      "command": "git -C <worktree> rev-parse HEAD",
+      "result": "PASS — 7149425df83b7c47f34848fc83d36e450b802bc5 == dispatch sha (no drift)"
+    }
+  ],
+  "authority_claims": [],
+  "findings_summary": {
+    "dimension_1_bls": "CPI and Employment Situation (NFP) release calendars 2010-2026 fully evidenced from official bls.gov schedule pages (live + 32 web.archive.org id_ snapshots, one per series-year, snapshot ts in replay URL as machine verifier). Verdicts: PASS_EVIDENCED_CALENDAR both series; 17/17 years, 12/12 releases per year, 204/204 rows each stamped 08:30 AM. Timezone chain: schedule landing 'All times on calendar are Eastern Time.' + bls.ics DTSTART;TZID=US-Eastern:...T083000. Anomalies recorded verbatim: CPI-2016 April double-entry; late-2025 vintage divergence between archived Jan-2025 pages and current ics (CPI Oct 15->24, Dec 10->18; EMPSIT Nov 7->20, Dec 5->16, Oct 3 absent). No surprise-data claims; actual-publish verification remains NOT_RUN.",
+    "dimension_2_bbo": "Documentation only, no purchase/account. Databento GLBX.MDP3 schemas enumerated from the installed databento_dbn SDK (authoritative, zero-fetch): bbo-1s/bbo-1m = BBOMsg single-level snapshot (level-00 only, no action/depth), mbp-1 (event-driven L1, tbbo alias), mbp-10, mbo (RType 160), plus ohlcv/definition/statistics/status; RType codes recorded. bbo-1m introduction evidenced by databento-python CHANGELOG [0.5.0] 2022-09-20. Dataset coverage '2010-09-27 -> present' from rendered catalog widget (single-live-render confidence, re-render divergence disclosed). Pricing: only freely published facts (catalog-request flow, $125 free credits, exchange license pass-through 'no upcharge'); no per-schema dollar amounts asserted. CME MDP 3.0: new official home = CME Group Client Systems Wiki; 'CME MDP 3.0 Market Data' page id 284184973 retrieved via public Confluence REST, verbatim definition sentence captured; deeper BBO-field passages NOT_RUN_PARTIAL/BLOCKED_TRANSPORT (SPA shell, REST child 404, CQL rejected by reader URL validation). D5 law restated in doc: bbo-1m CANNOT prove intrabar fill/queue; CAN support only modeled-cost tiering; everything stays MODELED COST.",
+    "dimension_3_coverage": "IBKR raw staleness 0.825-0.891 days at 2026-10-03 reference (max mtime per group 2026-10-02T02:37-04:11Z; 1,160 files, all from the 2026-10-02 bulk; raw/ untouched since). D6 staging_refetch_20261003 present (6 probe files 07:55-07:56Z); no re-fetch performed; weekly cadence + wall non-recession documented. Vendor parquet windows (footer-only): ES 13f/8,710,520 rows 2010-06-06->2026-09-30; NQ 13f/7,330,320 same window; 6E/6B/6A/6J 5f each 2020-01-01->2026-09-30; CL/NG/GC/SI zero ohlcv-1m files; definition ALL10 12f/12,157,041 rows 2023-10->2026-09-30; statistics ALL10 18f/69,065,041 rows same window."
+  },
+  "known_limitations": [
+    "BLS evidence is calendar-only: scheduled 08:30 AM Eastern, not actual-publish latency; no surprise-data claims anywhere; actual-publish verification NOT_RUN.",
+    "2026 BLS grids read from live pages 2026-10-03 remain revisable; late-2025 vintage divergence proves BLS revises schedules mid-year.",
+    "fetch_log.jsonl timestamps are session reconstructions (utc_reconstructed=true on every row) because per-attempt wall times were not captured at call time; order and outcomes are accurate.",
+    "Databento GLBX.MDP3 coverage widget values from a single successful live render; a no-cache re-render returned the marketing shell; wayback captures are React shells (no archived static catalog) - confidence medium-high, disclosed in doc.",
+    "Per-schema dollar pricing NOT asserted (behind catalog quote; would need an account - out of $0 scope).",
+    "CME MDP 3.0 field-level BBO/implied/book-maintenance passages NOT_RUN_PARTIAL: SPA page view cookie-shell, REST child listing 404, three CQL variants rejected by webReader URL validation, WebFetch of content endpoint 404. Wiki location + page id + verbatim definition sentence stand as evidence.",
+    "Vendor windows are footer/row-group-statistics level: they evidence file coverage, not row-level continuity; cross-group boundary duplicate checks remain NOT_RUN (D5 scope)."
+  ],
+  "incidents": [
+    {
+      "id": "ACC-NOOP-TOOLCALLS",
+      "what": "5 accidental no-op tool invocations with missing/empty arguments across the session (3x image_search InputValidationError, 1x node_repl no-op write to /dev/null, 1x WebFetch with missing url/prompt).",
+      "effect": "none - no fetches performed, no files touched, no side effects; each returned an immediate tool-level error"
+    },
+    {
+      "id": "WAYBACK-TRANSPORT-FLAKY",
+      "what": "Intermittent ECONNREFUSED (207.241.237.3) from web.archive.org, incl. one 3-parallel WebFetch batch that all failed; one webReader 429 (CPI-2023 snapshot).",
+      "effect": "handled: serial calls, 25-45s backoffs, per-URL method switch within the <=2 attempts/URL/method budget; etiquette held"
+    },
+    {
+      "id": "DATABENTO-RENDER-DIVERGENCE",
+      "what": "databento.com/datasets/GLBX.MDP3 rendered the coverage widget on first webReader pass but marketing shell on no_cache re-render.",
+      "effect": "disclosed in BBO_AVAILABILITY_DOC.md; widget facts tagged single-live-render confidence"
+    },
+    {
+      "id": "CME-REST-BLOCKED",
+      "what": "Deep extraction of CME MDP 3.0 wiki body blocked (SPA shell, child REST 404, CQL -400 URL validation x3, WebFetch content endpoint 404).",
+      "effect": "deeper passages recorded NOT_RUN_PARTIAL/BLOCKED_TRANSPORT with attempts logged; definition sentence + wiki location retained"
+    }
+  ],
+  "tree_status": "untracked-only: git status --porcelain shows exactly one entry '?? research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/' (own lane dir plus sibling-lane dirs inside the cycle root). No staged/committed changes; no tracked file modified; HEAD == dispatch sha; branch prep/futures-behavior-10syms-20261002.",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/BLS_PIT_EVIDENCE.md", "sha256": "8f616615419c4ff82125e7c547d5b1e1afb87ed17b9929512deb5bb21f54dcf4"},
+    {"path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/bls_dates.json", "sha256": "ad41d2a76708229b9eef4a02bf62cd6df44eb023455f2c98d2d21cb5b1363009"},
+    {"path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/BBO_AVAILABILITY_DOC.md", "sha256": "764219bb48e4a51452932d2f1ab38fafc755382f4cd6ba456b9052d9d79ea107"},
+    {"path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/COVERAGE_REMEASURE.md", "sha256": "0fb7d812ea3a4176aa4b9b62e3f00c354795bdbf70706c54e29ec455255ac4ce"},
+    {"path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/coverage_remeasure.json", "sha256": "abb6015dcce9c5a5305025b9d76d89fbd0ff1f31ae974d7af528dd00b9b6b4d3"},
+    {"path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/coverage_remeasure_meta.py", "sha256": "a45396b1672a219216580863e4914300c58bbe81ac797ab625cccf7e3b9eb515"},
+    {"path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/events_bbo_coverage/fetch_log.jsonl", "sha256": "7eaefee136d4711bd31f41515d23ed9313cdba5ef12f757c2d078a8e76335664"}
+  ],
+  "recommended_next_action": "Owner: (1) if BBO tiering beyond the IBKR quote-close proxy is wanted, use BBO_AVAILABILITY_DOC.md as the buy-decision input (bbo-1m cheapest; mbo only queue-capable; D5 MODELED-COST law unchanged either way); (2) wire the BLS calendar evidence into DATACONTRACT_QUALIFICATION.md section-1.4 'US CPI/NFP' row via the owning cycle (this lane is read-only and makes no registry edits); actual-publish-time verification remains a separate NOT_RUN item; (3) re-probe IBKR expired walls at the next weekly boundary per D6.",
+  "summary": "All three dimensions complete as documentation/evidence, $0 spent, zero side effects outside the lane directory. BLS: CPI + EMPSIT 2010-2026 calendars machine-verified (PASS_EVIDENCED_CALENDAR, 204+204 scheduled releases all 08:30 AM Eastern, archive snapshot ts as verifier, two anomalies recorded verbatim). BBO: GLBX.MDP3 schema/field layouts documented from the installed vendor SDK + public changelog + rendered dataset page; CME MDP 3.0 wiki located with definition sentence; D5 law restated (bbo-1m cannot prove intrabar fill/queue; MODELED COST only). Coverage: IBKR staleness 0.82-0.89d, vendor O1M windows unchanged (ES/NQ 2010-06->, FX4 2020-01->, CL/NG/GC/SI absent), D6 staging documented, no re-fetch.",
+  "generated_utc": "2026-10-03T13:55:00Z"
+}

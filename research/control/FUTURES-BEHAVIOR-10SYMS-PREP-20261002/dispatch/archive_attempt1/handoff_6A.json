@@ -1,0 +1,39 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "lane_id": "SYMBOL-DOSSIER-6A",
+  "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+  "status": "COMPLETE",
+  "summary": "6A (CME Australian Dollar futures) dossier delivered per DOSSIER_TEMPLATE.md, all 7 sections, claims tagged FACT/OBSERVED/POSTULATED/NOT_RUN. Descriptive statistics computed from legal raw daily per-contract data (analysis/6A_descriptives.py -> 6A_descriptives.json, strict past/rolling windows, no PnL/performance metrics). Key measured findings: (1) serial-month executability defect (GC-style check, as dispatched): the literal declared roll rule needs serial contracts 6AF6/6AG6/6AJ7-class months 2026-01/02/04/05/07/08 that are ABSENT from the raw set -> NOT executable 2025-11-28..2026-08-31; quarterly-only adaptation (HMUZ targets) is executable and is the market's liquidity chain (serial fronts print 8/1 lots median vs quarterly 28k-67k). (2) Real-volume front-scale era only 2025-09-10..2026-10-01 (241 sessions); deeper history settlement-derived. (3) 4 effective quarterly rolls measured: gaps +4/-11/-27/-23 ticks (+$20/-$55/-$135/-$115), annualized +0.12% then -0.31..-0.75% (mild 2026 backwardation); serial leg 6AU6->6AV6 -8 ticks. (4) Front-scale vol 7.45% ann, worst day -1.43% (2026-03-05), trend persistence 49.4% (coin-flip), overnight-gap median +0.5 pips. (5) Spreads: quarterly-chain front median 2 ticks/$10 vs S1 serial front 6AV6 4 ticks/$20 (reconciles exactly with S6_FRONT_SPREADS); 0 crossed days; 6AX6 deferred serial quote-rot 265 ticks. (6) Event calendars verified from primary sources (rba.gov.au mr-25-02: 8 meetings 2026, decision 14:30 Sydney, none in October; abs.gov.au: LF 2026-10-15 + CPI 2026-10-28 at 11:30 Canberra; Caixin PMI embargo 09:45 CST/01:45 UTC via pmi.spglobal.com; FOMC/BLS/CFTC reused from sibling GC lane, same access date 2026-10-02); critical tz asymmetry documented: every AU/China event lands 19:30-22:30 CT prior day, OUTSIDE the useRTH=true recorded bars.",
+  "outputs": [
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dossiers/6A_DOSSIER.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/6A_descriptives.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/6A_descriptives.json",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dispatch/handoff_6A.json"
+  ],
+  "findings": [
+    "OBSERVED serial-gap executability defect: literal declared roll rule NOT executable on this snapshot for 2025-11-28..2026-08-31 (needs missing serials 6AF6 6AG6 6AJ6 6AK6 6AN6 6AQ6); all chain stats use quarterly adaptation, disclosed. Pre-2025-12 quarterlies absent entirely (expired-secdef wall, S1 deepest_resolved=202512) -> chain tracks deferred contracts pre-2025-09 (settlement-derived, disclosed).",
+    "OBSERVED time-critical $0 fix: the 6 missing serials are still within the ~1y expired-resolve wall today; 6AF6/6AG6 age out ~Jan-Mar 2027 -> re-fetch with current entitlement is cheap NOW, impossible later without vendor.",
+    "OBSERVED liquidity structure: quarterlies are the liquidity chain (28k-67k lots/day front scale); serial months 3-4 orders thinner (6AV6 Sep-2026 median 17, max 79). New quarterly reaches front scale 6-11 sessions AFTER the roll date (unlike GC's pre-roll migration); old-side post-roll decay NOT observable (raw files truncate at fetch boundary day-1 of expiry month, e.g. 6AU6 ends 2026-08-31 though last trade 2026-09-14).",
+    "OBSERVED 6A behavior (front-scale era 2025-09-10..2026-10-01, n=241): mean +0.027%/day, sigma 0.469%/day (7.45% ann), skew ~0, |r| lag-1 autocorr 0.036, trend persistence 49.4%, 16 large-move days clustered Jan-Jun+Sep 2026, overnight gap median +0.5 pips with 12% of days >=2x trailing-20d. Vol-by-year refs: 2022 13.6% -> 2024 8.0% (settlement-derived era).",
+    "OBSERVED identity/costs: USD-per-AUD quote confirmed (closes 0.598-0.7426, reciprocal 1.35-1.67), multiplier 100k AUD, minTick 5e-05=$5/tick (tick-size CONFLICT 0.00005 vs 0.0001 unadjudicated, CME HTTP-403); spread quarterly-front 2 ticks/$10 vs S6 serial front $20 (exact reconcile); margins ~$1.9k maint (broker-class public); hourly sums = daily volumes exactly on 3 spot-checked dates (no GC-style vendor scaling artifact).",
+    "FACT calendars (access 2026-10-02): RBA 2026 meetings 2-3 Feb, 16-17 Mar, 4-5 May, 15-16 Jun, 10-11 Aug, 28-29 Sep, 2-3 Nov, 7-8 Dec, decision 14:30 Sydney (03:30/04:30 UTC, 22:30 CT prior day; no October meeting); ABS 11:30 Canberra (LF Sep-ref Thu 2026-10-15, CPI Sep-qtr Wed 2026-10-28); Caixin Mfg PMI embargo 09:45 CST/01:45 UTC; FOMC/BLS/CFTC sourced by sibling GC lane same date.",
+    "Hypotheses H1-H5 ranked by testability x causal plausibility (NOT PnL): H1 RBA hidden-session gap reaction (only event family fully in legal daily data), H2 HG-commodity/China confirmation of AUD trend persistence (control design vs 6E/6B for USD-beta confounder), H3 quarterly-roll-vs-literal-serial execution economics (95% already OBSERVED), H4 AUD equity-beta regime dependence (PARAM-GAP on regime tag), H5 rate-differential vs roll-gap sign (sample floor not met, 4 rolls)."
+  ],
+  "defects": [
+    "Raw snapshot lacks 6 listed serial months of 2026 (6AF6/6AG6/6AJ6/6AK6/6AN6/6AQ6) and ALL pre-2025-12 quarterlies -> DAILY_BT depth limitation inherited from data lane; real-volume era only ~13 months.",
+    "useRTH=true bars record only 08:30-16:00 CT: Sydney/Tokyo/London + all AU/China scheduled events + 08:30 ET US releases are OUTSIDE the recorded session; home-session information leadership NOT_RUN; 1-min = 2-day RTH snapshots (distributional statements NOT_RUN).",
+    "Old-contract daily files truncate at fetch boundary (day-1 of expiry month) before legal last trade (~2 weeks) -> volume crossover at roll NOT observable for 6A.",
+    "6A tick-size public-source conflict (0.00005/$5 vs 0.0001/$10) unadjudicated (CME blocked); exchange fee per-product NOT_FETCHED; slippage NOT_RUN_NO_DECLARED_VALUE; CME SPAN margins blocked (broker-class public only).",
+    "Web verification frictions: rba.gov.au 403 to WebFetch (web-reader fallback OK); ABS calendar page intermittently 500 via web-reader (future-releases list fetched via WebFetch OK); China NBS PMI/GACC trade/PBOC credit schedules NOT fetched -> marked NOT_RUN with source pointers, not assumed."
+  ],
+  "open_questions": [
+    "Owner decision: re-fetch the 6 missing 6A serial contracts now (time-critical, $0, same entitlement) before they age out of the ~1y expired-resolve wall?",
+    "Owner decision (via DATA-PIT-ACQUISITION-PREP): full-session intraday (M1/5-min incl. Sydney/London) + >=2y real-volume daily per-contract + consensus/surprise data + iron-ore primary price are all vendor/paid items gating H1-H5 measurement depth.",
+    "For the backtest engine: adopt the quarterly-adaptation roll rule for 6A/6E/6J/6B (documented deviation from the data lane's literal rule) or await the serial re-fetch before fixing the roll spec?"
+  ],
+  "sha256_of_key_outputs": {
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dossiers/6A_DOSSIER.md": "c982715eb4e559ddff258192970b429169ef065bfea8726c60f469c78f3aef7a",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/6A_descriptives.py": "7764bc1bb0de880d2dafb21ae80b8a3237553657336cff1b41bda3bd58b32088",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/6A_descriptives.json": "dbf5555e9ababb02a7b9f802f4d0214cbb51425d09e04c726c3beb250a540e17"
+  }
+}

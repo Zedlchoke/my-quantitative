@@ -1,0 +1,142 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+ "cycle_id": "UNREGISTERED_PREP",
+ "role": "lane",
+ "lane": "DBN-ADAPTER-RESUME",
+ "status": "COMPLETE",
+ "summary": "Resumed the DBN-ADAPTER lane after the predecessor's usage-limit death: reviewed all ten dbn modules against the official Databento reference implementation + docs (URLs + access dates recorded in futbt/dbn/README.md), fixed 22 predecessor defects (the code had NEVER been run: two fatal fixture KeyErrors, a never-crossing OI design, broken pack/unpack for reserved-field layouts, inverted stat_flags bit 1, off-by-one settlement session dates, vacuous monotonicity check, misapplied minute-gap scan, daily-session misclassification, CSV self-misidentification as rtype 0, UNDEF_PRICE classified CROSSED, internally inconsistent fixture truth, wrong CSV column-order model, and more), completed the remaining capability layer (cadence-aware session calendar, roll-window volume/OI crossover summary, clean settlement accounting, stype-provenance typing), created the missing dbn/__init__.py, and delivered the test + disclosure layer: 144 tests across 6 files covering every numbered capability incl. the adversarial cases (DST transition, holiday short session, two-contract roll window with volume/OI migration spanning fall-back, negative CL price, crossed/locked BBO, duplicate + gap timestamps, 6J scale, stale close-only bars, unknown record type -> typed error), plus futbt/dbn/README.md with the IMPLEMENTED/TESTED/NOT_IMPLEMENTED table and the full predecessor-corrections log. Full suite 417 tests OK (211 base + 144 dbn + 62 test_portfolio_* from concurrent lane MULTIASSET-WIRING, all green in the same run).",
+ "dispatch_sha": "eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7",
+ "actual_start_sha": "eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7",
+ "commit_sha": null,
+ "commit_note": "Lead commits: lane does not commit (worktree has uncommitted changes from multiple concurrent lanes; pathspec commit is the Lead's job)",
+ "changed_paths": [
+  "code/futbt/dbn/__init__.py",
+  "code/futbt/dbn/spec.py",
+  "code/futbt/dbn/wire.py",
+  "code/futbt/dbn/textio.py",
+  "code/futbt/dbn/fixtures.py",
+  "code/futbt/dbn/ingest.py",
+  "code/futbt/dbn/session.py",
+  "code/futbt/dbn/ohlcv.py",
+  "code/futbt/dbn/bbo.py",
+  "code/futbt/dbn/pit.py",
+  "code/futbt/dbn/qa.py",
+  "code/futbt/dbn/README.md",
+  "code/tests/test_dbn_wire.py",
+  "code/tests/test_dbn_ingest.py",
+  "code/tests/test_dbn_session.py",
+  "code/tests/test_dbn_ohlcv.py",
+  "code/tests/test_dbn_bbo.py",
+  "code/tests/test_dbn_qa.py"
+ ],
+ "tests": [
+  {
+   "command": "cd research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m unittest discover -s tests -t .",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "Ran 417 tests in ~4.2s, OK: 211 base + 144 new test_dbn_* + 62 test_portfolio_* (concurrent lane MULTIASSET-WIRING, green in the same run, no rerun needed)",
+   "log_digest": "d81e4316a48ecc69a7a8379c07fe30fb028cdaf1358779021b333ab9d8e2da58"
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m unittest tests.test_dbn_wire tests.test_dbn_ingest tests.test_dbn_session tests.test_dbn_ohlcv tests.test_dbn_bbo tests.test_dbn_qa",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "Ran 144 tests, OK (lane-scoped run: 40 wire + 22 ingest + 19 session + 18 ohlcv + 16 bbo + 29 qa)",
+   "log_digest": "sha256:NOT_CAPTURED_AT_RUN_TIME(backfilled-marker b7d4a0c511841f92)"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "SYNTHETIC-ONLY: every test runs on futbt/dbn/fixtures.py generated data; zero claims about real GLBX.MDP3 bytes — first real batch must pass ../DATA_ACCEPTANCE_CHECKLIST.md (NOT_RUN)",
+  "docs.databento.com is JS-rendered and unreadable by automated fetchers; schema semantics were verified against the official reference implementation (github.com/databento/dbn main, fetched 2026-10-02) plus docs pages via search snippets — both URL lists recorded in futbt/dbn/README.md",
+  "DBN v1/v2 decode, .zst decompression, schema definitions in metadata, and record types mbo/mbp-10/status/imbalance/error/cmbp-1/cbbo are NOT_IMPLEMENTED with typed fail-closed refusals (bbo-1s/bbo-1m ARE implemented)",
+  "CSV/JSONL ingest cannot prove stype (no metadata in text exports): execution_use() returns 'unproven_stype'; the continuous-execution guard only has teeth on DBN-framed files",
+  "No offline holiday calendar exists: short sessions are INFERRED from bar coverage (HOLIDAY_SHORT + inferred_short flag), never asserted as exchange fact; session windows use standard 17:00-16:00 CT bounds",
+  "GLBX stat_flags normalization is a published vendor data-quality issue before 2015-01-20 — re-verify on first real batch",
+  "first_notice is NOT_AVAILABLE in DBN definitions: any first-notice-dependent logic stays NOT_RUN (typed raising accessor)",
+  "Live API paths and any billable metadata calls: NOT_IMPLEMENTED / NOT_RUN by round invariant (no API key)",
+  "commit_sha null by design: lane does not commit; Lead integrates and commits (round rule in COOWNER_REVIEW_DISPATCH.json/STEERING_ROUND2_DISPATCH.json)"
+ ],
+ "incidents": [
+  "Predecessor lane DBN-ADAPTER died on a usage limit after writing ten modules in code/futbt/dbn/ but BEFORE ever running them, writing tests, or the package README — the modules contained 2 fatal first-run crashes and 20 further defects (all enumerated in futbt/dbn/README.md 'Predecessor corrections'); this lane resumed, fixed, and delivered the test + disclosure layer",
+  "No other incidents: no locks needed (tests are seconds-scale), no network, no credentials, no interference with concurrent lanes (MULTIASSET-WIRING's test_portfolio_* appeared mid-round and were green in my final run)"
+ ],
+ "tree_status": "dirty with concurrent-lane files; my outputs enumerated (HEAD eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7 unchanged; changed_paths above are exactly and only this lane's writes; engine.py/composition.py/accounting.py/test_portfolio_* belong to MULTIASSET-WIRING)",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/dbn/__init__.py",
+   "sha256": "cf8db43723dac8c8b2f7f1bdc088b97e1985c4a85f0aba20f971d92e50aacd8b"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/dbn/spec.py",
+   "sha256": "e0d525845e0dad160a65b02e1296dc6a132a59ad22b7aaf7fcc0ecb79de4e2e9"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/dbn/wire.py",
+   "sha256": "17d2e566ff0ae8e099841ccf7adefddeb0a12780b4e68318654de5fcd5af36f0"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/dbn/textio.py",
+   "sha256": "df3ef30a7f19598778507052b0620bb57050b0972e092c3c74fa1e0898eda477"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/dbn/fixtures.py",
+   "sha256": "c01cb9788dbf4945031d8bb83daee17267d5ad064f9865f04dba6a9745b9aaca"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/dbn/ingest.py",
+   "sha256": "9ad24cac7e35930ef57840080715273c7ae77160aa9f2acd96ba1feb0b5b1bb6"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/dbn/session.py",
+   "sha256": "b3c37cd4e0a1d2931b382c011fb3ac92fb97acfdf6b91e07710919d1eb26a51f"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/dbn/ohlcv.py",
+   "sha256": "0826abb5a2920874d01a4950cf93bebba96fefb187e9f158b0b768cbca249584"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/dbn/bbo.py",
+   "sha256": "ce5324224154fc62b90c481b6683a169886843df8087d557ea17baa3c9af5f81"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/dbn/pit.py",
+   "sha256": "7de5dbfea795d12bc00bec867565359ed068a4634cf262d99d523135326b929b"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/dbn/qa.py",
+   "sha256": "aa0476f3e31e2ea6f72731982092c2ab378f90f97257d7b7d54285b926b38877"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/dbn/README.md",
+   "sha256": "367bb380efd5995997fdbf6d74922b973f26fdcd02db59a47510165e102658c6"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_dbn_wire.py",
+   "sha256": "6769bdeb6ea7a455c94fd1d1aa28cca1a1eaffaf1b706965cfb22f6e20f92dc7"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_dbn_ingest.py",
+   "sha256": "5631e48a9d962498444beb485c166eeb8b46211d664627c70c6d444089022452"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_dbn_session.py",
+   "sha256": "e3c1c5af41e437f8e4aa6689f8243605559b3ddd8c8b9f2dd3b70e20e4aa514b"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_dbn_ohlcv.py",
+   "sha256": "56d19461667a62847dc94d81738daea5b0fbea3cc278842c1539694307913cf1"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_dbn_bbo.py",
+   "sha256": "5616decab3d069fe6dfc85fbebb8c973fa0ad5e09a429ec3e3142b8dcfb3638a"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_dbn_qa.py",
+   "sha256": "7b2e78eaee427c4d9790e3e1afd491499cbe481c90daf3a9f363825cc15145e0"
+  }
+ ],
+ "recommended_next_action": "Lead: pathspec-commit the 18 changed paths (git add by pathspec, never -A; tree also contains MULTIASSET-WIRING files to be committed by their own handoff). Then the round gate stays WAITING_DATABENTO_DATA: when the owner supplies the API key, run the REQUEST-PACKET lane's metadata-only cost scripts, purchase per the manifest, and run the first REAL GLBX.MDP3 batch through futbt.dbn.ingest + qa with the DATA_ACCEPTANCE_CHECKLIST — the acceptance items that re-verify doc-declared conventions (stat_flags bit semantics incl. the pre-2015 caveat, ts_ref convention, sparse-bar behavior, continuous mapping intervals) are the highest-value first checks against synthetic-only validation."
+}

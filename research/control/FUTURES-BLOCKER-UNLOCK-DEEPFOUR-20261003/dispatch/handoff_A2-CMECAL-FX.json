@@ -1,0 +1,61 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "A2-CMECAL-FX",
+  "dispatch_sha": "7149425df83b7c47f34848fc83d36e450b802bc5",
+  "actual_start_sha": "7149425df83b7c47f34848fc83d36e450b802bc5",
+  "end_sha": "7149425df83b7c47f34848fc83d36e450b802bc5",
+  "commit_sha": null,
+  "commit_disclosure": "No commit made: $0 read-only lane; writes limited to untracked files under research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/. HEAD re-measured at end == dispatch sha (no drift).",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior/prep",
+  "branch": "prep/futures-behavior-10syms-20261002",
+  "changed_paths": [
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/fx/FX_CALENDAR_EVIDENCE.md",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/fx/fx_cal_coverage.json",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/fx/fetch_log.jsonl"
+  ],
+  "tests": [
+    {"name": "json_validity_fx_cal_coverage", "result": "PASS", "detail": "python json.load OK; 96 expiration rows; 17 holiday years"},
+    {"name": "expiry_rule_consistency", "result": "PASS", "detail": "96/96 officially-sourced last-trade dates == 2nd weekday preceding 3rd Wednesday of contract month (script over fx_cal_coverage.json expirations; 0 deviations)"},
+    {"name": "cross_capture_conflict_check", "result": "PASS", "detail": "0 conflicts across overlapping product-calendar captures during consolidation"},
+    {"name": "head_no_drift", "result": "PASS", "detail": "git rev-parse HEAD == dispatch sha at start and end"}
+  ],
+  "authority_claims": [
+    "FACT: CME official per-holiday Globex schedules publish an FX-family block (\"CME Group FX Products\" / \"Interest Rate & FX Products\" / \"Equity, Interest Rate, FX, Energy, Metals & DME Products\"); 6E/6B/6J/6A share it (2010-2016 artifacts, resolved capture ts pinned).",
+    "FACT: FX-family schedule differs from equity family (e.g., Good Friday FX 10:15 CT early close 2010/2012/2015 vs full FX closure 2011/2013/2014/2016; Monday holidays 12:00 CT halt + 17:00 CT resume; preceding-Friday 15:15 early close existed 2010-2015, dropped from 2016).",
+    "FACT: Last-trade rule verbatim, identical for 6E/6B/6J/6A: \"9:16 a.m. Central Time (CT) on the second business day immediately preceding the third Wednesday of the contract month (usually Monday).\" (2011 official spec captures x4; 2023 official capture confirms unchanged for 6E).",
+    "FACT: 96 quarterly last-trade dates 2010-2018 from archived official product calendars (6E 18, 6B 31, 6J 13, 6A 35 of 68 quarters each), 0 cross-capture conflicts, 96/96 rule-consistent.",
+    "NOT_OBTAINED: FX product-level Globex times for 2017-2025 (except New Year 2017) and 2026 — official downloadable files not archived; 2017+ holiday pages inline family-agnostic windows only; 2026 product hours behind widget/downloads.",
+    "NOT_OBTAINED: LIVE_OFFICIAL fetches this lane (web_reader -429 then -500 network error; WebFetch ECONNREFUSED) — all live cmegroup claims deferred to prior ES lane's same-day live success."
+  ],
+  "known_limitations": [
+    "2017-2026 holidays are covered at Globex-window granularity only; FX-family early-close/halt times for those years are NOT_OBTAINED (not inferred from 2010-2016 patterns).",
+    "Veterans Day 2014/2015 Globex hours evidenced only via settlement-procedures documents (trading occurred, normal methodology named for FX majors incl Euro/Yen/Pound/Aussie); explicit 'unaffected/normal schedule' line NOT_OBTAINED for those two years.",
+    "2023 modern rule confirmation is from the official cmegroup.com Chinese-locale page (cn-s); English post-2013 static spec capture is a JS shell.",
+    "Expiry dates 2019-2026 NOT_OBTAINED for all four codes (product-calendar pages JS-only in archive); 6E/6J also lack 2015-2018, 6B/6J lack 2010, 6E lacks Sep/Dec 2011 + Mar 2012, 6J lacks Dec 2014, 6B/6A lack Dec 2018.",
+    "Roll-vs-official-expiry interplay: repo roll rules are bar-measured construction rules; official expiry rule and Good Friday year-mixing (early close vs closure) noted for known_limitations — no re-derivation performed.",
+    "6A Sep-2013 capture lists First Trade 08/12/2013 for all 2015-2018 quarters (official page quirk); Last Trade fields are the load-bearing values and cross-check cleanly."
+  ],
+  "incidents": [
+    "web.archive.org intermittent 'Temporarily Offline' (2x) and sporadic connection failures; handled with sleep+retry inside <=2-attempts-per-URL-per-method budget.",
+    "web_reader on live cmegroup.com failed (-429 rate limit, then -500 upstream network error x2) and WebFetch ECONNREFUSED — LIVE_OFFICIAL route closed for this lane; ARCHIVED_OFFICIAL route (plain curl) carried the mission.",
+    "pip install xlrd into the shared venv was needed to parse official .xls holiday schedules (additive dev dependency, noted for reproducibility)."
+  ],
+  "tree_status": "clean-tracked; only untracked lane outputs under research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/ (plus sibling lanes' untracked files, untouched); HEAD == dispatch sha",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/fx/FX_CALENDAR_EVIDENCE.md", "sha256": "ddc6015be668708700b97e6d075687e3fadb8300387882d6f7a24cd827aede55"},
+    {"path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/fx/fx_cal_coverage.json", "sha256": "c9fb23580de002c769f4f7afcf8bf9ae2673564113c615a78ef3a565ab94fcb3"},
+    {"path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/fx/fetch_log.jsonl", "sha256": "7082d4437e4cf2c93362eea656e0b90f9acbbd9039ad776b589868d17ac83e95"}
+  ],
+  "verdicts": {
+    "holidays_early_closes_2010_2026": "PARTIAL: 2010-2016 PASS-with-coverage (full FX-family product-level, ARCHIVED_OFFICIAL, resolved ts pinned); 2017-2026 windows-only PARTIAL (FX product-level NOT_OBTAINED except New Year 2017); 2026 = windows + verbatim Holiday Notes from Sep-2026 official capture, product-level behind widget.",
+    "expiration_rule_per_product": "PASS-with-coverage: verbatim rule all four products (2011 captures) + 2023 official confirmation; English post-2013 static NOT_OBTAINED.",
+    "expiry_dates": "PASS-with-coverage: 96/272 quarters (6E 18/68, 6B 31/68, 6J 13/68, 6A 35/68); 2019-2026 all NOT_OBTAINED."
+  },
+  "recommended_next_action": "Fold into DATACONTRACT_QUALIFICATION §1.2: upgrade 6E/6B/6J/6A holiday status from 'NOT_RUN official (inferred)' to '2010-2016 ARCHIVED_OFFICIAL full product-level; 2017-2026 windows-official / FX-times NOT_OBTAINED'; record verbatim expiry rule + 96 official expiry dates as FACT base; keep 2017-2026 FX-time gap on the known_limitations ledger (fillable later via CME widget/downloads or archive deposits of 2017+ per-holiday files).",
+  "summary": "CME calendar/expiry authority acquired for the four FX codes 6E/6B/6J/6A from official cmegroup.com artifacts (all via web.archive.org; live blocked): full FX-family Globex holiday schedules 2010-2016 (per-holiday PDFs/XLS with verbatim closures, 12:00 CT Monday halts, 10:15/12:15/15:15 early closes, 05:00/17:00 reopens; proven FX calendar differs from equity family), Globex windows for 2017-2026 (2026 incl. verbatim Holiday Notes), identical verbatim last-trade rule for all four products verified 2011 + 2023, and 96 officially-sourced quarterly expiry dates (0 conflicts, 96/96 rule-consistent). Deliverables + fetch log written under cme_cal/fx/.",
+  "generated_utc": "2026-10-03T13:58:00Z"
+}

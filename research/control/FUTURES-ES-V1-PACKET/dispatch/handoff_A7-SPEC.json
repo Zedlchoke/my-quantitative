@@ -1,0 +1,57 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "A7-SPEC",
+  "cycle_id": "FUTURES-ES-V1-PACKET",
+  "role": "independent-auditor",
+  "lane": "A7-SPEC",
+  "dispatch_sha": "cce2cfa01042ac3f683493761da80377bb2e152a",
+  "actual_start_sha": "cce2cfa01042ac3f683493761da80377bb2e152a",
+  "run_date": "2026-10-03",
+  "commit_sha": "",
+  "changed_paths": [
+    "research/control/FUTURES-ES-V1-PACKET/audit/a7_spec/A7_SPEC.md",
+    "research/control/FUTURES-ES-V1-PACKET/audit/a7_spec/a7_spec_checks.json",
+    "research/control/FUTURES-ES-V1-PACKET/audit/a7_spec/probes/probe_r1_identity_grid.py",
+    "research/control/FUTURES-ES-V1-PACKET/audit/a7_spec/probes/probe_r2_cost_arithmetic.py",
+    "research/control/FUTURES-ES-V1-PACKET/audit/a7_spec/probes/probe_r4_r5_expiry_rule_and_holidays.py",
+    "research/control/FUTURES-ES-V1-PACKET/audit/a7_spec/probes/probe_standard_audit.py",
+    "research/control/FUTURES-ES-V1-PACKET/audit/a7_spec/probes/out_probe_r1_identity_grid.json",
+    "research/control/FUTURES-ES-V1-PACKET/audit/a7_spec/probes/out_probe_r2_cost_arithmetic.json",
+    "research/control/FUTURES-ES-V1-PACKET/audit/a7_spec/probes/out_probe_r4_r5_expiry_rule_and_holidays.json",
+    "research/control/FUTURES-ES-V1-PACKET/audit/a7_spec/probes/out_probe_standard_audit.json",
+    "research/control/FUTURES-ES-V1-PACKET/dispatch/handoff_A7-SPEC.json"
+  ],
+  "tests": [
+    {"id": 1, "name": "R1 identity-grid enumeration", "verdict": "PASS", "detail": "P-A 8 + P-B 8 = 16 primary; FOMC 4; C1-C4 4; total 24, no duplicates; omitted cells = exactly the 8 D30x{S1,S3} and declared non-existent in SPEC; no implicit 24-grid"},
+    {"id": 2, "name": "R2 cost arithmetic + source binding vs d2 fees_table_es.json", "verdict": "PASS", "detail": "0.85 (C5, max tier) + 1.386 (X1) + 0.02 (X2n) + 6.25 + {12.50,25.00,37.50} = 21.006/33.506/46.006 exact; window 2014-10-01..2017-12-31 -0.01; IBKR offset 0.011 (X2) appears only in the explicit not-used note, never as an additive term (no double count); NFA timeline 0.02->0.01(2014-10-01)->0.02(2018-01-01) confirmed in S5/X2n"},
+    {"id": 3, "name": "R3 no bias-direction for historical fees", "verdict": "PASS", "detail": "zero residual direction claims in SPEC/PLAN (only permitted conservative-row-choice and spread-proxy caveats); D2 confirms per-year values not extractable (CME PDF cells column-scrambled; historical IBKR snapshot content never fetched)"},
+    {"id": 4, "name": "R4 expiry-rule PIT legality vs D3 authority", "verdict": "PASS", "detail": "rule (3rd Friday + CME-observed displacement) reconciles 37/37 D3 ARCHIVED_OFFICIAL rows, 0 mismatch; bars validation covers 66/66 in-window expiries (dossier ES §1); decision law uses public calendars only -> PIT-legal; naive generic federal-shift reading mispredicts June 2021 (2021-06-17 vs actual 2021-06-18) => MINOR-2 pin"},
+    {"id": 5, "name": "R5 holiday coverage adjudication", "verdict": "PASS", "detail": "per-day ES-specific Globex early-close TIMES exist only for 2010 (official 38-page PDF); 2011-2025 archived tables are CME-wide windows + ClearPort/floor (2021 explicitly NOT_TRANSCRIBED at product level); 2026 behind widget => SPEC E1 fail-closed EXCLUDE for every unproven ES holiday-suspect day 2011-2026; D3 recount: 37/68 actual rows (claimed 36/68; 36 in eval window) => MINOR-1"},
+    {"id": 6, "name": "standard audit (GO phrase, folds, language law, outcome-blindness, provenance, two-key, S1, root-write blocker)", "verdict": "PASS", "detail": "'GO FUTURES ES V1 SCORED EXECUTION' 0 exact/0 raw hits across 170 registry go_phrase fields, no FUTURES-ES cycle_id among 85 cycles; folds F1-F4 contiguous, cover 2010-06..2026-09 with the 2026-10-01 partial tail excluded; 0 MODELED-COST language violations; outcome-blindness declared; q80/NQ-H4, R=2 a priori, seed 20261002, slippage D1 all present; two-key + S1 SEALED_UNTOUCHED + root-registry-write blocker all correctly encoded in PLAN"}
+  ],
+  "summary": "SPEC_VERDICT: FREEZE_READY_WITH_ERRATA. Severity counts: 0 BLOCKER / 0 MAJOR / 5 MINOR / 7 NOTE. All 5 Co-Owner review points resolved correctly in SPEC r2 (R1/R2/R3 verified by recomputation; R4 ruled PIT-legal with fail-closed full-quarter EXCLUDE; R5 coverage adjudicated: per-day ES-provable = 2010 only, 2011-2026 fail-closed E1). MINOR errata to apply to the spec text BEFORE freeze-hashing: M-1 relabel 36/68 -> 37/68 (36 in eval window); M-2 pin Juneteenth displacement calendar (June 2021 NOT displaced — naive federal-shift clause would mispredict and needlessly EXCLUDE Q2-2021); M-3 pin day-level treatment of the 40 untimed 2011-2015 FOMC days; M-4 define RTH-core; M-5 pin the SL formula (median of trailing-20 RTH ranges, not Wilder ATR). No design, budget, gate or cost change implied by any erratum.",
+  "authority_claims": [],
+  "known_limitations": [
+    "Audited the UNCOMMITTED working-tree versions of SPEC_PB1_ES.md (r2) and PLAN_futures_es_v1.md (sha256 recorded in a7_spec_checks.json); if either file is edited before freeze, this audit's verdict no longer applies to the new bytes.",
+    "D3 recount (37 vs claimed 36) is against the master table as transcribed in ES_CALENDAR_EVIDENCE.md; the probe re-derives the 37 rows from that file's own markdown table and cross-checks against cmecal_coverage.json's fully_covered_years/partial_years fields — the underlying Wayback captures were not re-fetched (read-only discipline; <=2 attempts/URL law).",
+    "Bars-side validation claims (66/66 expiries, 3-10 early-close sessions/yr, era-correct closes) are accepted from the A7'd ES dossier v2 (PASS_WITH_ERRATA) and not re-measured from the vendor parquet — no evidence in the packet contradicts them and re-running the 16.4y pipeline is outside an audit lane's write scope.",
+    "The 36/68 vs 37/68 discrepancy is a finding against the D3 reference artifacts (FUTURES-DATACONTRACT-QUAL-V1, read-only for this lane); filing the erratum there is the Lead's/owner's action, not this lane's."
+  ],
+  "incidents": [
+    "audit/a7_spec/ contained artifacts of an interrupted earlier attempt of this same lane (probe drafts + a partial report; NO handoff was ever delivered, so that attempt never terminated formally). All files were overwritten by this audit within the allowed write zone; nothing outside audit/a7_spec/** + dispatch/handoff_A7-SPEC.json was written. Recorded as NOTE N-7.",
+    "During probe development two trivial bugs (a date-parsing regex and a month-tuple comparison) were found by re-running and fixed before results were recorded; all recorded probe outputs come from the final code."
+  ],
+  "tree_status": {
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior/prep",
+    "branch": "prep/futures-behavior-10syms-20261002",
+    "head": "cce2cfa01042ac3f683493761da80377bb2e152a",
+    "git_status": "?? research/control/FUTURES-ES-V1-PACKET/ (entire packet untracked: SPEC + PLAN uncommitted working-tree files as dispatched, plus this audit's audit/a7_spec/** and dispatch/handoff_A7-SPEC.json)",
+    "note": "no commits made by this lane; audited objects NOT modified (audit-only); references under FUTURES-DATACONTRACT-QUAL-V1, FUTURES-DEEPRESEARCH-V2-20261003 and the root registry read-only"
+  },
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-ES-V1-PACKET/audit/a7_spec/A7_SPEC.md", "kind": "audit-report", "note": "R1-R5 adjudications with one-line rulings, standard-audit table, findings ledger (0/0/5/7), completeness-for-registration list, SPEC_VERDICT: FREEZE_READY_WITH_ERRATA"},
+    {"path": "research/control/FUTURES-ES-V1-PACKET/audit/a7_spec/a7_spec_checks.json", "kind": "machine-results", "note": "probe verdicts, recomputed numbers, sha256s, findings, severity counts, one-line rulings"},
+    {"path": "research/control/FUTURES-ES-V1-PACKET/audit/a7_spec/probes/", "kind": "probes", "note": "4 deterministic probes + out_*.json (identity grid; cost arithmetic vs d2 JSON; expiry-rule vs 37 D3 rows + June-2021 edge + holiday provability map; standard audit incl. registry GO-phrase scan)"}
+  ]
+}
