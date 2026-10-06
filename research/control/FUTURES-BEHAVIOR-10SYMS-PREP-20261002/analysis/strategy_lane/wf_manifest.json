@@ -1,0 +1,1168 @@
+{
+ "schema": "futures_behavior_wf_manifest@1",
+ "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+ "pilot_id": "PILOT-NQ-CL-20261002",
+ "generated_utc": "2026-10-02",
+ "determinism": "fully deterministic: fixed generated_utc, no clock reads, stable enumeration order; identical inputs -> byte-identical manifest",
+ "inputs_sha256": {
+  "configs/pilot_nq_cl.yaml": "ac6915f1da1b5f34fd114fc7ebb16f62de05df1ee85a53b8249f5b7c5bd0a23a",
+  "code/futbt/walkforward.py": "a5d350f4a2b1ec6918ec1298f4f7d224e330213c6a60900cb1e97c5825606b02"
+ },
+ "seed_protocol": {
+  "master_seed": 20261002,
+  "per_cell_seed": "20261002 + cell_index",
+  "enumeration_order": [
+   "symbol",
+   "rule",
+   "roll_rule",
+   "cost_stress",
+   "slippage_scenario",
+   "entry_delay"
+  ],
+  "synthetic_fixture_seed": 20261002
+ },
+ "engine_interface": {
+  "engine_module": "futbt.walkforward",
+  "engine_file_sha256": "a5d350f4a2b1ec6918ec1298f4f7d224e330213c6a60900cb1e97c5825606b02",
+  "mode": "engine_imported_divergence_recorded",
+  "crosscheck": "DIFFERS (1 field(s))",
+  "differences": [
+   "fold4.test_end: engine=2026-09-30 documented=2026-09-25"
+  ],
+  "note": "engine module has moved past the documented interface (observed during this lane's run: another lane is editing code/futbt/walkforward.py - e.g. final-fold test-window extension to calendar end). Manifest targets the DOCUMENTED interface (code/README.md futbt.walkforward row); reconcile at integration before any fold table from this manifest is consumed."
+ },
+ "fold_construction_rules": {
+  "selection": "nested TRAIN selection ONLY; PIT view pinned at train_end; params frozen + stamped before TEST",
+  "purge": "purge_sessions >= true_horizon_sessions (label window = max_hold + entry_delay); under-purge raises",
+  "embargo": "embargo_sessions = true_horizon_sessions",
+  "folds": "anchored-expanding, >= 4 folds, train_frac 0.7, no TEST overlap",
+  "label_maturity": "TEST cells whose label window extends past the last session are right-censored + recorded",
+  "fold_suppression": "forbidden for performance reasons; only INSUFFICIENT_COVERAGE (recorded)",
+  "tb_labels": "TRAIN_ONLY - triple-barrier labels are never validation features"
+ },
+ "walkforward_blocks": {
+  "LEG-NQ-COT": {
+   "symbol": "NQ",
+   "hypothesis_id": "NQ-H2",
+   "max_hold_sessions": 10,
+   "entry_delay_horizons": {
+    "0": {
+     "true_horizon_sessions": 10,
+     "purge_sessions": 10,
+     "embargo_sessions": 10
+    },
+    "1": {
+     "true_horizon_sessions": 11,
+     "purge_sessions": 11,
+     "embargo_sessions": 11
+    },
+    "2": {
+     "true_horizon_sessions": 12,
+     "purge_sessions": 12,
+     "embargo_sessions": 12
+    }
+   },
+   "planner_invocation": {
+    "class": "futbt.walkforward.WalkForwardPlanner",
+    "args": {
+     "true_horizon_sessions": "max_hold + entry_delay (per-cell)",
+     "embargo_sessions": "same as true horizon"
+    },
+    "plan_args": {
+     "n_folds": 4,
+     "train_frac": 0.7
+    },
+    "sessions_source": "engine empirical session calendar for the symbol (weekday-empirical until a real exchange calendar is supplied - NOT_RUN placeholder raises where required)"
+   },
+   "fold_rules": {
+    "selection": "nested TRAIN only; PIT view pinned at train_end; params frozen+stamped before TEST",
+    "purge": "purge >= true horizon; under-purge raises PolicyError",
+    "embargo": "embargo = true horizon",
+    "folds": "anchored-expanding, >= 4, train_frac 0.7, TEST windows disjoint",
+    "label_maturity": "TEST cells whose label window passes the last session are right-censored and recorded",
+    "drop_policy": "INSUFFICIENT_COVERAGE only, recorded per fold; performance suppression forbidden"
+   },
+   "synthetic_demo_folds": [
+    {
+     "fold_id": "fold01",
+     "train_start": "2025-01-06",
+     "train_end": "2026-03-25",
+     "test_start": "2026-03-26",
+     "test_end": "2026-05-11",
+     "purge_sessions": 12,
+     "embargo_sessions": 12,
+     "true_horizon_sessions": 12,
+     "embargo_censored_test_cells": 12,
+     "purge_dropped_train_cells": 11
+    },
+    {
+     "fold_id": "fold02",
+     "train_start": "2025-01-06",
+     "train_end": "2026-05-11",
+     "test_start": "2026-05-12",
+     "test_end": "2026-06-25",
+     "purge_sessions": 12,
+     "embargo_sessions": 12,
+     "true_horizon_sessions": 12,
+     "embargo_censored_test_cells": 12,
+     "purge_dropped_train_cells": 11
+    },
+    {
+     "fold_id": "fold03",
+     "train_start": "2025-01-06",
+     "train_end": "2026-06-25",
+     "test_start": "2026-06-26",
+     "test_end": "2026-08-11",
+     "purge_sessions": 12,
+     "embargo_sessions": 12,
+     "true_horizon_sessions": 12,
+     "embargo_censored_test_cells": 12,
+     "purge_dropped_train_cells": 11
+    },
+    {
+     "fold_id": "fold04",
+     "train_start": "2025-01-06",
+     "train_end": "2026-08-11",
+     "test_start": "2026-08-12",
+     "test_end": "2026-09-25",
+     "purge_sessions": 12,
+     "embargo_sessions": 12,
+     "true_horizon_sessions": 12,
+     "embargo_censored_test_cells": 12,
+     "purge_dropped_train_cells": 11
+    }
+   ],
+   "synthetic_demo_right_censored_test_cells": 9
+  },
+  "LEG-CL-TSMOM": {
+   "symbol": "CL",
+   "hypothesis_id": "CL-H1",
+   "max_hold_sessions": 20,
+   "entry_delay_horizons": {
+    "0": {
+     "true_horizon_sessions": 20,
+     "purge_sessions": 20,
+     "embargo_sessions": 20
+    },
+    "1": {
+     "true_horizon_sessions": 21,
+     "purge_sessions": 21,
+     "embargo_sessions": 21
+    },
+    "2": {
+     "true_horizon_sessions": 22,
+     "purge_sessions": 22,
+     "embargo_sessions": 22
+    }
+   },
+   "planner_invocation": {
+    "class": "futbt.walkforward.WalkForwardPlanner",
+    "args": {
+     "true_horizon_sessions": "max_hold + entry_delay (per-cell)",
+     "embargo_sessions": "same as true horizon"
+    },
+    "plan_args": {
+     "n_folds": 4,
+     "train_frac": 0.7
+    },
+    "sessions_source": "engine empirical session calendar for the symbol (weekday-empirical until a real exchange calendar is supplied - NOT_RUN placeholder raises where required)"
+   },
+   "fold_rules": {
+    "selection": "nested TRAIN only; PIT view pinned at train_end; params frozen+stamped before TEST",
+    "purge": "purge >= true horizon; under-purge raises PolicyError",
+    "embargo": "embargo = true horizon",
+    "folds": "anchored-expanding, >= 4, train_frac 0.7, TEST windows disjoint",
+    "label_maturity": "TEST cells whose label window passes the last session are right-censored and recorded",
+    "drop_policy": "INSUFFICIENT_COVERAGE only, recorded per fold; performance suppression forbidden"
+   },
+   "synthetic_demo_folds": [
+    {
+     "fold_id": "fold01",
+     "train_start": "2025-01-06",
+     "train_end": "2026-03-25",
+     "test_start": "2026-03-26",
+     "test_end": "2026-05-11",
+     "purge_sessions": 22,
+     "embargo_sessions": 22,
+     "true_horizon_sessions": 22,
+     "embargo_censored_test_cells": 22,
+     "purge_dropped_train_cells": 21
+    },
+    {
+     "fold_id": "fold02",
+     "train_start": "2025-01-06",
+     "train_end": "2026-05-11",
+     "test_start": "2026-05-12",
+     "test_end": "2026-06-25",
+     "purge_sessions": 22,
+     "embargo_sessions": 22,
+     "true_horizon_sessions": 22,
+     "embargo_censored_test_cells": 22,
+     "purge_dropped_train_cells": 21
+    },
+    {
+     "fold_id": "fold03",
+     "train_start": "2025-01-06",
+     "train_end": "2026-06-25",
+     "test_start": "2026-06-26",
+     "test_end": "2026-08-11",
+     "purge_sessions": 22,
+     "embargo_sessions": 22,
+     "true_horizon_sessions": 22,
+     "embargo_censored_test_cells": 22,
+     "purge_dropped_train_cells": 21
+    },
+    {
+     "fold_id": "fold04",
+     "train_start": "2025-01-06",
+     "train_end": "2026-08-11",
+     "test_start": "2026-08-12",
+     "test_end": "2026-09-25",
+     "purge_sessions": 22,
+     "embargo_sessions": 22,
+     "true_horizon_sessions": 22,
+     "embargo_censored_test_cells": 22,
+     "purge_dropped_train_cells": 21
+    }
+   ],
+   "synthetic_demo_right_censored_test_cells": 19
+  }
+ },
+ "cells": [
+  {
+   "cell_index": 0,
+   "cell_id": "CL-r1-declared-s1.0-S0-d0",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 0,
+   "seed": 20261002
+  },
+  {
+   "cell_index": 1,
+   "cell_id": "CL-r1-declared-s1.0-S0-d1",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 1,
+   "seed": 20261003
+  },
+  {
+   "cell_index": 2,
+   "cell_id": "CL-r1-declared-s1.0-S0-d2",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 2,
+   "seed": 20261004
+  },
+  {
+   "cell_index": 3,
+   "cell_id": "CL-r1-declared-s1.0-S1-d0",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 0,
+   "seed": 20261005
+  },
+  {
+   "cell_index": 4,
+   "cell_id": "CL-r1-declared-s1.0-S1-d1",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 1,
+   "seed": 20261006
+  },
+  {
+   "cell_index": 5,
+   "cell_id": "CL-r1-declared-s1.0-S1-d2",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 2,
+   "seed": 20261007
+  },
+  {
+   "cell_index": 6,
+   "cell_id": "CL-r1-declared-s1.5-S0-d0",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 0,
+   "seed": 20261008
+  },
+  {
+   "cell_index": 7,
+   "cell_id": "CL-r1-declared-s1.5-S0-d1",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 1,
+   "seed": 20261009
+  },
+  {
+   "cell_index": 8,
+   "cell_id": "CL-r1-declared-s1.5-S0-d2",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 2,
+   "seed": 20261010
+  },
+  {
+   "cell_index": 9,
+   "cell_id": "CL-r1-declared-s1.5-S1-d0",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 0,
+   "seed": 20261011
+  },
+  {
+   "cell_index": 10,
+   "cell_id": "CL-r1-declared-s1.5-S1-d1",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 1,
+   "seed": 20261012
+  },
+  {
+   "cell_index": 11,
+   "cell_id": "CL-r1-declared-s1.5-S1-d2",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 2,
+   "seed": 20261013
+  },
+  {
+   "cell_index": 12,
+   "cell_id": "CL-r1-declared-s2.0-S0-d0",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 0,
+   "seed": 20261014
+  },
+  {
+   "cell_index": 13,
+   "cell_id": "CL-r1-declared-s2.0-S0-d1",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 1,
+   "seed": 20261015
+  },
+  {
+   "cell_index": 14,
+   "cell_id": "CL-r1-declared-s2.0-S0-d2",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 2,
+   "seed": 20261016
+  },
+  {
+   "cell_index": 15,
+   "cell_id": "CL-r1-declared-s2.0-S1-d0",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 0,
+   "seed": 20261017
+  },
+  {
+   "cell_index": 16,
+   "cell_id": "CL-r1-declared-s2.0-S1-d1",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 1,
+   "seed": 20261018
+  },
+  {
+   "cell_index": 17,
+   "cell_id": "CL-r1-declared-s2.0-S1-d2",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 2,
+   "seed": 20261019
+  },
+  {
+   "cell_index": 18,
+   "cell_id": "CL-r1-volume-s1.0-S0-d0",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 0,
+   "seed": 20261020
+  },
+  {
+   "cell_index": 19,
+   "cell_id": "CL-r1-volume-s1.0-S0-d1",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 1,
+   "seed": 20261021
+  },
+  {
+   "cell_index": 20,
+   "cell_id": "CL-r1-volume-s1.0-S0-d2",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 2,
+   "seed": 20261022
+  },
+  {
+   "cell_index": 21,
+   "cell_id": "CL-r1-volume-s1.0-S1-d0",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 0,
+   "seed": 20261023
+  },
+  {
+   "cell_index": 22,
+   "cell_id": "CL-r1-volume-s1.0-S1-d1",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 1,
+   "seed": 20261024
+  },
+  {
+   "cell_index": 23,
+   "cell_id": "CL-r1-volume-s1.0-S1-d2",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 2,
+   "seed": 20261025
+  },
+  {
+   "cell_index": 24,
+   "cell_id": "CL-r1-volume-s1.5-S0-d0",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 0,
+   "seed": 20261026
+  },
+  {
+   "cell_index": 25,
+   "cell_id": "CL-r1-volume-s1.5-S0-d1",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 1,
+   "seed": 20261027
+  },
+  {
+   "cell_index": 26,
+   "cell_id": "CL-r1-volume-s1.5-S0-d2",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 2,
+   "seed": 20261028
+  },
+  {
+   "cell_index": 27,
+   "cell_id": "CL-r1-volume-s1.5-S1-d0",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 0,
+   "seed": 20261029
+  },
+  {
+   "cell_index": 28,
+   "cell_id": "CL-r1-volume-s1.5-S1-d1",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 1,
+   "seed": 20261030
+  },
+  {
+   "cell_index": 29,
+   "cell_id": "CL-r1-volume-s1.5-S1-d2",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 2,
+   "seed": 20261031
+  },
+  {
+   "cell_index": 30,
+   "cell_id": "CL-r1-volume-s2.0-S0-d0",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 0,
+   "seed": 20261032
+  },
+  {
+   "cell_index": 31,
+   "cell_id": "CL-r1-volume-s2.0-S0-d1",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 1,
+   "seed": 20261033
+  },
+  {
+   "cell_index": 32,
+   "cell_id": "CL-r1-volume-s2.0-S0-d2",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 2,
+   "seed": 20261034
+  },
+  {
+   "cell_index": 33,
+   "cell_id": "CL-r1-volume-s2.0-S1-d0",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 0,
+   "seed": 20261035
+  },
+  {
+   "cell_index": 34,
+   "cell_id": "CL-r1-volume-s2.0-S1-d1",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 1,
+   "seed": 20261036
+  },
+  {
+   "cell_index": 35,
+   "cell_id": "CL-r1-volume-s2.0-S1-d2",
+   "symbol": "CL",
+   "leg_id": "LEG-CL-TSMOM",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 2,
+   "seed": 20261037
+  },
+  {
+   "cell_index": 36,
+   "cell_id": "NQ-r1-declared-s1.0-S0-d0",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 0,
+   "seed": 20261038
+  },
+  {
+   "cell_index": 37,
+   "cell_id": "NQ-r1-declared-s1.0-S0-d1",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 1,
+   "seed": 20261039
+  },
+  {
+   "cell_index": 38,
+   "cell_id": "NQ-r1-declared-s1.0-S0-d2",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 2,
+   "seed": 20261040
+  },
+  {
+   "cell_index": 39,
+   "cell_id": "NQ-r1-declared-s1.0-S1-d0",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 0,
+   "seed": 20261041
+  },
+  {
+   "cell_index": 40,
+   "cell_id": "NQ-r1-declared-s1.0-S1-d1",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 1,
+   "seed": 20261042
+  },
+  {
+   "cell_index": 41,
+   "cell_id": "NQ-r1-declared-s1.0-S1-d2",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 2,
+   "seed": 20261043
+  },
+  {
+   "cell_index": 42,
+   "cell_id": "NQ-r1-declared-s1.5-S0-d0",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 0,
+   "seed": 20261044
+  },
+  {
+   "cell_index": 43,
+   "cell_id": "NQ-r1-declared-s1.5-S0-d1",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 1,
+   "seed": 20261045
+  },
+  {
+   "cell_index": 44,
+   "cell_id": "NQ-r1-declared-s1.5-S0-d2",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 2,
+   "seed": 20261046
+  },
+  {
+   "cell_index": 45,
+   "cell_id": "NQ-r1-declared-s1.5-S1-d0",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 0,
+   "seed": 20261047
+  },
+  {
+   "cell_index": 46,
+   "cell_id": "NQ-r1-declared-s1.5-S1-d1",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 1,
+   "seed": 20261048
+  },
+  {
+   "cell_index": 47,
+   "cell_id": "NQ-r1-declared-s1.5-S1-d2",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 2,
+   "seed": 20261049
+  },
+  {
+   "cell_index": 48,
+   "cell_id": "NQ-r1-declared-s2.0-S0-d0",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 0,
+   "seed": 20261050
+  },
+  {
+   "cell_index": 49,
+   "cell_id": "NQ-r1-declared-s2.0-S0-d1",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 1,
+   "seed": 20261051
+  },
+  {
+   "cell_index": 50,
+   "cell_id": "NQ-r1-declared-s2.0-S0-d2",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 2,
+   "seed": 20261052
+  },
+  {
+   "cell_index": 51,
+   "cell_id": "NQ-r1-declared-s2.0-S1-d0",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 0,
+   "seed": 20261053
+  },
+  {
+   "cell_index": 52,
+   "cell_id": "NQ-r1-declared-s2.0-S1-d1",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 1,
+   "seed": 20261054
+  },
+  {
+   "cell_index": 53,
+   "cell_id": "NQ-r1-declared-s2.0-S1-d2",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "declared_calendar",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 2,
+   "seed": 20261055
+  },
+  {
+   "cell_index": 54,
+   "cell_id": "NQ-r1-volume-s1.0-S0-d0",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 0,
+   "seed": 20261056
+  },
+  {
+   "cell_index": 55,
+   "cell_id": "NQ-r1-volume-s1.0-S0-d1",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 1,
+   "seed": 20261057
+  },
+  {
+   "cell_index": 56,
+   "cell_id": "NQ-r1-volume-s1.0-S0-d2",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 2,
+   "seed": 20261058
+  },
+  {
+   "cell_index": 57,
+   "cell_id": "NQ-r1-volume-s1.0-S1-d0",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 0,
+   "seed": 20261059
+  },
+  {
+   "cell_index": 58,
+   "cell_id": "NQ-r1-volume-s1.0-S1-d1",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 1,
+   "seed": 20261060
+  },
+  {
+   "cell_index": 59,
+   "cell_id": "NQ-r1-volume-s1.0-S1-d2",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 2,
+   "seed": 20261061
+  },
+  {
+   "cell_index": 60,
+   "cell_id": "NQ-r1-volume-s1.5-S0-d0",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 0,
+   "seed": 20261062
+  },
+  {
+   "cell_index": 61,
+   "cell_id": "NQ-r1-volume-s1.5-S0-d1",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 1,
+   "seed": 20261063
+  },
+  {
+   "cell_index": 62,
+   "cell_id": "NQ-r1-volume-s1.5-S0-d2",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 2,
+   "seed": 20261064
+  },
+  {
+   "cell_index": 63,
+   "cell_id": "NQ-r1-volume-s1.5-S1-d0",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 0,
+   "seed": 20261065
+  },
+  {
+   "cell_index": 64,
+   "cell_id": "NQ-r1-volume-s1.5-S1-d1",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 1,
+   "seed": 20261066
+  },
+  {
+   "cell_index": 65,
+   "cell_id": "NQ-r1-volume-s1.5-S1-d2",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 1.5,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 2,
+   "seed": 20261067
+  },
+  {
+   "cell_index": 66,
+   "cell_id": "NQ-r1-volume-s2.0-S0-d0",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 0,
+   "seed": 20261068
+  },
+  {
+   "cell_index": 67,
+   "cell_id": "NQ-r1-volume-s2.0-S0-d1",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 1,
+   "seed": 20261069
+  },
+  {
+   "cell_index": 68,
+   "cell_id": "NQ-r1-volume-s2.0-S0-d2",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S0_no_declaration_costs_incomplete",
+   "entry_delay_sessions": 2,
+   "seed": 20261070
+  },
+  {
+   "cell_index": 69,
+   "cell_id": "NQ-r1-volume-s2.0-S1-d0",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 0,
+   "seed": 20261071
+  },
+  {
+   "cell_index": 70,
+   "cell_id": "NQ-r1-volume-s2.0-S1-d1",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 1,
+   "seed": 20261072
+  },
+  {
+   "cell_index": 71,
+   "cell_id": "NQ-r1-volume-s2.0-S1-d2",
+   "symbol": "NQ",
+   "leg_id": "LEG-NQ-COT",
+   "rule": "1 declared rule per leg (phase-gated)",
+   "roll_rule": "volume_switch_pit_t_minus_1_confirm_2",
+   "cost_stress": 2.0,
+   "slippage_scenario": "S1_owner_declared_slot",
+   "entry_delay_sessions": 2,
+   "seed": 20261073
+  },
+  {
+   "arm": "baseline_flat",
+   "cell_index": 72,
+   "cell_id": "baseline_flat",
+   "seed": 20261074
+  },
+  {
+   "arm": "baseline_always_on_long",
+   "cell_index": 73,
+   "cell_id": "baseline_always_on_long",
+   "seed": 20261075
+  },
+  {
+   "arm": "baseline_always_on_short",
+   "cell_index": 74,
+   "cell_id": "baseline_always_on_short",
+   "seed": 20261076
+  },
+  {
+   "arm": "baseline_single_leg_NQ",
+   "cell_index": 75,
+   "cell_id": "baseline_single_leg_NQ",
+   "seed": 20261077
+  },
+  {
+   "arm": "baseline_single_leg_CL",
+   "cell_index": 76,
+   "cell_id": "baseline_single_leg_CL",
+   "seed": 20261078
+  },
+  {
+   "cell_index": 77,
+   "cell_id": "ablation_leave_one_leg_NQ",
+   "arm": "ablation_leave_one_leg",
+   "removed_leg": "NQ",
+   "mode": "FULL_PATH_RERUN",
+   "seed": 20261079
+  },
+  {
+   "cell_index": 78,
+   "cell_id": "ablation_leave_one_leg_CL",
+   "arm": "ablation_leave_one_leg",
+   "removed_leg": "CL",
+   "mode": "FULL_PATH_RERUN",
+   "seed": 20261080
+  }
+ ],
+ "trial_accounting": {
+  "primary_cells": 72,
+  "baselines": 5,
+  "ablations_leave_one_leg_full_path": 2,
+  "total_declared_trials": 79,
+  "multiplicity_disclosure": {
+   "family_count": 2,
+   "families": {
+    "LEG-NQ-COT": "NQ family: 1 rule x 2 roll x 3 stress x 2 slippage x 3 delay = 36 primary cells + NQ-side baselines/ablations",
+    "LEG-CL-TSMOM": "CL family: 36 primary cells + CL-side baselines/ablations"
+   },
+   "rule": "any future leg/rule added to this pilot increments the family count and REQUIRES re-freezing the trial budget before any further scored run; fold suppression for performance reasons is forbidden (only INSUFFICIENT_COVERAGE, recorded)"
+  }
+ },
+ "budget_status": "NOT_RUN_ALL_CELLS: every cell requires (a) DAILY_BT admission bars (>=24m true-volume front chain; NQ/CL have ~17), (b) owner-declared slippage (S1 scenario), (c) NQ/CL exchange fees, (d) cycle registration with this frozen budget",
+ "synthetic_demo_disclaimer": "fold tables above are a SYNTHETIC weekday-calendar demonstration of the construction invariants only - no real sessions, no real data, no evaluation",
+ "invariants_checked": [
+  "purge >= true horizon for every leg x delay",
+  "embargo >= true horizon and honored between TRAIN end and TEST start in demo folds",
+  "TEST windows pairwise disjoint (anchored-expanding)",
+  ">= 4 folds per leg",
+  "cell seeds unique; per-cell seed = 20261002 + cell_index",
+  "enumerated cell counts == pilot trial_accounting_declaration"
+ ],
+ "invariants_ok": true
+}

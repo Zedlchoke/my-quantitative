@@ -1,0 +1,42 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "lane_id": "SYMBOL-DOSSIER-GC",
+  "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+  "status": "COMPLETE",
+  "summary": "GC (COMEX gold) dossier delivered per DOSSIER_TEMPLATE.md, all 7 sections, every claim tagged FACT/OBSERVED/POSTULATED/NOT_RUN. Descriptive statistics computed from the legal raw snapshot (22 GC contracts x 5 job types) with a disclosed script using strict past/rolling windows; no PnL/event-studies/sweeps/performance metrics. Primary official sources fetched for the event calendar (federalreserve.gov FOMC 2026 dates, bls.gov CPI+NFP 2026 schedules, bea.gov PCE partial, cftc.gov CoT release rule); CME official numeric spec table not retrievable (JS-driven page via web-reader fallback; direct WebFetch times out) - specs rest on broker secdef S1 (OBSERVED) + vendor mirrors (secondary, flagged).",
+  "outputs": [
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dossiers/GC_DOSSIER.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/GC_descriptives.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/GC_descriptives.json"
+  ],
+  "findings": [
+    "Roll-rule executability defect: the raw set contains NO serial months for 2025-11..2026-09 (GCX5, GCF6, GCH6, GCK6, GCN6, GCU6 never fetched), so the data lane's declared roll rule (roll to next listed at last session before delivery month) is NOT executable on this dataset for 2025-09..2026-09; dossier chain uses a disclosed cycle-skip approximation. Cheapest fix: re-fetch the 6 serial contracts under the existing entitlement (expired-secdef resolves that window).",
+    "Liquidity migration OBSERVED: on the five thick-volume real-era cycle rolls, the next contract's daily volume crosses above the old contract's 1-2 sessions BEFORE the declared roll session (e.g. GCJ6 8,201 vs GCM6 82,091 on 2026-03-27, roll 2026-03-31); declared calendar rule is 1-2 sessions later than the market's migration.",
+    "Vendor volume-scale artifact: G/J/M/Q/Z-month contracts record full-scale volume (~30k-260k lots/day when front) but GCV5 (front Aug-Sep 2025 median ~3.0k) and GCV6 (front Aug-Sep 2026 median ~3.2k) are 1-2 orders thin; hourly sums match dailies where checked (GCV6 2026-08-20: 6068=6068), so it is per-contract vendor recording. Volume usable for relative migration timing only, never absolute liquidity.",
+    "Term structure: persistent contango - near-below-far on 99.8-100% of overlapping sessions for all 13 measured pairs (median 2-month spread ~19-24 USD/oz, 12-month ~39-42; 2026-10-01 deferred curve +15.2..+19.5 USD/oz per month, ~4.5%/yr carry); backwardation essentially absent in this data.",
+    "Vol regime shift OBSERVED: annualized daily vol 14-15% (2023-24) -> ~20.5% (2025) -> ~30.7% (2026 Jan-Sep); worst day -12.07% on 2026-01-30 after the 2026-01 spike to ~5,718-5,730 USD/oz (crash day range GCZ6 5,729->5,280); rolling 21-session vol peaked 56.7% annualized.",
+    "Daily behavior descriptives (real-volume era 2025-01-15..2026-10-01, n=424 within-contract log returns): mean +0.085%/day, sigma 1.61%, positive days 54.5%, lag-1 autocorr -0.11 (mild daily mean-reversion), |r| lag-1 +0.11 (mild clustering), trend-sign persistence ~51% (coin-flip).",
+    "RTH-only intraday profile (4,001 hourly bars, 09:30-16:00 ET labels): volume share peaks in the 10:00 ET hour (24.0%) and decays to 3.9% by 16:00; median range 0.40%->0.09%. Asia/London/COMEX-open (18:00 ET) session behavior NOT_RUN - useRTH=True files contain no overnight bars.",
+    "Costs OBSERVED/reconciled: front GCV6 last-20-session median BID/ASK close spread 5 ticks = $50/contract (reconciles S6_FRONT_SPREADS GC 5.0 ticks/$50); deferred GCX6 1Y median 42 ticks collapsing to 5 once front; crossed days 0 except GCX7 (1); IBKR commission $0.85/side + exchange fee NOT_FETCHED; slippage NOT_RUN_NO_DECLARED_VALUE; margin ~$22.4-24.6k (public broker pages, CME SPAN blocked).",
+    "Event calendar FACT (accessed 2026-10-02): FOMC 2026 remaining Oct 27-28, Dec 8-9; CPI Oct 14/Nov 10/Dec 10 08:30 ET; NFP Oct 2/Nov 6/Dec 4 08:30 ET; PCE Oct 29/Nov 25/Dec 23 08:30 ET (earlier 2026 PCE dates NOT_FETCHED); CoT weekly Fri 15:30 ET with Tuesday as-of positions, not revised.",
+    "GC real-volume continuous depth is 2025-01-15..2026-10-01 on the executable chain (longer than the generic ~2025-08 claim) but tracks a deferred curve point part of the time due to the missing serials; single-contract Dec series (GCZ5/GCZ6 full life) provide clean settlement-derived long-horizon references 2019-12..2026-10."
+  ],
+  "defects": [
+    "Raw corpus: serial months 2025-11..2026-09 missing entirely (declared roll rule not executable for that span; all chain stats are approximations, disclosed in dossier section 1/3).",
+    "Raw corpus: vendor daily-volume recording inconsistent by contract (GCV5/GCV6/deferred thin vs G/J/M/Q/Z full-scale); absolute liquidity/capacity statements impossible from this snapshot.",
+    "Environment: CME official numeric spec/fee/SPAN tables not retrievable this session (direct WebFetch timeout; web reader renders page but tables JS-driven/empty) - spec numbers tagged OBSERVED(S1)+FACT-secondary, not official-primary.",
+    "Raw corpus: GCV5 daily bars end 2025-09-30 although its legal last-trade date is 2025-10-29 (snapshot boundary aligned with the declared roll date).",
+    "GCV6 has one extra bar inside its delivery month (2026-10-01, v=16) after the declared roll date - post-roll remnant, excluded from chain returns by construction."
+  ],
+  "open_questions": [
+    "Owner decision: re-fetch the 6 missing serial contracts (GCX5/GCF6/GCH6/GCK6/GCN6/GCU6) under the current entitlement to make the declared roll rule executable (near-zero cost) - proposed to DATA lane.",
+    "Owner decision: consensus/surprise history (CPI/NFP/PCE) is vendor-licensed; without it hypotheses H2 (post-CPI real-rate sign) stays PARAM-GAP.",
+    "Owner decision: multi-year full-session intraday (M1, 23h) and real-volume daily depth >=24 months require a vendor purchase (Databento/CME DataMine class) or prospective accumulation - input to DATA-PIT-ACQUISITION-PREP.",
+    "Not resolvable this cycle: which global session (Asia/London/US) leads GC price discovery - requires overnight intraday data (NOT_RUN)."
+  ],
+  "sha256_of_key_outputs": {
+    "dossiers/GC_DOSSIER.md": "3e16920fd18a1957091961260c580180f34b500638fb041d4c8799a1bd0fcab4",
+    "analysis/GC_descriptives.json": "f24dfcf49aa091d91eab5c2e2a6f1379dc7ccb93a35994249f3c79ee0a92e45c",
+    "analysis/GC_descriptives.py": "5421323924562d9abda1108a508a160e713f67af7ac8cead36b625078dbb5c71"
+  }
+}

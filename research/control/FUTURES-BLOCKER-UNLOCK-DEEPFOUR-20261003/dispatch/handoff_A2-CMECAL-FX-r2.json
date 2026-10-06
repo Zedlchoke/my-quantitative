@@ -1,0 +1,103 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "A2-CMECAL-FX",
+  "attempt": "r2",
+  "supersedes": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/dispatch/handoff_A2-CMECAL-FX.json",
+  "dispatch_sha": "7149425df83b7c47f34848fc83d36e450b802bc5",
+  "actual_start_sha": "7149425df83b7c47f34848fc83d36e450b802bc5",
+  "end_sha": "7149425df83b7c47f34848fc83d36e450b802bc5",
+  "commit_sha": null,
+  "commit_disclosure": "No commit made: $0 read-only lane; r2 edits are corrections to untracked files plus this new handoff. HEAD re-measured == dispatch sha (no drift).",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior/prep",
+  "branch": "prep/futures-behavior-10syms-20261002",
+  "changed_paths": [
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/fx/FX_CALENDAR_EVIDENCE.md",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/fx/fx_cal_coverage.json",
+    "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/dispatch/handoff_A2-CMECAL-FX-r2.json"
+  ],
+  "tests": [
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python /tmp/a2fx/t1_cmd.py  (JSON validity + rows-vs-summary recount: asserts per-symbol row counts {6E:17,6B:31,6J:13,6A:35}, summary equality, total 96, 'Mar 2012' listed in 6E not_obtained, and no ECH12 row)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "sha256:d7f4d29247eb08493f6d6d57798f7c5847dc0c7689e3662f2e06ce35a3c7a000",
+      "log_excerpt": "PASS rows==summary: {'6A': 35, '6B': 31, '6E': 17, '6J': 13} total 96"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python - (rule QA over all 96 rows in fx_cal_coverage.json: last_trade == 2nd weekday preceding 3rd Wednesday of contract month)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "sha256:f6b3f326137c6f5a45e7e668fa592e2ba52f23a3c6473bcc53ee1e752f6567ea",
+      "log_excerpt": "PASS 96/96 last-trade dates == 2nd weekday preceding 3rd Wednesday; 0 deviations"
+    },
+    {
+      "command": "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior/prep rev-parse HEAD",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "sha256:095ed5453ec324ad4eee5139b448bec8e7dcf7c909863a72977bbd5abb9bb252",
+      "log_excerpt": "7149425df83b7c47f34848fc83d36e450b802bc5"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python - (validates THIS handoff: schema zcode_orch_v3_handoff@1, authority_claims==[], every test has command/exit_code/verdict/log_digest, dispatch_sha==actual_start_sha==7149425..., commit_sha null, changed_paths relative)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "sha256:2abb1b46aa7e27ff6b6612def50b5d2c0d2864d9c34bef325221894435e57194",
+      "log_excerpt": "PASS r2 handoff schema/authority_claims/tests/paths"
+    }
+  ],
+  "authority_claims": [],
+  "findings_for_owner_adjudication": [
+    "FINDING (evidence-attached, no authority asserted): CME official per-holiday Globex schedules publish an FX-family block ('CME Group FX Products' / 'Interest Rate & FX Products' / 'Equity, Interest Rate, FX, Energy, Metals & DME Products'); 6E/6B/6J/6A share it per 2010-2016 artifacts (resolved capture ts pinned in FX_CALENDAR_EVIDENCE.md).",
+    "FINDING (evidence-attached): FX-family schedule differs from equity family (Good Friday FX 10:15 CT early close 2010/2012/2015 vs full FX closure 2011/2013/2014/2016; Monday holidays 12:00 CT halt + 17:00 CT resume; preceding-Friday 15:15 early close 2010-2015, dropped 2016).",
+    "FINDING (evidence-attached): last-trade rule verbatim and identical for 6E/6B/6J/6A: '9:16 a.m. Central Time (CT) on the second business day immediately preceding the third Wednesday of the contract month (usually Monday).' (2011 official spec captures x4 + 2023 official capture for 6E).",
+    "FINDING (evidence-attached): 96 quarterly last-trade dates 2010-2018 from archived official product calendars; 0 cross-capture conflicts; 96/96 rule-consistent.",
+    "NOT_OBTAINED: FX product-level Globex times 2017-2025 (except New Year 2017) and 2026 (widget); LIVE_OFFICIAL fetches this lane (transport blocked); expiry dates 2019-2026 all codes + per-symbol gaps listed in fx_cal_coverage.json."
+  ],
+  "known_limitations": [
+    "F-1 CORRECTION (this r2): r1 summary/prose claimed 6E=18 quarters ('2012 all 4') while machine rows hold 6E=17 (no MAR 2012/ECH12 row). Recount performed against rows AND raw captures: 'ECH12' occurs 0 times in all 9 archived 6E captures; CDX gap 2010-01..2012-05; May-2012 capture lists from JUN 2012. ECH12 genuinely NOT_OBTAINED -> prose/summary corrected to 6E=17; correct counts: 6E 17, 6B 31, 6J 13, 6A 35, total 17+31+13+35 = 96/272. (Note: VERIFY's arithmetic '17+31+13+35=97' is itself a slip; the sum is 96. The inconsistency defect was real and is fixed.) Machine rows unchanged (they were the evidence).",
+    "2017-2026 holidays covered at Globex-window granularity only; FX-family early-close/halt times for those years NOT_OBTAINED (not inferred from 2010-2016 patterns).",
+    "Veterans Day 2014/2015 Globex hours evidenced only via settlement-procedures documents (trading occurred; normal methodology named for FX majors); explicit 'unaffected/normal' line NOT_OBTAINED for those two years.",
+    "2023 modern rule confirmation is from the official cmegroup.com Chinese-locale page (cn-s); English post-2013 static spec capture is a JS shell.",
+    "Expiry dates 2019-2026 NOT_OBTAINED for all four codes; per-symbol gaps: 6E Sep/Dec 2011 + Mar 2012 + 2015-2018; 6J 2010 + Mar/Jun 2011 + Dec 2014 + 2015-2018; 6B 2010 + Dec 2018; 6A Dec 2018.",
+    "Roll-vs-official-expiry interplay: repo roll rules are bar-measured construction rules; Good Friday year-mixing (early close vs closure) noted — no re-derivation performed.",
+    "6A Sep-2013 capture lists First Trade 08/12/2013 for all 2015-2018 quarters (official page quirk); Last Trade fields are load-bearing and cross-check cleanly."
+  ],
+  "incidents": [
+    "VERIFY r1 flagged 2 MAJOR + 2 MINOR defects; all fixed in r2 (F-1 recount/correction; F-2 authority_claims emptied into findings_for_owner_adjudication/known_limitations; F-3 tests as structured objects; F-4 relative changed_paths). Original artifacts preserved/corrected in place with an erratum section (FX_CALENDAR_EVIDENCE.md) and a notes_global correction entry (fx_cal_coverage.json).",
+    "r1 test-script bug (self-caught during r2): 'Mar 2012' in <list> tested exact element equality, not substring; fixed with startswith/any() — JSON was already correct.",
+    "web.archive.org intermittent 'Temporarily Offline' (2x) and sporadic connection failures during r1; handled with sleep+retry inside <=2-attempts-per-URL-per-method budget.",
+    "web_reader on live cmegroup.com failed (-429 then -500 x2) and WebFetch ECONNREFUSED during r1 — LIVE_OFFICIAL route closed for this lane; ARCHIVED_OFFICIAL route (plain curl) carried the mission.",
+    "pip install xlrd into the shared venv (additive dev dependency) needed to parse official .xls holiday schedules."
+  ],
+  "tree_status": "clean-tracked; only untracked lane outputs under research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/ (sibling lanes' untracked files untouched); HEAD == dispatch sha at start and end",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/fx/FX_CALENDAR_EVIDENCE.md",
+      "sha256": "8a8add5b9bff6f0f96f72b03e03ea7d44c20bfe3f4c00c5d689f8cc73753260c"
+    },
+    {
+      "path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/fx/fx_cal_coverage.json",
+      "sha256": "1e5af26505efedb4b6e839d680dab4e34bc8ec892004bdddd84f52c2af3a1a9f"
+    },
+    {
+      "path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/cme_cal/fx/fetch_log.jsonl",
+      "sha256": "7082d4437e4cf2c93362eea656e0b90f9acbbd9039ad776b589868d17ac83e95 (unchanged from r1)"
+    },
+    {
+      "path": "research/control/FUTURES-BLOCKER-UNLOCK-DEEPFOUR-20261003/dispatch/handoff_A2-CMECAL-FX.json",
+      "sha256": "r1 handoff, superseded by this file, preserved for history"
+    }
+  ],
+  "verdicts": {
+    "holidays_early_closes_2010_2026": "PARTIAL: 2010-2016 PASS-with-coverage (full FX-family product-level, ARCHIVED_OFFICIAL); 2017-2026 windows-only PARTIAL (FX product-level NOT_OBTAINED except New Year 2017); 2026 windows + verbatim Holiday Notes from Sep-2026 official capture.",
+    "expiration_rule_per_product": "PASS-with-coverage: verbatim rule all four products (2011 captures) + 2023 official confirmation.",
+    "expiry_dates": "PASS-with-coverage: 96/272 quarters (6E 17/68, 6B 31/68, 6J 13/68, 6A 35/68; 17+31+13+35=96) [r2-corrected counts]."
+  },
+  "recommended_next_action": "Accept r2 corrections; fold into DATACONTRACT_QUALIFICATION §1.2 with the corrected counts (6E 17, 6B 31, 6J 13, 6A 35 = 96/272); keep 2017-2026 FX-time gap on the known_limitations ledger.",
+  "summary": "r2 fixes VERIFY defects: F-1 recounted against machine rows (6E=17 — ECH12/Mar-2012 verified absent from every archived capture, so prose corrected, not the rows; correct total 17+31+13+35=96/272); F-2 authority_claims emptied (content moved to findings_for_owner_adjudication + known_limitations); F-3 structured tests; F-4 relative changed_paths. All substantive evidence unchanged.",
+  "generated_utc": "2026-10-03T14:35:00Z"
+}

@@ -1,0 +1,71 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "NONPRICE-FIX",
+  "status": "COMPLETE",
+  "summary": "Audit A7-NONPRICE-VERIFY fixes applied: M-1 WNGSR net_change_bcf rebuilt table/section-anchored + independently validated + quarantined (agreement vs consecutive-totals diff 11.1% audit basis -> 98.4% kept-value; 27 rows EXTRACT_LOW_CONFIDENCE nulled with reasons; column now SIGNED); M-2 all 50 readiness labels mechanically re-derived (READY_DATA 34 -> 27; +4 PARTIAL_VINTAGE, +3 PARTIAL_MISSING_ROUTE incl. the 6J-H3/ES-H4 mislabels); all 5 MINORs addressed (BoJ 180-on-disk aligned + PDFs now inventoried, session dedupe rule, DFII10 probe fenced, issue_date robust parse, BLS CPI FACT wording aligned); 29 old + 12 new tests = 41/41 PASS exit 0; erratum block added to the public report with old->new counts.",
+  "dispatch_sha": "8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e",
+  "actual_start_sha": "8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e",
+  "commit_sha": null,
+  "commit_sha_disclosure": "No commit made: lane scope is uncommitted files under nonprice_acquisition/** (same as the parent NONPRICE-DATA-ACQUISITION lane; whole control dir is untracked on branch prep/futures-behavior-10syms-20261002). HEAD verified unchanged at 8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e at handoff time. Commit is the Lead's authority, not a lane action.",
+  "changed_paths": [
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/normalize/eia_normalize.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/normalize/fred_cb_normalize.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/collect/common.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/build_readiness.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/hypothesis_readiness.json",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/manifest_sources.json",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/tests/test_parse.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/PUBLIC_DATA_ACQUISITION_REPORT_VI.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dispatch/handoff_NONPRICE-FIX.json"
+  ],
+  "tests": [
+    {
+      "command": "cd research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition && /Users/hoangminhlong/my-quantitative/.venv/bin/python tests/test_parse.py",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "ea387d1e0dd5c1566ed40a8996d9165226cd90a12a9f3219bb99bffcd4dea6d0",
+      "detail": "41/41 tests passed (29 pre-existing, all unchanged semantics still green, + 12 new NONPRICE-FIX regressions: 5 misgrab pins, 18 known-good pins, quarantine-null-with-reason, agreement>=95%, survey pins x3, issue_date robust, readiness 3 mechanical rules, BoJ 180 pdf/html, DFII10 probe fence). Pre-fix baseline reproduced independently at session start: 29/29 PASS exit 0."
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python normalize/eia_normalize.py && /Users/hoangminhlong/my-quantitative/.venv/bin/python normalize/fred_cb_normalize.py && /Users/hoangminhlong/my-quantitative/.venv/bin/python build_readiness.py",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": null,
+      "detail": "Re-parse over EXISTING raw only (no downloads): WNGSR tidy rebuilt (1205 issues; totals 954; net_change flags 733 OK_VERIFIED_TOTALS_DIFF / 9 OK_VERIFIED_NARR_NONCORROB / 10 OK_PRIOR_WEEK_REVISED / 58+44 OK_TABLE* / 190 OK_NARRATIVE_ONLY / 27 EXTRACT_LOW_CONFIDENCE / 178 NOT_PARSED; survey medians 369); BoJ inventory 327 rows (180 BOJ = 114 pdf + 66 html; 147 FOMC); readiness JSON regenerated with fail-closed evidence guard (exit 3 on unreadable evidence parquets)."
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "M-1: 178/1205 WNGSR issues remain net_change NOT_PARSED (2004-2011 narrative phrasings not yet covered + genuinely stale embedded tables in some 2001-2015 archived issues, detected and excluded by the table-date staleness guard); raw retained immutable for future parsing.",
+    "M-1: 27 rows quarantined EXTRACT_LOW_CONFIDENCE with net_change_bcf=NULL + recorded reason (early-era AGA-vs-EIA in-file conflicts without independent check; unresolvable totals mismatches); downstream must consume net_change_flag, never assume completeness.",
+    "M-1 semantics change: net_change_bcf is now SIGNED (+injection/-withdrawal); the pre-fix column was an unsigned magnitude that was wrong ~89% of the time. Legacy value preserved in net_change_legacy_firstmention_bcf for audit trail only.",
+    "Survey median coverage 352 -> 369 (direction-intervening median phrasing added); mixed-direction survey ranges (e.g. 2023-01-12 withdrawals 35 to injections 16) remain unparseable (audit NOTE-1, partially addressed).",
+    "M-2: PARTIAL_VINTAGE (NQ-H1, GC-H5, CL-H4, 6E-H2) can only be resolved to the configs' first-release standard via the FRED API key route (owner decision, OWNER_ONLY_STEPS.md); year-end ALFRED snapshots are what the free route yields.",
+    "M-2/m-5: ES-H4 + 6B-H5 CPI-date legs need cross-lane reconciliation of the config-claimed 'FACT, fetched' 2026 CPI dates (dossier lane) against this lane's 403-gate evidence before use as FACT; date-level CPI calendar remains typed MISSING.",
+    "issue_date_raw retained for schema compatibility but documented unreliable; consumers must use issue_date + issue_date_source (m-4).",
+    "BoJ: 181 URLs enumerated vs 180 files on disk stands (1 PDF >4MB wait_storage with same-day HTML sibling); the 181st was NOT downloaded (no-new-downloads rule) - disclosed, not silently reconciled."
+  ],
+  "incidents": [
+    "During M-2 regeneration, hypothesis_readiness.json was twice written with null evidence_coverage and wrong counts: root cause was a path typo introduced by this lane's own rewrite of build_readiness.py ('my-quantitative-data' missing the leading dot; a real non-dot directory exists so NORM.exists() was True while parquets were not). Initially misdiagnosed as transient filesystem flakiness (an active acq_pipeline.py shares the raw dir). Fixed the path AND added a fail-closed guard (exit 3 when required evidence parquets are unreadable) plus bounded existence retries; final regeneration verified complete evidence + counts.",
+    "Active acquisition_download pipeline (acq_pipeline.py, separate lane) observed running against the same raw dir during this fix session; no interference with raw occurred; all my writes were to normalized/ parquets owned by this lane's normalizers (re-parse over existing raw only).",
+    "pypdf emits benign 'Ignoring wrong pointing object' warnings when the WPSR table13 PDFs are re-parsed (pre-existing, not introduced by this fix)."
+  ],
+  "tree_status": "uncommitted-only: all lane outputs are untracked files under research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/ (nonprice_acquisition/** + dispatch/handoff_NONPRICE-FIX.json); HEAD unchanged at 8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e; no push/merge/rebase; raw dir untouched except normalized/ parquet rewrites by this lane's own normalizers + READS.",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/normalize/eia_normalize.py", "sha256": "28ebdc2d4bdcb87151684c3e4505df045cfd7d331b07cf6eaef124b0a46de30f"},
+    {"path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/normalize/fred_cb_normalize.py", "sha256": "aa23a3e8033a66c6f69a9818e0659c9c48630281179221bb89075b7a2886a6b9"},
+    {"path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/collect/common.py", "sha256": "994a1eaf488784eb2a68782ffe0d7e0588160debfd04f821293c9700c1544590"},
+    {"path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/build_readiness.py", "sha256": "78b35402a8f880adb483ea7594bbf3084633e2741dd9233e96a71522a3628419"},
+    {"path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/hypothesis_readiness.json", "sha256": "d9320be93285009e79e92f405717dff966135e494eb96aecd07f503dd1db6631"},
+    {"path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/manifest_sources.json", "sha256": "5d8b06e15c28c7730759e8c85937f5d97ce33db0bb3b72ce6d44bfbe416dd444"},
+    {"path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/tests/test_parse.py", "sha256": "b6c16e438e7871d0d242676c7338b5282ee6863dafafffc230fea76f33b3a0ec"},
+    {"path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/nonprice_acquisition/PUBLIC_DATA_ACQUISITION_REPORT_VI.md", "sha256": "83d8451ff61494d8dfe3a92273737b60be33eb456c8139b90cb7ddff046fca94"},
+    {"path": "/Users/hoangminhlong/.my-quantitative-data/futures-nonprice-10syms/normalized/eia_wngsr_vintages_tidy.parquet", "sha256": "3914729f80571bbd508dd111e7dbaf99f5f57110e828c66638bf63f496d6ac71"},
+    {"path": "/Users/hoangminhlong/.my-quantitative-data/futures-nonprice-10syms/normalized/boj_fomc_statement_inventory.parquet", "sha256": "8b3c41323a1ad1ce2eb583f0045dedbddf833656658fd61d903ceaab27cb3f64"}
+  ],
+  "recommended_next_action": "Lead: validate handoff + re-run tests/test_parse.py (digest ea387d1e...); then owner decisions per audit recommendation - (1) adjudicate WNGSR-embedded The Desk survey as NG-H1 consensus source under the disclosed bounds (2018+, median+range, 369 issues parsed, net_change now validated: surprise = actual(net_change_bcf) - survey_median with sign convention), (2) FRED API key decision for per-release vintages (resolves the 4 PARTIAL_VINTAGE labels), (3) cross-lane reconciliation of the BLS CPI-date FACT (ES-H4/6B-H5), (4) PAID list per OWNER_ONLY_STEPS.md. GC-H1 serial re-fetch remains time-critical (~Q1-2027)."
+}

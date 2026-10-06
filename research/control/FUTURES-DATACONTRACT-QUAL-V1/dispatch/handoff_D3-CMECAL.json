@@ -1,0 +1,62 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "D3-CMECAL",
+  "cycle_id": "FUTURES-DATACONTRACT-QUAL-V1",
+  "role": "calendar-acquisition-lane",
+  "lane": "D3-CMECAL",
+  "dispatch_sha": "73abf15caf76989a42c811630438b8673eb33f8f",
+  "actual_start_sha": "73abf15caf76989a42c811630438b8673eb33f8f",
+  "commit_sha": "",
+  "changed_paths": [
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d3_cmecalendar/ES_CALENDAR_EVIDENCE.md",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d3_cmecalendar/cmecal_coverage.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_D3-CMECAL.json"
+  ],
+  "tests": [
+    {"name": "route_live_webfetch", "status": "FAIL_TIMEOUT", "detail": "https://www.cmegroup.com/trading-hours.html x2 -> tool timeout 60000 ms"},
+    {"name": "route_live_webreader", "status": "PASS", "detail": "same URL -> 200 full 2026 tables (LIVE_OFFICIAL); prior cycles' 403 not reproduced on 2026-10-03"},
+    {"name": "route_live_product_calendar", "status": "PARTIAL", "detail": "page 200 but JS shell; no 2026 contract rows (data behind account-gated download)"},
+    {"name": "route_live_pdf_probe", "status": "PASS", "detail": "2026-good-friday-clearing-advisory.pdf text extracted via web_reader"},
+    {"name": "route_archive_cdx", "status": "FAIL", "detail": "CDX/availability endpoints: WebFetch 503/timeout; web_reader MCP -400/-500; abandoned"},
+    {"name": "route_archive_holiday_pages", "status": "PASS", "detail": "curl (default UA) + local table extraction on 16 captures 2010-2025; all HTTP 200"},
+    {"name": "route_archive_2010_pdf", "status": "PASS", "detail": "official 38-page 2010 Globex holiday calendar PDF parsed (pypdf): full ES-family per-day times"},
+    {"name": "route_archive_product_calendar", "status": "PARTIAL", "detail": "static contract tables 2009-2017 (+2024-09-27 record); archive gap 2017-04..2020-09 and React shells thereafter measured"},
+    {"name": "attempt_discipline", "status": "PASS", "detail": "<=2 attempts per URL per access method; no UA spoofing; no proxies; no purchases; no credentials"}
+  ],
+  "authority_claims": [],
+  "outputs": [
+    {"path": "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d3_cmecalendar/cmecal_coverage.json", "kind": "coverage_matrix", "summary": "17 year entries 2010-2026: holidays+early_closes authority-backed for ALL years (2026 LIVE_OFFICIAL; 2010-2025 ARCHIVED_OFFICIAL); expirations 36/68 quarters, full years 2012-2018+2025"},
+    {"path": "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d3_cmecalendar/ES_CALENDAR_EVIDENCE.md", "kind": "evidence_log", "summary": "method, full attempt log, verbatim per-year tables (2010 PDF product-level; 2011-2025 window/ClearPort/floor tables; 2026 live), ES quarterly expiration master table (36 official Last-Trade/Settle dates), PDF inventory, verdict"}
+  ],
+  "verdict": {
+    "holidays_early_closes": "ALL 17 years authority-backed. 2026 LIVE_OFFICIAL (windows + ClearPort + floor times; ES-specific Globex times behind interactive widget => product-level NOT_OBTAINED for 2026). 2010 ARCHIVED_OFFICIAL at full per-day/per-time detail (official Globex PDF: closures Jan 1 + Dec 24; early closes Good Friday 08:15 CT, Nov 26 12:15 CT). 2011-2025 ARCHIVED_OFFICIAL verbatim window tables + ClearPort closures/early-close times + floor closures/early-close times (Equities 12:15 CT pattern where published).",
+    "expirations": "36/68 quarterly contracts 2010-2026 ARCHIVED_OFFICIAL (all quarters of 2012-2018 and 2025; partial 2010/2011/2024). 2019-2023 + 2026 NOT_OBTAINED: measured Wayback capture gap (2017-04..2020-09) on the static product-calendar URL plus React shells/account-gated data thereafter. No inference applied.",
+    "key_urls": [
+      "https://www.cmegroup.com/trading-hours.html",
+      "https://web.archive.org/web/20100215061802/http://www.cmegroup.com/tools-information/holiday-calendar/files/2010-globex-holiday-calendar.pdf",
+      "https://web.archive.org/web/20241112201950/https://www.cmegroup.com/trading-hours.html",
+      "https://web.archive.org/web/20160214222113/https://www.cmegroup.com/tools-information/holiday-calendar.html",
+      "https://web.archive.org/web/20160611233000/http://www.cmegroup.com/trading/equity-index/us-index/e-mini-sandp500_product_calendar.html"
+    ]
+  },
+  "known_limitations": [
+    "ES-specific Globex early-close TIMES for 2011-2023 are inside official per-holiday PDF/XLS files linked from the holiday pages; only 2010's complete PDF was parsed (pipeline proven with pypdf; remaining ~150 files not pulled within lane budget).",
+    "2019-2023 + 2026 quarterly expirations NOT_OBTAINED (archive gap + JS shell; CME download endpoint is account-gated).",
+    "2025 ClearPort/floor full table from the June-2025 capture was fetched but its detailed extraction was lost to context compaction; 2025 windows + clearing dates are covered by the Nov-2024 capture instead.",
+    "The 2024-09-27 product-calendar record (Sep 2024 - Dec 2025 expirations) was transcribed verbatim at fetch time but its exact request URL was not preserved; data is internally consistent and re-derivable via Wayback captures around 2024-09-27.",
+    "Two intermediate evidence drafts contained pattern-reconstructed details; both were purged and re-verified against saved capture HTML (correction log retained in ES_CALENDAR_EVIDENCE.md)."
+  ],
+  "incidents": [
+    "Context compaction mid-lane destroyed first-pass detailed tool outputs for several years; recovery = deterministic curl pass + local python table extraction written incrementally to the evidence file (no memory-based backfill).",
+    "web_reader results render elided in this harness when batched; single-call fetches and curl were used instead.",
+    "2017 holiday page contains a stale 2016 ClearPort cell inside the Thanksgiving row (page anomaly, documented; underlying 2016 datum re-verified on the 2016 capture)."
+  ],
+  "tree_status": {
+    "head": "73abf15caf76989a42c811630438b8673eb33f8f",
+    "branch": "futures-behavior",
+    "untracked_by_this_lane": ["research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d3_cmecalendar/"],
+    "preexisting Modifications not touched by lane": ["research/control/FUTURES-DATACONTRACT-QUAL-V1/dispatch/DISPATCH.json ( M, pre-existing)", "sibling lanes' untracked analysis/ and handoff files (D2/D4/D5/D6)"],
+    "commits_made": 0
+  },
+  "workers": 0
+}

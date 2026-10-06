@@ -1,0 +1,143 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "lane_id": "REQUEST-PACKET",
+ "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+ "cycle_id": "UNREGISTERED_PREP",
+ "role": "lane",
+ "lane": "REQUEST-PACKET",
+ "status": "COMPLETE",
+ "round": "steering-waiting-databento",
+ "dispatch_sha": "eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7",
+ "actual_start_sha": "eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7",
+ "commit_sha": null,
+ "commit_sha_disclosure": "no commit made by this lane (prep round; pathspec commit is the lead's/owner's step); HEAD measured identical at start and end of lane work",
+ "summary": "Built the Databento request packet per requirement: DATABENTO_REQUEST_PACKET.md + data/request/request_manifest.json (15 lines: 6 PILOT NQ+CL incl. all spec-§5 roll-critical and M1 windows enumerated, 9 EXPANSION incl. free symbology.resolve lines and phase-2-gated L1 windows), each line = hypothesis-class/engineering need -> dataset GLBX.MDP3 -> stype (outright parents/raw symbols; continuous via FREE resolve only, declared convention) -> smallest sufficient schema -> date spec -> dossier hypothesis-ids; two metadata-only probe scripts (probe_cost.py, probe_record_count.py) with --dry-run (zero network), lib+plain-HTTP backends, key via DATABENTO_API_KEY env only, all costs NOT_RUN_NO_CALL; DATA_ACCEPTANCE_CHECKLIST.md (post-delivery QA steps, IBKR-overlap thresholds from spec §5, repair loop, freeze/budget/gate/A7 then STOP — data presence is NOT authority to run scored); SYMBOL_READINESS.md (10-row table; GC/6B/6A/6J carry OTHER_BLOCKER serial-refetch deadlines; every chain ends at its true non-vendor blocker).",
+ "changed_paths": [
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/DATABENTO_REQUEST_PACKET.md",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/DATA_ACCEPTANCE_CHECKLIST.md",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/SYMBOL_READINESS.md",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/data/request/request_manifest.json",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/data/request/probe_cost.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/data/request/probe_record_count.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dispatch/handoff_REQUEST-PACKET.json"
+ ],
+ "tests": [
+  {
+   "command": "python3 -m py_compile probe_cost.py probe_record_count.py",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "both scripts compile clean"
+  },
+  {
+   "command": "python3 probe_record_count.py --dry-run",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "46 requests enumerated (43 concrete GETs + 3 NOT_ENUMERATED placeholders by design), 0 network calls"
+  },
+  {
+   "command": "python3 probe_record_count.py --dry-run --phase0",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "246 requests = 46 line probes + 200 P0-3 coverage probes (10 roots x 4 schemas x 5 windows)"
+  },
+  {
+   "command": "python3 probe_cost.py --dry-run --phase0",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "46 billable-size requests + 1 list_unit_prices + 3 P0-1 dataset probes enumerated, 0 network calls"
+  },
+  {
+   "command": "python3 probe_cost.py --dry-run --lines PILOT-04 EXP-04",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "15 requests for the 2 selected lines; --lines filter works"
+  },
+  {
+   "command": "sh -c \"env -u DATABENTO_API_KEY python3 probe_cost.py --lines PILOT-01 (real run); [ $? -eq 2 ]\"  # expect-refusal wrapper",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "missing-key real run refuses with exit 2 before any network | expect-refusal wrapper: inner raw command was 'env -u DATABENTO_API_KEY python3 probe_cost.py --lines PILOT-01 (real run)' (refused with exit 2 before any network — correct behavior)"
+  },
+  {
+   "command": "sh -c \"env -u DATABENTO_API_KEY python3 probe_record_count.py --lines PILOT-01 (real run); [ $? -eq 2 ]\"  # expect-refusal wrapper",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "missing-key real run refuses with exit 2 before any network | expect-refusal wrapper: inner raw command was 'env -u DATABENTO_API_KEY python3 probe_record_count.py --lines PILOT-01 (real run)' (refused with exit 2 before any network — correct behavior)"
+  },
+  {
+   "command": "python3 -c \"import json; json.load(open('data/request/request_manifest.json'))\"",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "manifest is valid JSON; 15 lines (6 PILOT / 9 EXPANSION); 16 doc sources"
+  },
+  {
+   "command": "live metadata calls (list_unit_prices / get_billable_size / get_record_count)",
+   "exit_code": null,
+   "verdict": "NOT_RUN",
+   "log_digest": "no API key exists; every price/quote/record-count remains NOT_RUN_NO_CALL by design this round"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "databento Python library NOT installed in the workspace venv (pip show -> not found, 2026-10-02); scripts default to the plain-HTTP backend until installed; the raw-route/auth convention (GET /v0/metadata.*, Basic auth user=key) must be confirmed on the first live Phase-0 call — library backend is authoritative when available",
+  "Databento docs/catalog pages are JS-rendered; vendor facts were verified through Databento's own docs search API over the current published build (api.databento.com/v0/docs/search, build 01M3QSBT40W79JPVNV0CHMKD5E, 2026-10-02) + the partially-rendered landing page; the exact 2010-06-06 dataset start and tier prices rest on DATA_ACQUISITION_SPEC.md §2's same-day catalog access and are re-confirmed by P0-1/P0-2 before any spend",
+  "every records/storage/compute figure in the packet is either a labeled bound/ASSUMED planning constant or deferred to free measurement (get_record_count/get_billable_size); byte-exact record sizes are sourced via the DBN-ADAPTER lane's spec.py (official github.com/databento/dbn layouts)",
+  "EXP-06/07/08 windows are intentionally NOT_ENUMERATED (they depend on PIT calendars / roll tables built after EXP-01/02 delivery); probe scripts emit placeholders, never guessed dates",
+  "expansion date starts (2010-06-06 bound, 2019/2021 M1 tiers) are trimmed to per-symbol verified coverage only after P0-3 — nothing assumes 2010 depth per symbol",
+  "SYMBOL_READINESS statuses are as-of 2026-10-02 and must be re-measured; SERIAL_REFETCH_MANIFEST.md and code/futbt/dbn/ appeared mid-round from parallel lanes and were read read-only (not modified)",
+  "commit_sha null by design: lane does not commit; Lead integrates and commits (round rule in COOWNER_REVIEW_DISPATCH.json/STEERING_ROUND2_DISPATCH.json)",
+  "m3 (A7-R2): two no-key refusal tests originally recorded exit_code 2 with verdict PASS; Lead rewrote them as expect-refusal wrappers (exit 0, inner exit 2 asserted) — refusal behavior unchanged, only bookkeeping canonicalized"
+ ],
+ "incidents": [
+  "initial is_data_schema() used substring hints and 'symbology' matched 'mbo', leaking symbology-only lines into data probes — caught in dry-run review, fixed to exact schema-name matching, re-validated (dry-run now shows zero symbology lines)",
+  "PILOT-05 date_spec originally said 'same as PILOT-04' (a string), which script expansion could not enumerate — fixed by writing the 14 explicit windows into the manifest; re-validated (46 concrete+placeholder requests now include all PILOT-05 windows)",
+  "SERIAL_REFETCH_MANIFEST.md was absent at lane start (noted as possibly mid-write); it appeared mid-round from the HANDOFF-RESEARCH lane and was then read and incorporated (serial age-out deadlines in SYMBOL_READINESS)",
+  "WebFetch/WebReader could not render the JS Databento docs; resolved via the vendor's own docs search API (documented in packet sources); browser-use skill unavailable in this subagent"
+ ],
+ "tree_status": "dirty — other lanes' in-flight modifications present (code/, configs/, dossiers/, dispatch/handoff_*.json, INTEGRATION_SUMMARY.md, REPORT_VI.md, SERIAL_REFETCH_MANIFEST.md etc.); this lane created/modified ONLY its 6 owned paths + this handoff; HEAD eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7 unchanged",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/DATABENTO_REQUEST_PACKET.md",
+   "sha256": "69ad803216da3af507cfac29ab40f5989b87d03c4b72c4d6e39e909036007d0a"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/DATA_ACCEPTANCE_CHECKLIST.md",
+   "sha256": "f24c14ac1cfab77373bb749916aff35b09ab5240e8096544e6ec72e38823a456"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/SYMBOL_READINESS.md",
+   "sha256": "31e53f0c38e0b716e09ba281830c9adef8e44c657847ce0bd4112dc6b6de9747"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/data/request/request_manifest.json",
+   "sha256": "fa642fc50eed0ba88496c1805d688556427e245617e6d0353b43c689e0a7f488"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/data/request/probe_cost.py",
+   "sha256": "b101da567241b916716862a4f81309e65487982a553db28a82264a02ac0f03a5"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/data/request/probe_record_count.py",
+   "sha256": "8233322c204ddfa4d63fb892977958f797a65ec8951f5ce991b5f8fc1c121743"
+  }
+ ],
+ "findings": [
+  "ohlcv-1d is UTC-day based (docs ohlcv page) — session-aligned dailies must be self-aggregated from ohlcv-1m or taken from statistics; P0-1 additionally checks whether GLBX.MDP3 exposes ohlcv-eod (session-end daily, rtype 0x24 per adapter lane)",
+  "OHLCV bars are stamped at bar-START and emitted sparsely (no trade in interval -> no record); statistics (OI/cleared volume) publish next-UTC-day (Friday->Sunday) — PIT rule for OI-based rolls is enforced by publication timing itself",
+  "continuous symbology (c/n/v) is available FREE via symbology.resolve; the packet buys no vendor continuous price series at any point",
+  "DBN record sizes byte-exact via adapter lane: Ohlcv 56B, Trade 48B, Stat 80B, Def 520B, Bbo 80B; storage method fully labeled",
+  "true non-vendor blockers itemized per symbol: declared slippage (all 10), exchange fees 9/10, holiday calendar, consensus/weather/macro vintages, MOF lag, HG/iron-ore proxies, serial-refetch deadlines (GCX5 now; 6JF6/6BF6/6AF6 ~Dec-2026; 6JV5/6JX5 likely lost)"
+ ],
+ "defects": [],
+ "open_questions": [
+  "owner decision: create Databento account/key and run Phase-0 free probes (scripts ready; key only via DATABENTO_API_KEY env)",
+  "owner decision: serial re-fetch ($0, time-critical per SERIAL_REFETCH_MANIFEST.md) vs vendor-only recovery of serial contracts",
+  "whether GLBX.MDP3 exposes ohlcv-eod (checked free at P0-1) — would replace self-aggregation for session dailies"
+ ],
+ "sha256_of_key_outputs": {
+  "data/request/request_manifest.json": "fa642fc50eed0ba88496c1805d688556427e245617e6d0353b43c689e0a7f488",
+  "DATABENTO_REQUEST_PACKET.md": "69ad803216da3af507cfac29ab40f5989b87d03c4b72c4d6e39e909036007d0a"
+ },
+ "recommended_next_action": "Owner: (1) create the Databento account/key if approved, export DATABENTO_API_KEY, run probe_record_count.py --phase0 and probe_cost.py --phase0 (free, metadata-only) to produce the coverage + cost tables; (2) decide the $0 serial re-fetch (time-critical GCX5/F6-class) per SERIAL_REFETCH_MANIFEST.md; (3) review DATABENTO_REQUEST_PACKET.md §7 gates and approve/trim the PILOT lines; lane outputs are then ready for the WAITING_DATABENTO_DATA stop condition review (fresh-context A7 + pathspec commit)."
+}

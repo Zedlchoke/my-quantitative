@@ -1,0 +1,73 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-DEEPRESEARCH-V2-20261003",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "A7-DEEP-6E",
+  "dispatch_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "actual_start_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "commit_sha": null,
+  "commit_sha_disclosure": "No commit made: audit lane, read-only mandate on shared branch prep/futures-behavior-10syms-20261002; commits not authorized by dispatch. All outputs are new untracked files under FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6e/ plus this handoff. Worktree HEAD verified 26d96eb4 before and after; no data, ledger, registry or sibling-lane file touched.",
+  "changed_paths": [
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6e/a7_6e_recompute.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6e/a7_6e_recompute.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6e/a7_6e_ecb_verification.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6e/A7_DEEP_6E.md",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dispatch/handoff_A7-DEEP-6E.json"
+  ],
+  "tests": [
+    {
+      "command": "cd research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6e && /Users/hoangminhlong/my-quantitative/.venv/bin/python a7_6e_recompute.py",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "independent rebuild from 5 raw vendor parquets (no DEEP-6E code): 3,054,311 outright bars / 90 contracts / held map 1,746 sessions; 12/12 headline recomputes match dossier artifacts exactly (expiry 80/80 + 32/33 Mondays; v1 window 6.80th pct vol 5.4237 / drift pct 25.85; RTH 55.2849% + 1,504,002/2,252,088 bars; ECB block RV 15.5844 / vol 12.4516; serials 0.34188%; rolls 27/27 sign, r=0.9097 latest-vintage, median residual +6.176 ticks; migration d-4 30.70 -> d-3 87.10; FOMC m780 x17.242, 58/58 time-proven; ECB m435 x1.732 / m445 x1.462 / shares 93.64-90.19; era bars and stray/spread counts exact)"
+    },
+    {
+      "command": "venue-OI adjudication: reproduce a5 raw-sum join + dedup-latest variant",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "raw-row sum reproduces lane a5 EXACTLY (median 2.00028 / p05 1.99993 / p95 2.10643 / max 3.00170, n=156 weeks); GLBX stat_type-9 has 2 publication rows per contract-day (7,615 pairs x2, 107 x3, 8 x4, 107 x1); dedup-to-latest gives median ratio 1.0000 vs CFTC CoT OI (150/156 weeks within +/-0.2%; residual weeks 2025-06-17 x1.31, 2026-03-17 x1.27, 2025-09-16 x1.18 are expiry weeks where venue still counts the just-expired contract); probe 2024-06-04 venue sum 671,736 == CoT 671,736 exactly -> '2.000x convention' is a dedupe artifact, NOT a convention"
+    },
+    {
+      "command": "CIP vintage recompute: ALFRED year-end SOFR vintages (PIT-as-of) vs latest",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "vintages on disk 2019..2024-12-31 + 2026-09-30 (NO 2025-12-31); as-of reconstruction: r(gap vs CIP) = -0.107 vs latest-vintage 0.9097; sign agreement 26/27; median residual +3.77 vs +6.18 ticks -> r=0.91 is vintage-fragile and not PIT-verifiable from disk; sign agreement and one-sided residual survive"
+    },
+    {
+      "command": "ECB assembled-date sample verification (WebFetch primary pages + SDW MRO machine check)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "5/5 sampled assembled dates MATCH on primary ecb.europa.eu pages (2020-01-23, 2021-03-11, 2025-03-06, 2026-02-05 direct press-release fetches HTTP 200 + title/date; 2023-06-15 via on-disk SDW MRO effective-minus-6-days); bonus: all 20 rate-change meetings 2022-2026 machine-verified 20/20; 14:15 CET release FACT verified verbatim on ECB mopo index; 14:45 presser time NOT re-verified (page silent)"
+    },
+    {
+      "command": "CoT claims on FIXED tidy + bak diff",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "cftc_legacy_tidy COT_LEGACY_6E: 1,082 rows, 0 dup dates; value-level bak-vs-new diff 0 mismatches (integration fix did not touch 6E); era means -44.0k/-40.4k -> +61.9k/+71.7k, extremes -226,560@2015-03-31 / +211,752@2020-08-25, latest -52,334@2026-09-22 at 9.08 pct, 2022 crisis path, crowded-short fwd vol 7.68 vs 6.52 (n=36/54, median 7.55) ALL reproduce exactly"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Audit is recomputation + primary-source sampling, not a re-run of every a-script: spot-checks beyond the 12 headline numbers were artifact-vs-dossier consistency checks plus targeted independent re-derivation (ECB minute ratios, quietest hours, expiry dow counts).",
+    "Wayback Machine unreachable at audit time (connect timeout), matching the lane's disclosure; ECB verification therefore used live ecb.europa.eu hashed URLs located via search plus the on-disk ECB SDW series.",
+    "The 2025-12-31 SOFR vintage does not exist on disk; the PIT-as-of CIP reconstruction for 2025-2026 rolls uses the 2024-12-31 vintage (stale up to ~21 months). This is a data-availability limit, not a lane error; the lane's caveat was accurate but under-stated in magnitude.",
+    "CIP recompute inherits ESTR latest-only (no vintage set exists on disk); mixed staleness (SOFR vintage + ESTR latest) is disclosed inside a7_6e_recompute.json rolls_cip.vintage_note."
+  ],
+  "incidents": [
+    "MAJOR-1: dossier 6E_DEEP_v2.md section 1 'venue OI = exactly 2.000x CFTC OI (convention)' is FALSE - it is a publication-duplication artifact of a5's raw-row sum (vendor publishes 2 rows per contract-day; 5 weeks even show 3.000x, impossible for a convention). Deduped venue OI reconciles 1:1 with CFTC (median 1.0000, 150/156 weeks within 0.2%). Lane's own a3 used the deduped table while a5 used the raw sum. Erratum required: section 1 bullet, section 7 line, section 9 NOT_RUN entry, open question 5 (CME spot-check now unnecessary). a3's OI-crossover finding unaffected.",
+    "MAJOR-2: CIP r=0.91 (H2 'CONFIRMED descriptively') is not reproducible from on-disk ALFRED vintages (r=-0.107 PIT-as-of; 26/27 sign; +3.8t residual). H2 registration must carry the quantified vintage sensitivity.",
+    "MINOR: four dossier-vs-own-artifact text errors (n=1,751 vs 1,746/1,745; rolling-63 min date 2026-01-14 vs 2026-01-16; p05 5.65 vs 5.66; quietest hours mislabeled - actual 17:00-18:00 and 23:00-24:00 CT, not 01:00/18:00 CT); control-Wednesday peak-minute narrative (12:00-12:07 CT) contradicts its own JSON (mode 13:59 CT, 162/~340 sessions); a5 'strict-past 3y percentile' includes the current week (immaterial: strict variant identical here)."
+  ],
+  "tree_status": "Worktree prep @ 26d96eb4 unchanged; audit outputs untracked under FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6e/ + this handoff; nothing else written, no data mutated.",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6e/A7_DEEP_6E.md", "sha256": "25bc4e9e6552b9ff37a8947df01bff865bd032d604203e8c1650f2805b4ee310"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6e/a7_6e_recompute.py", "sha256": "545fa029d7079cc767b653fa83d0078cd655de03f6d52f435b5107b3b296b631"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6e/a7_6e_recompute.json", "sha256": "2d6ab94ed37550ba43df3b2c1c6f9417e288e6290018463fc1326e72594e452e"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6e/a7_6e_ecb_verification.json", "sha256": "255f93e1d7c4ba217b6f9fc9c9e6a26bdf39f375e26c2286db13bca54b57d8c3"}
+  ],
+  "recommended_next_action": "(1) Owner: apply the 6E erratum block (MAJOR-1 venue-OI retraction across sections 1/7/9 + open question 5; MAJOR-2 CIP vintage sensitivity; 6 minor text fixes) - full list in audit/a7_6e/A7_DEEP_6E.md section 7. (2) Registered-cycle decisions: H2 spec must state the rate-vintage basis and the -0.11-to-0.91 sensitivity; venue OI and CoT OI may be joined 1:1 after deduping GLBX statistics to latest publication per contract-day. (3) Nothing in this audit blocks the other DEEP lanes' dossiers, but A7 lanes for 6A/6B/6J/ES/NQ should check whether their a5-equivalents repeat the same raw-sum venue-OI join. (4) No re-measurement of the 6E panel required.",
+  "summary": "A7-DEEP-6E verdict PASS WITH ERRATA (0 BLOCKER, 2 MAJOR, 5 MINOR, 5 NOTE). Independent recompute from raw vendor parquet (zero lane-code reuse) reproduces all 12 headline numbers exactly: expiry model 80/80 (32/33 quarterly Mondays), v1 window 6.80th percentile vol 5.4237%, 55.2849% front volume outside RTH (1,504,002/2,252,088 bars), ECB block 15.5844% RV / 12.4516% volume, serials 0.34188%, CIP 27/27 sign + r=0.9097 + residual +6.176 ticks (latest-vintage basis), migration crossover 30.70->87.10, FOMC x17.242 (58/58 primary time proof), ECB x1.732/x1.462, CoT era flips and crowded-short fwd vol (7.68 vs 6.52) exact on the FIXED tidy (bak 6E series identical - integration fix did not touch 6E). Two MAJOR interpretation defects: (1) venue-OI '2.000x convention' is a dedupe artifact - deduped GLBX OI reconciles 1:1 with CFTC (median 1.0000, 150/156 weeks within 0.2%, five 3.000x weeks prove duplication); (2) CIP r=0.91 collapses to -0.107 under the PIT-as-of ALFRED year-end vintages on disk (no 2025 vintage exists) - H2 'CONFIRMED' carries an unquantified vintage dependency. ECB assembly verified 5/5 sampled dates on primary pages + 20/20 rate-change meetings via SDW; 14:15 CET release FACT verified, 14:45 presser not re-verifiable. Errata required; no panel re-measurement.",
+  "generated_utc": "2026-10-03T10:30:00+00:00"
+}

@@ -1,0 +1,279 @@
+schema: futures_behavior_symbol_config@1
+task_id: FUTURES-BEHAVIOR-10SYMS-PREP-20261002
+symbol: 6A
+generated_utc: '2026-10-02'
+source_dossier: dossiers/6A_DOSSIER.md
+dossier_sha256: 85956ee67f977ee266d50cfd29cf861631db92b0acbf0f75b820afb353cd0408
+provenance_note: >-
+  Hypotheses derived STRICTLY from dossiers/6A_DOSSIER.md S5. AUD/USD spot transfers are
+  hypotheses with basis (roll gaps OBSERVED -0.3..-0.75% ann.), serial-month liquidity and
+  cost differences - never "already valid". Timezone asymmetry: every AU/China event lands
+  19:30-22:30 CT of the PRIOR calendar day (inside Globex, OUTSIDE recorded RTH bars);
+  FOMC 13:00 CT is inside RTH. DISCREPANCY FLAG: dossier S2/S5 claims HG copper is "in own
+  raw corpus" - the raw dir contains NO HG files and COVERAGE_MANIFEST has no HG entry
+  (verified 2026-10-02); 6A-H2 therefore treats HG as NOT available.
+defaults:
+  universe:
+    exchange: CME (Globex)
+    contract_cycle: quarterly HMUZ backbone + listed serials (current S1 front is itself a serial)
+    liquid_chain_rule: nearest HMUZ quarterly ONLY (serials 6AV6 median 8 lots/day, 6AX6 1 lot vs quarterlies 28k-67k)
+    liquid_chain_evidence: 'OBSERVED 6A S1 quarterly_vs_serial (serials 3-4 orders of magnitude below quarterlies)'
+  roll_rule:
+    baseline: declared_calendar_last_trade_month
+    baseline_definition: hold until last session BEFORE day-1 of the delivery month (last trade 09:16 CT, 2nd business day before 3rd Wednesday), roll at that close
+    reference: code/futbt/roll.py + BACKTEST_LAUNCH_DRAFT.md S0
+    target_adjustment: 'next_HMUZ_quarterly - literal next-listed NOT executable on this snapshot 2025-11-28..2026-08-31 (6 serials absent: 6AF6,6AG6,6AJ6,6AK6,6AN6,6AQ6) and would hold 17-lot serial books when executable'
+    dossier_finding: 'OBSERVED 6A S1: new quarterly reaches front scale 6-11 sessions AFTER the roll date (no pre-roll migration, unlike GC); old-side decay unobservable (files truncated at day-1 of expiry month); quarterly adaptation executable and IS the liquidity chain'
+    alternative_required: 'volume/OI roll (OI not in raw; crossover unobservable - old-side truncated); TIME-CRITICAL $0 fix: re-fetch 6 serials before expired-resolve wall (6AF6/6AG6 age out ~Jan-Mar 2027)'
+  execution_laws:
+    decision_point: session_close_through_pit_view
+    default_fill: next_session_open_tick_rounded_cost_shifted
+    ambiguous_order: same_bar_tp_sl_worst_case_bound_no_point_pnl
+    close_only_bars: never_fill_any_path
+    tb_labels: TRAIN_ONLY_never_validation_features
+    adjusted_series: causal_additive_features_only_never_fills_mtm_pnl
+    attribution: full_path_leave_one_out_only_additive_leg_sums_forbidden
+  cost_model:
+    commission: {usd_per_side: 0.85, provenance: 'PUBLISHED IBKR 2026-10-02'}
+    exchange_fee: {provenance: NOT_RUN_NOT_FETCHED}
+    spread: {median_usd_per_contract: 10.0, provenance: 'MEASURED daily-BBO close proxy 2 ticks = $10 on QUARTERLY front (n=241, 0 crossed; supersedes S6 4-tick row measured on serial 6AV6 = $20)', caveat: non-synchronous, not executable; tick-size conflict 0.00005 (S1) vs 0.0001 (legacy mirrors) unadjudicated}
+    slippage: {provenance: NOT_RUN_NO_DECLARED_VALUE}
+    stress_multipliers: [1.0, 1.5, 2.0]
+hypotheses:
+- id: 6A-H1
+  dossier_ref: 'dossiers/6A_DOSSIER.md S5 H1 (rank 1 in dossier: only event family fully in legal daily data)'
+  hypothesis_kind: event_reaction
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Policy-rate path repricing -> carry/flow rebalancing: AUD is the direct policy asset and
+    the RBA decision (14:30 Sydney = 22:30 CT prior day) hits the home session; the next RTH
+    open gap should carry the decision direction more than non-event days.
+  pit_trigger:
+    mechanizable: true
+    observable: 'RBA decision timestamp (calendar known years ahead, FACT: 8 meetings/yr, 14:30 Sydney announcement) + event-day vs non-event-day gap distribution comparison (descriptive first)'
+    field: event-date flag; RTH open vs prior close on the quarterly chain
+    source: rba.gov.au decision + interest-rate-decisions pages (fetched 2026-10-02, primary) + raw daily
+    as_of_rule: decision lands 22:30 CT prior calendar day - captured ONLY as the next RTH open gap; hawkish/dovish classification needs market pricing (PARAM-GAP) - weaker proxy = cash-rate change vs prior-meeting pricing from RBA media releases (FACT)
+    timestamp_at_decision: next RTH session open after the decision
+  direction: conditional (hawkish -> long 6A) - descriptive magnitude comparison first
+  entry: 'descriptive first (no trade): event-day vs non-event-day gap distributions; any trade version requires Globex data at 22:30 CT (PARAM-GAP)'
+  exit: n/a (descriptive)
+  take_profit: 'PARAM_GAP: 6A-H1-P2 (trade version only)'
+  stop_loss: 'PARAM_GAP: 6A-H1-P2'
+  time_rules: overnight -> first RTH session
+  universe: 6A quarterly front (declared roll, quarterly adaptation - serials un-executable)
+  roll_rule_ref: defaults.roll_rule
+  sizing: n/a (measurement)
+  regime_tags: [active_easing_cycle, active_tightening_cycle, hold_streak_priced_in]
+  counter_hypothesis: RBA decisions fully pre-priced (long hold streaks) - no gap differential
+  failure_conditions:
+  - RBA-day gap distribution indistinguishable from non-event days over >=16 meetings
+  - surprise classification requires consensus data not in corpus (weak-proxy version must be labeled as such)
+  minimal_test:
+    kind: descriptive_event_day_gap_distribution
+    requirements:
+    - {class: event_release_calendars, symbols: [AU], use: event_calendar_descriptive, floor: 'RBA decision dates + times (FACT, fetched 2026-10-02; 8/yr)', floor_met: true, available_today: true, acquisition: in_hand_now}
+    - {class: daily_trades_per_contract, symbols: [6A], use: conditional_descriptive, floor: 'daily RTH opens around all meetings + gap machinery (front-scale era 2025-09-10..2026-10-01)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: rba_market_pricing, symbols: [AU], use: signal_reference, floor: '5-min AUD/USD or Globex M1 at 22:30 CT (vendor) for surprise classification + entry realism', floor_met: false, available_today: false, acquisition: vendor_paid}
+    - {class: daily_trades_per_contract, symbols: [6A], use: backtest_fill, floor: '>=24m true volume', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: 6A-H1-P1, piece: hawkish/dovesh surprise classification rule, reason: 'market pricing NOT in corpus (dossier: PARAM-GAP); weak RBA-release proxy must be labeled'}
+  - {id: 6A-H1-P2, piece: trade-version entry/TP/SL, reason: 'entry realism requires Globex 22:30 CT data'}
+  feasibility:
+    mechanization: high
+    acquisition_cost: in_hand_now
+    rank_basis_note: 'dossier: only event family fully in legal daily data; $0 for the daily version'
+  rank: 1
+- id: 6A-H3
+  dossier_ref: 'dossiers/6A_DOSSIER.md S5 H3 (95% OBSERVED already; residual = forward claim)'
+  hypothesis_kind: execution_rule
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Liquidity-provider inventory costs in dying/thin serials: a quarterly-target roll variant
+    strictly dominates the literal next-listed rule on execution cost and capacity with
+    essentially identical exposure (measured same-date roll-gap difference -8 vs -23 ticks;
+    serial spread 4 ticks/$20 vs quarterly 2 ticks/$10; depth 17 vs ~35k lots/day).
+  pit_trigger:
+    mechanizable: true
+    observable: none - contract-selection rule choice decided ex ante
+    field: roll target rule (next HMUZ vs next listed incl. serials)
+    source: measured S1/S3 volumes, spreads, gaps
+    as_of_rule: rule fixed ex ante; quarterly target from listing calendar (PIT-legal)
+    timestamp_at_decision: roll session close
+  direction: none
+  entry: switch roll target to next HMUZ; everything else identical to declared rule
+  exit: n/a
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: per roll cycle
+  universe: 6A chain
+  roll_rule_ref: this IS the roll A/B (quarterly target vs literal serial rule)
+  sizing: capacity note - serial book ~17 lots/day median (max 79) vs quarterly ~35k/day
+  regime_tags: [all_regimes_structural]
+  counter_hypothesis: 'calendar risk: skipping serials changes delivery-month exposure vs hedging needs (serial months are deliverable too)'
+  failure_conditions:
+  - serial books later deepen (check deferred serial volumes each quarter)
+  - calendar-risk objection materializes (delivery-month exposure mismatch for real hedgers)
+  minimal_test:
+    kind: construction_rule_check_measured_volumes
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [6A], use: construction_check, floor: 'HAVE measured (S1/S3); forward claim re-checked each quarter', floor_met: true, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: construction_rule_embedded_in_all_arm_b_cells
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [6A], use: backtest_fill, floor: '>=24m true volume', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps: []
+  feasibility:
+    mechanization: high
+    acquisition_cost: in_hand_now
+    rank_basis_note: 'dossier: execution-design finding already 95% OBSERVED; budget $0'
+  rank: 2
+- id: 6A-H4
+  dossier_ref: 'dossiers/6A_DOSSIER.md S5 H4'
+  hypothesis_kind: regime_conditional
+  mechanism_class: POSTULATED
+  mechanism: >-
+    AUD is a long-risk carry currency: its beta to ES/NQ should rise in risk-on regimes
+    (defined ex ante by trailing-vol quantile below prior-year median) and flip/narrow in
+    stress.
+  pit_trigger:
+    mechanizable: true
+    observable: rolling 6A-vs-ES beta conditioned on ex-ante regime tag (trailing-vol quantile of ES vs its prior-year median, strict past)
+    field: daily returns 6A + ES/NQ + regime tag
+    source: raw daily both symbols (same RTH convention)
+    as_of_rule: regime tag from trailing window only; beta on past window
+    timestamp_at_decision: daily close
+  direction: beta-regime conditional (declared before run)
+  entry: PARAM-GAP (regime-tagging threshold must be fixed a priori)
+  exit: PARAM-GAP
+  take_profit: 'PARAM_GAP: 6A-H4-P1'
+  stop_loss: 'PARAM_GAP: 6A-H4-P1'
+  time_rules: regime-scale (weeks)
+  universe: 6A + ES/NQ fronts
+  roll_rule_ref: defaults.roll_rule
+  sizing: beta-scaled declared formula
+  regime_tags: [risk_on, stress]
+  counter_hypothesis: 'beta is just USD-beta in disguise (control: same test on 6E)'
+  failure_conditions:
+  - rolling beta unstable within-regime year-by-year
+  - regime threshold tuned on 2026 (forbidden - must be a priori)
+  minimal_test:
+    kind: descriptive_beta_by_regime
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [6A, ES], use: conditional_descriptive, floor: 'both in raw corpus (6A front-scale 2025-09-10.., ES ~17m)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: [PARAM_GAP_MUST_BE_PRE_REGISTERED]
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [6A, ES], use: backtest_fill, floor: multi-year both legs, floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: 6A-H4-P1, piece: regime-tagging threshold + TP/SL, reason: 'must be fixed a priori in a later spec to avoid tuning on 2026 (dossier)'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: in_hand_now
+    rank_basis_note: data floor HAVE ($0); only pre-registration missing
+  rank: 3
+- id: 6A-H5
+  dossier_ref: 'dossiers/6A_DOSSIER.md S5 H5'
+  hypothesis_kind: structural_relation
+  mechanism_class: POSTULATED
+  mechanism: >-
+    CIP: the 6A calendar-slope sign (measured -0.3%..-0.75% annualized at 2026 rolls) should
+    track the AUD-vs-USD short-rate differential sign with a lag; when the differential flips
+    (RBA hiking while Fed cuts), roll gaps should turn positive.
+  pit_trigger:
+    mechanizable: true
+    observable: quarterly roll gaps (measured) vs contemporaneous RBA cash rate - Fed funds target differential
+    field: 4 measured real-era gaps + policy-rate series
+    source: RBA cash rate media releases FACT + Fed funds target FACT + raw roll tables
+    as_of_rule: policy rates as-published at decision time; roll gaps at roll sessions
+    timestamp_at_decision: roll sessions
+  direction: n/a (structural relation)
+  entry: n/a
+  exit: n/a
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: per roll cycle
+  universe: 6A HMUZ chain
+  roll_rule_ref: defaults.roll_rule (gap table is its byproduct)
+  sizing: n/a
+  regime_tags: [aud_below_usd, differential_flip]
+  counter_hypothesis: gap sign driven by expectations beyond the current differential (term structure)
+  failure_conditions:
+  - gap sign does not track the differential sign over >=8 rolls (have only 4 real-era - floor NOT met)
+  - differential definition cherry-picked post hoc (tenor/lag must be frozen before measurement)
+  minimal_test:
+    kind: descriptive_gap_vs_differential_sign
+    requirements:
+    - {class: derived_roll_gaps, symbols: [6A], use: signal_reference, floor: '>=8 rolls (4 measured - floor NOT met)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    - {class: event_release_calendars, symbols: [AU, US], use: regime_split_feature, floor: 'RBA cash rate + Fed funds target (FACT releases)', floor_met: true, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: structural_input_to_arm_b
+    requirements:
+    - {class: derived_roll_gaps, symbols: [6A], use: signal_reference, floor: '>=8 rolls', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: [REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: 6A-H5-P1, piece: rate-series pairing/lag definition, reason: 'only 4 effective rolls measured; floor >=8 not met'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: free_public
+    rank_basis_note: rate series free; roll sample floor unmet (4/8)
+  rank: 4
+- id: 6A-H2
+  dossier_ref: 'dossiers/6A_DOSSIER.md S5 H2'
+  hypothesis_kind: regime_conditional
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Terms-of-trade channel -> exporter hedging asymmetry -> order-flow persistence: AUD
+    trend durability depends on commodity confirmation - when HG copper (and/or iron-ore
+    proxy) trends with 6A, persistence should exceed the ~49.4% unconditional coin-flip;
+    divergence should collapse it.
+  pit_trigger:
+    mechanizable: true
+    observable: prior-63-session sign of 6A front return AND of HG front return (strict past windows)
+    field: 6A + HG daily closes (+ iron-ore proxy)
+    source: 'HG copper: DISCREPANCY - dossier S2/S5 claims "in own raw corpus" but the raw dir has NO HG files and COVERAGE_MANIFEST has no HG entry (verified 2026-10-02) -> NOT available; iron-ore primary price licensed'
+    as_of_rule: both series same-day closes; 63-session trailing signs; control test on 6E/6B (common-USD-beta explanation)
+    timestamp_at_decision: daily close
+  direction: long/short 6A front conditional on confirmed/divergent state (PARAM-GAP)
+  entry: 'PARAM-GAP (deliberately: only ~13 months of overlap-era data - specifying now = ex-post tuning on 2026)'
+  exit: PARAM-GAP
+  take_profit: 'PARAM_GAP: 6A-H2-P1'
+  stop_loss: 'PARAM_GAP: 6A-H2-P1'
+  time_rules: trend-persistence scale (weeks)
+  universe: 6A quarterly front
+  roll_rule_ref: defaults.roll_rule (quarterly adaptation)
+  sizing: 1 contract baseline
+  regime_tags: [china_stimulus_recovery, usd_shock_dominated]
+  counter_hypothesis: 'HG-6A relation is pure common-USD beta, not ToT (control: identical test on 6E/6B)'
+  failure_conditions:
+  - persistence differential <= 0 in confirmed regimes over >=8 rolling quarters
+  - deep-era settlement bars understate true vol pre-2025 (persistence estimates unreliable)
+  minimal_test:
+    kind: descriptive_trend_persistence_by_tot_state
+    requirements:
+    - {class: hg_copper_daily, symbols: [HG], use: signal_reference, floor: 'HG daily (NOT in corpus despite dossier claim - discrepancy flagged; vendor bundle)', floor_met: false, available_today: false, acquisition: vendor_paid}
+    - {class: daily_trades_per_contract, symbols: [6A], use: conditional_descriptive, floor: '6A daily in corpus (unconditional persistence 49.4% measured)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: hg_copper_daily, symbols: [HG], use: backtest_fill, floor: multi-year HG + 6A, floor_met: false, available_today: false, acquisition: vendor_paid}
+    - {class: iron_ore_primary_price, symbols: [AU], use: regime_split_feature, floor: 'iron-ore primary (licensed) if ToT driver advanced', floor_met: false, available_today: false, acquisition: owner_declaration}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: 6A-H2-P1, piece: all entry/exit thresholds + ToT proxy choice, reason: 'deliberately unspecified (dossier): ~13 months overlap-era data would make any threshold ex-post tuning'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: vendor_paid
+    rank_basis_note: gated on HG data the corpus does not actually contain (dossier claim vs raw-dir reality flagged)
+  rank: 5

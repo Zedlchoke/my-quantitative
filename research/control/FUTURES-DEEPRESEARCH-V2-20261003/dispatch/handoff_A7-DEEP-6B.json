@@ -1,0 +1,76 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-DEEPRESEARCH-V2-20261003",
+ "cycle_id": "UNREGISTERED_PREP",
+ "role": "auditor",
+ "lane": "A7-DEEP-6B",
+ "dispatch_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+ "actual_start_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+ "commit_sha": null,
+ "commit_sha_disclosure": "No commit made: read-only audit lane; owner/lead commits. HEAD verified 26d96eb4bdd4be85e151055dace3354638498a44 on branch prep/futures-behavior-10syms-20261002 throughout the task. DEEP-6B lane's own commit_sha null with worktree-discipline disclosure is canonical per dispatch.",
+ "changed_paths": [
+  "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6b/A7_DEEP_6B.md",
+  "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6b/recompute_6b_headlines.py",
+  "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6b/recompute_6b_headlines.json",
+  "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6b/diff_chain_vs_lane.py",
+  "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6b/residual_checks.py",
+  "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6b/residual_checks.json",
+  "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dispatch/handoff_A7-DEEP-6B.json"
+ ],
+ "tests": [
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python audit/a7_6b/recompute_6b_headlines.py  (fresh independent implementation over RAW vendor parquet + nonprice inputs)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "27 rolls reproduce exactly (gap dist mean 6.48/median 5.0/20+ 7-); Pearson corr gap-vs-diff 0.8423; Spearman 0.7445 (dossier '+0.84 rank' is a text error, M1); diff>0 mean +9.368 (n=19) / diff<0 -3.0 (n=1) / 7 zero-diff rolls same dates; CIP slope 0.1859 vs theory 0.2528 = 73.5%; realized 6.48 vs CIP 8.62 ticks corr 0.830; crossover median 11 sessions (9-13), 27/27 in delivery month, OI leads -6d (-7..-5, n=11); BoE MPC first-5m 7090.5/379.5=18.68x, 12:00-London spike 3451/1392/1074, n=56 (22 chg/34 hold); FOMC 59 statements all proofed, 53 at 14:00 ET, first-5m 9.48x; London-morning 28.73/27.51/27.55/23.77%; VR21 0.728, 2022 0.985, <1 in 7/7 years; maxDD -22.478% @2022-09-26; 2022-09-23 -3.821% (244,110), 09-26 374,255 + low 1.0392 (held), 09-28 +1.396%; turmoil ann vol 18.86%; gilt era corrs -0.144/+0.172/-0.227/-0.064/-0.101, rc63 -0.570@2022-10-17 / +0.547@2020-12-23, episode +45.3/+29.1 bp (09-23) and -38.2 bp (09-28), 4-day corr -0.675, stress 1.396% vs 0.318% = 4.39x; QA panel 2,549,633 rows, eras/spread/OHLC/dup/weekend/break-bar/butt-joint/definitions-tick/GCQ4-2139/DST-1294-1300 all exact"
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python audit/a7_6b/residual_checks.py  (QA ledger, strays, tick, joints, records)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "era rows 754,609/1,615,234/179,790; spread 37,943/135,537/15,559; GCQ4 2,139 bars vol 6,090 (2020-07-28..11-16) reconciles integration scan; serial volume 0.26%; break bars 1, weekend 0; definitions 19,183 rows uniform 0.0001 USD; joints 0 dup keys, gaps 0.00%/+0.0740%; 28 front-scale clusters >1M; held-chain DST 1294/1300; zero-volume bars 0, OHLC violations 0; record day 2022-09-26; panel-wide low 1.0293 (6BU3 deferred 2-lot, NOTE N1) vs held-chain 1.0392"
+  },
+  {
+   "command": "v1-overturn verification: differential recomputed on v1's exact roll dates (2025-11-28, 2026-02-27, 2026-05-29, 2026-08-31) from boe_bank_rate_tidy + fred_latest FRED_DFEDTARU",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "BoE==Fed on ALL FOUR dates (4.00/4.00 then 3.75/3.75x3): diff exactly 0.00pp. OVERTURN CONFIRMED. Dossier parenthetical wrong on both ends: 'diff -0.25..0.00pp' is an era-path range (80/395 days nonzero in 2025-09..2026-09), roll-date value is 0.00; 'gaps -2..+3 ticks' matches neither v1's own (-2/+5/-3/+3 => -3..+5) nor v2's full-session re-measure (-2/-4/-2/+1 => -4..+1)"
+  },
+  {
+   "command": "CoT on FIXED tidy: column diff vs .bak_prefix_mixed_20261003 + full recompute of 6B_a5 claims",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "COT_LEGACY_6B 1,082 rows both; numeric cols/observation periods/released_at identical; only market_name trailing-whitespace stripped (470 rows). Recompute on fixed tidy: corr |z| fwd-vol -0.0742 (signed -0.0852), n=326; bucket medians 6.17/8.00/6.85 vol, -1.64..-2.32 dd; Aug-2022 z -0.40..-1.26 net -27,966..-56,409; records -107,844@2017-03-21 / +142,183@2024-07-23; release lag 3/2/4. Null result UNCHANGED by integration fix. Current canonical sha f7a2719e745c2f6f; dossier cites pre-fix 4f9cd78944ee79dc (now .bak) => stale pointer M6"
+  },
+  {
+   "command": "git -C <worktree> rev-parse HEAD (drift check vs dispatch)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "26d96eb4bdd4be85e151055dace3354638498a44"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "MPC calendar (hold dates) taken as lane input (boe bank-rate parquet for changes verified; web re-fetch of bankofengland.co.uk not performed by auditor); 2020-2024 dates cross-checked against auditor knowledge, 2025-26 unverifiable offline",
+  "Differential uses FRED DFEDTARU latest (not vintage-true) — same source as lane, disclosed in dossier; vintage-true 2025-26 Fed target verification NOT_RUN",
+  "Gilt parse is auditor's own minimal xlsx reader over the same BoE zip (independent of lane parser); BoE publication-lag policy itself not re-verified from BoE site",
+  "v1 gap ticks (-2/+5/-3/+3) taken from v1 dossier text (IBKR-era raw not re-fetched); v2-side gaps on the same dates independently recomputed from the 1m panel",
+  "auditor did not re-run lane scripts byte-for-byte; reproduction is by independent reimplementation from raw inputs (stronger check), plus direct read of lane cached chain for the session-level diff (6 DST Sundays isolated as auditor-code bug, corrected)"
+ ],
+ "incidents": [],
+ "verdict": {
+  "status": "PASS_WITH_MINOR_ERRATA",
+  "blocker": 0,
+  "major": 0,
+  "minor": 7,
+  "note": 5,
+  "summary": "All ~36 recomputed headline numbers of 6B_DEEP_v2 reproduce exactly under a fresh independent implementation over raw vendor+nonprice inputs; the round's headline v1-overturn is CONFIRMED (differential exactly 0.00pp on all four v1 roll dates). 7 MINOR errata: M1 Spearman '+0.84' should be +0.74; M2 v1-window parenthetical (diff range and gap range both wrong; claim itself holds); M3 '+13 outlier one week before a scheduled Fed hike' is ~2 weeks (2022-06-15 FOMC); M4 '53 carry proof' conflates 14:00-ET count (53) with proof count (59/59); M5 'extremes no worse than neutral' contradicted by own drawdown medians (null result on vol stands); M6 CoT sha points at pre-fix tidy (numbers unaffected); M7 '13-16k/day' post-roll volume actually 1.1-13.2k (median ~3k). No finding blocks downstream use; errata edits to dossiers_v2/6B_DEEP_v2.md required per M1-M7."
+ },
+ "artifacts": {
+  "audit_report": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6b/A7_DEEP_6B.md",
+  "recompute_script": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6b/recompute_6b_headlines.py",
+  "recompute_output": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6b/recompute_6b_headlines.json",
+  "residual_checks": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6b/residual_checks.{py,json}",
+  "chain_diff": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_6b/diff_chain_vs_lane.py"
+ }
+}
