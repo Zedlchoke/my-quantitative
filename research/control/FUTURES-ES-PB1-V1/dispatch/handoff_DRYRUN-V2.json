@@ -1,0 +1,70 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "DRYRUN-V2",
+  "cycle_id": "FUTURES-ES-PB1-V1",
+  "role": "lane DRYRUN-V2 — gate 4 re-run on the repaired v2 freeze: exact-arm dry-run, single-shot rehearsal of the frozen 24-identity set at ×1.0 declared Variant-A costs over repair/selection_freeze_v2.json + repair/exclude_list_v2.json (quarantined, pre-GO)",
+  "lane": "DRYRUN-V2",
+  "round": "FUTURES-ES-PB1-V1 pre-GO repair wave (owner-authorized holiday repair: exclude_list_v2 adds 2015-07-02; pins D-A1/D-A2/D-A3 LAW per auth/PREGO_REPAIR_RECORDED.json)",
+  "generated_utc": "2026-10-05",
+  "dispatch_sha": "436d8cf82eb57a84b0aa4a82c17ee0fd2d0d72d9",
+  "actual_start_sha": "436d8cf82eb57a84b0aa4a82c17ee0fd2d0d72d9",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/FUTURES-ES-PB1-V1/dryrun_v2/dryrun_builder_v2.py",
+    "research/control/FUTURES-ES-PB1-V1/dryrun_v2/quarantine/** (26 files: 24 per-identity JSONs + summary.json + trades_index.json)",
+    "research/control/FUTURES-ES-PB1-V1/dryrun_v2/quarantine_rerun/** (26 files, byte-identical to quarantine/)",
+    "research/control/FUTURES-ES-PB1-V1/dryrun_v2/dryrun_v2_digest.json",
+    "research/control/FUTURES-ES-PB1-V1/dryrun_v2/DRYRUN_V2_REPORT.md",
+    "research/control/FUTURES-ES-PB1-V1/dispatch/handoff_DRYRUN-V2.json"
+  ],
+  "write_boundary_respected": "All writes confined to research/control/FUTURES-ES-PB1-V1/{dryrun_v2,dispatch}/** in worktree /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep; v1 dryrun/ and freezegen/ are HISTORY, untouched; everything else read-only (single-shot parquet reads of the pinned ES panel + chain); no ledger/counter/registry write, no S1 access, no network (zero fetch), no commit/stage/push (controller commits).",
+  "git_commands_run": [
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep rev-parse HEAD (once at start) -> 436d8cf82eb57a84b0aa4a82c17ee0fd2d0d72d9",
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep status --porcelain (start: clean; end: only untracked research/control/FUTURES-ES-PB1-V1/{dryrun_v2,dispatch}/** added by this lane)"
+  ],
+  "tests": [
+    {"command": "machinery provenance: dryrun_v2/dryrun_builder_v2.py = byte-copy of A7-v2-verified dryrun/dryrun_builder.py via 11 exact-string anchors (count==1 enforced); code-line diff shows ONLY path/parameter shims (v2 freeze+exclude inputs schema @2, dryrun_v2 outputs, head/lane/digest stamp, GENERATED_UTC 2026-10-05, post-hoc criteria d/e, lock_record argv); simulate/derive_state/build_sessions/load_inputs logic byte-identical", "exit_code": 0, "verdict": "PASS", "result": "shim-only divergence proven by diff; no logic change; any SL-donor-filter extension deliberately NOT applied (would be forbidden logic divergence)"},
+    {"command": "input-gate sha256 vs pins (SPEC 445f7499…, panel 7ae6de2d…, chain 7b6179d2…) + selection_freeze_v2.exclude_list.sha256 round-trip == sha256(exclude_list_v2.json) + Variant-A cost-table asserts + retired-value ban", "exit_code": 0, "verdict": "PASS", "result": "all pins matched pre-run; builder aborts pre-write on any mismatch"},
+    {"command": "M2(a) identity enumeration vs repair/selection_freeze_v2.json embedded identity_table", "exit_code": 0, "verdict": "PASS", "result": "24/24 byte-exact ids, set and order equal, zero extras, zero missing"},
+    {"command": "M2(b) cost recomputation: 20 sampled trades vs Variant-A pinned table", "exit_code": 0, "verdict": "PASS", "result": "20/20 exact incl. 4 NFA-window rows (S2 window RT 66.98 @ 2017-08-29 vs standard 67.00; fees 2.25 / 2.24-in-window + spread 6.25 + slip 12.50/25.00/37.50; RT = ×2; gross = dir×(exit−entry)×50 verified)"},
+    {"command": "M2(c) determinism: two full passes, each re-reading every input from disk", "exit_code": 0, "verdict": "PASS", "result": "trades-index sha256 db19098704df0d446709e2ff26000e9bb1720a468b5c74271082df1d28c08909 identical across passes; all 24 per-identity JSONs byte-identical (quarantine/ vs quarantine_rerun/)"},
+    {"command": "surface validation: derived eval sets vs selection_freeze_v2 fold_structure", "exit_code": 0, "verdict": "PASS", "result": "2,925 eval sessions reproduced exactly (F1 375 / F2 949 / F3 711 / F4 890; F2 949 as frozen by the repair, was 950 in v1); FOMCIN set 104; panel 7,825,657 rows, 0 dash rows"},
+    {"command": "M2(e) FOMCIN warmup-defect regression scan (v1 D-F1 class): trades vs positional fold warmup heads and WARMUP-labelled sessions, all 24 identities", "exit_code": 0, "verdict": "PASS", "result": "13,185 trades scanned; zero warmup-position trades; zero trades on WARMUP-labelled sessions"},
+    {"command": "M2(d) surface delta vs v1 quarantine index (dryrun/quarantine/trades_index.json, read-only baseline): per-identity list equality vs v1 minus 2015-07-02 rows", "exit_code": 0, "verdict": "FAIL", "result": "CRITICAL finding D-V2-1 — see findings; 2015-07-02 removal itself exactly as expected (3 trades: ALW/PLA/DOSE), but 18 TP/SL identities show 177 exit-level-changed trades caused by the repair's 35 COVERAGE_LT60→HOLIDAY_PDF_EQUITY_2011_2015 relabels re-admitting those sessions into the v1 SL-donor trailing-20 window; full isolation chain in dryrun_v2/DRYRUN_V2_REPORT.md §5"},
+    {"command": "D-V2-1 isolation (artifact-level, zero new panel reads): donor-eligibility sets from the two exclude lists; sl_distance_pts/q80/entry-path comparison on all 13,185 common trades; exit-changed ⊆ sldist-changed dates; ALW (C2, no TP/SL) control", "exit_code": 0, "verdict": "PASS_WITH_DISCLOSURE", "result": "35 label-changed in-panel sessions == exactly the 35 dates that lost donor-exclusion (139→104, zero newly excluded); sl_distance_pts changed on 244 eval dates (2011-06-10..2016-01-21, bracketed by relabel span 2011-01-17..2015-12-24); q80_threshold changes: 0; entry/fill/signal/direction byte-identical on all common trades; every exit-changed trade sits on an sldist-changed date (0 violations); ALW shows zero extra changes — mechanism isolated to the SL-donor path"}
+  ],
+  "authority_claims": [
+    "QUARANTINED-ONLY: every numeric output of this lane lands under dryrun_v2/quarantine/ or dryrun_v2/quarantine_rerun/ with the header 'QUARANTINED DESCRIPTIVE-ONLY — NOT SCORED — ZERO DENOMINATOR CONSUMPTION — pre-GO rehearsal per registered plan §4 gate 4'; ALL numerics are quarantined descriptive-only and are never gates, denominators, or publishable results",
+    "NO DENOMINATOR CONSUMPTION: no ledger/counter/registry write anywhere; budget counters untouched; the observed denominator was NOT incremented; zero scored cells; C3 flat logs zero trades",
+    "NO GO: no GO exists or is implied by this lane — neither by the machinery run, nor by any criterion verdict; the typed owner GO ('GO FUTURES-ES-PB1-V1 SCORED EXECUTION', plan §5) remains the only key 2; gate-4 criteria are enumeration + cost recompute + determinism + surface integrity + warmup regression, never PnL quality",
+    "NO S1: S1 data SEALED_UNTOUCHED; zero network access; root repo read-only; Python = root .venv",
+    "HEAVY-LOCK LAW HONORED: locks inspect FREE_PROVEN at lane start and re-checked FREE_PROVEN immediately before the panel pass (recorded in the digest lock_record); single-shot; no lock taken; no foreign worker touched; zero NOT_RUN_RESOURCE_CONFLICT"
+  ],
+  "findings": [
+    {"id": "D-V2-1", "type": "CRITICAL", "severity": "BLOCKS-SCORED-G6-UNTIL-ADJUDICATED", "finding": "Criterion (d) surface-delta FAIL: the v2 freeze's 35 COVERAGE_LT60→HOLIDAY_PDF_EQUITY_2011_2015 relabels (priority rank 2 > rank 4; exclude SET unchanged) silently re-admit those 35 sessions into the v1 machinery's SL-donor exclusion set {HOLIDAY_FACT_EARLYCLOSE, HOLIDAY_UNCERTAIN, COVERAGE_LT60} (139→104 donor-excluded). Effect: sl_distance_pts changes on 244 eval dates and 177 trades across 18 TP/SL identities change exit level vs v1-modulo-2015-07-02 (C2/C3/FOMCIN identities unaffected — control ALW clean). In v1 the same physical sessions WERE donor-excluded via their COVERAGE label; the repair changed donor eligibility implicitly, with no donor-law change recorded in selection_freeze_v2. Whether HOLIDAY_PDF_EQUITY_2011_2015 belongs in the SPEC §4 short/flagged SL-donor set is a spec-level law question that changes trade outcomes: it MUST be adjudicated outcome-blind by the owner/controller and recorded as law, then gate 4 re-run on the adjudicated machinery with criterion (d) re-checked. This lane applied NO fix (forbidden logic divergence)."},
+    {"id": "D-V2-0", "type": "FACT", "severity": null, "finding": "The freeze change's intended effect reproduced exactly: eval surface 2,926→2,925 (F2 950→949, session 2015-07-02 out); trades dated 2015-07-02 removed: exactly 3 (one each FBES1-ALW-D0-S2, FBES1-PLA-D0-S2, FBES1-DOSE-D0-S2 — the only identities that traded it in v1); totals 13,188→13,185."},
+    {"id": "D-V2-2", "type": "FACT", "severity": null, "finding": "Signal path fully invariant across the repair: q80_threshold identical on all 13,185 common trades; entry_price/fill_bar_utc/signal_bar_utc/direction byte-identical; identity-level session counts exactly 2,925 (FOMCIN 104, FLAT 0). The repair touches nothing on the m/q80/entry path."},
+    {"id": "D-V2-3", "type": "FACT", "severity": null, "finding": "Warmup-defect regression clean on the v2 surface: zero warmup-position trades across all 24 identities (v1 finding D-F1 class did not recur); FOMCIN session set 104 with all trades strictly after fold warmup heads."},
+    {"id": "D-A4", "type": "IMPLEMENTATION-PIN", "severity": "ELEVATED-BY-D-V2-1", "finding": "v1 pin D-A4 (q80/SL windows chain-wide strict-past; SL donors exclude the 3-class short/flagged set) is now load-bearing on the v2 surface: its label-set definition is what makes the 35 relabels change donor membership. The pin's donor-set law needs explicit v2 adjudication alongside D-V2-1 (fold-fencing part unchanged and still corroborated by the exact eval-count reproduction)."},
+    {"id": "D-F5", "type": "FACT", "severity": "LOW", "finding": "Era validation (evaluation view, carried from the v1 machinery's run of this same build): panel last-print vs chain daily close column differ by exactly 1 tick on 51 sessions; panel is the consumed law per freeze pin. No effect on any criterion."}
+  ],
+  "known_limitations": [
+    "Gate-4 v2 verdict is FAIL on criterion (d) only: (a) enumeration, (b) cost recompute, (c) determinism, (e) warmup regression are PASS. The FAIL is a machinery-vs-freeze interaction finding (D-V2-1), not a PnL result; no fix was applied by lane discretion.",
+    "The v2 quarantined trade paths for the 18 TP/SL identities are therefore NOT the adjudicated v2-surface paths until D-V2-1 is resolved; they are the faithful exact-v1-machinery paths on the v2 surface.",
+    "Dry-run n-trades and exit counts are descriptive counts, not performance: no expectancy/PF/gate metric computed, none inferable.",
+    "Slippage/spread remain MODELED COST research assumptions; VERIFIED_VS_ACCOUNT remains NOT_RUN (unchanged). 2016 per-day holiday enumeration remains NOT_RUN per the repair's not_run_register (unchanged)."
+  ],
+  "incidents": [],
+  "tree_status": "end git status --porcelain: only untracked research/control/FUTURES-ES-PB1-V1/{dryrun_v2,dispatch}/** added by this lane; start status clean; no tracked file modified; HEAD unchanged 436d8cf82eb57a84b0aa4a82c17ee0fd2d0d72d9",
+  "workers": [],
+  "outputs": [
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2/DRYRUN_V2_REPORT.md", "sha256": "23d5c5f38a8c59744b9b1204f353cfc5dfcdab95bcd69d93fb16e7df58b74f84"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2/dryrun_v2_digest.json", "sha256": "0aed63a409423d4b72816f4046cd224b511af963426653dd30a78234feb4def2"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2/dryrun_builder_v2.py", "sha256": "5680df23fa15c19c61b6911215fbbda7a3ba15a608e162130d4a1516ec3e2832"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2/quarantine/trades_index.json", "sha256": "4030c2d973413c7893e65ef6fe65d606458ebbf4befb4c6b2597175cda32601f"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2/quarantine/summary.json", "sha256": "35f9194dbdf0d9b8157cae1ddd14cb81eeadf3d43a71776dbb269d8d9225dcc4"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2/quarantine_rerun/**", "sha256": "byte-identical to quarantine/** (determinism criterion c)"}
+  ],
+  "readiness_conclusion": "Gate 4 v2 re-run complete and QUARANTINED. Machinery reproduced on the repaired v2 surface: (a) 24/24 byte-exact enumeration vs selection_freeze_v2; (b) 20/20 sampled-cost recomputation matches Variant-A incl. NFA-window rows; (c) double pass byte-identical (trades-index sha db190987…); (e) zero warmup-defect trades. Surface: 2,925 eval sessions, F2 949, as frozen. Criterion (d) FAILS with CRITICAL finding D-V2-1: beyond the exactly-as-expected 2015-07-02 removal (3 trades), the repair's 35 class relabels silently change SL-donor-window membership, changing exit levels on 177 trades across 18 TP/SL identities. D-V2-1 BLOCKS any scored execution until owner adjudication of the v2 SL-donor law and a gate-4 re-run on the adjudicated machinery. No GO exists or is implied; zero denominator consumption.",
+  "recommended_next_action": "Controller: put D-V2-1 to the owner as a spec-law adjudication (does HOLIDAY_PDF_EQUITY_2011_2015 join the SPEC §4 short/flagged SL-donor exclusion set on the v2 surface, or does the v1 3-class filter stand verbatim?) — outcome-blind, recorded as law in the freeze lineage; then dispatch a gate-4 re-run on the adjudicated machinery with criterion (d) re-checked. Do NOT advance to typed owner GO on this re-run's outputs. This lane produced no GO and consumed no denominator."
+}

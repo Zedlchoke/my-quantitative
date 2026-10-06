@@ -57,10 +57,6 @@
 | `SKEPTIC_REVIEW.md` / `SKEPTIC_REVIEW_V2.md` / `SKEPTIC_REVIEW_V3.md` | independent verification records (v1 census; v2 revision; v3 invariants) |
 | `BAO_CAO_TIENG_VIET.md` | plain-Vietnamese report: what is known / unknown / next |
 | `HANDOFF.json` | structured handoff artifact (schema `zcode_orch_v3_handoff@1`) |
-| `ROUND4_ADDENDUM.md` | round-4 corrections disposition (C1–C5) + two new measured findings (docket-A swap-sign; J3 grid static degeneracy) |
-| `forensics/` | deliverables A+B: TRADE_FORENSICS_BRIEF, GUARD_AND_SESSION_FORENSICS, forensics_build.py + 4 machine-evidence JSONs (committed c081ac16) |
-| `tblabels/` | deliverable C: TB_LABELS_EXECUTION_PREP + refuse-to-run producer_skeleton.py |
-| `EXPLORATORY_REPLAY_LAUNCH_DRAFT.md` | deliverable D: small full-path LOL/LORO exploratory program (13 ids / 104 rows), STOP before registration/GO |
 | `analysis/` | `census_and_complementarity.py` + `census.json` + `complementarity.json`; `calendar_variants.py` + `calendar_variants.json` (anchor_status_v3: PENDING/ILLUSTRATIVE + GO-gate; validated against DAILY fold windows); `arm_manifest.json` + `verify_arm_manifest.py` (canonical budget, machine-verified) |
 
 ## Corrections this packet makes to the prior review record

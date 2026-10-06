@@ -1,0 +1,38 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "lane_id": "SYMBOL-DOSSIER-NG",
+  "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+  "status": "COMPLETE",
+  "summary": "NG dossier delivered per DOSSIER_TEMPLATE.md: mechanics (NYMEX Henry Hub, 10,000 MMBtu, tick 0.001=$10, IB-observed 18:00-17:00 ET session, RTH-only intraday capture), causal driver map (10 drivers, taxonomy-tagged), measured descriptive behavior from the legal raw corpus, event calendar with primary-source verification (EIA WNGSR Thursdays 10:30 a.m. ET + holiday exceptions; CFTC CoT Friday 3:30 p.m. ET as-of Tuesday; NOAA NOMADS vintage archive), 5 ranked hypotheses with PARAM-GAP register, missing-data table, and full framework-coverage answers. Analysis via analysis/NG_descriptives.py -> NG_descriptives.json. PREP only: 0 PnL/event-studies/sweeps/scored runs, 0 purchases, 0 credentials, no push/merge, no subagents, no lock needed (light compute).",
+  "outputs": [
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dossiers/NG_DOSSIER.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/NG_descriptives.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/NG_descriptives.json"
+  ],
+  "findings": [
+    "Structural: snapshot's deep daily history (2019-2024) belongs to then-deferred strip legs (deliveries 2025-10..2028-02); contemporaneous fronts are absent (expired-secdef wall). True front chain exists only 2025-08-01..2026-10-01 (n=281 daily returns). Deep-window stats are labeled curve-proxy, never tradable front.",
+    "Data-lane declared roll rule ('last session before day-1 of expiry month') is INFEASIBLE for NG as written: front's final trade is the 3rd-last business day of the PRIOR month, so the binding constraint is the contract's own last trade; implemented chain rolls at the outgoing final bar (13 matured rolls observed).",
+    "Liquidity migration is heterogeneous (13 matured pairs): 8/13 next-delivery volume crossover >=84 days before outgoing final (winter months dominate early), 5/13 no crossover within 90d, latest cycle (NGV26->NGX26) 6 days. Calendar-nearest != volume-max contract for NG; PIT selection rule materially matters.",
+    "Front-era descriptives (2025-08-01..2026-10-01): ann vol 49.2% (iid), 26.7% of days |r|>3%, 8.2% >5%, max |r| 18.1%; trailing-20d vol at snapshot 48.7%; winter |r| ~1.7x summer; lag-1 autocorr +0.10 (descriptive). Current sample is a HIGH-vol regime (2025-26 nearest-listed-chain vol 2-4x the 2020-24 level).",
+    "RTH intraday (H1 pooled 2025-07-21..2026-10-01, 291 days, 09:30-17:00 ET only): volume peaks in 10:00 (19.3%) and 14:00 (20.1%) hour buckets; Thursday 10:00 bucket holds 25.3% of day volume vs 16-18% other weekdays (contains EIA 10:30 release) - time-of-day descriptive, not an event study. M1: first-30-min 11.7% vs last-30-min 1.3% of RTH volume.",
+    "Curve: front-era m1-m2 median -0.112 USD/MMBtu, 75.2% days backwardated; strong monthly seasonality (Sep -0.44 contango vs Dec +0.55 backwardation, single cycle). Roll same-day calendar spread median +0.028 (30.8% negative).",
+    "Liquidity/costs: front median 32,981 lots/day; front bid/ask close proxy median 2 ticks=$20, p90 $30 - exactly reconciles with data-lane S6_FRONT_SPREADS. NG exchange fee NOT_FETCHED; slippage NOT_RUN_NO_DECLARED_VALUE; OI absent from raw (NOT_RUN).",
+    "Primary-source FACTs verified 2026-10-02: EIA WNGSR '10:30 a.m. eastern time on Thursdays' standard + holiday exceptions to Fri 10:30/Wed 12:00, stocks as-of Friday (ir.eia.gov/ngs/ngs.html + /ngs/schedule.html); CFTC CoT Friday 3:30 p.m. ET, data as-of Tuesday (cftc.gov); EIA Henry Hub delivery point + 2:30 p.m. NYMEX close wording (eia.gov/dnav/ng/ng_pri_fut_s1_d.htm); NOAA NOMADS GFS archive keyed by date + cycle-hour dirs (nomads.ncep.noaa.gov)."
+  ],
+  "defects": [
+    "CME-official contract text (exact Globex hours phrasing, price limits, settlement timing, holiday calendar) NOT_RUN_CME_BLOCKED_TRANSPORT: cmegroup.com times out/403 to non-browser clients (re-confirmed this session); web-reader fallback was rate-limited (HTTP 429) at every attempt. Dossier relies on IB S1 metadata (OBSERVED) + data-lane secondary spec tables, clearly labeled.",
+    "analysis/NG_descriptives.py is outside the manifest's literal allowed_paths glob ('analysis/{SYM}_*.json'): dispatch instruction says 'python script saved to analysis/' and sibling lanes (NQ/ES/CL) established the .py-in-analysis/ convention; flagged here for A7/owner adjudication.",
+    "First analysis pass had a conId-vs-delivery-month sorting bug (chain sections); fully fixed and recomputed; only the corrected NG_descriptives.json is referenced by the dossier."
+  ],
+  "open_questions": [
+    "WNGSR precise intraday survey cutoff (effective timestamp) unverified; revision policy of weekly estimates unverified - both needed before strict PIT event design (H1).",
+    "Weather model run->availability latency unmeasured; must be measured before H2 entry timing is specifiable.",
+    "Volume-vs-calendar roll rule choice for NG is unresolved by design (seasonal heterogeneity observed); A/B test deferred to a scored cycle.",
+    "Corpus-1200 idea reuse NOT_CHECKED (corpus not in this lane's read set)."
+  ],
+  "sha256_of_key_outputs": {
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dossiers/NG_DOSSIER.md": "88e226f85b489911cab788424f3b4a80b6fd05277c9f2da64904fea80db5bde1",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/NG_descriptives.py": "6cb109af85e282809e13ea96a45a5e8c6a604b0f1315f7b2934cb4e367653ecf",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/NG_descriptives.json": "933af9173510cd522a6fcdcaa9fb9a5db1df893a19b45c452b291a26262916a7"
+  }
+}

@@ -1,0 +1,1 @@
+/Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep/research/control/FUTURES-ES-PB1-V1/gate6/trial_ledger.py

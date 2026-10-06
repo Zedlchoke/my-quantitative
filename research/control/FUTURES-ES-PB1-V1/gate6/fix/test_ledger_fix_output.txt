@@ -1,0 +1,62 @@
+==============================================================================
+TRIAL-LEDGER FIX SUITE — SYNTHETIC ONLY (fabricated SYNTH-* ids, zero real PnL)
+module under test: gate6/trial_ledger.py @ HEAD 2291d562 + one-line _replay fix (L125)
+==============================================================================
+scratch: /var/folders/5x/qwclk7413dz3f32234k4619w0000gn/T/ledger_fix_synthetic_mkpjdm24
+
+[A] FAIL-record reproduction (FAIL_LEDGER_REPLAY.md steps 1-2)
+  PASS  A1 session-1 append + verify ok
+  PASS  A2 reopen + append does NOT raise (pre-fix: LedgerError hash-chain break at line 2)
+  PASS  A3 verify ok after reopen+append
+
+[B] multi-session reopen: 5 sessions over 24 synthetic ids (8/4/4/4/4)
+  PASS  B1.1 session 1: reopen+append 8 rows + verify ok — rows=8
+  PASS  B1.2 session 2: reopen+append 4 rows + verify ok — rows=12
+  PASS  B1.3 session 3: reopen+append 4 rows + verify ok — rows=16
+  PASS  B1.4 session 4: reopen+append 4 rows + verify ok — rows=20
+  PASS  B1.5 session 5: reopen+append 4 rows + verify ok — rows=24
+  PASS  B2 final verify ok (5 sessions end-to-end)
+  PASS  B3 total rows == 24
+  PASS  B4 observed == 24 and ledger complete — observed=24
+  PASS  B5 independent disk-bytes chain re-verification — 24 rows chain-verified from disk bytes
+
+[C] bytes-never-rewritten: session-1 bytes are an exact prefix
+  PASS  C1 line count only grows 3->5->7 — got (3, 5, 7)
+  PASS  C2 session-1 bytes are an EXACT PREFIX of final bytes
+  PASS  C3 file strictly grew (no byte anywhere rewritten)
+
+[D] tampering rejected (copies only; originals untouched)
+  PASS  D1 non-final-row tamper (row 2/4) rejected naming successor — hash-chain break at line 3 (predecessor tampered or link rewritten)
+  PASS  D2a final-row tamper: chain verify alone stays ok (per law: no successor link exists to break)
+  PASS  D2b final-row tamper DETECTED by summary().file_sha256 digest change (chain law as written in _replay docstring)
+  PASS  D3 truncated middle line rejected (fail-closed) — JSONDecodeError: Unterminated string starting at: line 1 column 99 (char 98)
+
+[E] interrupted-write law: torn final line (partial JSON, no newline)
+  PASS  E1 torn final line: reopen FAILS CLOSED (never silent) — JSONDecodeError
+  PASS  E2 torn final line rejected as malformed JSON (json.JSONDecodeError, NOT a LedgerError) — JSONDecodeError: Expecting ',' delimiter: line 1 column 41 (char 40)
+  PASS  E3 failed reopen does NOT rewrite/repair the file (append-only law holds even on the read path)
+  PASS  E4 verify() on torn file also fails closed — JSONDecodeError
+  FINDING [E-torn-write] The frozen law (trial_ledger.py docstrings/comments + gate6/synthetic_smoke_test.py) is SILENT on torn FINAL lines. Actual behavior (asserted above): fail-closed raw json.JSONDecodeError on replay (not a LedgerError with a ledger-specific message); file never rewritten/repair-truncated. Write side mitigates (single line + '\n' + fsync). Recorded, not invented; any LedgerError-mapping would be a law amendment.
+
+[F] duplicate identity / retry accounting
+  PASS  F1 PASS then PASS again refused (double-terminal) — slot SYNTH-10 already terminal (PASS) — append-only, no overwrite
+  PASS  F2 PASS then FAIL refused (append-only, no overwrite) — slot SYNTH-10 already terminal (PASS) — append-only, no overwrite
+  PASS  F3 slot-level REFUSED is TERMINAL: PASS after it refused (class law: one terminal row PASS/FAIL/REFUSED per identity) — slot SYNTH-11 already terminal (REFUSED) — append-only, no overwrite
+  PASS  F4 run-level record_refusal (identity_id=None) consumes NO slot and never counts observed — observed=1
+  PASS  F5 observed == PASS+FAIL rows exactly (2 PASS incl. published=False + 1 FAIL == 3; REFUSED/NOT_RUN excluded) — observed=3 disk=3
+  PASS  F6 publication failure still counts observed (published=False inside PASS counts)
+  PASS  F7 terminal law restored across reopen: PASS re-refused
+  PASS  F8 terminal law restored across reopen: FAIL re-refused
+
+[G] verify() on a fresh path (probed, not invented)
+  FAIL  G1 verify() before any append on a fresh path returns ok — raises FileNotFoundError
+  FINDING [G-fresh-path-verify] verify() on a never-written path raises FileNotFoundError instead of returning ok (summary() handles the same state gracefully with file_sha256=None). The frozen law is silent on this edge. NOT fixed — outside the authorized one-line mandate; recorded as a finding.
+  PASS  G2 fresh path: first append then verify ok
+  PASS  G3 empty-but-existing file: verify ok with 0 rows
+
+==============================================================================
+SUITE RESULT: 33 pass / 1 fail / 2 finding(s) — FAILURES PRESENT
+  FINDING [E-torn-write] The frozen law (trial_ledger.py docstrings/comments + gate6/synthetic_smoke_test.py) is SILENT on torn FINAL lines. Actual behavior (asserted above): fail-closed raw json.JSONDecodeError on replay (not a LedgerError with a ledger-specific message); file never rewritten/repair-truncated. Write side mitigates (single line + '\n' + fsync). Recorded, not invented; any LedgerError-mapping would be a law amendment.
+  FINDING [G-fresh-path-verify] verify() on a never-written path raises FileNotFoundError instead of returning ok (summary() handles the same state gracefully with file_sha256=None). The frozen law is silent on this edge. NOT fixed — outside the authorized one-line mandate; recorded as a finding.
+scratch ledgers (synthetic, disposable): /var/folders/5x/qwclk7413dz3f32234k4619w0000gn/T/ledger_fix_synthetic_mkpjdm24
+==============================================================================

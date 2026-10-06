@@ -1,0 +1,59 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "EXCLUDE-FREEZE",
+  "cycle_id": "FUTURES-ES-PB1-V1",
+  "role": "lane EXCLUDE-FREEZE — gate 2 of the two-key law: deterministic exclude list + selection freeze (0-cost, no PnL, no signal computation)",
+  "lane": "EXCLUDE-FREEZE",
+  "round": "FUTURES-ES-PB1-V1",
+  "generated_utc": "2026-10-04",
+  "dispatch_sha": "e7fc1d8db00e91af74683cee7e999620fa8ff361",
+  "actual_start_sha": "e7fc1d8db00e91af74683cee7e999620fa8ff361",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/FUTURES-ES-PB1-V1/freezegen/build_exclude_and_freeze.py",
+    "research/control/FUTURES-ES-PB1-V1/freezegen/exclude_list.json",
+    "research/control/FUTURES-ES-PB1-V1/freezegen/selection_freeze.json",
+    "research/control/FUTURES-ES-PB1-V1/freezegen/REPRODUCE.md",
+    "research/control/FUTURES-ES-PB1-V1/dispatch/handoff_EXCLUDE-FREEZE.json"
+  ],
+  "write_boundary_respected": "All writes confined to research/control/FUTURES-ES-PB1-V1/{freezegen,dispatch}/** in worktree /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep; everything else read-only (single-shot parquet read of the pinned ES panel included); no registry/ledger writes, no P3, no S1, no network (zero-fetch), no commit/stage/push (controller commits).",
+  "git_commands_run": [
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep rev-parse HEAD (once at start, same call carried git status --porcelain) -> e7fc1d8db00e91af74683cee7e999620fa8ff361 on branch prep/futures-es-reg-20261004; status clean at start",
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep status --porcelain (once at end; only untracked research/control/FUTURES-ES-PB1-V1/** expected)"
+  ],
+  "tests": [
+    {"command": "sha256 vs pins for 15 worktree inputs (SPEC, identity_table_24, freeze_pins_v2, pit_exclude_set, D3_RECORDED, ES_fomc_stats, r3_fomc, SYNTHESIS_K6, es_session_holiday, calendar_close_delta, es_o1m_roll_recheck, es_expiry_recheck, es_readiness, DATA_READINESS_ES, es_1m_outright.parquet) + cmecal_coverage", "exit_code": 0, "verdict": "PASS", "result": "16/16 measured shas MATCH pinned/expected values at HEAD e7fc1d8d; freeze_pins_v2 measured f7e1b580071c09526f13915523a287094ed56a530d2196adc4de0c85907b469a"},
+    {"command": "builder input-gate + rule assertions (25 embedded tests in exclude_list.json.tests)", "exit_code": 0, "verdict": "PASS", "result": "25/25 PASS: identity count 24 + reconciliation; pins 34; coverage rule rth_core_coverage<0.6 == excluded_dates (139==139, margin 0.5795/0.9641); panel recompute bars_rth_core_held 4204/4204 single-shot; recomputed coverage flag == K6 flag; FOMC 131/131 in-data rows all panel sessions; 2020-03-15 (132nd statement, Sunday) absent from rows and panel; 2011-2016 no committed per-day holiday enumeration (NOT_RUN gate); fold warmup size checks F1-F4"},
+    {"command": "sha round-trip selection_freeze.exclude_list.sha256 vs on-disk exclude_list.json", "exit_code": 0, "verdict": "PASS", "result": "bc8a41b673eccb998017e704a9865d139e67438fe984906f7f522782f93b438a == bc8a41b673eccb998017e704a9865d139e67438fe984906f7f522782f93b438a"},
+    {"command": "fold arithmetic: sum(n_sessions_in_window) + stub == 4204; eval totals", "exit_code": 0, "verdict": "PASS", "result": "665+1276+1035+1227=4203 + 1 (2026-10-01 stub, fold=null, COVERAGE_LT60) = 4204; eval 375+950+711+890 = 2926; in-panel exclusions 131+10+60+69+1008 = 1278 = 4204-2926"},
+    {"command": "regenerability: builder is pure function of committed artifacts, fixed generated_utc '2026-10-04', canonical JSON writer; aborts without writing on any input-sha or rule mismatch", "exit_code": 0, "verdict": "PASS", "result": "documented in freezegen/REPRODUCE.md with expected output shas bc8a41b6... (exclude_list) and e2b9934a... (selection_freeze)"}
+  ],
+  "authority_claims": [],
+  "findings": [
+    {"id": "X-A1", "type": "FACT", "severity": null, "finding": "M1 exclude list built: 1,305 chain-span entries (1,278 in-panel sessions + 19 non-session law dates) + 8 law dates outside the chain span listed separately. In-panel sessions per class: FOMC_STATEMENT_DAY 131, HOLIDAY_FACT_EARLYCLOSE 10, HOLIDAY_UNCERTAIN 60, COVERAGE_LT60 69, WARMUP 1008 (4x252)."},
+    {"id": "X-A2", "type": "FACT", "severity": null, "finding": "FOMC law located and consumed: research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_fomc_stats.json per_event_day_level carries exactly the 131 dated in-data day rows (n_statements_total=132, n_in_data=131); corroborated by audit/a7_es/r3_fomc.json (132 a_files / 92 timed / 40 untimed). The 132nd statement 2020-03-15 is a Sunday with no panel session — law note, not a session exclude."},
+    {"id": "X-A3", "type": "FACT", "severity": null, "finding": "Coverage law reproduced twice: (i) rule rth_core_coverage<0.6 on session_dispersion_es.json sessions equals its own excluded_dates (139) bit-exact with clean margin (max-below 0.5795, min-above 0.9641); (ii) independent single-shot recount from the pinned panel es_1m_outright.parquet (sha 7ae6de2d...) reproduces bars_rth_core_held 4204/4204 and the same flag set. 70 of the 139 are absorbed by higher-priority named-law classes (declared precedence)."},
+    {"id": "X-A4", "type": "FACT", "severity": null, "finding": "Holiday classes: HOLIDAY_FACT_EARLYCLOSE = proven-status days only (2010 official PDF per-day/per-time via es_session_holiday.json year_2010_product_level_reference; 2026 Q5-verified grid + 3 CAL-CLOSE FACT windows via calendar_close_delta.json). HOLIDAY_UNCERTAIN = 2017-2025 holiday_dates_for_legality with es_product_globex_times NOT_TRANSCRIBED, SPEC §2-E1 fail-closed."},
+    {"id": "X-A5", "type": "GAP", "severity": "MEDIUM", "finding": "NOT_RUN (fail-closed-pending): no committed machine-readable per-day holiday enumeration exists for 2011-2016 (es_session_holiday windows start 2017; cmecal_coverage 2011-2016 lists are window-level category labels only). A 2011-2016 holiday/early-close day with >=60% RTH-core coverage and no other named-law exclusion is NOT provably excluded by this freeze. Coverage<60% and FOMC still exclude those days where applicable; the include set is never silently narrowed, but the law-side enumeration gap must be closed (owner/next gate) before scored execution."},
+    {"id": "X-A6", "type": "FACT", "severity": null, "finding": "M2 selection freeze assembled: 24 identities embedded verbatim from freeze/identity_table_24.json (P-A 8 + P-B 8 + FOMC 4 + C1-C4 4); cost contract Variant A embedded from auth/D3_RECORDED.json interpretation.effective_cost_table_es (fees/side 2.25; all-in 21.00/33.50/46.00; RT 42/67/92; window exception 20.99/33.49/45.99; spread 6.25; slippage 12.50/25.00/37.50) with measured sha == v2 pin f54610eb...; 34-pin manifest referenced (sha f7e1b580... at e7fc1d8d); 7 PIT/exclude laws embedded with artifact shas; 8 carried NOT_RUN + 1 added; fold structure with warmup carve-outs (eval surface 2,926 sessions); exclude_list sha bc8a41b6... embedded; no self-hash."},
+    {"id": "X-A7", "type": "FACT", "severity": null, "finding": "E2 quarter-excludes = 0 (es_expiry_recheck 68/68 expiry union, 66/66 data-side). E3/E4/E5 are signal-time laws carried into scoring and explicitly NOT assumed empty at this 0-cost gate (recorded in exclude_list.law_notes)."}
+  ],
+  "known_limitations": [
+    "The 2011-2016 holiday enumeration gap (X-A5) is the one fail-closed-pending element; it is recorded in exclude_list.not_run_elements, selection_freeze.not_run_register.added_by_this_gate, and REPRODUCE.md.",
+    "HOLIDAY_UNCERTAIN dates listed from committed legality lists cover the holiday day itself; prose-named adjacent early-close days (e.g. day-after-Thanksgiving) in 2017-2025 are not separately enumerated at law level — where they occurred they carry <60% RTH-core coverage and are excluded via COVERAGE_LT60 (bar-measured), so the include set is unaffected; the law-level labels for those days would need the same 2011-2025 per-day transcription that is already NOT_TRANSCRIBED/not_obtained.",
+    "session_dispersion_es.json is committed in-git but is not one of the 34 v2 pins; the coverage class rests on it plus the pinned panel recompute (asserted equal), and its carrier SYNTHESIS_K6.md is pinned.",
+    "WARMUP entries extend the M1 reason_class enum per mission M1(d); the enum extension is declared inside exclude_list.json.",
+    "The registered plan file lives in the ROOT repo (read-only side); only its content sha256 is recorded, not a worktree pin."
+  ],
+  "incidents": [],
+  "tree_status": "end git status --porcelain: only untracked research/control/FUTURES-ES-PB1-V1/{freezegen,dispatch}/** added by this lane; start status was clean; no tracked file modified",
+  "workers": [],
+  "outputs": [
+    {"path": "research/control/FUTURES-ES-PB1-V1/freezegen/exclude_list.json", "sha256": "bc8a41b673eccb998017e704a9865d139e67438fe984906f7f522782f93b438a"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/freezegen/selection_freeze.json", "sha256": "e2b9934af01127ee698adda2fa0579d519f54881958e07463157728a8b96c1b7"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/freezegen/REPRODUCE.md", "sha256": "d0960020c60a0d797a3eea5ee8a7291afb86ae128ca7189c1acd54fa16dcb7ff"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/freezegen/build_exclude_and_freeze.py", "sha256": "9b94372d5bd297f5d50ac5107fcb1c34dcee9c090f4d10eaf38f97d387116e69"}
+  ],
+  "readiness_conclusion": "Gate 2 deliverables exist and are deterministic: exclude_list.json (1,305 chain-span entries; classes FOMC 131 / HOLIDAY_FACT 12 / HOLIDAY_UNCERTAIN 77 / COVERAGE_LT60 69 / WARMUP 1008 at chain-span entry level) and selection_freeze.json (24 identities + Variant A cost contract + fold structure + pins + 7 laws + 9 NOT_RUN entries + exclude sha). Reproduction: freezegen/REPRODUCE.md. OPEN ITEM for the next gate: the 2011-2016 per-day holiday enumeration is NOT_RUN fail-closed-pending (X-A5); prelaunch A7 (gate 3) must treat it as an unresolved finding until owner/closure, per fail-closed law.",
+  "recommended_next_action": "Controller: commit the lane outputs by pathspec at HEAD e7fc1d8d lineage; route selection_freeze.json + exclude_list.json to prelaunch A7 (gate 3) with X-A5 flagged; no typed GO consumed or produced by this lane (the canonical GO phrase remains owner-only, typed fresh at its own gate)."
+}

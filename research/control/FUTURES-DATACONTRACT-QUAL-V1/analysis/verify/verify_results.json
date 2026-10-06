@@ -1,0 +1,116 @@
+{
+  "schema": "dc_verify_results@1",
+  "task_id": "DC-VERIFY",
+  "cycle_id": "FUTURES-DATACONTRACT-QUAL-V1",
+  "run_date": "2026-10-03",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior/prep",
+  "branch": "prep/futures-behavior-10syms-20261002",
+  "head_sha": "b71c837d1f72d17b35475ab5e2795f6d113c1f9f",
+  "interpreter": "/Users/hoangminhlong/my-quantitative/.venv/bin/python",
+  "checks": [
+    {
+      "id": 1,
+      "name": "MOF tidy parquet",
+      "command": "python check1_2_mof_cftc.py (see VERIFICATION_LOG.md)",
+      "exit_code": 0,
+      "expected": {"rows": 386, "row_2022_10_24": {"value_yen_100m": 7296, "direction": "JPY_buying"}, "backup": {"name": "mof_intervention_tidy.parquet.bak_81rows_20261003", "rows": 81}},
+      "observed": {"rows": 386, "date_range": ["1991-05-13", "2026-05-06"], "row_2022_10_24": {"value_yen_100m": 7296.0, "direction": "JPY_buying", "pair_desc": "the US dollar (sold) the Japanese yen (bought)"}, "backup_exists": true, "backup_rows": 81},
+      "verdict": "FACT",
+      "notes": "Date column is observation_period (no '*date*' name); initial un-adapted probe exited 1 on IndexError, adapted probe clean."
+    },
+    {
+      "id": 2,
+      "name": "CFTC fixed tidy sha256 + backup",
+      "command": "python check1_2_mof_cftc.py (sha256 section)",
+      "exit_code": 0,
+      "expected": {"sha256_prefix": "f7a2719e745c2f6f", "backup_glob": "cftc_legacy_tidy.parquet.bak*"},
+      "observed": {"sha256": "f7a2719e745c2f6f89f927ddafcb96df75ed7a6e89e69b84447e2acde6362fca", "prefix_match": true, "current_rows": 15347, "backups": [{"name": "cftc_legacy_tidy.parquet.bak_prefix_mixed_20261003", "rows": 13369, "sha256_prefix16": "4f9cd78944ee79dc"}]},
+      "verdict": "FACT"
+    },
+    {
+      "id": 3,
+      "name": "NQ CoT ALT loader",
+      "command": "zsh check3_cot_alt.sh",
+      "exit_code": 0,
+      "expected": {"rows": 850, "window": ["2010-06-15", "2026-09-22"]},
+      "observed": {"rows": 850, "window": ["2010-06-15", "2026-09-22"], "date_column_used": "obs_date (derived from observation_period; report_date_as_yyyy_mm_dd absent)", "sibling_series_count": 4},
+      "verdict": "FACT",
+      "notes": "Loader NOT modified; column adaptation only."
+    },
+    {
+      "id": 4,
+      "name": "NQ 2020 alias (instrument_id 16908)",
+      "command": "python check4_nq_alias.py",
+      "exit_code": 0,
+      "expected": {"nqu8_nqm9_bars_2018_08_15_2020_05_31": 92075, "nqm0_bars_2020_06_01_06_19": 19406, "distinct_trading_dates_2020_03_23_05_29": 58, "total_volume_2020_03_23_05_29": 21800000},
+      "observed": {"total_rows_16908": 111481, "symbols": ["NQM0", "NQU8-NQM9"], "nqu8_nqm9_bars": 92075, "nqm0_bars": 19406, "bars_sum_consistency": "92075+19406 == 111481", "distinct_trading_dates": 58, "total_volume": 21824572},
+      "verdict": "FACT"
+    },
+    {
+      "id": 5,
+      "name": "6E venue-OI dedupe probe",
+      "command": "python check5_6e_oi.py",
+      "exit_code": 0,
+      "expected": {"deduped_sum": 671736, "raw_sum": "different (retracted artifact)"},
+      "observed": {"raw_rows": 18, "contracts": 9, "publication_batches": 2, "raw_sum": 1343543, "deduped_sum": 671736, "largest_component": {"contract": "6EM4", "quantity": 633694}, "update_action_all": 1, "stat_flags_all": 0, "latest_pub_ts": "2024-06-05 13:29:30.249713339"},
+      "verdict": "FACT",
+      "notes": "Schema: no venue column; stat_type==9 + ts_ref==2024-06-04; dedupe = latest ts_event per (raw_symbol, ref_date)."
+    },
+    {
+      "id": 6,
+      "name": "Vendor parquet inventory (metadata)",
+      "command": "python check6_inventory.py -> check6_inventory.json",
+      "exit_code": 0,
+      "expected": {"NQ_outright": 6690000, "NQ_parent": 7330000, "ES_quarterly_1m_after_filter": 7830000, "6E_outright": 3050000, "6B_outright": 2550000, "6A_raw": 2870000, "6J_outright": 2840000},
+      "observed": {
+        "NQ": {"dirs": {"AV1R-O1M-NQ-DELTA": 5760720, "AV1T-O1M-NQ": 1569600}, "parent_total": 7330320, "spread_rows": 641787, "outright_rows": 6688533},
+        "ES": {"dirs": {"AV1R-O1M-ES-DELTA": 7012852, "AV1T-O1M-ES": 1697668}, "parent_total": 8710520, "spread_rows": 884863, "outright_rows": 7825657},
+        "6E": {"dirs": {"AV1B-O1M-6E-BACKFILL2": 951387, "AV1R-O1M-6E-BACKFILL": 2081877, "AV1T-O1M-6E": 403469}, "parent_total": 3436733, "spread_rows": 375722, "outright_rows": 3061011},
+        "6B": {"dirs": {"AV1B-O1M-6B-BACKFILL2": 792552, "AV1R-O1M-6B-BACKFILL": 1750771, "AV1T-O1M-6B": 195349}, "parent_total": 2738672, "spread_rows": 189039, "outright_rows": 2549633},
+        "6A": {"dirs": {"AV1B-O1M-6A-BACKFILL2": 824446, "AV1R-O1M-6A-BACKFILL": 1842452, "AV1T-O1M-6A": 209370}, "parent_total": 2876268, "spread_rows": 171473, "outright_rows": 2704795},
+        "6J": {"dirs": {"AV1B-O1M-6J-BACKFILL2": 812558, "AV1R-O1M-6J-BACKFILL": 1935669, "AV1T-O1M-6J": 372014}, "parent_total": 3120241, "spread_rows": 275066, "outright_rows": 2845175}
+      },
+      "deltas_vs_ballpark": {"NQ_parent": "+320 (+0.004%)", "NQ_outright": "-147 (-0.002%)", "ES_outright": "-4343 (-0.06%)", "6E_outright": "+11011 (+0.36%)", "6B_outright": "-367 (-0.01%)", "6A_raw": "+6268 (+0.22%)", "6J_outright": "+5175 (+0.18%)"},
+      "verdict": "OBSERVED",
+      "notes": "Outright = raw_symbol contains no '-' (proxy). Metadata totals are raw per-file sums across AV1B/AV1R/AV1T dirs, not a deduplicated time-union."
+    },
+    {
+      "id": 7,
+      "name": "Data roots presence",
+      "command": "shell test -e + find | wc -l (see VERIFICATION_LOG.md)",
+      "exit_code": 0,
+      "expected": "physical av1trim exists; dotted alias uncertain; nonprice + IBKR raw exist",
+      "observed": {
+        "/Users/hoangminhlong/my-quantitative-data/futures-databento-av1trim": "EXISTS (76 parquet files)",
+        "/Users/hoangminhlong/.my-quantitative-data/futures-databento-av1trim": "MISSING",
+        "/Users/hoangminhlong/.my-quantitative-data/futures-nonprice-10syms": "EXISTS (18 normalized files)",
+        "/Users/hoangminhlong/.my-quantitative-data/futures-10syms-v1/raw": "EXISTS (1160 files)"
+      },
+      "verdict": "FACT",
+      "notes": "Surprise: av1trim vendor root exists ONLY on the non-dotted physical path; no databento entry under the dotted root at all."
+    },
+    {
+      "id": 8,
+      "name": "IBKR legacy front-file freshness",
+      "command": "inline heredoc -> check8_ibkr_freshness.json",
+      "exit_code": 0,
+      "expected": "record max mtime per family (evidence for time-critical serial re-fetch blocker)",
+      "observed": {
+        "NQ": {"n_files": 65, "max_mtime": "2026-10-02T09:37:14", "newest_file": "NQ_NQZ7_586139864_ASK_1day_1Y.json"},
+        "ES": {"n_files": 65, "max_mtime": "2026-10-02T09:40:27", "newest_file": "ES_ESZ7_586139767_ASK_1day_1Y.json"},
+        "6E": {"n_files": 115, "max_mtime": "2026-10-02T10:24:23", "newest_file": "6E_6EF8_881167116_ASK_1day_1Y.json"},
+        "6B": {"n_files": 115, "max_mtime": "2026-10-02T10:39:03", "newest_file": "6B_6BF8_881167056_ASK_1day_1Y.json"},
+        "6A": {"n_files": 115, "max_mtime": "2026-10-02T10:46:20", "newest_file": "6A_6AF8_881166975_ASK_1day_1Y.json"},
+        "6J": {"n_files": 115, "max_mtime": "2026-10-02T10:31:40", "newest_file": "6J_6JF8_881167190_ASK_1day_1Y.json"}
+      },
+      "verdict": "OBSERVED",
+      "notes": "Serial fetch span 09:37->10:46 (~69 min) on 2026-10-02; all families already >=1 day stale at verification time (advisory reading)."
+    }
+  ],
+  "summary": {"total": 8, "fact": 6, "observed": 2, "not_run": 0},
+  "incidents": [
+    "Check 1 initial probe exited 1 (IndexError: date-column name assumption) before adaptation to observation_period; adapted re-run exit 0.",
+    "Check 3 column-name deviation (obs_date vs report_date_as_yyyy_mm_dd) as anticipated by dispatch; loader untouched.",
+    "Check 5 statistics schema has no venue column; reported as found, dedupe per spec."
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "Y2016-AUDIT",
+  "cycle_id": "FUTURES-ES-PB1-V1",
+  "role": "lane Y2016-AUDIT — repairing the 2016 holiday fail-closed basis after the owner-side audit rejected 'full 390 bars' as sufficient evidence of no-early-close (2015-07-02 falsified that inference). Missions: M1 search the whole committed corpus for 2016 day-level CME equity schedule evidence; M2 derive 2016 candidate windows from the committed 2011-2015 PDF patterns; M3 build the fail-closed v3 exclusion addition (2016 + any other year's remaining unproven candidates); M4 re-measure the eval surface; M5 honest per-epoch verdicts. Evidence-driven, outcome-blind, fail-closed.",
+  "lane": "Y2016-AUDIT",
+  "round": "FUTURES-ES-PB1-V1",
+  "generated_utc": "2026-10-05",
+  "dispatch_sha": "456dac6bc75f84ea860a977068568f9688053743",
+  "actual_start_sha": "456dac6bc75f84ea860a977068568f9688053743",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/FUTURES-ES-PB1-V1/y2016/sweep_candidates_v3.py",
+    "research/control/FUTURES-ES-PB1-V1/y2016/sweep_candidates_v3.json",
+    "research/control/FUTURES-ES-PB1-V1/y2016/exclude_2016_failclosed.json",
+    "research/control/FUTURES-ES-PB1-V1/y2016/eval_v3.json",
+    "research/control/FUTURES-ES-PB1-V1/y2016/EVAL_V3.md",
+    "research/control/FUTURES-ES-PB1-V1/dispatch/handoff_Y2016-AUDIT.json"
+  ],
+  "write_boundary_respected": "All writes confined to research/control/FUTURES-ES-PB1-V1/y2016/** + research/control/FUTURES-ES-PB1-V1/dispatch/handoff_Y2016-AUDIT.json in worktree /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep. holiday/, repair/, freezegen/, freezegen v1 artifacts, all evidence corpora read-only. No commit/stage/push. Zero network. No PnL or quarantined-numeric reads. Python = root .venv only. No panel parquet read (per-session bars from the committed session universe JSON).",
+  "git_commands_run": [
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep rev-parse HEAD (once, bare, at lane start) -> 456dac6bc75f84ea860a977068568f9688053743 (== dispatch SHA)",
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep status --porcelain (start: EMPTY of tracked changes; end re-check recorded in tree_status)"
+  ],
+  "tests": [
+    {
+      "command": "researchctl.py locks inspect before panel-family reads",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "result": "FREE_PROVEN (no registry row, flock free); no foreign worker touched"
+    },
+    {
+      "command": "M1 corpus sweep: find across the whole repo for 2016-named files; enumeration + grep of every calendar round dir (cme_cal_gap/{equity,fx_comm}, DEEPFOUR cme_cal/{comm,nq_es,fx}, cal_eb, cal_janq, cal_close, DATACONTRACT d3_cmecalendar, SIX-READINESS es+fx_eb, 10SYMS root corpus FUTURES-BEHAVIOR-10SYMS-PREP-20261002); direct pypdf extraction of the committed 2010 official PDF equity sections (globex_2010_holiday.pdf sha 808ced0d…, pages 1/18/21/29/33/36)",
+      "exit_code": 0,
+      "verdict": "FOUND (2010) / EVIDENCE_OF_ABSENCE (2016)",
+      "result": "ZERO 2016 day-level Globex-equity schedule artifacts exist in the committed corpus. All 2016 hits are floor-tier, ClearPort-tier, closure-naming or window-level (archived 2016 page transcriptions in cmecal_coverage.json + ES_CALENDAR_EVIDENCE.md; readiness windows start 2017; cal_close FACT cells are 2026-only; per-holiday PDF family ends 2010). M1 EXTRA HIT: the 2010 official PDF equity sections yield day-level adjudications including 2010-11-26 EC-1215 (a date omitted from the v1 FACT legality list) and REGULAR for 2010-07-02/09-03/11-24/12-23/12-31."
+    },
+    {
+      "command": "M2/M3 sweep_candidates_v3.py: deterministic candidate-window derivation for 2010-2026 from the 56 committed PDF candidate dates + 2010 PDF + owner directive (day-before-July-4 Sun/Mon), joined to the session universe (4204 sessions, bars+coverage) and exclude_list_v2; full rows in y2016/sweep_candidates_v3.json (202 candidates)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "result": "v2 eval arithmetic reproduced EXACTLY (base excl 38/75/72/85; eval 375/949/711/890; bounds identical to repair/FREEZE_DIFF.md section 6) before applying v3. Corpus-wide unproven full-bar candidates found: 2016-07-01, 2020-07-02, 2021-07-02, 2021-12-31 (each 390 bars, zero day-level proof); 2022-07-01 unproven but WARMUP-closed; 2026-07-02 PROVEN regular at product-level FACT tier and kept."
+    },
+    {
+      "command": "Non-candidate adjacent-position verification (Fri-before-MLK/Presidents/Memorial/Labor, Wed-before-Thanksgiving, Mon-after-Good-Friday, Dec 23, Dec 30, Columbus, Veterans — 2011-2015 plus all 2016 instances and Columbus/Veterans through 2025)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "result": "All are 390-bar sessions with no holiday exclusion class in every corpus year (WARMUP labels only where inside fold-head warmup); day-level PDF REGULAR adjudications exist for the same weekday configurations (5/5 families; exact-config 1/1 analogs 2011-12-23 and 2011-12-30); 2016 floor table explicitly omits equities from its Jul 1 / Dec 23 / Dec 30 early-close lists. They stay eval-eligible: no holiday question arises for them under the 2011-15 pattern basis."
+    },
+    {
+      "command": "M4 eval re-measure (y2016/eval_v3.json): union(v2 classes, v3 class) per fold",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "result": "2925 -> 2921 (F1 375->375; F2 949->948, removed 2016-07-01; F3 711->708, removed 2020-07-02/2021-07-02/2021-12-31, eval-last 2021-12-31->2021-12-30; F4 890->890). Identity table 24 unchanged; budgets 24; DONOR_LAW_CARRYOVER honored (the 4 new exclusions were v1 donor-admitted and REMAIN donor-admitted; eval membership only)."
+    }
+  ],
+  "authority_claims": [
+    "NO 2016 day-level CME equity (Globex session-hours) artifact exists in the committed corpus — the 2016 enumeration remains NOT_RUN at the evidence level (NOT_RUN_OBTAIN; resolving it needs owner-authorized retrieval, route: web.archive CDX of the holiday-calendar files family, 2016 vintages). What this lane closes is the EXPOSURE via fail-closed exclusion.",
+    "The audit-predicted exposure shape is REAL and not unique to 2016: four COMPLETE 390-bar sessions sit on unproven candidate dates corpus-wide — 2016-07-01, 2020-07-02, 2021-07-02, 2021-12-31 — all now excluded fail-closed (class HOLIDAY_2016_UNPROVEN_FAILCLOSED).",
+    "Candidacy was never converted into 'proven regular': the only proven-regular keeps rest on committed day-level artifacts naming that exact date (2010-07-02 and 2010-12-31 by PDF; 2026-07-02 by product-level FACT cell ES id=133: evd 16:00-closed/17:00-open normal template vs 2026-07-03 evd 12:00-closed).",
+    "This artifact types NO GO, endorses nothing, computes no PnL/signal quantities, and modifies no v1/v2 gate artifact (append-only addition; consumers apply v2 exclusions UNION this artifact's exclusions)."
+  ],
+  "findings": [
+    {
+      "id": "Y2016-AUDIT-F1",
+      "severity": "HIGH (closed by this lane's fail-closed addition)",
+      "finding": "2016-07-01 (held ESU6, 390 bars, coverage 1.0) was an eval-eligible F2 survivor on the July-4 Monday-config day-before — the exact evidence-vs-schedule ambiguity shape the owner audit predicted for 2016. Excluded; F2 eval 949->948.",
+      "evidence": "owner directive candidate rule; 2011 analog 2011-07-01 PDF-REGULAR binds 2011 only; 2016 floor table omits equities from the Jul 1 early-close list (floor-tier silence, not Globex equity proof); zero 2016 day-level artifacts (M1)",
+      "disposition": "EXCLUDED_FAILCLOSED (exclude_2016_failclosed.json entry 4/11)"
+    },
+    {
+      "id": "Y2016-AUDIT-F2",
+      "severity": "HIGH (closed by this lane)",
+      "finding": "The same defect exists outside 2016: 2020-07-02, 2021-07-02, 2021-12-31 (each 390 bars, F3 eval survivors) and 2022-07-01 (unproven, warmup-closed). All three eval-relevant ones excluded; F3 eval 711->708, eval-last moved to 2021-12-30.",
+      "evidence": "sweep_candidates_v3.json rows; 2015 Sat-config Thu-EC precedent vs 2020 floor silence (2020-07-02); owner directive Sun-config (2021-07-02); 2022-page floor-generic EC naming + 2010-only analog proof (2021-12-31)",
+      "disposition": "EXCLUDED_FAILCLOSED (entries 9-11); 2022-07-01 recorded unproven_closed_by_warmup"
+    },
+    {
+      "id": "Y2016-AUDIT-F3",
+      "severity": "MEDIUM (register gap, exposure already closed)",
+      "finding": "2010-11-26 (Black Friday, EC 1215 CT equity per committed 2010 PDF p29) was omitted from the v1 HOLIDAY_FACT_EARLYCLOSE legality list (readiness prose named it; the date list did not). Its panel session is truncated and was COVERAGE_LT60-excluded since v1, so eval exposure was never live; the register is corrected in exclude_2016_failclosed.json day_level_proof_registers.",
+      "evidence": "globex_2010_holiday.pdf sha 808ced0d… p29 'Friday, Nov 26 1215 CT - Early CME Globex close' (equity section); session universe bars(2010-11-26) < 234 with COVERAGE_LT60 in v1/v2",
+      "disposition": "REGISTER_CORRECTED; no set change needed"
+    },
+    {
+      "id": "Y2016-AUDIT-F4",
+      "severity": "NOTE",
+      "finding": "2026-07-02 initially falls in the July-4 Sat-config candidate window but is adjudicated REGULAR by the corpus's only product-level day-level evidence (cal_close FACT cell, ES id=133, capture svc_20260702_20260129012310.json, cross-round sha EXACT): normal daily template events on Jul 2 vs the 12:00-closed deviation on Jul 3. Kept eval-eligible with evidence; NOT excluded.",
+      "evidence": "calendar_close_delta.json cells_obtained 'ES_2026_holiday_deviation_FACT_upgrade x3 windows (July-4 2026-07-02)'; panel 390 bars agrees",
+      "disposition": "KEPT_PROVEN (proof tier FACT2026)"
+    }
+  ],
+  "known_limitations": [
+    "The candidate enumeration is complete only relative to COMMITTED artifacts and the documented family rules; a holiday named by no committed artifact on a position outside the derived windows would be invisible (structurally unavoidable without the 2016-2025 per-holiday day-level corpus, which is NOT_RUN_OBTAIN).",
+    "The 2016 (and 2017-2025) excluded candidates remain UNADJUDICATED, not proven truncated: the class records 'unproven, excluded fail-closed', and any owner-authorized retrieval of per-holiday schedules can still upgrade or confirm each date individually.",
+    "The 2016 floor-table and readiness transcriptions are secondary-tier (transcribed notes of archived pages); they were used only for closure-naming, floor-tier corroboration and non-candidacy clearance, never as Globex-equity session-hours proof.",
+    "Fold structure, warmup windows, donor set (v1, 139 sessions), identity table (24) and budgets (24) are frozen inputs this lane consumed, not re-derived."
+  ],
+  "incidents": [],
+  "tree_status": "end git status --porcelain: THIS lane's writes are exactly research/control/FUTURES-ES-PB1-V1/y2016/ (5 files, untracked-new) and this handoff; additionally present and NOT touched by this lane (foreign concurrent lane DA45-GATE6): research/control/FUTURES-ES-PB1-V1/dispatch/handoff_DA45-GATE6.json, research/control/FUTURES-ES-PB1-V1/gate6/, research/control/FUTURES-ES-PB1-V1/pins2/. No tracked file modified; no commit/stage/push.",
+  "workers": [],
+  "outputs": [
+    {"path": "research/control/FUTURES-ES-PB1-V1/y2016/exclude_2016_failclosed.json", "sha256": "1b846b1714dd1c8fc7769f1a811c215e009ddd57e2d85ddf0e8f88e0295ca43e", "what": "AUTHORITY: v3 fail-closed exclusion addition (class HOLIDAY_2016_UNPROVEN_FAILCLOSED; 11 entries = 4 new set members + 7 2016 relabels; candidate-window rule law; proof registers; per-epoch verdicts)"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/y2016/eval_v3.json", "sha256": "fad3c35aab121ca7b37199cb1de0d8dfb8d96d6a1301b97bd46e0940e8c0dd20", "what": "machine eval re-measure 2925->2921 per fold with v2-reproduction proof and every added exclusion"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/y2016/EVAL_V3.md", "sha256": "6342b65f79493ae9083fb465e1d81fdc89e5e79b23f06bc1760585107a457ccf", "what": "human projection of M4/M5 (JSON files are authority)"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/y2016/sweep_candidates_v3.json", "sha256": "2953c5cafa4f8be838109c4131606a35891caa263fb2cf8d59eee6797ebd0de6", "what": "machine corpus-wide candidate sweep (202 rows 2010-2026, per-row proof tier + action + evidence notes)"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/y2016/sweep_candidates_v3.py", "sha256": "b0ea7da82cfcd903b21c3ee038e88711b106f49a9d12107d63a955ef1e3b9a15", "what": "deterministic generator of all of the above (re-run mandatory after any panel/universe/freeze change)"}
+  ],
+  "readiness_conclusion": "VERDICT: 2016 exposure CLOSED via fail-closed exclusion; 2016 evidence-level enumeration remains NOT_RUN. The v2 '2016 FAIL_CLOSED_BASIS_PROVEN' claim is superseded: candidacy is now pattern-derived and corpus-wide, every unproven candidate session (2016 and other years) is excluded under HOLIDAY_2016_UNPROVEN_FAILCLOSED, and the eval surface is 2925 -> 2921 with identity table (24), budgets (24) and the v1 donor set (139) untouched. 2011-2015 PASS stands unchanged; 2010 is now PDF-covered with its register gap corrected; 2026-07-02 is the only in-window date kept on day-level product-level proof. No pattern-candidacy was converted into 'proven regular' anywhere.",
+  "recommended_next_action": "Gate-6 consumer (or owner) must bind the v3 addition: apply exclude_list_v2.json UNION y2016/exclude_2016_failclosed.json as the exclusion set of record and re-run any downstream gate that consumed the 2925 surface (the freeze/eval delta is exactly the 4 removed sessions). Separately, owner may authorize NOT_RUN_OBTAIN retrieval of 2016-2025 per-holiday schedule artifacts (web.archive CDX of the holiday-calendar files family at year vintages) to upgrade the excluded candidates from 'unproven, excluded' to individually adjudicated — zero-fetch law was honored in this lane."
+}

@@ -1,0 +1,91 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "VERIFY",
+  "cycle_id": "FUTURES-ES-PB1-REGPREP-20261004",
+  "role": "lane VERIFY — fresh-context independent verifier of the FINAL round version (D3 record + freeze audit + registration packet); audit only, repair nothing",
+  "lane": "VERIFY",
+  "round": "FUTURES-ES-PB1-REGPREP-20261004",
+  "generated_utc": "2026-10-04",
+  "dispatch_sha": "ffed828f73fa19fa0ff4aee3ac1b441909a43940",
+  "actual_start_sha": "ffed828f73fa19fa0ff4aee3ac1b441909a43940",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/FUTURES-ES-PB1-REGPREP-20261004/verify/VERIFY_REPORT.md",
+    "research/control/FUTURES-ES-PB1-REGPREP-20261004/verify/verify_findings.json",
+    "research/control/FUTURES-ES-PB1-REGPREP-20261004/dispatch/handoff_VERIFY.json"
+  ],
+  "write_boundary_respected": "All writes confined to research/control/FUTURES-ES-PB1-REGPREP-20261004/verify/** + dispatch/handoff_VERIFY.json. No repair, no edit to any audited file, no staging, no commit, no push, no registry/ledger write, no network, no PnL, no scored run, no S1/order claims. Root registry read-only (grep only).",
+  "git_commands_run": [
+    "git -C <worktree> rev-parse HEAD (once at start) -> ffed828f73fa19fa0ff4aee3ac1b441909a43940 (== round base; whole round untracked)",
+    "git -C <worktree> status --porcelain (start) -> only untracked research/control/FUTURES-ES-PB1-REGPREP-20261004/",
+    "git -C <worktree> status --porcelain (end) -> start entry + verify/** and handoff_VERIFY.json additions inside the round dir only",
+    "git -C <worktree> diff --stat ffed828f <HEAD> (end) -> EMPTY (HEAD == ffed828f; FUTURES-ES-V1-PACKET and all committed files byte-untouched)"
+  ],
+  "tests": [
+    {
+      "command": "shasum -a 256 over 6 of the 34 freeze pins (SPEC_PB1_ES.md, D3_RECORDED.json, COST_FREEZE_ERRATUM.md, A7_FEE_REAUDIT.md, DATA_READINESS_ES.md, ES_cache/es_1m_outright.parquet) vs freeze/freeze_pins.json",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "n/a (verifier lane records measured digests inline in verify_findings.json)",
+      "result": "6/6 MATCH; SPEC_PB1_ES.md measured 445f749906481f33080185cab1628e6365ef2f6db3b9c4f9f0847646eb6b7073 == expected pin"
+    },
+    {
+      "command": "python3: parse identity_table_24.json; count identities/uniques/composition/provisional markers; spot-check C1/C2/C4 rows + P-A/P-B/FOMC patterns vs SPEC_PB1_ES §6 read directly",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "n/a",
+      "result": "24 identities, 24 unique, P-A 8 + P-B 8 + FOMC 4 + C1-C4 4, 0 provisional markers; spot-checked rows verbatim-match SPEC §6 (header 'A-r4 đúng 24'); NOTE: source_line_ref pointers drift +1 after L121 (content verbatim correct)"
+    },
+    {
+      "command": "independent re-derivation of cost cells from components + direct read of COST_FREEZE_ERRATUM §2 and A7_FEE_REAUDIT §8 Variant-A columns vs cost_freeze_check.json 18/18 claim",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "n/a",
+      "result": "All 11 arithmetic strings recompute exactly (2.25; 21.00/33.50/46.00; 42/67/92; 20.99/33.49/45.99); both source tables agree cell-for-cell; cost_freeze_check documents 18/18 matched, 0 mismatched — confirmed"
+    },
+    {
+      "command": "grep -nE \"1\\\\.386|21\\\\.006|33\\\\.506|46\\\\.006\" round-wide + worktree-wide; grep -iE 'or default|default if silent|mặc định' round-wide; per-file grep -c ground truth for the audit's hit counts",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "n/a",
+      "result": "Round: 3 files hit, all law/classification/program lines, 0 use-as-value, 0 silent-default hits. Ground truth per-file lines = 27 (D3 1, ERRATUM 11, A7 10, SHORTLIST 5) vs cost_freeze_check total_hits=17 / classification sum 26 / handoff claim 26 — MINOR count bookkeeping finding F-V2; 0-use-as-value conclusion unaffected"
+    },
+    {
+      "command": "python3: parse all 6 round JSONs; validate handoff_FREEZE-AUDIT schema/dispatch_sha/actual_start_sha/commit_sha/tests; shasum the 5 declared outputs",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "n/a",
+      "result": "All parse; schema zcode_orch_v3_handoff@1; dispatch_sha == actual_start_sha == ffed828f…3940 bare 40-hex; commit_sha null; tests include SPEC-pin MATCH + cost-cell counts; declared outputs 5/5 sha-match disk"
+    },
+    {
+      "command": "grep root plans/CYCLE_REGISTRY.json for FUTURES-ES-PB1 / NBA-WINPROB-PREP-V1 / FUTURES-ES-V1 (read-only); round-wide language scan for GO-typed/scored/order claims",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "n/a",
+      "result": "FUTURES-ES-PB1 ABSENT from registry; NBA-WINPROB-PREP-V1 present (owner's only new row); no GO typed, no scored run, no S1/order claims round-wide; non-action proven (status + empty diff)"
+    }
+  ],
+  "authority_claims": [],
+  "findings": [
+    {"id": "F-V1", "type": "FACT", "severity": "MINOR", "finding": "D3_RECORDED sufficiency_conclusion blanket-labels e.1-e.3 'FX/NYMEX-scoped'; per A7_EXECUTION_PACKET §4, e.2 is the account-geography basis of the IB-JP paren (neither FX nor NYMEX). D3's own authority_scope and the packet §4 ledger are precise; non-blocking-for-ES independently supported (COST_FREEZE_ERRATUM §3.3; IBKR offset 0.011 unused under Variant A). Wording imprecision only."},
+    {"id": "F-V2", "type": "FACT", "severity": "MINOR", "finding": "cost_freeze_check.json forbidden_values_scan internally inconsistent counts: total_hits=17, classification sum 26 (ERRATUM 'count: 10' vs 11 enumerated lines), handoff claim 26; ground truth 27 lines across the 4 files. All 27 verified as erratum-self-reference / classification / disclosed false positive — 0-use-as-value conclusion unaffected."},
+    {"id": "F-V3", "type": "FACT", "severity": "NOTE", "finding": "identity_table_24.json source_line_ref §6 pointers drift +1 after L121 (cited 123/127/128-131/134-135 vs actual 122/126/127-130/133-134); quoted content verbatim correct; PIT file line refs verified accurate."},
+    {"id": "F-V4", "type": "FACT", "severity": "NOTE", "finding": "FREEZE-AUDIT handoff log_digest fields reuse output-file shas (test1 = freeze_pins.json sha; tests2-3 = cost_freeze_check.json sha) instead of distinct test-log digests; real hashes, labeling imprecision only."},
+    {"id": "F-V5", "type": "FACT", "severity": "NOTE", "finding": "Positive: erratum §2 PROPOSED→effective transition correctly carried by the D3=A record with zero file edits (empty diff, clean status)."}
+  ],
+  "known_limitations": [
+    "Verifier spot-checked 6 of 34 pins, 3 identity rows, and 4 explicitly re-derived cost cells (plus all 11 arithmetic strings); the remaining pins/cells were not individually re-hashed in this lane (the FREEZE-AUDIT lane claims 34/34 and 18/18; the spot-reproduction found zero drift).",
+    "Root registry inspected by grep only (read-only); no cycle doctor / lock state re-measurement was in scope.",
+    "F-V1/F-V2/F-V3 sit inside this round's own files; per audit-only mandate they were NOT repaired."
+  ],
+  "incidents": [],
+  "tree_status": "clean-of-changes outside the write boundary; git diff --stat ffed828f <HEAD> empty at end; nothing staged; commit_sha null (files only)",
+  "workers": [],
+  "outputs": [
+    {"path": "research/control/FUTURES-ES-PB1-REGPREP-20261004/verify/VERIFY_REPORT.md", "sha256": "511446018981ba4ec50e1991744c1c403ba75f06551cc9dbd3faa1160765c3c5"},
+    {"path": "research/control/FUTURES-ES-PB1-REGPREP-20261004/verify/verify_findings.json", "sha256": "d21eb7b35fd3fdbd1fc4fa146a207062fb7ba8e6a33bb97f3a4bc16c70f15fd3"},
+    {"path": "research/control/FUTURES-ES-PB1-REGPREP-20261004/dispatch/handoff_VERIFY.json", "sha256": "self-referential (this file); hash taken by any downstream validator"}
+  ],
+  "readiness_conclusion": "Round verdict PASS (0 CRITICAL, 0 MAJOR, 2 MINOR, 3 NOTE). V1 D3 record faithful (quote byte-exact everywhere; cost table recomputes; NOT_RUN labels and non-lift clauses intact; e.1-e.3 quoted verbatim from A7_EXECUTION_PACKET §4). V2 zero stale use-as-value, zero silent-default language. V3 freeze audit reproduces (6/6 pins, 24 identities 8+8+4+4 verbatim vs SPEC §6, 18/18 cost cells confirmed). V4 packet law-conformant (NOT REGISTERED; CYCLE_LAUNCH_DRAFT §6 gate order verbatim; F-A5 canonical GO rule present, PLAN untouched; minimal action = registration only; DRYRUN quarantine + counters untouched stated). V5 non-action proven (diff empty; registry ABSENT for FUTURES-ES-PB1; no GO/scored/order language). V6 FREEZE-AUDIT handoff valid. Round stands GATED_ON_REGISTRATION: the single remaining owner action is registering FUTURES-ES-PB1-V1 at ROOT per REGISTRATION_PACKET §1; findings F-V1/F-V2/F-V3 are documentation-hygiene items in this round's own files and do not block that gate.",
+  "recommended_next_action": "Owner: register FUTURES-ES-PB1-V1 at ROOT per REGISTRATION_PACKET §1 (or explicitly delegate a root session). At registration, fix the F-V2 hit-count bookkeeping and F-V3 line refs opportunistically in this round's own files if touched again; carry F-V1's precise e.2 characterization (geography-scoped, moot under Variant A) into any future sufficiency text. Nothing else is missing on the ES path."
+}

@@ -1,0 +1,64 @@
+{
+  "task_id": "FUTURES-DATACONTRACT-QUAL-V1",
+  "dispatched_by": "A1 Lead (owner instruction 2026-10-03, re-ordered: STEP1 data contract clean -> STEP2 daytrading playbooks -> STEP3 cycle registration only if gate complete)",
+  "parent_task": "FUTURES-DEEPRESEARCH-V2-20261003 (all evidence inherited read-only)",
+  "classification": "DATA-CONTRACT QUALIFICATION + PLAYBOOK SPECIFICATION - prep-class, NOT a scored cycle. No registration/GO/S1/orders/PnL. If the data gate is incomplete, terminal state = qualification + playbook draft BLOCKED/NOT_RUN, never READY.",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior/prep",
+  "branch": "prep/futures-behavior-10syms-20261002",
+  "base_head": "b71c837d1f72d17b35475ab5e2795f6d113c1f9f",
+  "owner_directive_verbatim_summary": "BƯỚC 1 chốt data contract sạch trước (contract mapping theo thời gian; historical event release timestamps + available_at/PIT; session/DST/holiday; roll strict-past; raw-vs-normalized reconciliation; exclusions; A7). BƯỚC 2 đặc tả 2-3 daytrading playbook (entry, đứng ngoài, TP, SL, time exit, roll, sizing, phí/spread/slippage, kill rule; chưa dùng PnL để chọn). Chỉ SAU 1-2 mới lập/đăng ký cycle. Thiếu data gate -> dừng ở qualification + playbook draft BLOCKED/NOT_RUN. 6F = NOT_RUN_DATA_ABSENT. Không scored/S1/order.",
+  "lanes": {
+    "DC-VERIFY": {
+      "mission": "Re-run cheap on-disk raw-vs-normalized reconciliation checks TODAY (MOF tidy 386 rows; cftc fixed-tidy sha f7a2719e...; NQ ALT CoT loader 850 rows; NQ 2020 alias counts; 6E venue-OI dedupe probe week 2024-06-04; vendor parquet presence+rows spot; data roots present; IBKR legacy root present)",
+      "owns": ["FUTURES-DATACONTRACT-QUAL-V1/analysis/verify/**", "FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_DC-VERIFY.json"]
+    },
+    "NQ-2020-REMEASURE": {
+      "mission": "Apply the frozen alias view rule (instrument_id==16908 AND date<2020-06-01 -> 'NQM0') and re-measure the 2020 NQ aggregates flagged by ERRATUM F1 (yearly return/vol/DD, worst day, rvol windows spanning 2020-03..05) WITHOUT editing the dossier; write addendum + JSON",
+      "owns": ["FUTURES-DATACONTRACT-QUAL-V1/analysis/nq2020_remeasure/**", "FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_NQ-2020-REMEASURE.json"]
+    },
+    "A7-DC": {
+      "starts_after": "all other lanes return",
+      "mission": "Close STEP 1 ONLY: audit DATACONTRACT_QUALIFICATION.md + analysis/verify/** + analysis/nq2020_remeasure/** against the v2 dossiers/errata and on-disk state. Playbooks are written AFTER this audit closes; if STEP 1 verdict is PARTIAL, playbooks stay [PROVISIONAL]/BLOCKED and no cycle registration happens.",
+      "owns": ["FUTURES-DATACONTRACT-QUAL-V1/audit/**"]
+    },
+    "QUAL-R6 (2026-10-03, Co-Owner directive on prep @73abf15c)": {
+      "classification": "qualification/read-only actions only; NO cycle registration, NO spec freeze, NO scored/PnL, NO S1, NO paper/live/order, NO data purchase, NO push/merge, NO root main writes; NO_GO_REGISTER/NO_GO_SCORE/NO_GO_ORDER unchanged",
+      "lanes": {
+        "D3-CMECAL (PRIORITY)": {
+          "mission": "Attempt official CME historical calendar (holidays/early closes/expiration) for ES per product/year 2010-2026 via NORMAL PUBLIC access routes only; record source + coverage per year; NO 403 bypass (no header spoofing, no proxy evasion); uncertain days => EXCLUDE/NOT_RUN",
+          "owns": ["FUTURES-DATACONTRACT-QUAL-V1/analysis/d3_cmecalendar/**", "FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_D3-CMECAL.json"]
+        },
+        "D2-FEESRC": {
+          "mission": "Collect PUBLIC fee sources (IBKR public commission pages, CME fee pages if reachable, official mirrors) and build ES fee component/tier table; every row SOURCE-tagged; $2.24 NOT treated as verified; note which years lack a historical schedule (future current-as-approximation use must disclose)",
+          "owns": ["FUTURES-DATACONTRACT-QUAL-V1/analysis/d2_feesrc/**", "FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_D2-FEESRC.json"]
+        },
+        "D4-ECBVERIFY": {
+          "mission": "Machine-verify the remaining 45/55 ECB GC dates 2020-2026 via normal ECB URL fetches (read-only); record per-date HTTP status + title/date match; PB2 stays HOLD regardless of outcome",
+          "owns": ["FUTURES-DATACONTRACT-QUAL-V1/analysis/d4_ecb/**", "FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_D4-ECBVERIFY.json"]
+        },
+        "D5-ESSCHEMA": {
+          "mission": "Read-only evaluation of ES schema/quotes on EXISTING vendor parquet + IBKR overlap (tick grid, price scale, close conventions, spread-proxy derivation); NO BBO purchase, NO fill/queue claims",
+          "owns": ["FUTURES-DATACONTRACT-QUAL-V1/analysis/d5_esschema/**", "FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_D5-ESSCHEMA.json"]
+        },
+        "D6-IBKRREFETCH": {
+          "mission": "Inspect fut10_probe.py requirements; BOUNDARY (Co-Owner r6): read-only toward IBKR/account AND all existing raw/artifacts — re-fetch output (if any) goes ONLY to a NEW timestamped staging dir with sha256 manifest, never overwrite old raw/artifact, never write credentials; if tooling can only overwrite raw data or session invalid => verdict NOT_RUN with specific blocker",
+          "owns": ["FUTURES-DATACONTRACT-QUAL-V1/analysis/d6_ibkr/**", "FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_D6-IBKRREFETCH.json"]
+        }
+      }
+    }
+  },
+  "data_locations": {
+    "vendor_parquet": "/Users/hoangminhlong/my-quantitative-data/futures-databento-av1trim/parquet/ (read-only; NB: physical path has NO leading dot for this root)",
+    "nonprice": "/Users/hoangminhlong/.my-quantitative-data/futures-nonprice-10syms/ (read-only)",
+    "ibkr_legacy": "/Users/hoangminhlong/.my-quantitative-data/futures-10syms-v1/ (read-only)"
+  },
+  "handoff_schema": "zcode_orch_v3_handoff@1",
+  "laws": [
+    "Every claim FACT(sourced+date)/OBSERVED(script+window)/POSTULATED/NOT_RUN; missing evidence never PASS.",
+    "Read-only on all data roots and on FUTURES-DEEPRESEARCH-V2-20261003 artifacts; no dossier edits (addenda only).",
+    "No PnL evaluation, no conditional mean-return tables, no signal selection.",
+    "ORDERING LAW (owner 2026-10-03, amended): playbook executable-spec is written/frozen ONLY AFTER A7-DC + DC-VERIFY close STEP 1; until contract mapping, event timestamps, calendar/roll and fill data are verified, every playbook parameter is [PROVISIONAL]; if STEP 1 is PARTIAL the dependent playbooks are BLOCKED and no cycle registration follows.",
+    "No key material; no credentials; no purchases; no push/merge; lanes do not commit (A1 integrates).",
+    "python = /Users/hoangminhlong/my-quantitative/.venv/bin/python"
+  ]
+}

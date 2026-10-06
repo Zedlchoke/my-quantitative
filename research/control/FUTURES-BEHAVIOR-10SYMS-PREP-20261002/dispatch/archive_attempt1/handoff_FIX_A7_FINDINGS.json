@@ -1,0 +1,62 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "lane_id": "FIX-A7-FINDINGS",
+  "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+  "status": "COMPLETE",
+  "summary": "Remediated all 4 MAJOR and all 5 cheap MINOR findings from audit/A7_AUDIT.md as minimal, disclosed edits (erratum notes, superseded values preserved). M1: CL_behavior_stats.py now computes within-contract returns (14 roll-boundary returns excluded and listed); JSON regenerated (sd 3.05% vs old stitched 3.17%, n=265 vs 279); CL_DOSSIER §3 corrected with a full erratum blockquote. M2: ONE canonical roll basis adopted everywhere = last session before day-1 of the LAST-TRADE month (raw expiry_month header); roll.py docstring, BACKTEST_LAUNCH_DRAFT §0, NG_DOSSIER §1 (erratum for the retired delivery-month 'infeasible' reading; measured reconciliation shows matured NG rolls coincide with canonical sessions; live-front NGX26 divergence disclosed), INTEGRATION_SUMMARY §1.1 aligned. M3: close-only fill law now unconditional and structural in code/futbt — TP/SL silent on close-only bars, TIME/MANUAL exits deferred to next tradeable session (manual at next tradeable open), roll legs wait for a tradeable bar pair, else right-censored with disclosure; FillRecord(is_close_only_bar=True) refused at construction; 7 new regression tests (TestCloseOnlyNeverFills) incl. zero-fills-anywhere proof; suite 147/147 OK (140 original unchanged and green). M4: delivery month = letter-code month corrected in CL_DOSSIER, DATA_ACQUISITION_SPEC §4 (also fixed 'roll rule defined on delivery month' error there), CL_behavior_stats.py docstring, data/scripts/measure_coverage.py + data/coverage_measured.json caveat, rawdata.py comment. MINORs m1 (NG contango wording), m2 (GC 7th roll +31.1 @2026-09-30), m3 (chain-length definitional footnote), m4 (NDFD/Databento citation precision + Phase-0 re-verification note), m5 (6J simple-vs-log labels) all fixed. audit/FIX_LOG.md maps every finding id to files+nature.",
+  "outputs": [
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/audit/FIX_LOG.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/CL_behavior_stats.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/analysis/CL_behavior_stats.json",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dossiers/CL_DOSSIER.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dossiers/NG_DOSSIER.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dossiers/GC_DOSSIER.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dossiers/6J_DOSSIER.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/engine.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/journal.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/roll.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/rawdata.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_engine.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/README.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/BACKTEST_LAUNCH_DRAFT.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/INTEGRATION_SUMMARY.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/DATA_ACQUISITION_SPEC.md",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/data/scripts/measure_coverage.py",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/data/coverage_measured.json",
+    "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dispatch/handoff_FIX_A7_FINDINGS.json"
+  ],
+  "findings": [
+    "M1 FIXED: CL §3 stats were contaminated by 14 stitched roll-boundary returns (largest synthetic: -10.36% on 2026-04-01). Corrected within-contract: sd 3.05% (auditor pop-sd 3.047%), skew -0.22, kurt 2.30, tail shares 24.2%/9.1%; all superseded values preserved in erratum blocks (dossier + JSON erratum_2026_10_02_M1).",
+    "M2 FIXED: canonical roll basis = last-trade month (raw expiry_month header); the NG 'infeasible' claim applied a delivery-month reading and is retired as the same rule's boundary consequence (NG front stops trading 3rd-last bday of the month before delivery). Measured: every expired NG/CL file is cut exactly at the canonical roll session except NGV26 (through 2026-09-29) and CLV6 (through 2026-09-23). Residual disclosed divergence: NG lane chain holds live front NGX26 to ~2026-10-28 vs engine canonical roll 2026-09-30; matured rolls coincide.",
+    "M3 FIXED: close-only bars can never fill on ANY path (entries lapse; TP/SL need a real high/low; TIME/MANUAL deferred to next tradeable session; roll legs wait for a tradeable pair; else censored with disclosure). FillRecord refuses is_close_only_bar=True at construction; exec_cost raises on close-only; 7 new tests; 147/147 OK with the 140 originals unchanged (byte-compatible tradeable path).",
+    "M4 FIXED: delivery month = the letter-code month (CLX6 = Nov-2026 delivery, LTD 2026-10-20 in the prior month; NGX26 = Nov delivery, LTD 2026-10-28). Corrected in CL dossier, DATA_ACQUISITION_SPEC §4 (incl. the second error there: roll rule basis is last-trade month, not delivery month), CL script docstring, coverage script+JSON caveat, rawdata.py comment. NG dossier was already correct.",
+    "MINORs FIXED: m1 NG m1-m2 negative relabeled contango-shaped (+ INTEGRATION_SUMMARY echo); m2 GC seventh real-era roll added (GCV6->GCZ6 2026-09-30, +31.1 USD/oz, old leg 245 lots); m3 chain-length definitional footnote; m4 NDFD 2020-04-16 citation re-attributed + Databento JS-render re-verification note (Phase-0 mandatory); m5 6J intervention returns labeled simple with log equivalents. n1 typo fixed with M3.",
+    "Dossier-vs-JSON discrepancy discovered while fixing M1: the original CL §3 Trend bullet (+0.007/-0.003) matched neither the old stitched JSON (-0.001/-0.013) nor the corrected values - disclosed in the new Trend bullet."
+  ],
+  "defects": [],
+  "open_questions": [
+    "REPORT_VI.md (owner-facing, outside this lane's allowed writes) still says '140 test PASS' - lead should update to 147.",
+    "M2 leaves a disclosed (not silently merged) divergence: NG dossier chain holds the live front NGX26 ~1 month past the engine's canonical roll; any Arm A/B construction must use the engine basis per the canonical statement.",
+    "CL rolling-vol 'last' is now as-of 2026-09-30 because the 2026-10-01 return is an excluded roll-boundary return (disclosed in dossier)."
+  ],
+  "sha256_of_key_outputs": {
+    "analysis/CL_behavior_stats.py": "d200c4809135a86e193dc3e893dbd4d7d625918bdae74bc97e59de57db73052c",
+    "analysis/CL_behavior_stats.json": "2da2ca815e484fa8aeb4bf78b3fc4eafe0428495e7353e898f599ee1e5714cc7",
+    "dossiers/CL_DOSSIER.md": "6fc8954ef77bfebdc0215e3285505a77a338ab7325b9a0a1c26c1366cd1240fa",
+    "dossiers/NG_DOSSIER.md": "020245f59ef5c344601598007f119c59a285ab0d1dd94838ec38b264b7846334",
+    "dossiers/GC_DOSSIER.md": "32ba2e6e0a675d32587f35d5636be5c43581cbfd65698f5ecada7d92e72bd693",
+    "dossiers/6J_DOSSIER.md": "2477807b1f812533e36b0b8645b875696ce123d60205f80d90dec374aeb2c594",
+    "code/futbt/engine.py": "de7fb0c347c77bf95f747926d64d5416cf8abf718c4d582f834288899de8ad37",
+    "code/futbt/journal.py": "de08348035765970330b906026a9af7a4770e758158d6200d1ce2cc6ee5f5651",
+    "code/futbt/roll.py": "7dbb2f24c11844a6a86f77580db7edfda63e8b88323cf0dec39048263700e90d",
+    "code/tests/test_engine.py": "d015dfe6959383fae241e9e0d179a9f4f3f9de630e5ee439e1f6b3323746773e",
+    "INTEGRATION_SUMMARY.md": "1cac3aa057e6acf4c0941b221f212efe7a2855b64eeeaf3f0e5cd5aaac48d3b8",
+    "DATA_ACQUISITION_SPEC.md": "15f8d2697d7e83558af7f3c45fd3f88f1b1d7f870d14f322b1cc72d451bf67f6",
+    "audit/FIX_LOG.md": "91b5068d5e7fb2d5cc666044cfe4bb9f707697c66edf0732d31effe2e3d5551a"
+  },
+  "test_suite_result": {
+    "command": "cd code && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m unittest discover -s tests -t .",
+    "result": "Ran 147 tests in ~1.7s — OK (140 original unchanged + 7 new TestCloseOnlyNeverFills)",
+    "recorded_utc": "2026-10-02"
+  }
+}

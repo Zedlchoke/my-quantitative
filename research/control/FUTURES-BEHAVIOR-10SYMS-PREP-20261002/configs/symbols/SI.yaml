@@ -1,0 +1,278 @@
+schema: futures_behavior_symbol_config@1
+task_id: FUTURES-BEHAVIOR-10SYMS-PREP-20261002
+symbol: SI
+generated_utc: '2026-10-02'
+source_dossier: dossiers/SI_DOSSIER.md
+dossier_sha256: a15e5e236a451df54fc20796afdab3f4329bd4f421db870d0a03d19d4d22bd46
+provenance_note: >-
+  Hypotheses derived STRICTLY from dossiers/SI_DOSSIER.md S5. Key SI facts encoded: liquid
+  cycle = H/K/N/U/Z only (serials max 944 lots/day incl. the current S1 "front" SIV6);
+  nearest-expiry front is a trap; S6 spread row was measured on a dead serial book -
+  liquid-era pooled median 4 ticks = $100/contract replaces it for cost baselines; 6/6 roll
+  gaps positive (median +0.565 USD/oz = +0.97%/roll); single squeeze-crash regime 2025-07..2026-10.
+defaults:
+  universe:
+    exchange: COMEX (CME Globex)
+    contract_cycle: 'H,K,N,U,Z liquid cycle (listing rule: 3 consecutive + F/H/K/N/U/Z <=23m + J/U/Z <=60m)'
+    liquid_chain_rule: nearest H/K/N/U/Z contract ONLY - never serial/deferred (serials <=944 lots/day, SIQ7/SIV7/SIX7 zero volume)
+    liquid_chain_evidence: 'OBSERVED SI S1: SIV6 (S1 serial "front") max 944 lots vs SIZ6 ~17k/day Sep-2026'
+  roll_rule:
+    baseline: declared_calendar_last_trade_month
+    baseline_definition: hold until last session BEFORE day-1 of the delivery month, roll at that close (SI month code == delivery month == last-trade month; 13:25 ET cessation 3rd-last business day)
+    reference: code/futbt/roll.py + BACKTEST_LAUNCH_DRAFT.md S0
+    target_adjustment: next_cycle_month_HKNUZ (literal next-calendar-month steps into dead serial books - CONSTRUCTION DECISION per dossier)
+    dossier_finding: 'OBSERVED SI S1: next-cycle >=10k-lot ramp 2-7 calendar days BEFORE declared roll (6/6 cycles); old-leg volume at roll collapsed to 22-376 lots; declared timing well-aligned with migration'
+    alternative_required: volume-crossover roll (next cycle >=10k lots, PIT); OI roll NOT_RUN; calendar T-N variants measurable, no observed benefit
+  execution_laws:
+    decision_point: session_close_through_pit_view
+    default_fill: next_session_open_tick_rounded_cost_shifted
+    ambiguous_order: same_bar_tp_sl_worst_case_bound_no_point_pnl
+    close_only_bars: never_fill_any_path
+    tb_labels: TRAIN_ONLY_never_validation_features
+    adjusted_series: causal_additive_features_only_never_fills_mtm_pnl
+    attribution: full_path_leave_one_out_only_additive_leg_sums_forbidden
+  cost_model:
+    commission: {usd_per_side: 0.85, provenance: 'PUBLISHED IBKR 2026-10-02'}
+    exchange_fee: {provenance: NOT_RUN_NOT_FETCHED}
+    spread: {median_usd_per_contract: 100.0, provenance: 'MEASURED daily-BBO close proxy, liquid-era pooled median-of-medians 4 ticks = $100 (SI S3; supersedes S6 4.5-tick row measured on dead serial SIV6)', caveat: non-synchronous, not executable; roughly doubled (2->4-8 ticks) across the sample with price level and vol}
+    slippage: {provenance: NOT_RUN_NO_DECLARED_VALUE}
+    stress_multipliers: [1.0, 1.5, 2.0]
+hypotheses:
+- id: SI-H1
+  dossier_ref: 'dossiers/SI_DOSSIER.md S5 H1 (mechanics-level, testable NOW)'
+  hypothesis_kind: construction_rule
+  mechanism_class: POSTULATED
+  mechanism: >-
+    COMEX silver's delivery-cycle convention concentrates hedge and roll flow on cycle
+    months; serial listings exist for tail hedging only. A cycle-chain selection + declared
+    roll timing is the only executable baseline; a nearest-expiry front would sit in a
+    <=944-lot book with 20-tick spread and the dataset's only crossed day.
+  pit_trigger:
+    mechanizable: true
+    observable: calendar-only - hold nearest H/K/N/U/Z delivery-month contract; roll at last session before day-1 of its delivery month
+    field: exchange listing calendar (published years ahead)
+    source: S1 chain + exchange calendar
+    as_of_rule: fully knowable in advance; no lookahead
+    timestamp_at_decision: deterministic calendar date
+  direction: n/a (construction rule)
+  entry: switch continuous reference at declared roll close
+  exit: n/a
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: ~5.4 rolls/yr
+  universe: SI H/K/N/U/Z chain
+  roll_rule_ref: this IS the roll rule (declared timing, cycle-month target)
+  sizing: n/a
+  regime_tags: [all_regimes_mechanical]
+  counter_hypothesis: migration is volume/OI-driven not calendar (OI untestable now; prospective collector can test)
+  failure_conditions:
+  - a cycle where the >=10k ramp deviates >10 days from the declared date
+  - a serial month trading >10k lots/day
+  - engine keyed to nearest-expiry front or vendor continuous with unknown stitching
+  minimal_test:
+    kind: construction_rule_check_against_measured_ramps
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [SI], use: construction_check, floor: 'ALREADY MET by raw daily files (6/6 cycles measured)', floor_met: true, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: construction_rule_embedded_in_all_arm_b_cells
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [SI], use: backtest_fill, floor: '>=24m true volume', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps: []
+  feasibility:
+    mechanization: high
+    acquisition_cost: in_hand_now
+    rank_basis_note: 'dossier: data ALREADY met, floor none, budget 0; foundation for every other SI test'
+  rank: 1
+- id: SI-H2
+  dossier_ref: 'dossiers/SI_DOSSIER.md S5 H2'
+  hypothesis_kind: cross_asset_relative_value
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Silver's dual identity (monetary premium vs industrial valuation) plus retail-flow
+    overshoot: after extreme GC/SI ratio readings the spread reverts toward the trailing
+    median over weeks (measured anchors: ratio range 44.0..92.8 in 7 months with reversion
+    through the median).
+  pit_trigger:
+    mechanizable: true
+    observable: GC/SI ratio crossing a trailing percentile band of itself (strict past, e.g. 63d)
+    field: ratio of own liquid chains
+    source: raw daily closes both symbols (unadjusted; roll-gap jumps excluded)
+    as_of_rule: ratio at close vs strictly trailing band; entry next session; exclude +-1 roll days both legs
+    timestamp_at_decision: daily close
+  direction: long SI/short GC when ratio rich (SI cheap); reverse when cheap
+  entry: next-session open after band cross
+  exit: band reversion / declared horizon (PARAM-GAP)
+  take_profit: 'PARAM_GAP: SI-H2-P1'
+  stop_loss: 'PARAM_GAP: SI-H2-P1'
+  time_rules: weeks-scale (PARAM-GAP)
+  universe: both legs' cycle fronts (SI HKNUZ ~5.4 rolls/yr; GC GJMQVZ ~6/yr)
+  roll_rule_ref: defaults.roll_rule (both chains, cycle targets)
+  sizing: ratio-neutral 1:delta (declared formula before run)
+  regime_tags: [post_squeeze_high_vol, structural_industrial_shift]
+  counter_hypothesis: ratio is a one-way structural trend (industrial silver scarcity) - 15-month window cannot distinguish
+  failure_conditions:
+  - sign instability across the few regime episodes
+  - reversion edge < 2-leg costs at 1.5x stress
+  - roll-gap jumps treated as reversion (unadjusted legs; exclude +-1 roll days, 25 flagged)
+  minimal_test:
+    kind: descriptive_ratio_reversion
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [SI, GC], use: conditional_descriptive, floor: '15 months both legs (LOW power ~1 episode; >=100 episodes needs >=10y)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: [PARAM_GAP_MUST_BE_PRE_REGISTERED]
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [SI, GC], use: backtest_fill, floor: '>=10y two-leg daily', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: SI-H2-P1, piece: 'band width, holding horizon, exit percentile', reason: 'must be pre-declared before any run (no ex-post tuning)'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: in_hand_now
+    rank_basis_note: two-leg daily in hand; single squeeze episode = power caveat
+  rank: 2
+- id: SI-H4
+  dossier_ref: 'dossiers/SI_DOSSIER.md S5 H4'
+  hypothesis_kind: regime_conditional
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Smaller market-cap metal + retail leverage + dealer inventory limits amplify the common
+    monetary factor: SI %-response per 1% GC > 1 and increasing in momentum/high-vol regimes
+    (measured linear elasticity ~1.9 median, corr 0.83; the CONVEXITY is postulated and
+    unmeasured).
+  pit_trigger:
+    mechanizable: true
+    observable: GC return shock / GC-momentum regime label from trailing window (strict past); SI response on cycle front
+    field: daily GC/SI returns + trailing regime label
+    source: raw daily both symbols
+    as_of_rule: regime label trailing-only; response measured after the shock session
+    timestamp_at_decision: daily close-to-close
+  direction: same sign as GC shock
+  entry: next-session open after GC shock (PARAM-GAP threshold)
+  exit: declared horizon (PARAM-GAP)
+  take_profit: 'PARAM_GAP: SI-H4-P1'
+  stop_loss: 'PARAM_GAP: SI-H4-P1'
+  time_rules: short horizon (days)
+  universe: SI cycle front + GC cycle front
+  roll_rule_ref: defaults.roll_rule both
+  sizing: beta-scaled (declared formula)
+  regime_tags: [precious_metals_momentum, industrial_shock_windows]
+  counter_hypothesis: 'apparent amplification is a volatility-scaling artifact - must normalize by vol before claiming convexity (framework S4 explicit question)'
+  failure_conditions:
+  - elasticity < 1 persistently, or convexity absent (linear beta suffices) across >=2 regimes
+  - single-episode attribution (the Jan-2026 squeeze IS one event)
+  - vol-normalization not performed
+  minimal_test:
+    kind: descriptive_convexity_by_regime
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [SI, GC], use: conditional_descriptive, floor: '15 months two-leg daily = LOW power; multi-year for regime splits', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: [PARAM_GAP_MUST_BE_PRE_REGISTERED]
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [SI, GC], use: backtest_fill, floor: multi-year two-leg daily, floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: SI-H4-P1, piece: shock threshold + regime tag + TP/SL, reason: 'no thresholds may be set without a selection protocol'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: in_hand_now
+    rank_basis_note: descriptive convexity measurable on in-hand daily; convexity claim needs regime breadth
+  rank: 3
+- id: SI-H5
+  dossier_ref: 'dossiers/SI_DOSSIER.md S5 H5'
+  hypothesis_kind: regime_conditional
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Leveraged positions unwound into thin books; margin-hike cascade: |gap| >= 2x trailing
+    mean|ret| days cluster in high-trailing-vol states (measured 9% of days; extremes
+    -14.0/+13.3/-11.9% all in the squeeze aftermath; gap std = 86% of daily std).
+  pit_trigger:
+    mechanizable: true
+    observable: RTH-open gap vs prior close normalized by trailing-20d mean|ret| (strict past) + trailing-63d vol regime label
+    field: daily open/close on cycle front
+    source: raw daily TRADES
+    as_of_rule: gap known at open; regime label from window ending prior session
+    timestamp_at_decision: 09:30 ET open
+  direction: two-sided tails - risk FILTER, not a direction trade
+  entry: n/a (filter; execution assumptions unusable - RTH-only bars, 2-day M1)
+  exit: n/a
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: n/a
+  universe: SI cycle front
+  roll_rule_ref: defaults.roll_rule (H1)
+  sizing: vol-targeted (declared formula)
+  regime_tags: [post_squeeze_high_vol, quiet]
+  counter_hypothesis: gaps are pure information arrival (macro nights), no risk premium
+  failure_conditions:
+  - tail clustering absent once conditioned correctly (Poisson-like arrival)
+  - 15-month single-regime tail estimates treated as stationary
+  minimal_test:
+    kind: descriptive_gap_tail_clustering
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [SI], use: conditional_descriptive, floor: 'descriptive first pass legal (done at gap level S3); hypothesis-grade needs >=2y front-scale + overnight session data', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: minute_trades_m1, symbols: [SI], use: intraday_execution, floor: 'vendor M1 with non-RTH bars (gap-crossing execution unmodelable otherwise; the 14% gap day implies limit-style risk no tick model covers)', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: SI-H5-P1, piece: filter thresholds + intraday entry assumption, reason: 'RTH-only bars make intraday execution assumptions unusable (dossier)'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: in_hand_now
+    rank_basis_note: descriptive pass in hand; execution realism needs vendor M1
+  rank: 4
+- id: SI-H3
+  dossier_ref: 'dossiers/SI_DOSSIER.md S5 H3'
+  hypothesis_kind: structural_relation
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Cost-of-carry fair value anchored by bullion-bank inventory arbitrage (COMEX<->London):
+    roll-gap sign tracks carry = rates + storage - convenience/lease yield; measured 6/6
+    positive (mean +0.97%/roll ~ +5.2%/yr) through a 60%-vol squeeze; sign should flip toward
+    backwardation in physical-scarcity regimes (2020 EFP precedent, postulated).
+  pit_trigger:
+    mechanizable: true
+    observable: adjacent-contract close gap at each roll vs contemporaneous short-rate proxy (3M SOFR) and silver lease/storage proxies
+    field: roll gaps (measured) + rate series + lease rates
+    source: raw roll tables + FRED (free, not pulled) + LBMA/IBA lease rates (paid)
+    as_of_rule: contemporaneous values; front-filtered quotes only (serial/deferred books are rot); thin-old-leg caveat (22-376 lots at roll) disclosed
+    timestamp_at_decision: roll sessions
+  direction: n/a (structural relation; informs continuous drift + calendar-spread + ratio-trade roll accounting)
+  entry: n/a
+  exit: n/a
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: per roll (~5.4/yr)
+  universe: adjacent cycle pairs
+  roll_rule_ref: defaults.roll_rule (gap table is its byproduct)
+  sizing: n/a
+  regime_tags: [positive_carry_normal_inventories, physical_scarcity_inversion]
+  counter_hypothesis: gap is mostly tail-book staleness (old leg 22-376 lots) - testable vs a T-5 or volume-roll gap variant
+  failure_conditions:
+  - positive gaps persist while measured carry is deeply negative (demand-pressure premium dominates)
+  - settlement-derived deferred closes treated as tradable (forbidden)
+  minimal_test:
+    kind: descriptive_gap_vs_rate_sign
+    requirements:
+    - {class: derived_roll_gaps, symbols: [SI], use: signal_reference, floor: '>=8 rolls for a sign statement (6 measured; ~5.4/yr accumulating prospectively)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    - {class: external_rates_vintages, symbols: [US], use: regime_split_feature, floor: 'SOFR/T-bill daily (FRED free, not pulled)', floor_met: false, available_today: false, acquisition: free_public}
+    - {class: lbma_lease_rates, symbols: [SI], use: regime_split_feature, floor: 'silver lease rates (LBMA/IBA, paid)', floor_met: false, available_today: false, acquisition: owner_declaration}
+    nondata_blockers: []
+  scored_run:
+    kind: structural_input_to_arm_b
+    requirements:
+    - {class: derived_roll_gaps, symbols: [SI], use: signal_reference, floor: '>=8 rolls', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: [REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: SI-H3-P1, piece: lease-rate source + storage cost proxy, reason: 'lease rates paid (LBMA/IBA); rates free but not pulled'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: free_public
+    rank_basis_note: gaps OBSERVED; full carry closure needs paid lease rates (owner decision)
+  rank: 5

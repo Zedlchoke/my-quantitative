@@ -1,0 +1,114 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-K6GATE-PREP-20261004/NQ-K6",
+ "cycle_id": "FUTURES-K6GATE-PREP-20261004",
+ "role": "lane agent (NQ-K6)",
+ "lane": "NQ-K6",
+ "dispatch_sha": "05e5493971116eec8db5ea49e30c06930e8cc6bc",
+ "actual_start_sha": "05e5493971116eec8db5ea49e30c06930e8cc6bc",
+ "commit_sha": null,
+ "changed_paths": [
+  "research/control/FUTURES-K6GATE-PREP-20261004/nq/NQ_K6_GATES.md",
+  "research/control/FUTURES-K6GATE-PREP-20261004/nq/nq_k6_gates.json",
+  "research/control/FUTURES-K6GATE-PREP-20261004/nq/m1_fomc_anatomy_v3.json",
+  "research/control/FUTURES-K6GATE-PREP-20261004/nq/m2_expwitch_anatomy_v3.json",
+  "research/control/FUTURES-K6GATE-PREP-20261004/nq/m5_0730_era_v3.json",
+  "research/control/FUTURES-K6GATE-PREP-20261004/nq/session_dispersion_v3.json",
+  "research/control/FUTURES-K6GATE-PREP-20261004/nq/session_dispersion_v3_per_session.parquet",
+  "research/control/FUTURES-K6GATE-PREP-20261004/nq/nq_f3_rebuild_a1a2.json",
+  "research/control/FUTURES-K6GATE-PREP-20261004/nq/k6_compute.py",
+  "research/control/FUTURES-K6GATE-PREP-20261004/nq/k6_compute_m34.py",
+  "research/control/FUTURES-K6GATE-PREP-20261004/dispatch/handoff_NQ-K6.json"
+ ],
+ "tests": [
+  {
+   "command": ".venv/bin/python research/researchctl.py locks inspect",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "verdict=FREE_PROVEN reason='no registry row and the lock file is not flocked' (taken before the M4 heavy job; no foreign worker present at any point)",
+   "note": "required locks-inspect record for M4 per dispatch compute_discipline"
+  },
+  {
+   "command": ".venv/bin/python -m py_compile nq/k6_compute.py nq/k6_compute_m34.py",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "COMPILE_OK"
+  },
+  {
+   "command": "ret-series crosscheck: rebuild vs FUTURES-SIX-READINESS-20261004 nq_held_daily_v3.parquet",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "max_abs_ret_diff=0.0 over n=4218 overlapping non-NaN rets (recorded in nq_f3_rebuild_a1a2.json crosscheck_held_daily_v3)"
+  },
+  {
+   "command": "shasum -a 256 over all lane outputs (recorded in outputs[])",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "see outputs[] sha256 values"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "M2 F5-K6 part (ii) measured FAIL on the NQ leg: 35/66 expiry-Friday held sessions carry 15-minute RTH-span gaps; post-hoc diagnostic shows the same signature at a HIGHER rate on ordinary Fridays (46/80), i.e. era-generic committed-vendor granularity (2013-2021), not witching-specific and not introduced by cache_v3 (whose repair scope was the 2018-08..2020-05 alias window). Verdict recorded FAIL under the pre-declared condition; resolution is an owner data-plane decision.",
+  "M1 admits 85 events vs committed 84: the repaired window adds exactly 2020-04-29 (held NQM0_2020, coverage 1.0); 2016-19 and 2023-26 era rows reproduce the committed table bit-identically.",
+  "M4 calendar_rule_sensitivity completed on the 3rd attempt (registry rows lacking expiry then contract keys; disclosed in md \u00a74/\u00a76); final value 19.84% ann / 4,219 sessions vs committed 19.62%/4,155.",
+  "M5: first release-cell computation pooled the two canceled-but-expected 2025 vintage days, violating lane predeclaration \u00a70.5; superseded in m5_0730_era_v3.json by class_release_vs_control_v2_separate (canceled days shown separately at control-level share, no spike). The pooled row remains in the JSON but is not used for adjudication.",
+  "M5 absret_0730_release_bp values in the md come from the superseded pooled row (includes the 2 canceled days); share/ratio adjudication uses the v2 separate block.",
+  "Zero-fetch lane: no network used; all inputs are committed in-repo artifacts or the read-only root data plane already covered by the evidence index. No fee number consumed or cited anywhere (cost-irrelevant anatomy lane)."
+ ],
+ "incidents": [
+  "M3 first run crashed on a groupby tuple key (AttributeError) after M1/M2/M5 JSONs were written; fixed and rerun as a M3+M4-only continuation (k6_compute_m34.py); earlier artifacts untouched.",
+  "M2 integrity fails list first written truncated to 20 entries; recomputed in full (count 35 unchanged) and patched with the ordinary-Friday diagnostic context."
+ ],
+ "tree_status": "clean except untracked research/control/FUTURES-K6GATE-PREP-20261004/ (this lane's write boundary)",
+ "workers": {
+  "heavy_job": "single-shot k6_compute.py / k6_compute_m34.py runs; locks inspect FREE_PROVEN before the heavy job; no foreign worker killed"
+ },
+ "outputs": [
+  {
+   "path": "research/control/FUTURES-K6GATE-PREP-20261004/nq/NQ_K6_GATES.md",
+   "sha256": "364f041241e42a7c5f67e36eb70d97f7aa50b831f3dab4961b5d4103ce852781"
+  },
+  {
+   "path": "research/control/FUTURES-K6GATE-PREP-20261004/nq/nq_k6_gates.json",
+   "sha256": "18639c7b413bdfd9d2da80e7a492bf93f726eba865a295f68539838c05d12fea"
+  },
+  {
+   "path": "research/control/FUTURES-K6GATE-PREP-20261004/nq/m1_fomc_anatomy_v3.json",
+   "sha256": "78c094aac81986ab5ca5c25666f85bd272149a612d739ca22ba2a29f4aa07fdf"
+  },
+  {
+   "path": "research/control/FUTURES-K6GATE-PREP-20261004/nq/m2_expwitch_anatomy_v3.json",
+   "sha256": "2d2068f1a06505c7f635a8ef4f65d9aee12cb0d09d3dae7511500b0dd207f98d"
+  },
+  {
+   "path": "research/control/FUTURES-K6GATE-PREP-20261004/nq/m5_0730_era_v3.json",
+   "sha256": "b58f645ef67f25c7b2398d90a31d6936627254967668c20b552166c90a5c9f92"
+  },
+  {
+   "path": "research/control/FUTURES-K6GATE-PREP-20261004/nq/session_dispersion_v3.json",
+   "sha256": "87a0eb74d80940b892c733d483b0736be1f6ff6503b26a380269aa06e7d4ca46"
+  },
+  {
+   "path": "research/control/FUTURES-K6GATE-PREP-20261004/nq/session_dispersion_v3_per_session.parquet",
+   "sha256": "1c7009f2cacffde506952a19a3777b1d6a52755bbd19f5a0569f3858a443c971"
+  },
+  {
+   "path": "research/control/FUTURES-K6GATE-PREP-20261004/nq/nq_f3_rebuild_a1a2.json",
+   "sha256": "3d25d69a11a3d1c698b8c19c1ca48ddd58059e53cb66d524d0e244031fd3be07"
+  },
+  {
+   "path": "research/control/FUTURES-K6GATE-PREP-20261004/nq/k6_compute.py",
+   "sha256": "017a75bacd77bb335055ef07f0b98da4adc833bb278b861099ef444be20d347c"
+  },
+  {
+   "path": "research/control/FUTURES-K6GATE-PREP-20261004/nq/k6_compute_m34.py",
+   "sha256": "3b235799a6fb3a37496157825ed2ccabd06619766d1e17a320520abd5251778b"
+  },
+  {
+   "path": "research/control/FUTURES-K6GATE-PREP-20261004/dispatch/handoff_NQ-K6.json",
+   "sha256": "SELF (digest computed by controller on read; content-final at write)"
+  }
+ ],
+ "recommended_next_action": "Controller: (1) treat NQ-F1-K6 PASS and NQ-F2-K6 PASS as the anatomy preconditions discharged (construction gates only \u2014 no scoring authorization implied); (2) route the F5-K6(ii) phantom-gap finding (era-generic 15-minute gaps, 2013-2021, present on ~53-58% of Fridays of both classes) to a data-plane owner decision before EXPWITCH NQ-leg scoring is ever proposed; (3) note NQ-F3's full-era rebuild precondition (NOT_RUN register item 7) is now discharged descriptively by nq/nq_f3_rebuild_a1a2.json with an exact ret-series crosscheck against the readiness lane."
+}

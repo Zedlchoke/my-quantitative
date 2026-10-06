@@ -1,0 +1,139 @@
+{
+ "schema": "nq_k6_gates@1",
+ "round": "FUTURES-K6GATE-PREP-20261004",
+ "lane": "NQ-K6",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-k6gate/prep",
+ "branch": "prep/futures-k6gate-20261004",
+ "head_start": "05e5493971116eec8db5ea49e30c06930e8cc6bc",
+ "data": "cache_v3 (research/control/FUTURES-SIX-READINESS-20261004/nq/cache_v3/)",
+ "predeclaration_file": "NQ_K6_GATES.md (\u00a70 written before any compute)",
+ "zero_pnl": true,
+ "zero_fetch": true,
+ "gates": [
+  {
+   "family": "NQ-F1 FOMC-ERA",
+   "gate_id": "NQ-F1-K6",
+   "predeclaration_quote": "F1-K6 anatomy reproduction gate (pre-scoring): re-measured on the era-correct session mapping, the release bucket must again show >=2x volume and pre-release <=0.85x suppression; if the committed anatomy fails to reproduce, family never enters scoring [construction gate].",
+   "statistic": "median per-event volume ratio vs weekday-matched (+/-21d non-FOMC clean) control windows; release bucket h0_30 [780,810) CT, pre-release m60_0 [720,780) CT",
+   "result": {
+    "h0_30_vol_ratio_median": 2.23,
+    "m60_0_vol_ratio_median": 0.686,
+    "n_events": 85
+   },
+   "verdict": "PASS",
+   "n": 85,
+   "artifact": "m1_fomc_anatomy_v3.json"
+  },
+  {
+   "family": "ESNQ-F5 EXPWITCH",
+   "gate_id": "F5-K6(i) close-window anatomy (NQ leg)",
+   "predeclaration_quote": "(i) the witching-Friday session anatomy must be measured on the era-correct mapping and show elevated close-window volume/activity vs matched ordinary Fridays in the modern eras;",
+   "statistic": "close-window (last 60 tradable min before era-correct close) volume-share and |1m ret| ratios, witching vs ordinary Fridays, tri-eras",
+   "result": {
+    "2017-21": {
+     "volshare_ratio": 1.271,
+     "absret_ratio": 1.184
+    },
+    "2022-26": {
+     "volshare_ratio": 1.142,
+     "absret_ratio": 1.159
+    }
+   },
+   "verdict": "PASS",
+   "n": "W 20+18 clean, O 158+160 clean",
+   "artifact": "m2_expwitch_anatomy_v3.json"
+  },
+  {
+   "family": "ESNQ-F5 EXPWITCH",
+   "gate_id": "F5-K6(ii) held-chain integrity on expiry Fridays (NQ leg)",
+   "predeclaration_quote": "(ii) held-chain session integrity on expiry Fridays must pass (no phantom gaps; switch-day audit law NEW-4 inherited for the NQ leg).",
+   "statistic": "phantom-gap check per expiry-Friday held session (fail if RTH-span gap >5 min or present <0.8x span) [OPERATIONALIZED]; NEW-4-class switch-day |gap| descriptive",
+   "result": {
+    "n_expiry_friday_held_sessions": 66,
+    "n_fail_phantom_gap": 35,
+    "fail_gap_sizes_min": {
+     "15": 34,
+     "14": 1
+    },
+    "ordinary_friday_diagnostic": {
+     "n_sampled": 80,
+     "n_fail": 46
+    },
+    "switch_vs_nonswitch_median_abs_gap_ratio": 1.231,
+    "switch_flag_gt_2x": false
+   },
+   "verdict": "FAIL",
+   "n": 66,
+   "artifact": "m2_expwitch_anatomy_v3.json",
+   "note": "failures are era-generic committed-data granularity (15-min gaps 2013-2021, higher rate on ordinary-Friday diagnostic sample); adjudicated FAIL under the condition as pre-declared; resolution is an owner data-plane decision"
+  },
+  {
+   "family": "NQ-F3 RUN-REV-NQ",
+   "gate_id": "NQ-F3-K6 precondition = full-era a1/a2 rebuild (descriptive)",
+   "predeclaration_quote": "Distinctive pre-gate: NQ-F3-K6 anatomy pre-gate = the full-era rebuild itself plus the intraday-placement measurement (F4-K6 analog). [NOT_RUN register 7: NQ full-era rebuild on alias-recovered series: outstanding - hard precondition for NQ-F3]",
+   "statistic": "a1 (held-chain daily aggregates: rvol 5-252d, acf1, VR5/20/60, drawdowns, yearly, strict-past regimes) + a2 (session structure: coverage, era segments incl. hole window, ovn shares, minute profiles, shorts) rebuilt on cache_v3; no RR signal, no PnL",
+   "result": {
+    "ret_series_crosscheck_max_abs_diff_vs_readiness_lane": 0.0,
+    "n_compared": 4218,
+    "acf1_full_pre_v3": -0.0758,
+    "acf1_full_v3": -0.0857,
+    "VR_full": "identical to 13 decimals",
+    "2020_maxDD_pre_v3_pct": 32.28,
+    "2020_maxDD_v3_pct": 34.12,
+    "depleted_pre_v3_to_v3": [
+     77,
+     27
+    ],
+    "clean_pre_v3_to_v3": [
+     4016,
+     4065
+    ]
+   },
+   "verdict": "DONE (descriptive precondition discharged)",
+   "n": 4219,
+   "artifact": "nq_f3_rebuild_a1a2.json"
+  },
+  {
+   "family": "NQ-F2 MACRO-0730-NQ",
+   "gate_id": "NQ-F2-K6",
+   "predeclaration_quote": "K6 anatomy gate (07:30 spike reproduction per scoring era) [field 3: NQ-side per-era spike anatomy 2010-16: NOT_RUN (must be measured; only 2017-20 vs 2023-26 contrast committed)]",
+   "statistic": "calendar-free minute-volume share at 07:25/07:30 CT per era + spike ratio share_0730/share_0725 >= 2.0 in scoring era 2023-26 [OPERATIONALIZED]; release-day vs same-weekday control cells secondary",
+   "result": {
+    "2023-26": {
+     "share_0725": 0.000411,
+     "share_0730": 0.001853,
+     "spike_ratio": 4.51,
+     "absret_0730_bp": 7.7
+    },
+    "2017-20": {
+     "spike_ratio": 2.18,
+     "absret_0730_bp": 3.1
+    },
+    "2010-16": {
+     "spike_ratio": 4.39,
+     "absret_0730_bp": 5.2
+    },
+    "release_vs_control_ratio_2023-26": 8.61,
+    "canceled_days_2025_share": "control-level, no spike"
+   },
+   "verdict": "PASS",
+   "n": "3 era cells; 85 release days in scoring era",
+   "artifact": "m5_0730_era_v3.json"
+  }
+ ],
+ "not_run_register": [
+  "F5-K6 ES leg (ES lane scope)",
+  "monthly-opex dose (calendar NOT_OBTAINED)",
+  "expiry dates 2010-03-19/2026-12-18 outside data window",
+  "FOMC minute anatomy 2011-15 (committed NOT_RUN, respected)",
+  "surprise/direction conditioning (committed NOT_RUN)",
+  "\u00a70.6 anti-cherry-pick items (none measured)"
+ ],
+ "verdict_summary": {
+  "M1_NQ-F1-K6": "PASS",
+  "M2_F5-K6": "FAIL (part (i) PASS, part (ii) FAIL \u2014 era-generic 15-min vendor gaps)",
+  "M3": "descriptive rebuild, no gate",
+  "M4": "full-era a1/a2 rebuild DONE (descriptive)",
+  "M5_NQ-F2-K6": "PASS"
+ }
+}

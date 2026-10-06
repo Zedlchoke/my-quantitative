@@ -1,0 +1,76 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "PIN-ENFORCE",
+ "cycle_id": "FUTURES-ES-PB1-V1",
+ "role": "pin-enforcement-lane",
+ "lane": "PIN-ENFORCE",
+ "dispatch_sha": "47e54e55ca0e4cb3757ba7296fa3186a12ec942a",
+ "actual_start_sha": "47e54e55ca0e4cb3757ba7296fa3186a12ec942a",
+ "commit_sha": null,
+ "no_commit_disclosure": "Lane inactive at 600s with code+P-suite complete; controller verified, corrected ONE lane-authored script defect (after-fix repro read a nonexistent evidence path + tamper-target bug -> false negatives; core replaced with the proven debug body, disclosed in-script), wrote report/handoff; controller commits.",
+ "changed_paths": [
+  "research/control/FUTURES-ES-PB1-V1/gate6/runner/scored_runner.py",
+  "research/control/FUTURES-ES-PB1-V1/gate6/runner/scored_executor.py",
+  "research/control/FUTURES-ES-PB1-V1/gate6/runner/LAUNCH_CONTRACT_V2.json",
+  "research/control/FUTURES-ES-PB1-V1/gate6/runner/scratch/synthetic/make_sandbox_fixtures.py",
+  "research/control/FUTURES-ES-PB1-V1/gate6/runner/fix3/*",
+  "research/control/FUTURES-ES-PB1-V1/gate6/runner/scratch/synthetic/test_logs/*"
+ ],
+ "changed_paths_disclosure": "FAIL record committed BEFORE fix at 47e54e55; test_logs changes = new run evidence from the P-suite re-runs (log .txt files are not pinned).",
+ "tests": [
+  {
+   "name": "after-fix FAIL_FV2 reproduction flip",
+   "command": ".venv/bin/python fix3/repro_fv2_after_fix.py",
+   "verdict": "PASS",
+   "exit_code": 0,
+   "log_digest": "dcec433c5600e8d0c22b5f571e229c64cf16a234e852c015b669cf98cd7b847a",
+   "result": "exit_2=true REFUSED_DRIFT names scored_executor; 0 execution artifacts; flip_vs_FAIL_FV2=true"
+  },
+  {
+   "name": "pin-enforce suite P1-P10",
+   "command": ".venv/bin/python -m pytest fix3/test_pin_enforce.py -q",
+   "verdict": "PASS",
+   "exit_code": 0,
+   "log_digest": "d4a2da0105874054599806bc030086aaae52a9323603e21f3fab3cad3a881cb1",
+   "result": "10/10 in 1381s"
+  },
+  {
+   "name": "regression refusals+execution",
+   "command": ".venv/bin/python -m pytest test_runner_refusals.py test_execution_path.py -q",
+   "verdict": "PASS",
+   "exit_code": 0,
+   "log_digest": "3678446b5c96f1cc43237aa142ae85fccbf337911d6e685ccf7d94848c3a4384",
+   "result": "24/24 in 97s (P9 additionally re-ran fix2 finalization suite exit 0)"
+  }
+ ],
+ "authority_claims": [],
+ "recommended_next_action": "Owner: ratify D-1..D-7 (D-8 now fixed-with-evidence); then the typed GO at the cycle gate if desired.",
+ "known_limitations": [
+  "P5 post-acquire drift proven at the enforcement-site closure + CLI fault (not a mid-run race scheduler)",
+  "sandbox generator stages all live pins; production self-integrity covers runner/executor (machinery builder covered by existing pins)"
+ ],
+ "incidents": [
+  {
+   "event": "lane inactivity timeout 600s; deliverables completed by controller (disclosed)"
+  },
+  {
+   "event": "lane-authored after-fix script defect (false negatives) corrected by controller with in-script disclosure"
+  }
+ ],
+ "tree_status": "clean-after-commit",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "research/control/FUTURES-ES-PB1-V1/gate6/runner/fix3/PIN_ENFORCE_REPORT.md",
+   "sha256": "9107b9eabc8431100fe3fcbd6609e6871a6cf070f4de6e1c1ef28a1e026a2295"
+  },
+  {
+   "path": "research/control/FUTURES-ES-PB1-V1/gate6/runner/scored_runner.py",
+   "sha256": "fcb42769dd7b267c43d28d1f0d922cfcf238880e6385a365446e3da8aa113bac"
+  },
+  {
+   "path": "research/control/FUTURES-ES-PB1-V1/gate6/runner/scored_executor.py",
+   "sha256": "7fea1e0a328638f9c73dcaf7d7a49b3bb6773b894794f2d47700162640760300"
+  }
+ ]
+}

@@ -1,0 +1,82 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-DEEPRESEARCH-V2-20261003",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "DEEP-ES",
+  "dispatch_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "actual_start_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "commit_sha": null,
+  "commit_sha_disclosure": "Lane did not commit: prep-class dispatch on shared branch prep/futures-behavior-10syms-20261002 with sibling lanes (FX-BACKFILL, DATA-BACKUP, DEEP-{others}) writing concurrently to the same task tree; committing would require staging paths outside this lane's ownership. All outputs are untracked files under this task's ownership globs (dossiers_v2/ES_DEEP_v2.md, analysis/ES_*, dispatch/handoff_DEEP-ES.json).",
+  "changed_paths": [
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_build_panel.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_chains.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_regime_map.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_sessions.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_roll_stats.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_fomc.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_cot.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_quality.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_regime_stats.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_session_stats.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_roll_stats.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_fomc_stats.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_cot_stats.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_quality_ledger.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_cache/ (11 reproducible intermediates, 278MB: es_1m_outright.parquet, es_1m_seg.parquet, es_contract_daily.parquet, es_contracts.json, es_statistics_daily.parquet, es_roll_table.json, es_chain_{VOL,T5,DECL,OI}.parquet, es_vol_regime.parquet)",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dossiers_v2/ES_DEEP_v2.md",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dispatch/handoff_DEEP-ES.json"
+  ],
+  "tests": [
+    {
+      "command": "cd research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis && for s in ES_build_panel ES_chains ES_regime_map ES_sessions ES_roll_stats ES_fomc ES_cot ES_quality; do /Users/hoangminhlong/my-quantitative/.venv/bin/python $s.py; done",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "full clean re-run of all 8 scripts from vendor parquet; exit 0 each; spot checks stable (4,204 sessions; ann vol 16.96%; 66 rolls; T5 deviation >3 sessions = 0; FOMC release-bucket volume ratio 2.91)"
+    },
+    {
+      "command": "data validation inside ES_build_panel.py + ES_chains.py asserts",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "0 duplicate (instrument,minute) rows; 0 negative prices; 0 OHLC-inconsistent bars; expired contracts' last session == 3rd Friday except ESM6 2026-06-18 (Juneteenth); CoT weekly series dedupe assert passed"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "No PnL/mean-return evaluation anywhere (task law): H3/H4/H5 return sides and any signal ranking remain NOT_RUN pending a registered cycle",
+    "BBO spread/depth never measured (no quote data): roll-window and release-minute COST claims are NOT_RUN; only volume/vol/range timing measured",
+    "FOMC minute-anchored anatomy covers 2016-2026 only (92 timed statements, 91 with in-window 1m data); 2011-2015 statements (40) carry no release time in the as-issued HTML -> day-level only",
+    "Roll-gap carry: dividend yield PIT series absent; sign identity corroborated vs FRED DFF minus a declared 1.8pp constant proxy (61/66 rolls); FRED series is latest-revised NOT PIT",
+    "Statistics-schema OI usable only 2023-10+ (12 rolls); pre-2023 OI-based selection NOT_RUN",
+    "Pre-2016 Globex close was 16:30/16:15 CT (recovered from bars); those tail minutes sit in the break bucket and are excluded from RTH/ON aggregates (disclosed in dossier sec 3/7)",
+    "Deferred 2027 tails (ESH7 2,229 bars, ESM7 18, ESU7 2, ESZ7 3) excluded from chains by >=100k single-session volume floor; a real roll into them occurs after data end",
+    "ibkr overlap: vendor 16:00 close vs IBKR daily close median |diff| 15 ticks (settlement-mark convention gap, not error); IBKR closes remain non-tradable marks"
+  ],
+  "incidents": [
+    "FOUND+FIXED: normalized nonprice table cftc_legacy_tidy.parquet series_id COT_LEGACY_ES mixes 3 CFTC markets (true E-mini, Micro E-mini ~0.1-0.2M OI, S&P 500 Consolidated ~0.4-0.5M OI); first CoT run produced corrupted percentiles and a halved 2022 OI series; fixed via exact market-name filter (1082 clean weeks, 0 duplicates). Action for A7-DEEP-AUDIT + nonprice owner: the tidy table needs a market disambiguation column",
+    "ESU6 (2026-09) had stray deferred prints in Nov 2025 (2-5 contracts/day) that created a fake early volume crossover; fixed by requiring new-contract volume >=100k at crossover; same floor applied to OI (>=500k) for stray calendar-spread OI prints (e.g. ESM6 OI 2->5,337->2 on 2025-04-02/03)",
+    "Heavy-job lock NOT taken: global lock was FREE_PROVEN at lane start; this lane's compute (pandas, ~8GB RAM max per script) ran without acquiring the exclusive lock to avoid blocking sibling DEEP lanes; disclosed"
+  ],
+  "tree_status": "dirty, expected for multi-lane prep: this lane's outputs are untracked new files only (no modifications to tracked files). Concurrent sibling lanes present in the same task tree at handoff time: FX-BACKFILL (modified research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/COMPLETION_LEDGER.json + new backfill_20261003/), DATA-BACKUP (analysis/backup/). No foreign files touched by this lane.",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dossiers_v2/ES_DEEP_v2.md", "sha256": "52fd476c06418a0bcadaf155bc7a86179fc5eb7001105a4ec462ba8d955ad0e5"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_build_panel.py", "sha256": "bd3a749b398c2c37a1a72297727291b473b6a68bbca361743179293b45ca6c54"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_chains.py", "sha256": "934b721083e3be6cdd9d78eb19bae3fed0f7edd83ebe7ab6acbc1b9c95c41dae"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_regime_map.py", "sha256": "90e43bc946c9b202c0c6cd5586f4a6072301e190c071d0b2f89a23f61352cb75"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_sessions.py", "sha256": "42d8afff32bd1bbafb37809a59d2890908a09bbb616fc83618743af690cbc7a8"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_roll_stats.py", "sha256": "ffa5eb7a7f2343436629713d515cf8034aae7d4421e0a53c7b08b9790a6f69a1"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_fomc.py", "sha256": "0e20ea3ad45061eef0e96b8fca372ab8e4c051d5a56d83b8a53ee5c2ec9d61b7"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_cot.py", "sha256": "6deca322dda0a7dd07c04741301a13f616f3fe125de2620df6f5ac5c6777cb71"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_quality.py", "sha256": "3c4e6fbdb3991ff251392b91eb97297601a24ca1878d9355c58680a19f5bf9ac"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_regime_stats.json", "sha256": "623ef90ed02f40d48935fdb135c82cca748ea31e8e5837c581573777c2dc29bb"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_session_stats.json", "sha256": "f4e24ce31d0dba213f773edbce5b71019e19c9495ba319e19efc0c11b85ccfc2"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_roll_stats.json", "sha256": "e04ca8030b953559568f7996672a754c95593f0e4d1005fd8fa19da3c2012a44"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_fomc_stats.json", "sha256": "228fe2d4efbde95984128b6b1f64a9162bb794ea406c488577036fa09518f213"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_cot_stats.json", "sha256": "51fa896416ba9abb99f22274384b13f23dcb5257bed4d4ec854c5d150cf77011"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/ES_quality_ledger.json", "sha256": "a56dde3d2de90d1b5d05792888e84b7322b6d2cfe9197e0b3fce2da2018c8562"}
+  ],
+  "recommended_next_action": "Route dossier findings into (1) engine construction spec: adopt T5 calendar roll (66/66 validation) with Juneteenth-adjusted June expiries, ratio back-adjustment, drop DECL rule; (2) A7-DEEP-AUDIT lane: audit the two data incidents (CoT tidy contamination; stray deferred prints) and the reproduction hashes; (3) owner decisions: PIT dividend-yield source (completes H2 identity), PIT consensus archive (unblocks H3), bbo-1m for cost side of roll windows and release minutes; any mean-return/conditional evaluation only inside a registered scored cycle.",
+  "summary": "DEEP-ES complete: 16.4y x 1m per-contract ES study. Headlines: roll migration is 3-5 sessions before expiry with T5 calendar rule within 0-2 sessions on 66/66 rolls (v1 H1 descriptively confirmed); roll-spread sign flipped with the carry regime (-1.8%/yr 2010-16, -1.4% 2020-21, +3.3-4.7% 2023-26, 61/66 sign-match vs DFF-1.8pp); overnight carries 21-54% of daily variance by year while holding ~15-17% of volume; FOMC pre-release volume suppression 0.72-0.81x, release bucket 2.91x, reaction peak minute +1; CoT extreme positioning (either tail) -> +2pp forward vol (U-shape), COVID struck from 13th percentile; v1 depth blockers dissolved (24m floor exceeded 8x).",
+  "generated_utc": "2026-10-03T08:05:00+00:00"
+}

@@ -1,0 +1,128 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "HOLIDAY-CLOSURE",
+  "cycle_id": "FUTURES-ES-PB1-V1",
+  "role": "lane HOLIDAY-CLOSURE — closing (or formally blocking) the prelaunch-A7 standing obligation F-A1: '2011-2016 per-day holiday enumeration NOT_RUN / HOLIDAY_UNCERTAIN fail-closed-pending'. Machine-checked exposure proof from committed data + freeze, independent day-level evidence hunt, explicit verdict.",
+  "lane": "HOLIDAY-CLOSURE",
+  "round": "FUTURES-ES-PB1-V1",
+  "generated_utc": "2026-10-04",
+  "dispatch_sha": "8324a8c0e414fb683d9bfa6f56734d0a17b9d40a",
+  "actual_start_sha": "8324a8c0e414fb683d9bfa6f56734d0a17b9d40a",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/FUTURES-ES-PB1-V1/holiday/extract_equity_pdf_evidence.py",
+    "research/control/FUTURES-ES-PB1-V1/holiday/pdf_equity_evidence_2011_2015.json",
+    "research/control/FUTURES-ES-PB1-V1/holiday/exposure_proof.py",
+    "research/control/FUTURES-ES-PB1-V1/holiday/exposure_proof_2011_2016.json",
+    "research/control/FUTURES-ES-PB1-V1/holiday/HOLIDAY_CLOSURE.md",
+    "research/control/FUTURES-ES-PB1-V1/dispatch/handoff_HOLIDAY-CLOSURE.json"
+  ],
+  "write_boundary_respected": "All writes confined to research/control/FUTURES-ES-PB1-V1/holiday/** + research/control/FUTURES-ES-PB1-V1/dispatch/handoff_HOLIDAY-CLOSURE.json in worktree /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep; everything else read-only including the root repo (FUTURES-DATA-10SYMS-V1 root corpus read-only; FUTURES-BEHAVIOR P3-QUARANTINED NOT accessed); zero network (all evidence from committed bytes); no PnL/signal computation (bar counting + hashing + JSON comparison only); root .venv read-only; no commit/stage/push.",
+  "git_commands_run": [
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep rev-parse HEAD (once, bare, at start) -> 8324a8c0e414fb683d9bfa6f56734d0a17b9d40a (== dispatch SHA)",
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep status --porcelain (start: EMPTY; end re-check recorded below in tree_status)"
+  ],
+  "tests": [
+    {
+      "command": "exposure_proof.py: pinned-sha verification of 6 inputs (panel parquet 7ae6de2d…, session universe e56c4a53…, exclude_list bc8a41b6…, ES_fomc_stats 228fe2d4…, es_session_holiday 8885d5de…, cmecal_coverage c82f50c4…) + single-shot parquet recompute of RTH-core bars for all 4204 sessions",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "result": "4204/4204 recomputed bars equal sessions[].bars_rth_core_held; all pinned input shas match; exclude_list.head_sha == e7fc1d8d… (freeze generation HEAD)"
+    },
+    {
+      "command": "L2/L3 band census 2011-2016 (exact integer partition at 234=0.60*390)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "result": "cov==0: 4; 0<cov<0.60: 40; 0.60<=cov<1.0: 0 (BAND EMPTY — A7 F-A1 claim re-measured TRUE); cov==1.0: 1491 (1084 eval-eligible, matching the A7 census); margin 0.5795 below / 1.0 at-or-above"
+    },
+    {
+      "command": "L4b/L4c/L4d frozen holiday classes in-span",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "result": "HOLIDAY_UNCERTAIN and HOLIDAY_FACT_EARLYCLOSE each have ZERO 2011-2016 rows in exclude_list.json (class emits 2017-2025 only) — 'the pending class covers nothing at this SHA' verified"
+    },
+    {
+      "command": "L5a blocker scan: every bars>=234 span session x 60 committed candidate dates (56 from the 53 committed 2011-2015 per-holiday Globex PDFs' CME Group Equity Products sections + cmecal note-named 2014-2016 days, tiered primary/settlement)",
+      "exit_code": 0,
+      "verdict": "FAIL",
+      "result": "1 BLOCKER ROW (non-fatal recorded observation, this IS the finding): 2015-07-02 — official PDF 2015-4th-of-july-holiday-schedule.pdf equity section names 'Thursday, July 2: 1215 CT Early close' (sha 2c8831c2…) while the pinned panel carries a COMPLETE 390-bar session (held ESU5; volume forensics: 619 bars from 12:00 CT, 476,608 contracts, trading to 23:59 CT) and exclude_list.json does not exclude the date (survivor, inside F2 eval surface which starts 2014-01-17). Evidence-vs-data conflict, unresolvable by this lane under fail-closed law. 1 further mission-literal exposure row (2015-09-04) RESOLVED as regular by committed day-level evidence (2015-labor-day-holiday-schedule.pdf equity section: '1615 CT Regular close', sha 56d4554c…; panel agrees)"
+    },
+    {
+      "command": "L5b-L5e weekday/exclusion corroboration",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "result": "all 1491 full sessions are weekdays; every one of the 44 bars<234 span sessions is excluded by the frozen list at class COVERAGE_LT60 or higher priority; 36 candidate dates that are sessions are all truncated (<=226 bars) and excluded; 22 candidate CLOSED dates are absent from the panel (Good Fridays 2011/2013/2014/2016, MLK 2014, Dec-25s, Jan-1s); 40 window-interior full sessions reviewed — none named as holiday days by any artifact"
+    },
+    {
+      "command": "M2 corpus hunt (committed only): fx_comm captures, DEEPFOUR cme_cal/{comm,nq_es,fx}, cal_eb/cal_janq, cme_cal_gap/{equity,fx_comm}, cal_close, 10SYMS root corpus, es_session_holiday not_obtained_register",
+      "exit_code": 0,
+      "verdict": "FOUND",
+      "result": "53 official per-holiday Globex schedule PDFs 2011-2015 committed (48 with CME Group Equity Products sections; 56 candidate dates CLOSED 12 / HALT 27 / EARLY_CLOSE 17; 106 regular-adjudicated dates; every HALT/EARLY_CLOSE truncation time <= 12:15 CT; 0 weekday mismatches; 5 documented anomalies = 2 normal-schedule one-pagers, garbled 2014-MLK [known NOT_TRANSCRIBED], 2 settlement-doc Veterans). 2016 has NO per-holiday PDF set anywhere in the corpus (evidence of absence: eq_gapfill 404 probe + cdx_holiday_files.txt) — 2016 stays window-level (NOT_RUN_OBTAIN)"
+    }
+  ],
+  "authority_claims": [
+    "The A7 F-A1 specific claim ('no 2011-2016 session exists in the [0.60,1.0) coverage band') is TRUE — machine-verified at HEAD 8324a8c0 from the pinned panel.",
+    "The A7 F-A1 broader standing obligation ('any 2011-2016 holiday/early-close day with >=60% coverage and no other named-law exclusion is NOT provably excluded') MATERIALIZED: exactly one such session exists — 2015-07-02 — and it is eval-eligible in the frozen surface.",
+    "Committed day-level ES-family holiday evidence for 2011-2015 EXISTS (53 official PDFs, equity sections) — the material needed to adjudicate the span is already in the repo; it is simply not consumed by the frozen exclude builder.",
+    "This artifact types NO GO, endorses nothing, and computes no PnL/signal quantities."
+  ],
+  "findings": [
+    {
+      "id": "HOLIDAY-CLOSURE-F1",
+      "severity": "HIGH (blocking for the closure mission; converts A7 F-A1 from 'empty pending' to 'named blocker')",
+      "date": "2015-07-02",
+      "finding": "Complete, real-volume 390-bar RTH-core ES session on a day the committed official CME schedule names as an equity-family 12:15 CT early close; frozen freeze does not exclude it (survivor, F2 eval-eligible). Evidence-vs-data conflict unresolvable by this lane.",
+      "evidence": "2015-4th-of-july-holiday-schedule.pdf sha 2c8831c207c60a421d3d1ae283632b77959198de83a07d16db4b4bc713abbaeb 'CME Group Equity Products' 'Thursday, July 2: 1215 CT / 1315 ET / 1715 UTC - Early close'; panel es_1m_outright.parquet sha 7ae6de2d… bars_rth_core(2015-07-02, ESU5)=390; volume 476,608 contracts after 12:00 CT; exclude_list.json sha bc8a41b6… has no entry for the date",
+      "disposition": "VERDICT NOT_RUN (blocker). Resolution path recorded in HOLIDAY_CLOSURE.md: (1) owner-authorized builder round consuming pdf_equity_evidence_2011_2015.json (preferred, zero network), or (2) owner-authorized fetch of CME amended July-2015 notices (web.archive.org CDX, June-July 2015 vintages of the 2015-4th-of-july* family), or (3) owner ruling that the data side governs (would itself be a fail-closed law change, owner-only)"
+    },
+    {
+      "id": "HOLIDAY-CLOSURE-F2",
+      "severity": "NOTE",
+      "finding": "M2 upgrade: 2011-2015 per-day ES-family holiday evidence is committed and machine-extractable (56 candidate dates + 106 regular-adjudicated dates); a builder revision can consume it deterministically. 2016 remains window-level (no per-holiday PDF set exists in any committed corpus).",
+      "disposition": "Recorded as the concrete resolution asset; extraction artifact + script committed under holiday/."
+    },
+    {
+      "id": "HOLIDAY-CLOSURE-F3",
+      "severity": "NOTE",
+      "finding": "The A7 census numbers reproduce exactly (4 / 40 / 0 / 1491; 1084 eval-eligible) — the A7's band claim and counts are verified at this HEAD, so F-A1's severity assessment was made on correct data; what changed is the discovery of the third exposure case (complete session on a named early-close day), invisible to a coverage-band census.",
+      "disposition": "No action on A7; this lane's verdict supersedes the 'zero empirical exposure' adjudication with a named counterexample."
+    }
+  ],
+  "known_limitations": [
+    "The candidate enumeration for 2011-2016 is complete only relative to COMMITTED artifacts; a 2011-2016 holiday named by no committed artifact and carrying a complete session would be invisible (structurally: such a day IS a regular trading session by construction — the market traded full regular hours).",
+    "2016 day-level evidence: absent from the corpus (NOT_RUN_OBTAIN). 2016 candidates (Good Friday 2016-03-25, Dec 26 closures, Nov 25 floor early close) are covered by the closure argument because all are 0-bar/absent/truncated in the panel; a 2016 fetch round (web.archive.org per-holiday file family) remains possible for a future owner-authorized round.",
+    "Equity-family authority (not ES-carve-out-verified): the 'CME Group Equity Products' sections are family-level; the 2010 official PDF shows no product carve-outs in equity sections (sole named exception Nikkei), but per-day ES-specific transcription remains NOT_RUN — this lane records candidates/adjudication inputs, it does not re-write the freeze.",
+    "The proof is data-version-bound: valid only for the pinned panel (7ae6de2d…), session universe (e56c4a53…), and frozen exclude builder (9b94372d…; exclude_list bc8a41b6…) at generation HEAD e7fc1d8d…; any change re-runs exposure_proof.py with verdict-bearing output."
+  ],
+  "incidents": [],
+  "tree_status": "end git status --porcelain: THIS lane's writes are exactly research/control/FUTURES-ES-PB1-V1/holiday/** and research/control/FUTURES-ES-PB1-V1/dispatch/handoff_HOLIDAY-CLOSURE.json (both untracked-new; no commit/stage/push). TWO ADDITIONAL untracked paths appeared during the lane run that this lane did NOT create and did NOT touch: research/control/FUTURES-ES-PB1-V1/pins/** and research/control/FUTURES-ES-PB1-V1/dispatch/handoff_PIN-ADJUDICATION.json — start status was EMPTY, so a concurrent lane (PIN-ADJUDICATION) evidently wrote into the same worktree during this lane's run; recorded here for the orchestrator, untouched by HOLIDAY-CLOSURE",
+  "workers": [],
+  "outputs": [
+    {
+      "path": "research/control/FUTURES-ES-PB1-V1/holiday/HOLIDAY_CLOSURE.md",
+      "sha256": "fe75423add71c757d1f8b5e04ee4f021a67b180d755b312ab986db5f1638b1aa"
+    },
+    {
+      "path": "research/control/FUTURES-ES-PB1-V1/holiday/exposure_proof_2011_2016.json",
+      "sha256": "8ffc0fa2799e6e516b2cdc44ba08d1cb36dcdd5fbae61e493f0c9a302c42e519"
+    },
+    {
+      "path": "research/control/FUTURES-ES-PB1-V1/holiday/exposure_proof.py",
+      "sha256": "6f401d1c4540a54c7fcfcdcf1f3d8c5a3febdb6aab516f7b0287476af1a6319a"
+    },
+    {
+      "path": "research/control/FUTURES-ES-PB1-V1/holiday/pdf_equity_evidence_2011_2015.json",
+      "sha256": "f3a8b4d43be720966ee8f2978de571e27c4e4ff5d2694dab4d1f4cd116c6bc53"
+    },
+    {
+      "path": "research/control/FUTURES-ES-PB1-V1/holiday/extract_equity_pdf_evidence.py",
+      "sha256": "e8a97d17359f0a78f214c32a477ac9c750dcbbc45bb005c38fa91591db740413"
+    },
+    {
+      "path": "research/control/FUTURES-ES-PB1-V1/dispatch/handoff_HOLIDAY-CLOSURE.json",
+      "sha256": "self (this file)"
+    }
+  ],
+  "readiness_conclusion": "VERDICT: NOT_RUN (blocker). The prelaunch-A7 standing obligation F-A1 is NOT closed. The A7's specific band claim is machine-verified TRUE (the [0.60,1.0) coverage band is empty for 2011-2016; the frozen HOLIDAY_UNCERTAIN class covers nothing in-span), but the full exposure statement FAILS on one named date: 2015-07-02 — a complete, real-volume session inside the F2 eval surface on a day the committed official CME schedule names as an equity-family early close. Independent day-level evidence for 2011-2015 WAS found committed (53 official per-holiday Globex PDFs with equity sections; 56 candidate + 106 regular-adjudicated dates extracted), making the resolution cheap and deterministic; 2016 remains window-level (NOT_RUN_OBTAIN).",
+  "recommended_next_action": "Owner: authorize a gate-2 builder revision consuming research/control/FUTURES-ES-PB1-V1/holiday/pdf_equity_evidence_2011_2015.json (adds a day-level holiday class for primary-tier 2011-2015 candidates; keeps settlement-tier days regular where a PDF adjudicates REGULAR), then re-run holiday/exposure_proof.py — expected outcome zero blocker rows and closure verdict PASS at the new freeze. Alternative (only to challenge the data side): owner-authorized fetch of CME amended July-2015 notices (web.archive.org CDX for the 2015-4th-of-july* family, June-July 2015 vintages). Until one of these runs, F-A1 remains a NAMED blocker: session 2015-07-02 is eval-eligible with unadjudicated holiday status at freeze bc8a41b6…."
+}

@@ -1,0 +1,46 @@
+==============================================================================
+GATE-6 SYNTHETIC SMOKE TEST — all inputs fabricated, zero real PnL
+==============================================================================
+
+[V1] 24-slot law
+  PASS  frozen identities embedded in the freeze (24 rows) — schema=freeze_identity_table@1
+  PASS  transcription set-equal to frozen table (24 unique)
+  PASS  fresh ledger: 24 slots all NOT_RUN, observed 0
+  PASS  23-slot init refused
+
+[V2] refusal triggers (synthetic declarations)
+  PASS  R1 paraphrased GO (historical PLAN §6 string) -> REFUSED_NO_GO — got 'REFUSED_NO_GO'
+  PASS  R1 delegated GO (owner_typed=False) -> REFUSED_NO_GO — got 'REFUSED_NO_GO'
+  PASS  R1 registry mismatch -> REFUSED_NO_GO — got 'REFUSED_NO_GO'
+  PASS  R2 no A7 auth -> REFUSED_NO_AUTH — got 'REFUSED_NO_AUTH'
+  PASS  R2 A7 with unresolved HIGH -> REFUSED_NO_AUTH — got 'REFUSED_NO_AUTH'
+  PASS  R3 lock-held simulation -> NOT_RUN_RESOURCE_CONFLICT — got 'NOT_RUN_RESOURCE_CONFLICT'
+  PASS  R3 lock state drift -> REFUSED_CONTROL_STATE_DRIFT — got 'REFUSED_CONTROL_STATE_DRIFT'
+  PASS  R4 freeze-drift simulation -> REFUSED_DRIFT — got 'REFUSED_DRIFT'
+  PASS  R5 owner-ordered variant pins -> REFUSED_PINS_UNRESOLVED — got 'REFUSED_PINS_UNRESOLVED'
+  PASS  allow path passes R1-R5 in order — None {'gates_passed': ['go', 'auth', 'lock', 'drift', 'pins']}
+
+[V3] append-only ledger behavior
+  PASS  double-terminal refused
+  PASS  unknown slot refused
+  PASS  disk re-read + hash-chain verify
+  PASS  non-final-row tamper detected (successor chain break)
+  PASS  whole-file digest changes under tamper (final-row law)
+
+[V4] observed-denominator accounting on synthetic results
+  PASS  status mix (11 PASS / 5 FAIL / 3 REFUSED / 5 NOT_RUN) — got (11, 5, 3, 5)
+  PASS  observed denominator == PASS+FAIL == 16 — got 16
+  PASS  REFUSED/NOT_RUN never counted (16 != 19 or 24)
+  PASS  publication failure still counted (published=False inside FAIL)
+  PASS  refusal-event rows never counted
+  PASS  24 slots terminal-complete after NOT_RUN resolution — {"NOT_RUN": 0, "PASS": 11, "FAIL": 5, "REFUSED": 8}
+  PASS  observed denominator UNCHANGED by REFUSED resolution (still 16) — got 16
+
+[V5] reproduction-twin bookkeeping on synthetic runs
+  PASS  two identical synthetic runs byte-match (24 files)
+  PASS  perturbed synthetic run FAILS twin comparison — ['SYNTHETIC__FBES1-PB1-CONT-UP-D0-S2.json']
+
+==============================================================================
+SMOKE RESULT: 28 pass / 0 fail — ALL GREEN
+All outputs under gate6/smoke/ — SYNTHETIC ONLY, zero real PnL.
+==============================================================================

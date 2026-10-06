@@ -1,0 +1,272 @@
+schema: futures_behavior_symbol_config@1
+task_id: FUTURES-BEHAVIOR-10SYMS-PREP-20261002
+symbol: 6B
+generated_utc: '2026-10-02'
+source_dossier: dossiers/6B_DOSSIER.md
+dossier_sha256: c4d79f362e46e4fab6f89091079c47aded1232620880e86212753188614af552
+provenance_note: >-
+  Hypotheses derived STRICTLY from dossiers/6B_DOSSIER.md S5. FX-spot->6B transfers flagged
+  per dossier (CIP basis, quarterly roll +-2-5 ticks, $12.50 median daily-proxy spread +
+  $0.85 + unfetched exchange fee). London session (GBP's prime session, BoE 12:00 London,
+  ONS 07:00 London) is entirely OUTSIDE RTH bars; real-volume quarterly chain only
+  2025-09-11..2026-10-01 (~13.5 months).
+defaults:
+  universe:
+    exchange: CME (Globex)
+    contract_cycle: 24 consecutive monthlies + HMUZ quarterlies to Dec-2031
+    liquid_chain_rule: quarterly HMUZ ONLY (serials <=0.13% of volume; 6BV6 serial peaked 237 lots/day vs 6BZ6 40k-62k same month)
+    liquid_chain_evidence: 'OBSERVED 6B S1 monthly_volume_by_contract_type + quarterly_vs_serial'
+  roll_rule:
+    baseline: declared_calendar_last_trade_month
+    baseline_definition: hold until last session BEFORE day-1 of the expiry month (last trade 09:16 CT, 2nd business day before 3rd Wednesday, holiday-shifted), roll at that close
+    reference: code/futbt/roll.py + BACKTEST_LAUNCH_DRAFT.md S0
+    target_adjustment: next_HMUZ_quarterly - literal next-listed includes serials (2-3 orders thin; expired serials absent from snapshot entirely so literal rule NOT reconstructable pre-2026-10)
+    dossier_finding: 'OBSERVED 6B S1: at all 4 measured rolls the OLD quarterly printed 17.6k-58.4k while NEXT had 28-572; next reaches front scale 8-9 sessions AFTER the declared roll; old-side inside expiry month unobservable (fetch cut)'
+    alternative_required: volume-crossover roll from the NEW contract's own trailing RTH volume (PIT-legal; only 4 real-era rolls to describe it); OI roll NOT_RUN
+  execution_laws:
+    decision_point: session_close_through_pit_view
+    default_fill: next_session_open_tick_rounded_cost_shifted
+    ambiguous_order: same_bar_tp_sl_worst_case_bound_no_point_pnl
+    close_only_bars: never_fill_any_path
+    tb_labels: TRAIN_ONLY_never_validation_features
+    adjusted_series: causal_additive_features_only_never_fills_mtm_pnl
+    attribution: full_path_leave_one_out_only_additive_leg_sums_forbidden
+  cost_model:
+    commission: {usd_per_side: 0.85, provenance: 'PUBLISHED IBKR 2026-10-02'}
+    exchange_fee: {provenance: NOT_RUN_NOT_FETCHED}
+    spread: {median_usd_per_contract: 12.5, provenance: 'MEASURED daily-BBO close proxy 2 ticks = $12.50 on quarterly front-scale days (n=239, 0 crossed; S6 3-tick row used thin serial 6BV6)', caveat: non-synchronous, not executable; tick-size public conflict 0.0001 vs 0.0002 flagged (S1 0.0001 governs)}
+    slippage: {provenance: NOT_RUN_NO_DECLARED_VALUE}
+    stress_multipliers: [1.0, 1.5, 2.0]
+hypotheses:
+- id: 6B-H5
+  dossier_ref: 'dossiers/6B_DOSSIER.md S5 H5 (partial proxy measurable, descriptive-only)'
+  hypothesis_kind: event_reaction
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Pre-positioning + release repricing: on BLS 08:30 ET CPI days the 6B RTH open-vs-prior-close
+    gap (which embeds the 07:30 CT release minute) should be larger in magnitude than on
+    non-release days.
+  pit_trigger:
+    mechanizable: true
+    observable: verified BLS CPI release calendar (12 of 2026 dates verified, FACT) + daily gap machinery
+    field: release-date flag; RTH open vs prior RTH close
+    source: bls.gov schedule (fetched 2026-10-02) + raw daily quarterly chain
+    as_of_rule: calendar known in advance; gap normalized by trailing-20d mean|ret| (strict past, window ends prior session)
+    timestamp_at_decision: 08:30 CT open (the release lands inside the hidden gap - NOT an executable signal)
+  direction: n/a (descriptive magnitude comparison only)
+  entry: none (entry timing inside the gap is unknowable without intraday)
+  exit: n/a
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: release days vs matched non-release days
+  universe: 6B quarterly chain (front-scale era ~13 months, ~12 CPI dates)
+  roll_rule_ref: defaults.roll_rule
+  sizing: n/a (measurement)
+  regime_tags: [all_regimes_descriptive]
+  counter_hypothesis: gap distribution on release days ~ non-release days (no pre-positioning)
+  failure_conditions:
+  - gap distributions indistinguishable
+  - treated as an executable signal (forbidden without intraday)
+  minimal_test:
+    kind: descriptive_release_day_gap_distribution
+    requirements:
+    - {class: event_release_calendars, symbols: [US], use: event_calendar_descriptive, floor: 'BLS CPI schedule (FACT, fetched; NFP dates NOT_RUN this lane)', floor_met: true, available_today: true, acquisition: in_hand_now}
+    - {class: daily_trades_per_contract, symbols: [6B], use: conditional_descriptive, floor: 'front-scale era gap series (measured: 11.9% of days gap >=2x trailing mean)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: descriptive_only_no_scored_version (design ready; measurement NOT_RUN this cycle by scope)
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [6B], use: conditional_descriptive, floor: same, floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: [REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps: []
+  feasibility:
+    mechanization: high
+    acquisition_cost: in_hand_now
+    rank_basis_note: 'dossier: design ready, PREP-legal descriptive on data in hand; kept descriptive-only'
+  rank: 1
+- id: 6B-H1
+  dossier_ref: 'dossiers/6B_DOSSIER.md S5 H1 (rank 1 in dossier: measured on data in hand)'
+  hypothesis_kind: execution_rule
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Liquidity network effects: MM quotes concentrate where open interest sits; hedgers follow.
+    The calendar roll is an artifact of the generic data-lane rule, not of 6B
+    microstructure - a volume-crossover roll (new contract's own trailing volume, PIT-legal)
+    tracks true liquidity better and captures more liquid sessions.
+  pit_trigger:
+    mechanizable: true
+    observable: new quarterly trailing-5d RTH volume >= x% of old's trailing-5d (x PARAM-GAP - only 4 real-era rolls exist; do not invent)
+    field: per-contract daily RTH volume
+    source: raw daily files (front-scale era 2025-09-11..2026-10-01; old-side inside expiry month unobservable)
+    as_of_rule: trailing windows strictly past; decision at close; forced exit at old last-trade minus 1 session
+    timestamp_at_decision: daily close
+  direction: long/short agnostic (execution-quality hypothesis)
+  entry: switch old->next-quarterly at first close satisfying the condition
+  exit: forced at old last trade - 1 session
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: one quarter per decision
+  universe: quarterly HMUZ chain only (serials excluded)
+  roll_rule_ref: this IS the roll A/B (declared calendar vs volume-crossover)
+  sizing: 1 contract unit (descriptive)
+  regime_tags: [all_regimes_mechanical]
+  counter_hypothesis: liquidity flips exactly at month-end; the measured "8-9 sessions late" is a fetch-window artifact of the NEW contract's early ramp
+  failure_conditions:
+  - crossover date varies >+-5 sessions across future rolls
+  - old-side volume (unobservable here) shows the flip happened before the declared date
+  - only-4-rolls sample treated as stable; settlement-derived old bars used
+  minimal_test:
+    kind: descriptive_roll_migration_measurement
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [6B], use: construction_check, floor: 'daily per-contract RTH volume >=24 months (have 13.5 front-scale; 4 rolls measured; floor >=12 rolls before stability claim)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [6B], use: backtest_fill, floor: '>=24m incl. >=12 rolls', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: 6B-H1-P1, piece: 'volume-crossover threshold x%', reason: 'only 4 real-era rolls exist to calibrate; never invent (dossier)'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: in_hand_now
+    rank_basis_note: measured on data in hand but crossover param needs >=12 rolls (floor unmet)
+  rank: 2
+- id: 6B-H3
+  dossier_ref: 'dossiers/6B_DOSSIER.md S5 H3'
+  hypothesis_kind: cross_asset_relative_value
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Fiscal-dominance premium priced into UK rates -> GBP discount: on UK-specific fiscal/
+    gilt events (no US counterpart), 6B falls more than 6E over days-weeks.
+  pit_trigger:
+    mechanizable: true
+    observable: UK fiscal event flag (HM Treasury calendar + gilt-yield jump filter with no US counterpart)
+    field: fiscal event dates + gilt yields + 6B/6E ratio
+    source: GOV.UK fiscal calendar (NOT_RUN to fetch) + gilt yields PIT (not in corpus) + 6E chain (in corpus)
+    as_of_rule: event flag from calendar (knowable in advance) + contemporaneous gilt jump; entry next close after flag
+    timestamp_at_decision: next close after event flag
+  direction: short 6B / long 6E (2x6B vs 1x6E per unit - multipliers 62,500 GBP vs 125,000 EUR)
+  entry: next close after event flag
+  exit: fixed horizon or ratio reversion (PARAM-GAP)
+  take_profit: 'PARAM_GAP: 6B-H3-P1'
+  stop_loss: 'PARAM_GAP: 6B-H3-P1'
+  time_rules: days-weeks
+  universe: 6B + 6E quarterly chains
+  roll_rule_ref: defaults.roll_rule both symbols
+  sizing: 2x6B vs 1x6E per unit (declared)
+  regime_tags: [uk_fiscal_stress, global_risk_off_confound]
+  counter_hypothesis: EUR gilt-linked flows dominate the cross during EU stress, flipping the relative story
+  failure_conditions:
+  - 6B/6E idiosyncratic residual (1-corr^2 ~30% of front-scale variance) NOT elevated on UK fiscal dates
+  - global risk-off days contaminate (both legs fall)
+  minimal_test:
+    kind: descriptive_event_ratio_response
+    requirements:
+    - {class: uk_fiscal_calendar, symbols: [UK], use: event_calendar_descriptive, floor: 'HM Treasury calendar (NOT_RUN to fetch; free)', floor_met: false, available_today: false, acquisition: free_public}
+    - {class: gilt_yields_pit, symbols: [UK], use: signal_reference, floor: 'gilt yields PIT (not in corpus)', floor_met: false, available_today: false, acquisition: free_public}
+    - {class: daily_trades_per_contract, symbols: [6B, 6E], use: conditional_descriptive, floor: 'both chains in corpus (6E read-only measured; corr 0.837)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [6B, 6E], use: backtest_fill, floor: multi-year both legs + event sample, floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: 6B-H3-P1, piece: gilt-jump filter + TP/SL + horizon, reason: 'no measured event sample (dossier)'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: free_public
+    rank_basis_note: needs free UK calendar + gilt series fetch; legs in corpus
+  rank: 3
+- id: 6B-H2
+  dossier_ref: 'dossiers/6B_DOSSIER.md S5 H2'
+  hypothesis_kind: event_reaction
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Rate-differential channel: a UK-vs-US macro-surprise differential (BoE hawkish-relative,
+    or UK CPI/wages above consensus while US at/below) drifts GBP/6B up over 1-5 days.
+  pit_trigger:
+    mechanizable: true
+    observable: standardized relative surprise (needs consensus + actual with release timestamps for BOTH regions)
+    field: BoE/Fed decisions + UK CPI/wages + US CPI/NFP surprises
+    source: BoE MPC calendar + Fed calendars FACT (fetched); ONS calendar NOT_RUN (404); consensus archive (licensed, missing)
+    as_of_rule: first-print vintages (ONS revisions matter); BoE 12:00 London + ONS 07:00 London land OUTSIDE RTH bars - not measurable on this snapshot at intraday level
+    timestamp_at_decision: release timestamps; entry next bar/session close
+  direction: long GBP on positive relative surprise
+  entry: next-bar/session close after release
+  exit: 1-5 sessions
+  take_profit: none at hypothesis stage
+  stop_loss: none at hypothesis stage
+  time_rules: 1-5 sessions
+  universe: 6B quarterly chain
+  roll_rule_ref: defaults.roll_rule
+  sizing: vol-scaled (rolling-20d, strict past)
+  regime_tags: [high_inflation_persistence, risk_off_usd_bid]
+  counter_hypothesis: BoE surprises priced within the London session (unmeasurable on RTH-only bars); global USD factor swamps idiosyncrasy
+  failure_conditions:
+  - sign consistency <=50% in walk-forward
+  - revised data used as-known-then (ONS vintages required)
+  minimal_test:
+    kind: descriptive_relative_surprise_conditioned_return
+    requirements:
+    - {class: consensus_surprise_archive, symbols: [UK, US], use: signal_reference, floor: 'PIT consensus/actual BoE + UK CPI/wages + US CPI/NFP >=3y (BLOCKED)', floor_met: false, available_today: false, acquisition: owner_declaration}
+    - {class: ons_calendar_vintages, symbols: [UK], use: signal_reference, floor: 'ONS release calendar + first prints (404 this session; retry e-Stat-style portal)', floor_met: false, available_today: false, acquisition: free_public}
+    nondata_blockers: [CONSENSUS_LICENSE_OWNER_DECISION]
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: consensus_surprise_archive, symbols: [UK, US], use: backtest_fill, floor: same + >=24m daily chain, floor_met: false, available_today: false, acquisition: owner_declaration}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN, CONSENSUS_LICENSE_OWNER_DECISION]
+  param_gaps:
+  - {id: 6B-H2-P1, piece: surprise standardization, reason: consensus source undecided (owner)}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: vendor_paid
+    rank_basis_note: calendar verified but consensus data missing for both regions
+  rank: 4
+- id: 6B-H4
+  dossier_ref: 'dossiers/6B_DOSSIER.md S5 H4 (NOT measurable on this snapshot)'
+  hypothesis_kind: regime_conditional
+  mechanism_class: POSTULATED
+  mechanism: >-
+    London-morning range breaks continue into the US session when the monetary regime is
+    directional (BoE/Fed cycle moving) and fade in on-hold regimes.
+  pit_trigger:
+    mechanizable: false
+    observable: London morning (02:00-08:00 CT) range breakout - ENTIRELY OUTSIDE useRTH bars (hidden-gap proxy is the only trace)
+    field: full-session M1 incl. London hours
+    source: Databento-class ohlcv-1m full session (owner/vendor decision)
+    as_of_rule: breakout detected within the London session; entry before/at US open
+    timestamp_at_decision: intraday breakout detection
+  direction: continuation conditional on regime
+  entry: breakout level (PARAM-GAP)
+  exit: US session close (PARAM-GAP)
+  take_profit: 'PARAM_GAP: 6B-H4-P1'
+  stop_loss: 'PARAM_GAP: 6B-H4-P1'
+  time_rules: intraday (London -> US session)
+  universe: 6B quarterly chain
+  roll_rule_ref: defaults.roll_rule
+  sizing: vol-scaled
+  regime_tags: [directional_monetary_regime, on_hold_regime]
+  counter_hypothesis: breakouts fade regardless of regime (liquidity-taking)
+  failure_conditions:
+  - follow-through does not survive entry-delay +1-5 minutes
+  - tested on RTH-only data mislabeled as London (forbidden)
+  minimal_test:
+    kind: none_structurally_blocked
+    requirements:
+    - {class: full_session_globex_intraday, symbols: [6B], use: intraday_event, floor: '>=2y M1 with full Globex hours (RTH-only corpus cannot see London)', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: full_session_globex_intraday, symbols: [6B], use: intraday_execution, floor: same, floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: 6B-H4-P1, piece: all rule pieces, reason: 'NOT measurable on this snapshot (dossier)'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: vendor_paid
+    rank_basis_note: structurally blocked until Globex-hours intraday
+  rank: 5

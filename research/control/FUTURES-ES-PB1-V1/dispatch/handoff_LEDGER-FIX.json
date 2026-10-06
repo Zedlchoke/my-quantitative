@@ -1,0 +1,61 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "LEDGER-FIX",
+  "cycle_id": "FUTURES-ES-PB1-V1",
+  "role": "lane LEDGER-FIX — fix the reproduced reopen/append hash-chain defect in gate6/trial_ledger.py (_replay cursor restoration) and prove the fix with a comprehensive SYNTHETIC suite; regression vs the original gate-6 smoke test",
+  "lane": "LEDGER-FIX",
+  "round": "FUTURES-ES-PB1-V1 gate-6 repair (FAIL record FAIL_LEDGER_REPLAY.md, reproduced 2026-10-04 at HEAD 71326c8c; fix authorized at dispatch HEAD 2291d562)",
+  "generated_utc": "2026-10-05",
+  "dispatch_sha": "2291d562c32f01d484d77947650609d8050d6ad1",
+  "actual_start_sha": "2291d562c32f01d484d77947650609d8050d6ad1",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/FUTURES-ES-PB1-V1/gate6/trial_ledger.py",
+    "research/control/FUTURES-ES-PB1-V1/gate6/fix/test_ledger_fix.py",
+    "research/control/FUTURES-ES-PB1-V1/gate6/fix/test_ledger_fix_output.txt",
+    "research/control/FUTURES-ES-PB1-V1/gate6/fix/smoke_regression_output.txt",
+    "research/control/FUTURES-ES-PB1-V1/gate6/fix/smoke_regress/",
+    "research/control/FUTURES-ES-PB1-V1/gate6/fix/FIX_REPORT.md",
+    "research/control/FUTURES-ES-PB1-V1/dispatch/handoff_LEDGER-FIX.json"
+  ],
+  "write_boundary_respected": "All writes confined to research/control/FUTURES-ES-PB1-V1/gate6/fix/** plus the ONE authorized surgical edit to gate6/trial_ledger.py (single line in _replay, mandated by the FAIL record) plus this handoff in dispatch/. Nothing else in the worktree written: committed gate6/smoke/ evidence untouched (M3 regression ran in an isolated sandbox under gate6/fix/smoke_regress/); no panel/parquet reads, no quarantined PnL reads, no registry/ledger-of-record writes, zero network, no commit/stage/push (controller commits).",
+  "git_commands_run": [
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep rev-parse HEAD (once at start) -> 2291d562c32f01d484d77947650609d8050d6ad1 on branch prep/futures-es-reg-20261004",
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep status --short (start: clean; end: only ' M research/control/FUTURES-ES-PB1-V1/gate6/trial_ledger.py' + untracked research/control/FUTURES-ES-PB1-V1/gate6/fix/** — the authorized footprint)"
+  ],
+  "tests": [
+    {"command": ".venv/bin/python research/control/FUTURES-ES-PB1-V1/gate6/fix/test_ledger_fix.py", "exit_code": 1, "verdict": "PASS with 1 recorded FINDING-case", "result": "33 checks PASS / 1 recorded deviation (G1, FINDING L-F2, pre-existing edge orthogonal to the fix) / 2 FINDINGS. Categories: A FAIL-record reproduction 3/3 (reopen+append+verify now ok; pre-fix raised 'hash-chain break at line 2'); B multi-session reopen 5 sessions x 24 SYNTH ids 9/9 (incl. independent disk-bytes chain re-verification); C bytes-never-rewritten 3/3 (session-1 bytes exact prefix of final bytes); D tampering 4/4 (non-final row -> 'hash-chain break at line 3' naming successor; final row -> digest-change detection per _replay docstring chain law; truncated middle line fail-closed); E torn final line 4/4 fail-closed + FINDING L-F1; F duplicate/retry accounting 8/8 (double-terminal, PASS->FAIL refused, slot REFUSED terminal, run-level record_refusal consumes no slot, observed==PASS+FAIL==disk counts_observed, publication failure counts, terminal law across reopen); G fresh-path verify 2/3 + FINDING L-F2. Suite exit 1 solely due to G1 being recorded honestly."},
+    {"command": ".venv/bin/python gate6/fix/smoke_regress/research/control/FUTURES-ES-PB1-V1/gate6/synthetic_smoke_test.py (ORIGINAL smoke test, byte-copy cmp-identical, trial_ledger.py symlinked to the real fixed module, sandbox mirrors original directory depth)", "exit_code": 0, "verdict": "PASS", "result": "28 pass / 0 fail — ALL GREEN: V1 4/4, V2 refusal gates 10/10, V3 append-only 5/5, V4 denominator 7/7, V5 reproduction twin 2/2. The fix breaks no prior behavior; no prior test depended on the buggy replay (original smoke used a single ledger session)."},
+    {"command": "cmp original vs sandbox copy of synthetic_smoke_test.py", "exit_code": 0, "verdict": "PASS", "result": "byte-identical — M3 exercised the unmodified original script against the actual fixed module"}
+  ],
+  "authority_claims": [
+    "SYNTHETIC-ONLY: every computed artifact in this lane uses fabricated SYNTH-* identities and fabricated rows; zero panel/parquet reads and zero quarantined PnL reads at any point.",
+    "No ledger-history rewrite: the ledger FILE is never rewritten by the fix or by any test (append-only law proven by exact-prefix test C2/C3 and by E3: even a failed replay leaves file bytes untouched); the source edit is one line inside _replay restoring the chain cursor, and the verifier's law itself is untouched.",
+    "No commit, no stage, no push, no merge; lane claims no typed GO; dispatch_sha == actual_start_sha == 2291d562c32f01d484d77947650609d8050d6ad1; commit_sha null (controller commits).",
+    "Zero network access during the entire lane."
+  ],
+  "findings": [
+    {"id": "L-F0", "type": "FIX", "severity": null, "finding": "THE FIX (exactly one line, _replay L125): self._prev_sha = row.get(\"prev_row_sha\") -> self._prev_sha = _row_sha(row). Replay restored the chain cursor from the last row's prev_row_sha FIELD (pointer to row N-1) instead of the canonical hash OF row N as maintained by _append L150; every first-append-after-reopen linked to the wrong predecessor and verify() correctly rejected. Post-fix: FAIL-record reproduction passes (suite A1-A3), 5-session reopen chain holds end-to-end, 28/28 original smoke green."},
+    {"id": "L-F1", "type": "GAP", "severity": "LOW", "finding": "TORN-WRITE LAW SILENT (M2 case E): the frozen law (module docstring; _append comment 'single line + newline, flush + fsync'; _replay docstring blank/seq/chain errors; original smoke test has no torn-write handling) does not define behavior for a torn FINAL line. Actual behavior, asserted by the suite: reopen/verify FAIL CLOSED with a raw json.JSONDecodeError (not a LedgerError with a ledger-specific message); the file is never rewritten or repair-truncated (append-only holds on the read path). No behavior invented; mapping decode errors to LedgerError would be a law amendment left to the owner. Write-side mitigation (single-line append + fsync) already in the frozen code."},
+    {"id": "L-F2", "type": "GAP", "severity": "LOW", "finding": "verify() on a never-written path raises FileNotFoundError instead of returning ok, while summary() handles the same state gracefully (file_sha256=None). Orthogonal to the fix: for a nonexistent file _replay raises at open(), before the L125 loop body can ever execute, so the one-line change cannot affect this path (pre-existing edge, present at the FAIL-record HEAD too). Law silent; NOT fixed (outside the one-line mandate)."}
+  ],
+  "known_limitations": [
+    "M3 regression could not run at the original gate6/ location because the committed gate6/smoke/ledger_synthetic.jsonl is already terminal-complete (a naive re-run would double-terminal) and would write outside the lane boundary; the sandbox under gate6/fix/smoke_regress/ (byte-copy + symlink to the real fixed module, identical directory depth) is the faithful equivalent and is committed as evidence with its verbatim output.",
+    "The one-line fix is intentionally minimal: no docstring, schema, or behavior changes; both GAPs above are recorded, not patched.",
+    "Suite exit code is 1 by design (honest recording of G1); all fix-proving checks pass.",
+    "Torn-write and fresh-path-verify behaviors are asserted AS FOUND (fail-closed), not as a desired specification; if the owner wants LedgerError-mapping or a None-file ok, that is a freeze/law amendment."
+  ],
+  "incidents": [],
+  "tree_status": "end git status --short: ' M research/control/FUTURES-ES-PB1-V1/gate6/trial_ledger.py' (the authorized one-line fix) + untracked research/control/FUTURES-ES-PB1-V1/gate6/fix/{test_ledger_fix.py,test_ledger_fix_output.txt,smoke_regression_output.txt,FIX_REPORT.md,smoke_regress/} + this handoff; start status clean; no other tracked file modified; __pycache__/ gitignored",
+  "workers": [],
+  "outputs": [
+    {"path": "research/control/FUTURES-ES-PB1-V1/gate6/trial_ledger.py", "sha256": "bf89be550705d0474e0214c51417ca1c57f7cf168b822f38a46b7b77affd5a2c"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/gate6/fix/test_ledger_fix.py", "sha256": "d8f27118c2fa16e576bf0124674c5c2c62d672c5c5b0912081e144058a689ecd"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/gate6/fix/test_ledger_fix_output.txt", "sha256": "b319e967ed9e9a56b150d1aa3aee1d8442ba3459648fe703a956c4be649c18a4"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/gate6/fix/smoke_regression_output.txt", "sha256": "2f68217ac4118953af6e242677c12fe50c67afc71e59a3e10102eb07e06a6690"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/gate6/fix/FIX_REPORT.md", "sha256": "e83325e30f43eecbb6f1bf2b7e093e3b4058b9e753df9b45b40b2d852cd2aeba"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dispatch/handoff_LEDGER-FIX.json", "sha256": "SELF-NOT-HASHED"}
+  ],
+  "readiness_conclusion": "The CRITICAL reopen/append hash-chain defect of FAIL_LEDGER_REPLAY.md is fixed with exactly one line in gate6/trial_ledger.py _replay and re-proven: (A) the original FAIL-record reproduction now passes; (B) 5-session reopen over the 24 synthetic identities holds the chain end-to-end (independently re-verified from disk bytes); (C) the file's bytes are append-only (exact-prefix proof); (D) tampering with non-final rows is rejected naming the successor link, truncated middle lines fail closed, and final-row tamper is detected by the file digest per the frozen chain law; (F) terminal/duplicate/refusal/denominator accounting is intact incl. publication-failure counting and cross-session terminal law; (M3) the ORIGINAL smoke test still passes 28/28 in a byte-identity-proven sandbox. Two LOW GAPs recorded (torn-final-line law silence -> fail-closed JSONDecodeError; verify() on never-written path -> FileNotFoundError), both pre-existing/orthogonal, both fail-closed, neither invented nor patched.",
+  "recommended_next_action": "Controller: commit by pathspec (gate6/trial_ledger.py + gate6/fix/** + dispatch/handoff_LEDGER-FIX.json) at the 2291d562 lineage; treat L-F1/L-F2 as recorded LOW gaps for the owner (optional law amendment: LedgerError-mapping of torn lines / never-written-path verify()); gate-6 scored execution may proceed using this ledger once the controller registers the fix commit — no typed GO consumed or produced by this lane."
+}

@@ -1,0 +1,968 @@
+{
+ "cycle_id": "FUTURES-ES-PB1-V1",
+ "era_validation": {
+  "era_close_match_vs_chain": 4142,
+  "n_chain_sessions": 4204,
+  "rth_open_match_vs_chain": 4193
+ },
+ "findings": [
+  {
+   "finding": "q80 percentile method is not pinned by any committed law. SPEC \u00a73 L73-74: '\u0111i\u1ec1u ki\u1ec7n |m| \u2265 q80(|m|, trailing-252d, strict-past) \u2014 q80 t\u1eeb anatomy (NQ dossier H4 refined spec; ES \u00a78-H5), kh\u00f4ng tune'; checked ESNQ_HYPOTHESES.md, ES/NQ_DEEPFOUR_V3_ADDENDUM.md \u2014 no interpolation method declared. Pinned here: numpy.percentile(\u2026, 80) linear interpolation. Does not affect gate-4 criteria (enumeration/cost/determinism); MUST be ratified (owner/freeze amendment) before scored execution.",
+   "id": "D-A1",
+   "severity": "MUST-PIN-BEFORE-SCORED-G6",
+   "type": "AMBIGUITY"
+  },
+  {
+   "finding": "C2 direction law unstated. PLAYBOOKS L76: '(C2) always-in-RTH baseline \u2014 C\u00d3 PnL path \u21d2 scored identity'; L87 row gives only 'tier 2, c\u00f9ng folds'. Implemented: unconditional LONG entry at D0 fill, hold to era-correct RTH close, no TP/SL (the only reading consistent with 'always-in'). Ratification required before gate 6.",
+   "id": "D-A2",
+   "severity": "MUST-PIN-BEFORE-SCORED-G6",
+   "type": "AMBIGUITY"
+  },
+  {
+   "finding": "C1 RNG algorithm unstated. PLAYBOOKS L76: '(seed c\u1ed1 \u0111\u1ecbnh 20261002, sign-draw deterministic theo session)'. Pinned here: sign=+1 iff sha256('FBES1-PLA-D0-S2|seed=20261002|'+session_date).digest()[0] < 0x80 else \u22121. Ratification required before gate 6 (a different generator = a different placebo path).",
+   "id": "D-A3",
+   "severity": "MUST-PIN-BEFORE-SCORED-G6",
+   "type": "AMBIGUITY"
+  },
+  {
+   "finding": "Window fencing: q80 and SL-donor windows computed chain-wide strict-past (trailing 252 computable-|m| sessions / trailing 20 non-short-flagged sessions), NOT fold-fenced; trading itself is fold-fenced by the frozen eval windows + POSITIONAL warmup carve-out enforced for every identity. Corroboration: under fold-fenced windows the F2-F4 eval heads would have zero trades for ~20+ sessions, contradicting the frozen eval-session counts (375/950/711/890, reproduced exactly).",
+   "id": "D-A4",
+   "severity": "LOW",
+   "type": "IMPLEMENTATION-PIN"
+  },
+  {
+   "finding": "Cost application: all-in/side booked as USD lines at the pinned Variant-A table values (fees 2.25 or 2.24-in-NFA-window + spread 6.25 + tier slippage); fill prices unadjusted; TP/SL levels derive from the fill price per SPEC \u00a74.",
+   "id": "D-A5",
+   "severity": "LOW",
+   "type": "IMPLEMENTATION-PIN"
+  },
+  {
+   "finding": "FOMCIN positional-warmup defect caught and fixed during this rehearsal: the first build traded warmup-position FOMC days (6 of 15 CONT-UP trades, e.g. 2013-03-20, 2018-01-31, 2022-01-26) because FOMC_STATEMENT_DAY has exclusion priority over WARMUP in the frozen list while the warmup carve-out is positional ('warmup 252 sessions per fold head \u2014 excluded from scoring'). Fix: FOMCIN set requires session_date > fold warmup_carve_out.last. Post-fix FOMCIN set = 104 sessions; scan confirms ZERO trades inside any warmup range across all 24 identities.",
+   "id": "D-F1",
+   "severity": null,
+   "type": "FACT"
+  },
+  {
+   "finding": "Single D0 fill-bar gap: 2020-03-16 lacks the 08:31 bar (COVID limit-down open) \u2014 deterministic no-fill skip, no imputation. All other 2,925 eval sessions fill normally.",
+   "id": "D-F2",
+   "severity": null,
+   "type": "FACT"
+  },
+  {
+   "finding": "7 eval sessions are m-unavailable (prior-session actual close or 08:30 open missing): 2012-04-09, 2012-10-31, 2015-04-06, 2021-04-05, 2023-04-10, 2025-01-10, 2026-04-06 (Easter-Monday-adjacent sessions, the 2025-01-10 mourning close, 2026 Easter Monday). E4-consistent no-signal skips.",
+   "id": "D-F3",
+   "severity": null,
+   "type": "FACT"
+  },
+  {
+   "finding": "28 eval sessions have m == 0 exactly (open_0830 print-equal to C_prev) \u2014 no direction; C4 skips them, primaries classify tail=None.",
+   "id": "D-F4",
+   "severity": null,
+   "type": "FACT"
+  },
+  {
+   "finding": "Era-close validation vs baseline chain daily columns: last-RTH-bar close matches chain 'close' on 4,142/4,204 sessions; the 51 differing sessions differ by EXACTLY 1 tick (0.25) \u2014 the chain column embeds a different final-print convention; the consumed law is the panel last print (freeze pin: panel is 'THE ES data panel consumed by every signal/fill/SL computation'). RTH-open matches 4,193/4,204. Evaluation view only; no effect on any pass criterion.",
+   "id": "D-F5",
+   "severity": "LOW",
+   "type": "FACT"
+  },
+  {
+   "finding": "q80 tail share 553/2,926 = 18.9% (UP 289 / DN 264), consistent with the anatomy expectation '~20%' (ES_DEEPFOUR_V3_ADDENDUM L342).",
+   "id": "D-F6",
+   "severity": null,
+   "type": "FACT"
+  },
+  {
+   "finding": "Quarantine law honored: no ledger/counter/registry write anywhere; observed denominator NOT incremented; zero scored cells; S1 SEALED_UNTOUCHED; zero network; heavy-lock law honored (verdict FREE_PROVEN at start, single-shot panel reads, no worker touched, no lock taken).",
+   "id": "D-F7",
+   "severity": null,
+   "type": "FACT"
+  }
+ ],
+ "gate": 4,
+ "gate4_verdict": "PASS",
+ "generated_utc": "2026-10-04",
+ "head_sha": "42885fafd991025499a4da15ed3c54316d9549a6",
+ "inputs": {
+  "exclude_list_sha": null,
+  "freeze_schema": "selection_freeze@1",
+  "measured_shas": {
+   "SPEC_PB1_ES.md": "445f749906481f33080185cab1628e6365ef2f6db3b9c4f9f0847646eb6b7073",
+   "es_1m_outright.parquet": "7ae6de2d5896d9e150f70209f2709ca70b625f0b06bbdbfed348b1b0e0227b95",
+   "es_chain_T5.parquet": "7b6179d27a2c9da7dd5972f03d40209ded0119aabfc14a5abc08167894e8f06f",
+   "exclude_list.json": "bc8a41b673eccb998017e704a9865d139e67438fe984906f7f522782f93b438a",
+   "selection_freeze.json": "e2b9934af01127ee698adda2fa0579d519f54881958e07463157728a8b96c1b7"
+  }
+ },
+ "lane": "DRYRUN",
+ "law_quarantine": "budget counters untouched; outputs descriptive-only; zero scored cells; observed denominator NOT incremented; NO GO exists or is implied",
+ "panel_stats": {
+  "dash_rows_filtered": 0,
+  "panel_rows": 7825657,
+  "rth_rows_kept": 1834852
+ },
+ "pass_criteria": {
+  "a_enumeration": {
+   "criterion": "M3(a) identity enumeration byte-exact vs selection_freeze.identity_table",
+   "extras": [],
+   "missing": [],
+   "n_frozen": 24,
+   "n_simulated": 24,
+   "order_equal": true,
+   "quarantine": "QUARANTINED DESCRIPTIVE-ONLY \u2014 NOT SCORED \u2014 ZERO DENOMINATOR CONSUMPTION \u2014 pre-GO rehearsal per registered plan \u00a74 gate 4",
+   "set_equal": true,
+   "verdict": "PASS"
+  },
+  "b_cost_recompute": {
+   "all_match": true,
+   "n_sampled": 20,
+   "quarantine": "QUARANTINED DESCRIPTIVE-ONLY \u2014 NOT SCORED \u2014 ZERO DENOMINATOR CONSUMPTION \u2014 pre-GO rehearsal per registered plan \u00a74 gate 4",
+   "samples": [
+    {
+     "identity": "FBES1-PB1-CONT-UP-D0-S2",
+     "match": true,
+     "recomputed_gross": 225.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": 225.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2011-06-14",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PB1-CONT-DN-D0-S2",
+     "match": true,
+     "recomputed_gross": 950.0,
+     "recomputed_rt": 66.98,
+     "recomputed_side": 33.49,
+     "recorded_gross": 950.0,
+     "recorded_rt": 66.98,
+     "reg_window": true,
+     "session_date": "2017-08-29",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PB1-REV-UP-D0-S2",
+     "match": true,
+     "recomputed_gross": -3406.25,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": -3406.25,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2026-06-11",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PB1-REV-DN-D30-S2",
+     "match": true,
+     "recomputed_gross": 1862.5,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": 1862.5,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2019-08-05",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PB1-CONT-UP-D0-S3",
+     "match": true,
+     "recomputed_gross": -1012.5,
+     "recomputed_rt": 92.0,
+     "recomputed_side": 46.0,
+     "recorded_gross": -1012.5,
+     "recorded_rt": 92.0,
+     "reg_window": false,
+     "session_date": "2026-03-23",
+     "tier": "S3"
+    },
+    {
+     "identity": "FBES1-PB1-REV-UP-D0-S1",
+     "match": true,
+     "recomputed_gross": -550.0,
+     "recomputed_rt": 42.0,
+     "recomputed_side": 21.0,
+     "recorded_gross": -550.0,
+     "recorded_rt": 42.0,
+     "reg_window": false,
+     "session_date": "2019-08-06",
+     "tier": "S1"
+    },
+    {
+     "identity": "FBES1-PB1-REV-DN-D0-S3",
+     "match": true,
+     "recomputed_gross": -637.5,
+     "recomputed_rt": 92.0,
+     "recomputed_side": 46.0,
+     "recorded_gross": -637.5,
+     "recorded_rt": 92.0,
+     "reg_window": false,
+     "session_date": "2011-06-23",
+     "tier": "S3"
+    },
+    {
+     "identity": "FBES1-PLA-D0-S2",
+     "match": true,
+     "recomputed_gross": 475.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": 475.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2014-03-12",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PLA-D0-S2",
+     "match": true,
+     "recomputed_gross": 187.5,
+     "recomputed_rt": 66.98,
+     "recomputed_side": 33.49,
+     "recorded_gross": 187.5,
+     "recorded_rt": 66.98,
+     "reg_window": true,
+     "session_date": "2017-02-02",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PLA-D0-S2",
+     "match": true,
+     "recomputed_gross": -100.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": -100.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2021-01-12",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PLA-D0-S2",
+     "match": true,
+     "recomputed_gross": 675.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": 675.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2024-12-10",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-ALW-D0-S2",
+     "match": true,
+     "recomputed_gross": 175.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": 175.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2012-07-11",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-ALW-D0-S2",
+     "match": true,
+     "recomputed_gross": 887.5,
+     "recomputed_rt": 66.98,
+     "recomputed_side": 33.49,
+     "recorded_gross": 887.5,
+     "recorded_rt": 66.98,
+     "reg_window": true,
+     "session_date": "2016-06-23",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-ALW-D0-S2",
+     "match": true,
+     "recomputed_gross": 1287.5,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": 1287.5,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2020-06-01",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-ALW-D0-S2",
+     "match": true,
+     "recomputed_gross": -12.5,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": -12.5,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2024-04-29",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-DOSE-D0-S2",
+     "match": true,
+     "recomputed_gross": 150.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": 150.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2011-11-28",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-DOSE-D0-S2",
+     "match": true,
+     "recomputed_gross": 150.0,
+     "recomputed_rt": 66.98,
+     "recomputed_side": 33.49,
+     "recorded_gross": 150.0,
+     "recorded_rt": 66.98,
+     "reg_window": true,
+     "session_date": "2015-12-07",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-DOSE-D0-S2",
+     "match": true,
+     "recomputed_gross": -325.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": -325.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2019-11-18",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-DOSE-D0-S2",
+     "match": true,
+     "recomputed_gross": 837.5,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": 837.5,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2023-10-31",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-DOSE-D0-S2",
+     "match": true,
+     "recomputed_gross": -1575.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": -1575.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2026-09-30",
+     "tier": "S2"
+    }
+   ],
+   "verdict": "PASS"
+  },
+  "c_determinism": {
+   "all_identity_files_byte_identical": true,
+   "criterion": "M3(c) determinism: two full passes, byte-identical per-identity outputs + identical trades-index sha",
+   "files": [
+    {
+     "file": "FBES1-PB1-CONT-UP-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "27b7831b8b795ed9c9c2f40e0ba2be70fb499c9bd198b4f7190b68d8da2361ee",
+     "sha_pass2": "27b7831b8b795ed9c9c2f40e0ba2be70fb499c9bd198b4f7190b68d8da2361ee"
+    },
+    {
+     "file": "FBES1-PB1-CONT-UP-D30-S2.json",
+     "identical": true,
+     "sha_pass1": "d2bc35ad0e5f8bdb1e80273c923039152d2085c4f2ad3df7d6c6bee7501d6825",
+     "sha_pass2": "d2bc35ad0e5f8bdb1e80273c923039152d2085c4f2ad3df7d6c6bee7501d6825"
+    },
+    {
+     "file": "FBES1-PB1-CONT-DN-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "e5d1c1c779472b1b8c4db5fee0658b99066a6eac55beb0a3f056b0806215ae28",
+     "sha_pass2": "e5d1c1c779472b1b8c4db5fee0658b99066a6eac55beb0a3f056b0806215ae28"
+    },
+    {
+     "file": "FBES1-PB1-CONT-DN-D30-S2.json",
+     "identical": true,
+     "sha_pass1": "19011c9e8411b8ca05fadf190e6821ae9ce78563defc0e41df3d43ebd98f9aab",
+     "sha_pass2": "19011c9e8411b8ca05fadf190e6821ae9ce78563defc0e41df3d43ebd98f9aab"
+    },
+    {
+     "file": "FBES1-PB1-REV-UP-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "8009043f7a4ba4ddf99f7eeda21bcb4251f721d90e3d5f49ad84edbad242597e",
+     "sha_pass2": "8009043f7a4ba4ddf99f7eeda21bcb4251f721d90e3d5f49ad84edbad242597e"
+    },
+    {
+     "file": "FBES1-PB1-REV-UP-D30-S2.json",
+     "identical": true,
+     "sha_pass1": "a2ddd647a9951809e8b4f411296694ca1807dffa623134e31d6d681c2bd3b1d2",
+     "sha_pass2": "a2ddd647a9951809e8b4f411296694ca1807dffa623134e31d6d681c2bd3b1d2"
+    },
+    {
+     "file": "FBES1-PB1-REV-DN-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "a446280f9c78bcfbe4e3d6585ef3fbf961ffc5f870d5201245194b0710ae9710",
+     "sha_pass2": "a446280f9c78bcfbe4e3d6585ef3fbf961ffc5f870d5201245194b0710ae9710"
+    },
+    {
+     "file": "FBES1-PB1-REV-DN-D30-S2.json",
+     "identical": true,
+     "sha_pass1": "d07ca1615f16ad151d4565efd6566b33eba0daa114369d5ea5d103bec0f5f9bb",
+     "sha_pass2": "d07ca1615f16ad151d4565efd6566b33eba0daa114369d5ea5d103bec0f5f9bb"
+    },
+    {
+     "file": "FBES1-PB1-CONT-UP-D0-S1.json",
+     "identical": true,
+     "sha_pass1": "a513128eba8a3f6df95f1644e99d6111bfe5dc0847c7cafd4471b40e2e082922",
+     "sha_pass2": "a513128eba8a3f6df95f1644e99d6111bfe5dc0847c7cafd4471b40e2e082922"
+    },
+    {
+     "file": "FBES1-PB1-CONT-UP-D0-S3.json",
+     "identical": true,
+     "sha_pass1": "d176ca0a5f2adfae2c3e3246715e6c419f1d2a2fb751c9913a650c149ecc61be",
+     "sha_pass2": "d176ca0a5f2adfae2c3e3246715e6c419f1d2a2fb751c9913a650c149ecc61be"
+    },
+    {
+     "file": "FBES1-PB1-CONT-DN-D0-S1.json",
+     "identical": true,
+     "sha_pass1": "3bd7f36085e46b4d731b14ffbdca8f3348c00d094af077721e4faa4ca35c5b7f",
+     "sha_pass2": "3bd7f36085e46b4d731b14ffbdca8f3348c00d094af077721e4faa4ca35c5b7f"
+    },
+    {
+     "file": "FBES1-PB1-CONT-DN-D0-S3.json",
+     "identical": true,
+     "sha_pass1": "26b67b2c51995f7009635a8b77da4afdc7f1401e5fa60170402e9628d2406cc8",
+     "sha_pass2": "26b67b2c51995f7009635a8b77da4afdc7f1401e5fa60170402e9628d2406cc8"
+    },
+    {
+     "file": "FBES1-PB1-REV-UP-D0-S1.json",
+     "identical": true,
+     "sha_pass1": "8289b2c835fde3d1b0d04044fe718589f8f6e24c4f45fa458ab929ebf2f3862f",
+     "sha_pass2": "8289b2c835fde3d1b0d04044fe718589f8f6e24c4f45fa458ab929ebf2f3862f"
+    },
+    {
+     "file": "FBES1-PB1-REV-UP-D0-S3.json",
+     "identical": true,
+     "sha_pass1": "059e22a85bd3c08a090e1ab5c1147d0e3afccd3884d837968d048706401e9cb4",
+     "sha_pass2": "059e22a85bd3c08a090e1ab5c1147d0e3afccd3884d837968d048706401e9cb4"
+    },
+    {
+     "file": "FBES1-PB1-REV-DN-D0-S1.json",
+     "identical": true,
+     "sha_pass1": "5de54f61f36a8c9ec095dddb81895428d2775f5dd7c4c9404cc473b7d27944cb",
+     "sha_pass2": "5de54f61f36a8c9ec095dddb81895428d2775f5dd7c4c9404cc473b7d27944cb"
+    },
+    {
+     "file": "FBES1-PB1-REV-DN-D0-S3.json",
+     "identical": true,
+     "sha_pass1": "9f817d208b7845620649778760fccec88c4d55a1fabd886e681e6391db161a02",
+     "sha_pass2": "9f817d208b7845620649778760fccec88c4d55a1fabd886e681e6391db161a02"
+    },
+    {
+     "file": "FBES1-PB1-CONT-UP-D0-S2-FOMCIN.json",
+     "identical": true,
+     "sha_pass1": "61b3888d409b4dfbae44dcd8e65777a5ecb1013d6874d16db19d9331627c2bd4",
+     "sha_pass2": "61b3888d409b4dfbae44dcd8e65777a5ecb1013d6874d16db19d9331627c2bd4"
+    },
+    {
+     "file": "FBES1-PB1-CONT-DN-D0-S2-FOMCIN.json",
+     "identical": true,
+     "sha_pass1": "8fa7321d2fd0f96f44ebe7b94bf5ee514a4216e01a810207f4340360225d1fe2",
+     "sha_pass2": "8fa7321d2fd0f96f44ebe7b94bf5ee514a4216e01a810207f4340360225d1fe2"
+    },
+    {
+     "file": "FBES1-PB1-REV-UP-D0-S2-FOMCIN.json",
+     "identical": true,
+     "sha_pass1": "dcd9a13b3c049235af67e7253caf833d022bc21c40d312920792187c57ba1ce9",
+     "sha_pass2": "dcd9a13b3c049235af67e7253caf833d022bc21c40d312920792187c57ba1ce9"
+    },
+    {
+     "file": "FBES1-PB1-REV-DN-D0-S2-FOMCIN.json",
+     "identical": true,
+     "sha_pass1": "6b1e70d49b159322913b7dce99cbb07085306824590b48aacc3f27bd2ca21d4a",
+     "sha_pass2": "6b1e70d49b159322913b7dce99cbb07085306824590b48aacc3f27bd2ca21d4a"
+    },
+    {
+     "file": "FBES1-PLA-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "4a52f9c2feaee8c2ec0f5ea51fffa6e5f4c20a9b27ddc7d6ad99d54a4026b868",
+     "sha_pass2": "4a52f9c2feaee8c2ec0f5ea51fffa6e5f4c20a9b27ddc7d6ad99d54a4026b868"
+    },
+    {
+     "file": "FBES1-ALW-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "fa57fb64596ab84b27d795960cf0aeece267059e612cdc476cbd8e4609a9b8ac",
+     "sha_pass2": "fa57fb64596ab84b27d795960cf0aeece267059e612cdc476cbd8e4609a9b8ac"
+    },
+    {
+     "file": "FBES1-FLAT.json",
+     "identical": true,
+     "sha_pass1": "39d16e27cf5cc0ba7fdaa9cd0538ca09a497ec4b11eebf6408dd1b62942f5c74",
+     "sha_pass2": "39d16e27cf5cc0ba7fdaa9cd0538ca09a497ec4b11eebf6408dd1b62942f5c74"
+    },
+    {
+     "file": "FBES1-DOSE-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "1e2d5fd45f0b3caeb55a20cf32fc95f3645d785f63372f607e994442bea1a49e",
+     "sha_pass2": "1e2d5fd45f0b3caeb55a20cf32fc95f3645d785f63372f607e994442bea1a49e"
+    }
+   ],
+   "quarantine": "QUARANTINED DESCRIPTIVE-ONLY \u2014 NOT SCORED \u2014 ZERO DENOMINATOR CONSUMPTION \u2014 pre-GO rehearsal per registered plan \u00a74 gate 4",
+   "trades_index_sha_pass1": "db728f5c13c09aa39e6e432daf1670706651fc8df101b46cf5b99e98aeed77fd",
+   "trades_index_sha_pass2": "db728f5c13c09aa39e6e432daf1670706651fc8df101b46cf5b99e98aeed77fd",
+   "verdict": "PASS"
+  }
+ },
+ "quarantine": "QUARANTINED DESCRIPTIVE-ONLY \u2014 NOT SCORED \u2014 ZERO DENOMINATOR CONSUMPTION \u2014 pre-GO rehearsal per registered plan \u00a74 gate 4",
+ "schema": "dryrun_digest@1",
+ "summary_table": {
+  "FBES1-ALW-D0-S2": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 2925,
+   "n_trades_per_fold": {
+    "F1": 375,
+    "F2": 950,
+    "F3": 710,
+    "F4": 890
+   },
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 0
+   }
+  },
+  "FBES1-DOSE-D0-S2": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 2890,
+   "n_trades_per_fold": {
+    "F1": 369,
+    "F2": 934,
+    "F3": 705,
+    "F4": 882
+   },
+   "skips": {
+    "skip_m_unavailable": 35,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 0
+   }
+  },
+  "FBES1-FLAT": {
+   "n_sessions_in_set": 0,
+   "n_trades": 0,
+   "n_trades_per_fold": {},
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 0
+   }
+  },
+  "FBES1-PB1-CONT-DN-D0-S1": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 264,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 66,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2654
+   }
+  },
+  "FBES1-PB1-CONT-DN-D0-S2": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 264,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 66,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2654
+   }
+  },
+  "FBES1-PB1-CONT-DN-D0-S2-FOMCIN": {
+   "n_sessions_in_set": 104,
+   "n_trades": 2,
+   "n_trades_per_fold": {
+    "F2": 2
+   },
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 102
+   }
+  },
+  "FBES1-PB1-CONT-DN-D0-S3": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 264,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 66,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2654
+   }
+  },
+  "FBES1-PB1-CONT-DN-D30-S2": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 265,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 67,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2654
+   }
+  },
+  "FBES1-PB1-CONT-UP-D0-S1": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2630
+   }
+  },
+  "FBES1-PB1-CONT-UP-D0-S2": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2630
+   }
+  },
+  "FBES1-PB1-CONT-UP-D0-S2-FOMCIN": {
+   "n_sessions_in_set": 104,
+   "n_trades": 9,
+   "n_trades_per_fold": {
+    "F1": 1,
+    "F2": 1,
+    "F3": 5,
+    "F4": 2
+   },
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 95
+   }
+  },
+  "FBES1-PB1-CONT-UP-D0-S3": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2630
+   }
+  },
+  "FBES1-PB1-CONT-UP-D30-S2": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2630
+   }
+  },
+  "FBES1-PB1-REV-DN-D0-S1": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 264,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 66,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2654
+   }
+  },
+  "FBES1-PB1-REV-DN-D0-S2": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 264,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 66,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2654
+   }
+  },
+  "FBES1-PB1-REV-DN-D0-S2-FOMCIN": {
+   "n_sessions_in_set": 104,
+   "n_trades": 2,
+   "n_trades_per_fold": {
+    "F2": 2
+   },
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 102
+   }
+  },
+  "FBES1-PB1-REV-DN-D0-S3": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 264,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 66,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2654
+   }
+  },
+  "FBES1-PB1-REV-DN-D30-S2": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 265,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 67,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2654
+   }
+  },
+  "FBES1-PB1-REV-UP-D0-S1": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2630
+   }
+  },
+  "FBES1-PB1-REV-UP-D0-S2": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2630
+   }
+  },
+  "FBES1-PB1-REV-UP-D0-S2-FOMCIN": {
+   "n_sessions_in_set": 104,
+   "n_trades": 9,
+   "n_trades_per_fold": {
+    "F1": 1,
+    "F2": 1,
+    "F3": 5,
+    "F4": 2
+   },
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 95
+   }
+  },
+  "FBES1-PB1-REV-UP-D0-S3": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2630
+   }
+  },
+  "FBES1-PB1-REV-UP-D30-S2": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2630
+   }
+  },
+  "FBES1-PLA-D0-S2": {
+   "n_sessions_in_set": 2926,
+   "n_trades": 2925,
+   "n_trades_per_fold": {
+    "F1": 375,
+    "F2": 950,
+    "F3": 710,
+    "F4": 890
+   },
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 0
+   }
+  }
+ }
+}

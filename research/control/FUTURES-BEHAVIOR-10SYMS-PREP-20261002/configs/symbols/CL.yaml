@@ -1,0 +1,282 @@
+schema: futures_behavior_symbol_config@1
+task_id: FUTURES-BEHAVIOR-10SYMS-PREP-20261002
+symbol: CL
+generated_utc: '2026-10-02'
+source_dossier: dossiers/CL_DOSSIER.md
+dossier_sha256: d85927f3b2b783aaa387136635124ae8ff7e02bd51e5bb157e54402b8880bfc8
+provenance_note: >-
+  Hypotheses derived STRICTLY from dossiers/CL_DOSSIER.md S5 (+S1 roll findings, M1-erratum
+  within-contract return convention). Shared frame per dossier S5: sizing PARAM-GAP by design;
+  costs = IBKR 0.85 + exchange fee NOT_FETCHED + half-spread 1.5 ticks ($15)/side (3-tick
+  front median, non-synchronous caveat) + roll execution NOT_RUN (no synchronous spread book).
+defaults:
+  universe:
+    exchange: NYMEX (CME Globex)
+    contract_cycle: all 12 months listed (~10y+2m depth)
+    liquid_chain_rule: M1-M3 concentration; M1 by volume everywhere observed
+    liquid_chain_evidence: 'OBSERVED CL S1: 2026-10-01 volume M1 121,980 / M2 42,203 / M3 14,136'
+  roll_rule:
+    baseline: declared_calendar_last_trade_month
+    baseline_definition: hold until last session BEFORE day-1 of the last-trade month (raw
+      expiry_month = lastTradeDate, e.g. CLX6 LTD 2026-10-20), roll to next listed at that
+      close; delivery month = localSymbol month code's own month (audit M4 erratum basis)
+    reference: code/futbt/roll.py + BACKTEST_LAUNCH_DRAFT.md S0
+    target_adjustment: next listed month (all-12 listing; no serial-trap for CL)
+    dossier_finding: 'OBSERVED CL S1: at all 14 realized rolls the OLD contract still carried 3-7x next volume (new/old 0.15-0.34); one observable leadership switch 4 calendar days before LTD (n=1, CLV6)'
+    alternative_required: volume-switch roll (next-contract volume > old for k consecutive sessions; needs past-boundary volume, absent for 13/14 rolls)
+  execution_laws:
+    decision_point: session_close_through_pit_view
+    default_fill: next_session_open_tick_rounded_cost_shifted
+    ambiguous_order: same_bar_tp_sl_worst_case_bound_no_point_pnl
+    close_only_bars: never_fill_any_path
+    tb_labels: TRAIN_ONLY_never_validation_features
+    adjusted_series: causal_additive_features_only_never_fills_mtm_pnl
+    attribution: full_path_leave_one_out_only_additive_leg_sums_forbidden
+  cost_model:
+    commission: {usd_per_side: 0.85, provenance: 'PUBLISHED IBKR 2026-10-02'}
+    exchange_fee: {provenance: NOT_RUN_NOT_FETCHED}
+    spread: {median_usd_per_contract: 30.0, provenance: 'MEASURED daily-BBO close proxy 3.0 ticks = $30 (S6, reconciled CL S3)', caveat: non-synchronous, not executable; deferred-month stale quotes inflate 1Y stats}
+    slippage: {provenance: NOT_RUN_NO_DECLARED_VALUE}
+    stress_multipliers: [1.0, 1.5, 2.0]
+hypotheses:
+- id: CL-H1
+  dossier_ref: 'dossiers/CL_DOSSIER.md S5 H1 (rank 1 in dossier: most testable with data in hand)'
+  hypothesis_kind: conditional_return
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Deepening backwardation = rising convenience yield = tightening physical balance that
+    spot-following capital chases: when the 20-day change of the front calendar spread
+    d(M2-M1) tightens below its own past rolling median, the front drifts up over 1-4 weeks.
+  pit_trigger:
+    mechanizable: true
+    observable: 20-day change in front calendar spread d(M2-M1) below its own strictly-trailing rolling median
+    field: same-day M2-M1 closes (both real-volume; settlement-derived flagged)
+    source: per-contract daily closes in legal raw corpus
+    as_of_rule: spread state computed at session close with both legs' same-day closes; comparison window strictly past
+    timestamp_at_decision: decision at session close; entry next session
+  direction: long/short front outright (long when backwardation deepening; reverse on state flip)
+  entry: next-session open after spread-state close
+  exit: horizon 5-20 sessions (exact PARAM-GAP) or state flip
+  take_profit: 'PARAM_GAP: CL-H1-P2'
+  stop_loss: 'PARAM_GAP: CL-H1-P2'
+  time_rules: 5-20 session horizon band (PARAM-GAP exact value)
+  universe: CL M1 chain, declared roll
+  roll_rule_ref: defaults.roll_rule with volume-switch roll as REQUIRED alternative-roll test
+  sizing: PARAM-GAP (any vol-target parameter is parameter selection - not done in prep)
+  regime_tags: [low_cushing_inventory, backwardated, contango_failure_regime]
+  counter_hypothesis: 100%-backwardation window means no observed contango regime - regime breadth NOT_RUN until deeper history; sign may flip with curve regime
+  failure_conditions:
+  - conditioned forward returns <= declared costs
+  - sign flips with curve regime (contango)
+  - roll-rule alternative changes the conclusion (construction alpha)
+  minimal_test:
+    kind: descriptive_conditional_return
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [CL], use: signal_reference, floor: 'front calendar spread series on legal closes incl. settlement-derived deep history (must be flagged); true-volume front era 2025-08-21..2026-10-01 (280 days)', floor_met: false, available_today: true, acquisition: in_hand_now, note: 'single-regime (100% backwardation) caveat: no contango regime in true-volume data'}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [CL], use: backtest_fill, floor: '>=24 months true-volume front chain (have ~14-17); regime breadth needs contango episodes', floor_met: false, available_today: false, acquisition: vendor_paid}
+    - {class: eia_wpsr_vintages, symbols: [CL], use: regime_split_feature, floor: 'EIA Cushing stocks weekly for low-inventory regime split', floor_met: false, available_today: false, acquisition: free_public}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN, REAL_HOLIDAY_CALENDAR_NOT_RUN]
+  param_gaps:
+  - {id: CL-H1-P1, piece: exact horizon (5-20 sessions) and state-flip definition, reason: no measured basis; pre-registration required}
+  - {id: CL-H1-P2, piece: TP/SL rules, reason: dossier leaves open}
+  - {id: CL-H1-P3, piece: sizing/vol-target, reason: 'parameter selection forbidden in prep (dossier shared frame)'}
+  feasibility:
+    mechanization: high
+    acquisition_cost: in_hand_now
+    rank_basis_note: 'dossier rank 1: enabling structure OBSERVED (280/280 backwardation), spread computable from legal closes today'
+  rank: 1
+- id: CL-H4
+  dossier_ref: 'dossiers/CL_DOSSIER.md S5 H4'
+  hypothesis_kind: regime_conditional
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Tight physical balance couples oil to dollar-demand: CL reaction to USD moves scales with
+    curve backwardation; loose balance decouples them.
+  pit_trigger:
+    mechanizable: true
+    observable: USD daily change conditioned on CL curve-regime label (backwardation depth from own past curve)
+    field: PIT USD index daily series + M2-M1 regime label (strict past)
+    source: FRED/ALFRED DXY-class series (not in repo; free)
+    as_of_rule: USD series as-of <= decision session close; regime label trailing only
+    timestamp_at_decision: daily close alignment
+  direction: conditional beta (long/short CL front per conditional-beta sign)
+  entry: next-session open after conditioned-beta signal (rule form PARAM-GAP)
+  exit: horizon per declared rule (PARAM-GAP)
+  take_profit: 'PARAM_GAP: CL-H4-P1'
+  stop_loss: 'PARAM_GAP: CL-H4-P1'
+  time_rules: daily horizon band (PARAM-GAP)
+  universe: CL M1 chain
+  roll_rule_ref: defaults.roll_rule
+  sizing: PARAM-GAP
+  regime_tags: [backwardated_tight, contango_loose]
+  counter_hypothesis: joint causality from global risk factor moves both USD and CL (beta unstable for structural reasons)
+  failure_conditions:
+  - conditional beta unstable in sign or insignificant across regimes
+  - single-regime window (100% backwardation) prevents regime contrast - NOT_RUN until contango data
+  minimal_test:
+    kind: descriptive_conditional_beta
+    requirements:
+    - {class: external_rates_vintages, symbols: [US], use: signal_reference, floor: 'PIT USD/DXY daily series (FRED free, not in repo)', floor_met: false, available_today: false, acquisition: free_public}
+    - {class: daily_trades_per_contract, symbols: [CL], use: conditional_descriptive, floor: 'daily returns + curve label (in hand, single-regime caveat)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [CL], use: backtest_fill, floor: '>=24m true volume incl. contango regime', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: CL-H4-P1, piece: conditioned-beta rule form + TP/SL, reason: no measured basis}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: free_public
+    rank_basis_note: USD series free (FRED); CL side in hand
+  rank: 2
+- id: CL-H2
+  dossier_ref: 'dossiers/CL_DOSSIER.md S5 H2'
+  hypothesis_kind: event_reaction
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Inventories update physical-availability expectations: a WPSR crude/Cushing build-draw
+    surprise vs consensus moves the front in the surprise direction within minutes and
+    partially reverts by next session.
+  pit_trigger:
+    mechanizable: true
+    observable: WPSR crude/Cushing surprise (actual - consensus) at Wed 10:30 ET
+    field: weekly crude + Cushing stocks vs survey consensus
+    source: 'EIA WPSR (release calendar FACT) + consensus archive (MISSING - PARAM-GAP: surprise undefined without consensus)'
+    as_of_rule: release timestamp 10:30 ET (holiday-shifted per EIA schedule); consensus as-known-before-release; weekly data preliminary (vintages)
+    timestamp_at_decision: release-to-the-minute; entry first bar >= 10:31 ET
+  direction: sign of surprise
+  entry: first bar after 10:30 ET
+  exit: same session
+  take_profit: 'PARAM_GAP: CL-H2-P2'
+  stop_loss: 'PARAM_GAP: CL-H2-P2'
+  time_rules: same-session horizon; partial reversion by next session is part of the claim
+  universe: CL M1 chain
+  roll_rule_ref: defaults.roll_rule
+  sizing: unit-risk per event (PARAM-GAP)
+  regime_tags: [low_cushing_inventory, cushing_vs_headline_conflict]
+  counter_hypothesis: reaction absorbed by the calendar spread before the outright
+  failure_conditions:
+  - reaction absorbed by spread before outright
+  - entering 5 minutes later destroys the effect
+  - headline vs Cushing conflict reverses the sign
+  minimal_test:
+    kind: descriptive_event_reaction
+    requirements:
+    - {class: consensus_surprise_archive, symbols: [CL], use: signal_reference, floor: 'consensus history + release-time intraday (PARAM-GAP: surprise cannot be defined without consensus)', floor_met: false, available_today: false, acquisition: owner_declaration}
+    - {class: minute_trades_m1, symbols: [CL], use: intraday_event, floor: 'release-window M1 multi-year (have ~10 months RTH which covers 10:30 ET)', floor_met: false, available_today: false, acquisition: vendor_paid}
+    - {class: eia_wpsr_vintages, symbols: [CL], use: signal_reference, floor: 'EIA WPSR history + errata vintages', floor_met: false, available_today: false, acquisition: free_public}
+    nondata_blockers: [CONSENSUS_LICENSE_OWNER_DECISION]
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: consensus_surprise_archive, symbols: [CL], use: backtest_fill, floor: same, floor_met: false, available_today: false, acquisition: owner_declaration}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN, CONSENSUS_LICENSE_OWNER_DECISION]
+  param_gaps:
+  - {id: CL-H2-P1, piece: surprise definition (consensus source + normalization), reason: consensus archive missing; cannot be invented}
+  - {id: CL-H2-P2, piece: TP/SL + exit timing, reason: pre-registration required}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: vendor_paid
+    rank_basis_note: event calendar verified (FACT) but consensus PARAM-GAP blocks surprise definition
+  rank: 3
+- id: CL-H5
+  dossier_ref: 'dossiers/CL_DOSSIER.md S5 H5'
+  hypothesis_kind: execution_rule
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Liquidity stays with the old contract until ~4-6 days before last trade while the declared
+    calendar roll exits ~21 days early (OBSERVED, n=1 leadership switch): a roll-rule switch
+    changes execution quality; volume-switch rolls should reduce effective spread paid vs
+    calendar rolls in stress weeks.
+  pit_trigger:
+    mechanizable: true
+    observable: per-contract volume past the declared roll boundary (old-side decay + new-side takeover)
+    field: daily volume of old and next contract on/after the roll session
+    source: per-contract daily TRADES with real volume past the boundary (absent for 13/14 realized rolls - files cut at fetch boundary)
+    as_of_rule: volume roll decisions use data strictly earlier than the decision session (engine PIT rule); final same-day volume unreachable by construction
+    timestamp_at_decision: daily close volume comparison
+  direction: n/a (execution-quality choice)
+  entry: roll switch itself (construction)
+  exit: n/a
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: per-roll-cycle evaluation
+  universe: CL old->next pairs at rolls
+  roll_rule_ref: 'this hypothesis IS the roll-rule A/B (defaults.roll_rule baseline vs volume-switch)'
+  sizing: 1 contract baseline (execution measurement)
+  regime_tags: [stress_weeks, normal_weeks]
+  counter_hypothesis: execution-cost difference between rules <= noise once measured with synchronous quotes
+  failure_conditions:
+  - cost difference between rules within noise
+  - n=1 past-boundary observation cannot be extended (fetch-window artifact)
+  minimal_test:
+    kind: descriptive_roll_execution_comparison
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [CL], use: construction_check, floor: 'per-contract volume PAST the roll boundary (only CLV6 gap-filled exists, n=1)', floor_met: false, available_today: true, acquisition: in_hand_now, note: 'n=1; prospective accumulation or vendor needed for stability'}
+    - {class: synchronous_bbo, symbols: [CL], use: cost_evidence, floor: synchronous quotes for spread paid at switch, floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [CL], use: backtest_fill, floor: '>=24m true volume with boundary-spanning pairs', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: CL-H5-P1, piece: 'volume-switch rule parameters (k sessions, threshold)', reason: 'n=1 observable; dossier: never invent'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: vendor_paid
+    rank_basis_note: cheapest to falsify once volume depth acquired (dossier); today n=1
+  rank: 4
+- id: CL-H3
+  dossier_ref: 'dossiers/CL_DOSSIER.md S5 H3'
+  hypothesis_kind: event_reaction
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Headline-vs-detail conflict: when the headline crude draw conflicts with products/Cushing/
+    refinery detail, the first (algo, headline-driven) move reverts as fundamentals reprice
+    the detail.
+  pit_trigger:
+    mechanizable: true
+    observable: WPSR headline vs product/Cushing/refinery-run detail conflict flag
+    field: WPSR tables (crude, gasoline, distillate, Cushing, refinery runs)
+    source: EIA WPSR detail tables + RB/HO product futures (NOT in snapshot) - conflict definition itself PARAM-GAP without product data
+    as_of_rule: 10:30 ET release; same-minute table parse; products same-window prices
+    timestamp_at_decision: release minute
+  direction: fade the first move
+  entry: after first-move print (intraday; realism needs M1)
+  exit: same session / next session (PARAM-GAP)
+  take_profit: 'PARAM_GAP: CL-H3-P1'
+  stop_loss: 'PARAM_GAP: CL-H3-P1'
+  time_rules: same/next session
+  universe: CL M1 + RB/HO legs (absent)
+  roll_rule_ref: defaults.roll_rule
+  sizing: PARAM-GAP
+  regime_tags: [headline_detail_conflict]
+  counter_hypothesis: detail is also algo-traded within seconds; no reversion
+  failure_conditions:
+  - conflict flag cannot be defined without product data (data gap)
+  - no reversion after costs
+  minimal_test:
+    kind: descriptive_event_reaction
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [RB, HO], use: signal_reference, floor: 'RB/HO product futures NOT in snapshot', floor_met: false, available_today: false, acquisition: vendor_paid, note: 'class daily_trades_per_contract on symbols outside the 10-sym corpus'}
+    - {class: eia_wpsr_vintages, symbols: [CL], use: signal_reference, floor: WPSR detail tables + vintages, floor_met: false, available_today: false, acquisition: free_public}
+    nondata_blockers: [PARAM_GAP_MUST_BE_PRE_REGISTERED]
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [RB, HO], use: backtest_fill, floor: product futures multi-year, floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: CL-H3-P1, piece: conflict definition + all trade-rule pieces, reason: 'dossier: PARAM-GAP without product data'}
+  feasibility:
+    mechanization: low
+    acquisition_cost: vendor_paid
+    rank_basis_note: needs RB/HO bundle (dossier S6)
+  rank: 5

@@ -1,0 +1,273 @@
+schema: futures_behavior_symbol_config@1
+task_id: FUTURES-BEHAVIOR-10SYMS-PREP-20261002
+symbol: GC
+generated_utc: '2026-10-02'
+source_dossier: dossiers/GC_DOSSIER.md
+dossier_sha256: 3231d3a0b00c5f6c19bb4ab885c07b8b8333a8cfe3da0ba6518bd4a1c4030e4c
+provenance_note: >-
+  Hypotheses derived STRICTLY from dossiers/GC_DOSSIER.md S5. FX/macro-prefixed transfers
+  flagged: futures differ by basis, roll (contango ~16 USD/oz/month OBSERVED), tick costs,
+  margin. Known snapshot defects encoded per hypothesis: 6 missing serial months
+  (GCX5,GCF6,GCH6,GCK6,GCN6,GCU6) and the V-month vendor volume-scale caveat.
+defaults:
+  universe:
+    exchange: COMEX (CME Globex)
+    contract_cycle: G,J,M,Q,V,Z active cycle + near serials
+    liquid_chain_rule: 'nearest active GJMQVZ cycle month (serials thin: GCX6 lifetime 5,224 lots vs GCZ5 8.57M)'
+    liquid_chain_evidence: 'OBSERVED GC S1 panel + volume-scale caveat (V-month contracts record 1-2 orders thinner)'
+  roll_rule:
+    baseline: declared_calendar_last_trade_month
+    baseline_definition: hold until last session BEFORE day-1 of the delivery month, roll to next listed at that close (GC last-trade month == delivery month; 13:30 ET cessation 3rd-last business day)
+    reference: code/futbt/roll.py + BACKTEST_LAUNCH_DRAFT.md S0
+    target_adjustment: cycle_to_cycle (GJMQVZ skip) - serials 2025-11..2026-09 ABSENT from raw so literal next-listed is NOT executable on this snapshot; executable approximation rolls cycle->cycle (~2-month hold)
+    dossier_finding: 'OBSERVED GC S1: volume crossover 1-2 sessions BEFORE the declared roll (5/6 real-era rolls; GCQ6->GCV6 -1); gaps +27.5..+37.3 USD/oz over 7 completed rolls (incl. GCV6->GCZ6 2026-09-30 +31.1, audit m2 fix)'
+    alternative_required: 'volume-crossover roll (PIT: within-session cumulative relative volume or prior-session dailies); OI roll NOT_RUN'
+  execution_laws:
+    decision_point: session_close_through_pit_view
+    default_fill: next_session_open_tick_rounded_cost_shifted
+    ambiguous_order: same_bar_tp_sl_worst_case_bound_no_point_pnl
+    close_only_bars: never_fill_any_path
+    tb_labels: TRAIN_ONLY_never_validation_features
+    adjusted_series: causal_additive_features_only_never_fills_mtm_pnl
+    attribution: full_path_leave_one_out_only_additive_leg_sums_forbidden
+  cost_model:
+    commission: {usd_per_side: 0.85, provenance: 'PUBLISHED IBKR 2026-10-02'}
+    exchange_fee: {provenance: NOT_RUN_NOT_FETCHED}
+    spread: {median_usd_per_contract: 50.0, provenance: 'MEASURED daily-BBO close proxy, front 5 ticks = $50 last-20-session median (reconciles S6)', caveat: non-synchronous, not executable; deferred months wide (GCX6 1Y median 42 ticks)}
+    slippage: {provenance: NOT_RUN_NO_DECLARED_VALUE}
+    stress_multipliers: [1.0, 1.5, 2.0]
+hypotheses:
+- id: GC-H1
+  dossier_ref: 'dossiers/GC_DOSSIER.md S5 H1 (rank 1 in dossier: fully measurable on data in hand)'
+  hypothesis_kind: execution_rule
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Liquidity providers widen the dying contract's book; takers pay the calendar spread plus
+    a wide book. A roll rule switching at the volume-crossover session (1-2 sessions before
+    the calendar date, OBSERVED) instead of the calendar session reduces calendar-spread
+    crossing costs with no material change in exposure (contracts co-move; gap ~= contango).
+  pit_trigger:
+    mechanizable: true
+    observable: within-session cumulative relative volume old vs next (strict same-session past), or prior-session daily volumes
+    field: per-contract daily/hourly volume around roll sessions
+    source: raw per-contract volume (2025-01-15..2026-10-01 real-volume era on cycle months)
+    as_of_rule: volume comparison uses data strictly earlier than the roll decision session; final same-day volume refused (PIT)
+    timestamp_at_decision: roll-session close decision
+  direction: none (execution choice)
+  entry: the roll switch itself
+  exit: position lifetime
+  take_profit: n/a
+  stop_loss: n/a
+  time_rules: per roll cycle
+  universe: GC front->next cycle pair
+  roll_rule_ref: this IS the roll A/B (calendar vs volume-crossover)
+  sizing: 1 contract baseline
+  regime_tags: [high_vol_month_ends, quiet_months]
+  counter_hypothesis: calendar rule already equals volume rule (1-2 sessions late - OBSERVED against)
+  failure_conditions:
+  - old-contract book does not deteriorate pre-roll in >= half of rolls
+  - serial-contract volumes are vendor-artifact-thin (V-month caveat) making crossover undetectable
+  minimal_test:
+    kind: descriptive_roll_execution_comparison
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [GC], use: construction_check, floor: 'daily BID/ASK + volume per contract (HAVE 2025-01..2026-10 real-volume era); 1-min roll-window detail NOT_RUN', floor_met: false, available_today: true, acquisition: in_hand_now}
+    - {class: serial_contracts_refetch, symbols: [GC], use: construction_check, floor: '6 missing serials (GCX5,GCF6,GCH6,GCK6,GCN6,GCU6) - $0 re-fetch under existing entitlement before ~Q1-2027 age-out', floor_met: false, available_today: false, acquisition: free_public}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [GC], use: backtest_fill, floor: '>=24m true volume incl. serials', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: GC-H1-P1, piece: serial-month spread/cost parameters, reason: 'PARAM-GAP for serial months not in raw (dossier)'}
+  feasibility:
+    mechanization: high
+    acquisition_cost: in_hand_now
+    rank_basis_note: 'dossier: fully measurable on data in hand; serial re-fetch is $0 (time-critical per INTEGRATION_SUMMARY)'
+  rank: 1
+- id: GC-H3
+  dossier_ref: 'dossiers/GC_DOSSIER.md S5 H3'
+  hypothesis_kind: conditional_return
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Spot-adjacent urgency bid (physical/EFP squeeze) is the only force that flattens a
+    full-carry curve: compression of the 2-month spread toward/below half its trailing median
+    precedes stress episodes, with the front outperforming forwards over days-weeks.
+  pit_trigger:
+    mechanizable: true
+    observable: 2-month spread < rolling-median(126 sessions) x 0.5 (strict past window)
+    field: near-vs-far spread from per-contract closes
+    source: raw curve (settlement-derived deep; real-volume era 2025-01..2026-10 ~40 weekly obs)
+    as_of_rule: spread at session close vs strictly trailing median; entry next session
+    timestamp_at_decision: daily close
+  direction: long front / short next (calendar spread; description first, no PnL yet)
+  entry: next-session open after compression signal
+  exit: spread back above median or 10 sessions
+  take_profit: median-reversion level (implicit in exit)
+  stop_loss: 'PARAM_GAP: GC-H3-P1'
+  time_rules: 10-session cap
+  universe: GC 1st/2nd cycle months
+  roll_rule_ref: n/a (spread position)
+  sizing: '1:1'
+  regime_tags: [high_vol_2026_type, falling_rates_mechanical_compression]
+  counter_hypothesis: 'compression is a pure rate move (control: d2y yield)'
+  failure_conditions:
+  - compression days with no subsequent front outperformance
+  - settlement-derived deep bars misstate the curve before 2025
+  minimal_test:
+    kind: descriptive_curve_compression_conditioning
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [GC], use: signal_reference, floor: 'real-volume curve >=2y (have 2025-01..2026-10, ~40 weekly obs)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [GC], use: backtest_fill, floor: '>=2y real-volume curve (vendor)', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: GC-H3-P1, piece: 'SL + compression multiple (0.5x declared by dossier, robustness band)', reason: pre-registration required}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: in_hand_now
+    rank_basis_note: measured structure in hand; conclusion floor needs 2y real-volume curve (vendor) - noted in floor_met
+  rank: 2
+- id: GC-H4
+  dossier_ref: 'dossiers/GC_DOSSIER.md S5 H4'
+  hypothesis_kind: cross_asset_relative_value
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Silver's dual identity (monetary premium vs industrial valuation) plus retail-flow
+    overshoot: after extreme GC/SI ratio readings, the spread (long cheap leg / short rich
+    leg) reverts toward its trailing median over weeks; risk-on -> SI outperforms (ratio
+    falls), stress -> ratio rises.
+  pit_trigger:
+    mechanizable: true
+    observable: GC/SI ratio crossing a trailing percentile band of itself (strict past window, e.g. 63d)
+    field: ratio of own liquid chains (GC GJMQVZ / SI HKNUZ fronts)
+    source: raw daily closes both symbols (2025-07..2026-10 real-volume both legs)
+    as_of_rule: ratio at close vs strictly trailing band; entry next session
+    timestamp_at_decision: daily close
+  direction: long SI/short GC when ratio rich; reverse when cheap
+  entry: next-session open after band cross
+  exit: band reversion or declared horizon (PARAM-GAP)
+  take_profit: 'PARAM_GAP: GC-H4-P1'
+  stop_loss: 'PARAM_GAP: GC-H4-P1'
+  time_rules: weeks-scale horizon (PARAM-GAP exact)
+  universe: GC/SI cycle fronts, H1-style roll rules both chains
+  roll_rule_ref: defaults.roll_rule both symbols (serials caveat both); exclude +-1 roll days (25 flagged in dossier)
+  sizing: ratio-neutral 1:delta (declared formula before run)
+  regime_tags: [post_squeeze_high_vol, risk_on, stress]
+  counter_hypothesis: ratio is a one-way structural trend (industrial silver scarcity) - 15-month window cannot distinguish
+  failure_conditions:
+  - regime-conditional ratio behavior unstable year-by-year
+  - roll-gap jumps treated as reversion (unadjusted legs - forbidden)
+  minimal_test:
+    kind: descriptive_ratio_reversion_by_regime
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [GC, SI], use: conditional_descriptive, floor: 'daily closes both legs (HAVE ~15 months; ~1 episode - LOW power; >=100 episodes needs >=10y)', floor_met: false, available_today: true, acquisition: in_hand_now}
+    nondata_blockers: [PARAM_GAP_MUST_BE_PRE_REGISTERED]
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: daily_trades_per_contract, symbols: [GC, SI], use: backtest_fill, floor: '>=10y two-leg daily', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: GC-H4-P1, piece: 'band width, holding horizon, exit percentile', reason: 'cannot be set without a look-ahead-free selection protocol (dossier)'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: in_hand_now
+    rank_basis_note: both legs daily in hand; regime-tagging rule must be fixed a priori
+  rank: 3
+- id: GC-H5
+  dossier_ref: 'dossiers/GC_DOSSIER.md S5 H5 (most causal-plausible, least testable now)'
+  hypothesis_kind: regime_conditional
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Gold is a duration-like zero-coupon real asset: real-yield shocks dominate GC direction
+    outside acute crisis (crisis bid can flip the sign).
+  pit_trigger:
+    mechanizable: false
+    observable: '10y TIPS real-yield shock (level/change) - NO PIT yield/expectation series in corpus (PARAM-GAP); crisis dummy must be defined ex ante'
+    field: real-yield daily series + ex-ante crisis dummy
+    source: treasury.gov / FRED ALFRED vintages (not fetched)
+    as_of_rule: vintage-clean first-release values mandatory
+    timestamp_at_decision: daily close alignment
+  direction: short GC on real-yield-up shocks (outside crisis regime)
+  entry: not specifiable as a trade rule yet (dossier)
+  exit: not specifiable
+  take_profit: 'PARAM_GAP: not specifiable'
+  stop_loss: 'PARAM_GAP: not specifiable'
+  time_rules: days-weeks horizon (mechanism only)
+  universe: GC front
+  roll_rule_ref: defaults.roll_rule
+  sizing: n/a at this stage
+  regime_tags: [real_rate_led, crisis_bid]
+  counter_hypothesis: USD co-move dominates the real-rate channel
+  failure_conditions:
+  - real-yield shocks with no GC down-move drift
+  - crisis weeks dominate and flip the sign persistently
+  minimal_test:
+    kind: descriptive_real_yield_association
+    requirements:
+    - {class: external_rates_vintages, symbols: [US], use: signal_reference, floor: '10y TIPS vintages + breakevens (not fetched; free)', floor_met: false, available_today: false, acquisition: free_public}
+    nondata_blockers: []
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: external_rates_vintages, symbols: [US], use: backtest_fill, floor: same, floor_met: false, available_today: false, acquisition: free_public}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN]
+  param_gaps:
+  - {id: GC-H5-P1, piece: 'crisis dummy definition + any trade-rule piece', reason: 'must be fixed a priori from MOF/action-style history, not tuned; no PIT series in corpus'}
+  feasibility:
+    mechanization: low
+    acquisition_cost: free_public
+    rank_basis_note: 'dossier: "explicitly NOT_RUN beyond mechanism" - free rates pull is the only gate besides rule design'
+  rank: 4
+- id: GC-H2
+  dossier_ref: 'dossiers/GC_DOSSIER.md S5 H2'
+  hypothesis_kind: event_reaction
+  mechanism_class: POSTULATED
+  mechanism: >-
+    Gold = duration-like zero-coupon real asset: GC's same-day move should follow the
+    REAL-rate implication of a CPI print (breakeven path vs nominal path), not the headline
+    inflation sign.
+  pit_trigger:
+    mechanizable: true
+    observable: CPI first print + same-morning nominal yield & breakeven moves (all 08:30 ET)
+    field: CPI actual vs consensus + TIPS/breakeven intraday response
+    source: BLS schedule FACT + treasury.gov/FRED vintages (not fetched) + consensus (licensed, MISSING)
+    as_of_rule: first-print vintage; same-morning window; entry 08:30:05 ET requires M1 depth (NOT_RUN before ~2025-12)
+    timestamp_at_decision: 08:30 ET release minute
+  direction: conditional (sign(real-rate change))
+  entry: '08:30:05 ET (PARAM-GAP: no M1 depth; test-0 = measurement first, no trade)'
+  exit: same close
+  take_profit: none in test-0 (measurement first)
+  stop_loss: none in test-0
+  time_rules: same-day
+  universe: GC front
+  roll_rule_ref: defaults.roll_rule (serials caveat)
+  sizing: '1'
+  regime_tags: [tight_fed_real_rate_led, crisis_bid_weeks]
+  counter_hypothesis: headline-sign traders dominate the first minutes
+  failure_conditions:
+  - real-rate-sign model classifies <= coin-flip of GC same-day signs over >=24 events
+  - surprise/consensus PIT data unavailable (vendor-licensed)
+  minimal_test:
+    kind: descriptive_event_sign_classification
+    requirements:
+    - {class: consensus_surprise_archive, symbols: [US], use: signal_reference, floor: 'timestamped CPI + consensus (MISSING)', floor_met: false, available_today: false, acquisition: owner_declaration}
+    - {class: external_rates_vintages, symbols: [US], use: signal_reference, floor: 'TIPS yields + breakevens vintages (not fetched)', floor_met: false, available_today: false, acquisition: free_public}
+    - {class: minute_trades_m1, symbols: [GC], use: intraday_event, floor: 'M1 around 08:30 (partial ~10 months RTH-only)', floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [CONSENSUS_LICENSE_OWNER_DECISION]
+  scored_run:
+    kind: daily_backtest_arm_b
+    requirements:
+    - {class: minute_trades_m1, symbols: [GC], use: intraday_execution, floor: multi-year M1, floor_met: false, available_today: false, acquisition: vendor_paid}
+    nondata_blockers: [DECLARED_SLIPPAGE_MISSING, EXCHANGE_FEE_NOT_FETCHED, REGISTRATION_REQUIRED_FOR_SCORED_RUN, CONSENSUS_LICENSE_OWNER_DECISION]
+  param_gaps:
+  - {id: GC-H2-P1, piece: entry timing realism (M1 depth) + classification rule, reason: 'consensus history is a paid decision (owner) - PARAM-GAP'}
+  feasibility:
+    mechanization: medium
+    acquisition_cost: vendor_paid
+    rank_basis_note: consensus paid + M1 depth gate it
+  rank: 5

@@ -1,0 +1,74 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "DRYRUN-V2-1",
+  "cycle_id": "FUTURES-ES-PB1-V1",
+  "role": "lane DRYRUN-V2-1 — gate 4 re-run after the D-V2-1 defect correction: full 24-identity rehearsal at ×1.0 Variant-A on the v2 eval surface (2,925 / F2 949) with the SL-donor exclusion set restored to v1's exact 139-session set (conservative-intent carryover; the repair's 35 COVERAGE_LT60→HOLIDAY_PDF_EQUITY_2011_2015 relabels treated as evidentiary metadata only) — quarantined, pre-GO",
+  "lane": "DRYRUN-V2-1",
+  "round": "FUTURES-ES-PB1-V1 gate-4 defect-correction re-run (correction law: SL-donor EXCLUSION session set IDENTICAL to v1's 139 sessions; owner repair authorization 'holiday repair' carries the conservative intent; donor re-admission of PDF sessions would be a NEW amendment requiring its own adjudication)",
+  "generated_utc": "2026-10-05",
+  "dispatch_sha": "148a7bf52b4e4351ae156e4f704a7e7e22c87f0a",
+  "actual_start_sha": "148a7bf52b4e4351ae156e4f704a7e7e22c87f0a",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/dryrun_builder_v2_1.py",
+    "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/quarantine/** (26 files: 24 per-identity JSONs + summary.json + trades_index.json)",
+    "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/quarantine_rerun/** (26 files, byte-identical to quarantine/)",
+    "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/trade_level_delta_vs_v1.json",
+    "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/verify_trade_level_delta_vs_v1.py",
+    "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/dryrun_v2_1_digest.json",
+    "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/DRYRUN_V2_1_REPORT.md",
+    "research/control/FUTURES-ES-PB1-V1/dispatch/handoff_DRYRUN-V2-1.json"
+  ],
+  "write_boundary_respected": "All writes confined to research/control/FUTURES-ES-PB1-V1/{dryrun_v2_1,dispatch}/** in worktree /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep; v1 dryrun/ + freezegen/ and v2 dryrun_v2/ are HISTORY, untouched (v1 exclude_list.json READ only, as the v1 label column for donor purposes); everything else read-only (single-shot parquet reads of the pinned ES panel + chain); no ledger/counter/registry write, no S1 access, no network (zero fetch), no commit/stage/push (controller commits).",
+  "git_commands_run": [
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep rev-parse HEAD (once at start) -> 148a7bf52b4e4351ae156e4f704a7e7e22c87f0a",
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep status --porcelain (start: clean; end: only untracked research/control/FUTURES-ES-PB1-V1/{dryrun_v2_1,dispatch}/** added by this lane)"
+  ],
+  "tests": [
+    {"command": "machinery provenance: dryrun_v2_1/dryrun_builder_v2_1.py = exact copy of dryrun_v2/dryrun_builder_v2.py via exact-string replacements (count==1 enforced); line-diff = 9 hunks of which ONLY the C1 donor-set block touches logic; build_sessions/derive_state/simulate/run_pass + criteria checks byte-identical to v2", "exit_code": 0, "verdict": "PASS", "result": "C1 (the one logic change): short_flagged (SL-donor exclusion set) computed from the V1 class labels freezegen/exclude_list.json (schema exclude_list@1, read-only) with the unchanged 3-class filter {HOLIDAY_FACT_EARLYCLOSE, HOLIDAY_UNCERTAIN, COVERAGE_LT60}; mandated asserts embedded; eval surface/eval sets/FOMCIN/WARMUP remain on the v2 labels"},
+    {"command": "C1 asserts (mandated by mission M1): donor-excluded count == 139 == v1; 2015-07-02 donor-admitted; XOR(v1-label donor set, v2-label donor set) == exactly the 35 relabeled sessions with v1 COVERAGE_LT60 -> v2 HOLIDAY_PDF_EQUITY_2011_2015", "exit_code": 0, "verdict": "PASS", "result": "donor-excluded v1-labels = 139; v2-labels = 104; diff = exactly the 35 relabels (2011-01-17..2015-12-24); 2015-07-02 has NO v1 label -> donor-admitted in v1 and kept donor-admitted (repair is EVAL-only); embedded in digest donor_correction block"},
+    {"command": "input-gate sha256 vs pins (SPEC 445f7499…, panel 7ae6de2d…, chain 7b6179d2…) + selection_freeze_v2.exclude_list.sha256 round-trip == sha256(exclude_list_v2.json) + Variant-A cost-table asserts + retired-value ban", "exit_code": 0, "verdict": "PASS", "result": "all pins matched pre-run; builder aborts pre-write on any mismatch"},
+    {"command": "M2(a) identity enumeration vs repair/selection_freeze_v2.json embedded identity_table", "exit_code": 0, "verdict": "PASS", "result": "24/24 byte-exact ids, set and order equal, zero extras, zero missing"},
+    {"command": "M2(b) cost recomputation: 20 sampled trades vs Variant-A pinned table", "exit_code": 0, "verdict": "PASS", "result": "20/20 exact incl. 4 NFA-window rows (fees 2.25 / 2.24-in-window + spread 6.25 + slip 12.50/25.00/37.50; RT = ×2; gross = dir×(exit−entry)×50 verified); retired values absent"},
+    {"command": "M2(c) determinism: two full passes, each re-reading every input from disk", "exit_code": 0, "verdict": "PASS", "result": "trades-index sha256 eaae8b6b13453db7ef0666bb1ac15a5111898ea01019ebbd0c974a505e6df4a8 identical across passes; all 24 per-identity JSONs byte-identical (quarantine/ vs quarantine_rerun/), independently re-verified"},
+    {"command": "surface validation: derived eval sets vs selection_freeze_v2 fold_structure (builder assert counts_ok)", "exit_code": 0, "verdict": "PASS", "result": "2,925 eval sessions reproduced exactly (F1 375 / F2 949 / F3 711 / F4 890); FOMCIN set 104; FLAT 0; panel 7,825,657 rows, 0 dash rows, 1,834,852 RTH rows kept"},
+    {"command": "M2(d) surface delta vs v1 quarantine (dryrun/quarantine/trades_index.json, read-only baseline): per-identity index equality vs v1 minus 2015-07-02 rows", "exit_code": 0, "verdict": "PASS", "result": "every identity's list == v1 minus its 2015-07-02 rows; exactly 3 trades removed total (one each FBES1-ALW-D0-S2, FBES1-PLA-D0-S2, FBES1-DOSE-D0-S2); totals 13,188 -> 13,185; identities_with_removed_trades = the 3 above; zero other index changes"},
+    {"command": "M2(d) deep trade-level delta vs v1 quarantine (trade_level_delta_vs_v1.json): v2.1 trade dicts == v1 trade dicts minus 2015-07-02 rows, canonical-JSON comparison, incl. sl_distance_pts equality on all common trades", "exit_code": 0, "verdict": "PASS", "result": "13,185 common trades value-identical to v1 on every field (entry/exit/SL/TP/costs/gross/net); n_sl_distance_differences_on_common_trades = 0 — SL distances byte-identical to v1; mismatch_samples empty; verdict PASS"},
+    {"command": "M2(e) FOMCIN warmup-defect regression scan (v1 D-F1 class): trades vs positional fold warmup heads and WARMUP-labelled sessions, all 24 identities", "exit_code": 0, "verdict": "PASS", "result": "13,185 trades scanned; zero warmup-position trades; zero trades on WARMUP-labelled sessions"}
+  ],
+  "authority_claims": [
+    "QUARANTINED-ONLY: every numeric output of this lane lands under dryrun_v2_1/quarantine/ or dryrun_v2_1/quarantine_rerun/ (plus the descriptive delta artifact) with the header 'QUARANTINED DESCRIPTIVE-ONLY — NOT SCORED — ZERO DENOMINATOR CONSUMPTION — pre-GO rehearsal per registered plan §4 gate 4'; ALL numerics are quarantined descriptive-only and are never gates, denominators, or publishable results",
+    "NO DENOMINATOR CONSUMPTION: no ledger/counter/registry write anywhere; budget counters untouched; the observed denominator was NOT incremented; zero scored cells; C3 flat logs zero trades",
+    "NO GO: no GO exists or is implied by this lane — gate-4 criteria are enumeration + cost recompute + determinism + surface integrity + warmup regression, never PnL quality; the typed owner GO ('GO FUTURES-ES-PB1-V1 SCORED EXECUTION', plan §5) remains the only key 2",
+    "CORRECTION LAW HONORED: the SL-donor exclusion set is v1's exact 139-session set, evaluated on the v1 class labels; the relabel is evidentiary metadata only; this is a defect correction restoring frozen v1 behavior under relabeling, not a new design choice — any future owner decision to donor-admit HOLIDAY_PDF_EQUITY_2011_2015 sessions is a NEW amendment requiring explicit adjudication",
+    "NO S1: S1 data SEALED_UNTOUCHED; zero network access; root repo read-only; Python = root .venv",
+    "HEAVY-LOCK LAW HONORED: locks inspect FREE_PROVEN at lane start and re-checked FREE_PROVEN immediately before the panel pass (recorded in the digest lock_record); single-shot; no lock taken; no foreign worker touched; zero NOT_RUN_RESOURCE_CONFLICT"
+  ],
+  "findings": [
+    {"id": "D-V2-1-RESOLVED", "type": "DEFECT-CORRECTION", "severity": null, "finding": "D-V2-1 is corrected and gate 4 now PASSES clean: with the SL-donor exclusion set restored to v1's 139 sessions, the v2.1 surface differs from v1 by EXACTLY the frozen eval-surface change (session 2015-07-02 removed from F2; its 3 trades gone) and NOTHING else — all 13,185 common trades byte-identical including sl_distance_pts. The correction implements conservative-intent carryover: donor statistics are evaluated on the v1 class labels (freezegen/exclude_list.json, read-only), making the repair's 35 relabels evidentiary metadata only. The corrected donor law and this rationale must be recorded in the freeze/spec lineage before any scored run so the v2.1 machinery is the frozen adjudicated machinery."},
+    {"id": "D-V2-0", "type": "FACT", "severity": null, "finding": "The freeze change's intended effect reproduced exactly on v2.1: eval surface 2,925 (F2 949, session 2015-07-02 out); trades dated 2015-07-02 removed: exactly 3 (one each FBES1-ALW-D0-S2, FBES1-PLA-D0-S2, FBES1-DOSE-D0-S2); totals 13,188 -> 13,185."},
+    {"id": "D-V2-1-NOTE", "type": "FACT", "severity": null, "finding": "The v1 donor-exclusion set arithmetic, re-proven from the label columns: v1 labels give 139 donor-excluded in-panel sessions; v2 labels give 104; the diff is exactly the 35 relabeled sessions (2011-01-17..2015-12-24). 2015-07-02 has no v1 exclusion label at all (it was a v1 eval session) — donor-admitted in v1 and kept donor-admitted under the v1-label rule, consistent with the repair being EVAL-only."},
+    {"id": "D-A4", "type": "IMPLEMENTATION-PIN", "severity": "LOW", "finding": "v1 pin D-A4 stands as corrected by C1: q80 window trailing-252 computable-|m| chain-wide strict-past; SL donor window trailing-20 chain sessions strict-past excluding the 3-class short/flagged set evaluated on the V1 class labels. Fold-fencing corroboration (exact eval-count reproduction) unchanged."}
+  ],
+  "known_limitations": [
+    "Gate-4 v2.1 PASS is a rehearsal-machinery verdict on quarantined descriptive outputs only — it certifies enumeration/cost/determinism/surface-integrity/warmup, not profitability; no expectancy/PF/gate metric computed, none inferable.",
+    "The corrected donor law (v1-label evaluation) currently lives in the v2.1 builder + this handoff + report; before gate 6 the owner/controller should record it in the freeze/spec lineage (a one-line law note), so the scored run consumes an explicitly frozen donor law rather than a builder-embedded correction.",
+    "Slippage/spread remain MODELED COST research assumptions; VERIFIED_VS_ACCOUNT remains NOT_RUN (unchanged). 2016 per-day holiday enumeration remains NOT_RUN per the repair's not_run_register (unchanged).",
+    "Implementation pins D-A1 (q80 percentile method), D-A2 (C2 direction), D-A3 (C1 RNG algorithm) remain MUST-PIN-BEFORE-SCORED-G6 (unchanged from v1/v2 findings)."
+  ],
+  "incidents": [],
+  "tree_status": "end git status --porcelain: only untracked research/control/FUTURES-ES-PB1-V1/{dryrun_v2_1,dispatch}/** added by this lane; start status clean; no tracked file modified; HEAD unchanged 148a7bf52b4e4351ae156e4f704a7e7e22c87f0a",
+  "workers": [],
+  "outputs": [
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/DRYRUN_V2_1_REPORT.md", "sha256": "e16ef3861a70ed6e8224ff2f2d1769d1338d709c133e9cb2bd79bd0457832b71"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/dryrun_v2_1_digest.json", "sha256": "fb460f7939e994a0120f18e80b836f33b011665319fdbe8a86f48679bd9ea7e4"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/dryrun_builder_v2_1.py", "sha256": "00141bf0e08cd655a87aad6d1e220acaaa75840a50ac9252986d744f009665e0"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/trade_level_delta_vs_v1.json", "sha256": "04cc5def9dc75d33cf339c6fc19eada647052e4aee46890f33b7ecf8b44efe22"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/verify_trade_level_delta_vs_v1.py", "sha256": "0b5a046bb422a8f024801900eadcbfde1157eb7c8c63a143f1794068364f9273"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/quarantine/trades_index.json", "sha256": "dbf0d10faf1983d41b6ae161c5c8fa9429b43cc518ad3a9617040f55f179773e"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/quarantine/summary.json", "sha256": "35f9194dbdf0d9b8157cae1ddd14cb81eeadf3d43a71776dbb269d8d9225dcc4"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun_v2_1/quarantine_rerun/**", "sha256": "byte-identical to quarantine/** (determinism criterion c)"}
+  ],
+  "readiness_conclusion": "Gate-4 v2.1 re-run complete and QUARANTINED, verdict PASS on all five criteria after the D-V2-1 defect correction: (a) 24/24 byte-exact enumeration vs selection_freeze_v2; (b) 20/20 sampled-cost recomputation matches Variant-A incl. NFA-window rows; (c) double pass byte-identical (trades-index sha eaae8b6b…); (d) surface delta vs v1 = EXACTLY the frozen 2015-07-02 removal (3 trades; all 13,185 common trades byte-identical, 0 SL-distance differences — donor set restored to v1's 139); (e) zero warmup-defect trades. Donor-excluded count asserted 139 == v1; 2015-07-02 donor-admitted as in v1. The D-V2-1 surface contamination is eliminated by correction C1 (donor eligibility evaluated on v1 class labels; relabels are evidentiary metadata only). No GO exists or is implied; zero denominator consumption; all numerics quarantined.",
+  "recommended_next_action": "Controller: record the corrected SL-donor law (v1-label evaluation of the 3-class short/flagged filter — donor-excluded set == v1's 139 sessions; relabels evidentiary metadata only; PDF-session donor admission would be a new amendment) in the freeze/spec lineage as a one-line law note, then proceed per the registered plan toward gate 6 prerequisites (pins D-A1/D-A2/D-A3 ratification; cost verification VERIFIED_VS_ACCOUNT) — NOT via any new gate-4 run, which this lane already completed clean. Do NOT advance to typed owner GO without the plan §5 typed owner instruction. This lane produced no GO and consumed no denominator."
+}

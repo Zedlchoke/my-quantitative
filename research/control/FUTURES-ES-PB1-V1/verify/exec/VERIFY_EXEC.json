@@ -1,0 +1,116 @@
+{
+  "schema": "futures_es_pb1_v1/verify_exec@1",
+  "cycle_id": "FUTURES-ES-PB1-V1",
+  "wave": "EXEC-BUILD",
+  "verified_utc_date": "2026-10-05",
+  "verifier": "fresh-context independent verifier (sub-wave; no handoff JSON)",
+  "pins": {
+    "worktree_prep_head": "d0657cb811f2b07d0efb5cd395208262cda84cb9",
+    "worktree_branch": "prep/futures-es-reg-20261004",
+    "root_main_head": "0d1fe426da9bec718105192e3e663cd1c65c120e",
+    "pins_match": true,
+    "status_start_clean": true,
+    "status_end_clean": true,
+    "heads_unchanged": true
+  },
+  "checks": {
+    "E1_stub_eradication": {
+      "verdict": "PASS",
+      "evidence": [
+        "stub markers only in removal-record docstrings (scored_runner.py:18-19, scored_executor.py:4) + negative assertion test_execution_path.py:218",
+        "execution branch delegates to scored_executor.run_scored_execution (scored_runner.py:1032) only after R0-R5 + RefusalGate",
+        "exit 0 only on EXECUTION_COMPLETE with observed_denominator==24; all failure paths non-zero (executor L719-766)",
+        "GO_READY_WITHDRAWAL.md present",
+        "all v2.1 addendum pins match disk: scored_executor f5ad7d48..., scored_runner 18258cf1..., test_execution_path d9d011c1..., test_runner_refusals 3678446b..., make_sandbox_fixtures 588775db..., trial_ledger_fixed bf89be55..."
+      ]
+    },
+    "E2_tests_drive_production_path": {
+      "verdict": "PASS",
+      "evidence": [
+        "T1 launches real scored_runner.py CLI subprocess with sandbox fixtures; no executor mock; machinery of record imported verbatim",
+        "fault injection guarded at runner L975-979 (requires --sandbox-root) and executor L517-521 (assertion); T10(f) proves it",
+        "re-run test_runner_refusals.py: exit 0, 14/14 OK",
+        "re-run test_execution_path.py: exit 0, 10/10 OK (T1-T10, 144s)"
+      ]
+    },
+    "E3_ledger_trial_lock_failure": {
+      "verdict": "PASS",
+      "evidence": [
+        "T1: 24 identity rows all PASS/counts_observed/published/sandbox-stamped, observed=24 exact, EXECUTION_COMPLETE exit 0, lock FINISHED, twin byte-match",
+        "T5: 5 terminals skipped (handoff skipped_terminal == first5 frozen ids), 19 computed, zero overlap, observed_before_run=5 replay, 24/24 observed final, 5 prior outputs byte-identical (cmp)",
+        "T4: 24 rows all counts_observed, 4 published=false, PUBLICATION_FAILURE exit 3",
+        "T7: flock_state free, registry row file absent, ledger verify ok observed=7, COMPUTE_FAILURE exit 3",
+        "T3: TWIN_MISMATCH terminal, EXECUTION_FAILED exit 3, byte_match false, 24 observed - never success",
+        "T9: reopen ok, observed 24, bytes unchanged"
+      ]
+    },
+    "E4_authority_pin_bindings": {
+      "verdict": "PASS",
+      "evidence": [
+        "contract launch_contract@2 + append-only v2.1 addendum, canonical GO phrase exact",
+        "gates ordered R0-R5 + RefusalGate BEFORE executor import; TOCTOU re-verify after lock acquire",
+        "independent grep: no fixture path literal in production code (docstrings only); AST RUNTIME_DIRNAME confinement re-proven by T8(b)",
+        "production-default authority guard refuses overrides reaching execution (T8a + refusals test_08 PASS)",
+        "sandbox mix-refusal T8c PASS (SANDBOX-ISOLATION exit 2)",
+        "fake GO at exactly one path (scratch/synthetic/sandbox/.../authority/GO_RECORDED.json); real auth/GO_RECORDED.json ABSENT in worktree and root"
+      ]
+    },
+    "E5_no_real_outcomes": {
+      "verdict": "PASS",
+      "evidence": [
+        "gate6/ledger/ does not exist (worktree and root) - production ledger never written",
+        "ledger inventory: smoke *_synthetic.jsonl (prior-wave synthetic), runner/sandbox (1 REFUSED), 11 sandbox ledgers - every identity row SYNTHETIC-SANDBOX stamped; t10a/b/c REFUSED-only observed=0",
+        "zero real-panel parquet references in tests; panels are generated synthetic fixtures"
+      ]
+    },
+    "E6_registry_incident_doctor_wavediff": {
+      "verdict": "FAIL",
+      "subcheck_incident": "FAIL",
+      "evidence": [
+        "registry row: head 999ece6024ba739ed9a4046dcbcbb382f4d6650c, go_phrase byte-exact, REGISTERED_NOT_CONSUMED, ACTIVE_LIGHT, budget 0/24 - all PASS",
+        "999ece60 verified proper ancestor of d0657cb; single intervening commit = INCIDENT record only",
+        "cycle doctor: 1 finding for this cycle = LOW HEAD_MISMATCH (the disclosed ancestor-lag; clearance = E8 registry-head-sync blocker)",
+        "wave diff 8bb9d4a8..d0657cb8: 41 files, all under research/control/FUTURES-ES-PB1-V1/",
+        "FINDING F-1: incident record names NFL-WINPROB-NG-SCORED-V1 as the only foreign addition, but 0d1fe426 added TWO foreign registrations (NFL-WINPROB-NG-SCORED-V1 with registered GO phrase AND WINPROB-PLAYERFEAT-PREP-V1 with no GO phrase), each with 3 events + projection entries; both absent from the parent registry"
+      ]
+    },
+    "E7_decision_packet": {
+      "verdict": "PASS",
+      "evidence": [
+        "D-1..D-6 each a genuine SPEC/plan gap with minimal deterministic default",
+        "none touches frozen laws (D-1 keeps costs/warmup as fail-closed run-level checks; D-3 defers to budget law)",
+        "all classified IMPLEMENTED-DEFAULT-PENDING-RATIFICATION (GO-blocking-owner-ratification)"
+      ]
+    }
+  },
+  "verdict": "FAIL",
+  "verdict_scope": "single item F-1 (incident-record completeness); execution path E1-E5 + E7 fully verified PASS",
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "MEDIUM",
+      "kind": "incident_record_underreports_bundled_foreign_content",
+      "detail": "ROOT commit 0d1fe426 bundled TWO foreign registrations (NFL-WINPROB-NG-SCORED-V1 + WINPROB-PLAYERFEAT-PREP-V1); INCIDENT_registry_bundle_0d1fe426.md names only the NFL one; 'NFL row is the only foreign addition' could not be confirmed",
+      "remediation": "append-only correction line to the incident record (controller) before GO; no machinery impact; ES row content unaffected"
+    },
+    {
+      "id": "N-1",
+      "severity": "LOW",
+      "kind": "disclosed_head_lag",
+      "detail": "doctor HEAD_MISMATCH LOW (branch d0657cb vs registry 999ece6); verified proper ancestor; clearance is the E8 registry-head-sync pre-GO blocker"
+    }
+  ],
+  "pre_go_blockers": [
+    "owner ratification of D-1..D-6",
+    "registry-head sync of the final SHA (currently verified-ancestor lag at 999ece60)",
+    "append-only incident-record correction for F-1 (minor)"
+  ],
+  "go_is_owner_only": true,
+  "real_go_artifact_absent": true,
+  "no_real_outcomes_computed": true,
+  "hygiene": {
+    "write_boundary_respected": "only research/control/FUTURES-ES-PB1-V1/verify/exec/**",
+    "handoff_json": "none (sub-wave verifier)",
+    "test_logs_restore": "10 tracked test_logs files rewritten by the sanctioned suite re-runs were restored to pinned committed bytes via git checkout --; end status clean, both HEADs unchanged"
+  }
+}

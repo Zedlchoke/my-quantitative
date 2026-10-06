@@ -1,0 +1,117 @@
+{
+ "schema": "futures_es_pb1_v1/verify_finalize@1",
+ "cycle_id": "FUTURES-ES-PB1-V1",
+ "wave": "FINALIZE-FIX",
+ "verdict": "FINALIZATION_FIX_VERIFIED",
+ "audited_head": "7258f8d24b4b2d04a51ece493710570b999fcf3e",
+ "audited_branch": "prep/futures-es-reg-20261004",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep",
+ "root_head_main": "0bd1fb334710bc093836d22de506fa1387cdd2a1",
+ "root_clean_start_and_end": true,
+ "worktree_clean_end_except_verify_finalize": true,
+ "executor_sha256_at_head": "2e3c43878b5311978d5df109588ab7791bdca17209af149223d83ffcba7696f8",
+ "checks": {
+  "H1_fail_before_fix_and_repro": {
+   "status": "PASS",
+   "fix_commit_parent_is_fail_record": true,
+   "fail_record": "c17ab2bf1ddb434c1205e12278a413f42bad6f46",
+   "fix_commit": "6ae88e9cf5aba5aa4de2e4e577b6ba0af574f023",
+   "prefix_module_sha256": "f5ad7d4816054a9c53eea0d32ee23caa793677f1ba522a5bdd637f0c0015c4f9",
+   "prefix_repro_bug1": {"exit_code": 0, "terminal_state": "EXECUTION_COMPLETE", "lock_released_status": "FINISHED", "lock_release_error": "RuntimeError('INJECTED release failure')", "handoff_claimed": true, "verdict_success_reported": true},
+   "prefix_repro_bug2": {"exit_code": 0, "terminal_state": "EXECUTION_COMPLETE", "terminal_handoff_error": "OSError('INJECTED handoff write failure')", "handoff_path_claimed": false, "verdict_success_reported": true},
+   "postfix_repro_bug1": {"exit_code": 4, "terminal_state": "FINALIZATION_FAILURE", "lock_released_status": "UNVERIFIED_RELEASE_RAISED", "verdict_success_reported": false},
+   "postfix_repro_bug2": {"exit_code": 4, "terminal_state": "FINALIZATION_FAILURE", "handoff_path_claimed": false, "verdict_success_reported": false},
+   "postfix_matches_lane_artifact": true
+  },
+  "H2_fix_law_conformance": {
+   "status": "PASS",
+   "a_ledger_summary_failure": "own try L817-825; finalization_failures[] entry; rows stand",
+   "b_release_raise": "UNVERIFIED_RELEASE_RAISED L852; heavy_lock.inspect() evidence L845-851 BEFORE restore_runtime() L862-869; zero force-unlock/kill/delete primitives (grep)",
+   "c_runtime_restore_own_try": "L862-869",
+   "d_handoff_write_failure": "no path claim on failure (path set only at L900); fallback terminal_handoff_ERROR.json; IN_MEMORY_ONLY last resort L930",
+   "e_exit4_fixup": "L878-883 and L907-911; EXIT_FINALIZATION=4 L101; computation_complete separate L565/L769; refusals 2/75 and already-failed states stand unmasked (D-7 iv; F06/F08)",
+   "f_cleanup_order": "steps (a)-(e) each own try; errors collected into finalization_failures[]; original error never masked",
+   "g_ledger_untouched": "finalization only reads (summary, sha256_file); F7 proves bytes unchanged"
+  },
+  "H3_tests": {
+   "status": "PASS",
+   "fsuite": {"command": "fix2/test_finalization_fix.py", "exit_code": 0, "tests": "10/10", "seconds": 1420.6},
+   "regression_T1_T10": {"command": "test_execution_path.py", "exit_code": 0, "tests": "10/10", "seconds_standalone": 96.2},
+   "regression_refusals": {"command": "test_runner_refusals.py", "exit_code": 0, "tests": "14/14", "seconds_standalone": 4.5},
+   "F10_baseline_correction_verified": {"prefix_runtime_dirname_attribute_nodes": 3, "enclosing_functions": [["_patch_sandbox_lock_runtime"], ["_patch_sandbox_lock_runtime"], ["restore", "_patch_sandbox_lock_runtime"]], "current_count": 3, "containment_held_pre_and_post": true},
+   "F04_artifact_spot_check": {"exit_code": 4, "terminal_state": "FINALIZATION_FAILURE", "lock_released_status": "UNVERIFIED_RELEASE_RAISED", "inspect_verdict": "FREE_PROVEN", "inspect_flock_state": "free", "inspect_runtime_sandbox_confined": true, "computation_complete": true}
+  },
+  "H4_authority_safety": {
+   "status": "PASS_WITH_FINDINGS",
+   "production_default_no_fixture_refs": true,
+   "fault_injection_nonconstructible_production": true,
+   "sandbox_isolation_ast_intact_pre_and_post": true,
+   "no_force_unlock_kill_delete": true,
+   "launch_contract_pin_state": {
+    "v2_1_new_pins": {
+     "scored_executor": {"pinned": "f5ad7d4816054a9c53eea0d32ee23caa793677f1ba522a5bdd637f0c0015c4f9", "actual": "2e3c43878b5311978d5df109588ab7791bdca17209af149223d83ffcba7696f8", "drifted": true},
+     "scored_runner_v2_1": {"pinned": "18258cf1da5a0a578cb9d9bddff72aea9d8e105d50a26bee890e560e5f015df9", "actual": "87930663de705307f2814612bf247ad36be433c07a613194b676381cbacf939e", "drifted": true, "note": "runner change is docstring-only (exit-4 line)"},
+     "test_execution_path": {"pinned": "d9d011c16a91e3d9b37db45b8058c4a2884d10c4d76a5d10b3c6517051cc9767", "actual_match": true},
+     "test_runner_refusals_v2_1": {"pinned": "3678446b5c96f1cc43237aa142ae85fccbf337911d6e685ccf7d94848c3a4384", "actual_match": true},
+     "make_sandbox_fixtures": {"pinned": "588775db1facf668ffd13cab3568860a6b6bf6646186d24a8e81cb999d9b4237", "actual_match": true}
+    },
+    "r4_rehash_scope": "contract['pins'] only (scored_runner.py L343); new_pins NOT re-hashed => drift never fails closed at launch",
+    "exit_codes_v2_1_predates_exit4": true,
+    "disclosed_in_wave_artifacts": false
+   }
+  },
+  "H5_d7_decision_packet": {
+   "status": "PASS",
+   "d7_complete_minimal_go_blocking_owner_ratification": true,
+   "self_ratification_language": false,
+   "d1_to_d7_unratified": true
+  },
+  "H6_hygiene_registry": {
+   "status": "PASS",
+   "wave_diff_confined_to_cycle_dir": true,
+   "wave_files": 22,
+   "incidents_disclosed": ["lane inactivity timeout; controller completed deliverables", "first handoff write failed on relative path; rewritten"],
+   "handoff_schema": {"declared": "zcode_orch_v3_handoff@1", "dispatch_sha_equals_actual_start_sha": true, "commit_sha_exists": true, "output_shas_match_disk": true, "deviations": ["tests[] missing exit_code and log_digest", "missing recommended_next_action", "authority_claims[] non-empty (negative assurances, controller-authored)"]},
+   "registry_row": {"go_phrase": "GO FUTURES-ES-PB1-V1 SCORED EXECUTION", "go_phrase_state": "REGISTERED_NOT_CONSUMED", "lifecycle": "ACTIVE_LIGHT", "budget": "0/24", "non_head_fields_unchanged": true, "row_head": "44269de150cb8da19899262fbc35b438cc574729", "head_lag_commits": 3, "row_head_is_ancestor_of_audit_head": true},
+   "cycle_doctor_this_cycle": ["HEAD_MISMATCH LOW (expected lag)", "STALE_HEARTBEAT LOW (label-only, 1d)"],
+   "stale_value_sweep": {"use_as_value_sites": 2, "both_in_LAUNCH_CONTRACT_V2": true, "code_test_stale_use": 0, "historical_records_only_elsewhere": true},
+   "real_ledger_dir_absent": true,
+   "real_go_artifact_absent": true,
+   "machine_lock_free_proven_at_start": true
+  }
+ },
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "HIGH",
+   "go_blocking": true,
+   "title": "LAUNCH_CONTRACT_V2 v2.1 executor/runner pins drifted, undisclosed",
+   "detail": "new_pins still pin scored_executor=f5ad7d48... and scored_runner_v2_1=18258cf1... vs operative 2e3c4387.../87930663...; R4 re-hashes only contract['pins'] so the drift is silent at launch; exit_codes_v2_1 predates exit 4; not disclosed in FINALIZE_FIX_REPORT.md, handoff_FINALIZE-FIX.json, or wave commit messages. Remedy: append-only contract amendment re-pinning both files + exit-4 code, owner-ratified before GO.",
+   "does_not_affect": "correctness or fail-closed behavior of the finalization fix itself"
+  },
+  {
+   "id": "F2",
+   "severity": "LOW",
+   "title": "handoff_FINALIZE-FIX.json schema deviations vs zcode_orch_v3_handoff@1",
+   "detail": "tests[] entries lack required exit_code and log_digest; required recommended_next_action absent; authority_claims[] non-empty (all negative assurances; controller-authored handoff). Substance independently confirmed by verifier re-runs."
+  }
+ ],
+ "verifier_writes": [
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/VERIFY_FINALIZE.md",
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/VERIFY_FINALIZE.json",
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/evidence/verifier_Fsuite_stdout.txt",
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/evidence/verifier_Fsuite_stderr.txt",
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/evidence/verifier_Fsuite_results.json",
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/evidence/verifier_regression_T1-T10_stdout.txt",
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/evidence/verifier_regression_T1-T10_stderr.txt",
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/evidence/verifier_regression_refusals_stdout.txt",
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/evidence/verifier_regression_refusals_stderr.txt",
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/evidence/verifier_repro_prefix_driver.py",
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/evidence/verifier_repro_prefix_output.json",
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/evidence/verifier_repro_after_fix_output.json",
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/evidence/verifier_repro_after_fix_output.txt",
+  "research/control/FUTURES-ES-PB1-V1/verify/finalize/evidence/verifier_F04_rerun_stderr.txt"
+ ],
+ "handoff_json_written": false,
+ "note": "Sub-wave verifier: no handoff JSON per dispatch. Test-suite rerun side-effects outside the write boundary (tracked test logs, untracked results file) were disclosed and restored/removed; end state clean."
+}

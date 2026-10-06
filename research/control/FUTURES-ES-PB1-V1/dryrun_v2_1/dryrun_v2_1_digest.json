@@ -1,0 +1,1190 @@
+{
+ "cycle_id": "FUTURES-ES-PB1-V1",
+ "donor_correction": {
+  "donor_classes": [
+   "HOLIDAY_FACT_EARLYCLOSE",
+   "HOLIDAY_UNCERTAIN",
+   "COVERAGE_LT60"
+  ],
+  "donor_excluded_count_v1_labels": 139,
+  "donor_excluded_count_v2_labels": 104,
+  "law": "D-V2-1 correction C1: SL-donor exclusion set == v1's exact 139-session set, evaluated on the v1 class labels (freezegen/exclude_list.json, read-only); the repair's 35 COVERAGE_LT60 -> HOLIDAY_PDF_EQUITY_2011_2015 relabels are evidentiary metadata only and do not alter donor statistics; 2015-07-02 stays donor-admitted (EVAL-only repair)",
+  "relabeled_first": "2011-01-17",
+  "relabeled_last": "2015-12-24",
+  "relabeled_sessions_recovered": 35,
+  "session_2015_07_02_donor_admitted": true,
+  "v1_label_source": "freezegen/exclude_list.json (schema exclude_list@1)"
+ },
+ "era_validation": {
+  "era_close_match_vs_chain": 4142,
+  "n_chain_sessions": 4204,
+  "rth_open_match_vs_chain": 4193
+ },
+ "findings": [
+  {
+   "finding": "q80 percentile method is not pinned by any committed law. SPEC \u00a73 L73-74: '\u0111i\u1ec1u ki\u1ec7n |m| \u2265 q80(|m|, trailing-252d, strict-past) \u2014 q80 t\u1eeb anatomy (NQ dossier H4 refined spec; ES \u00a78-H5), kh\u00f4ng tune'; checked ESNQ_HYPOTHESES.md, ES/NQ_DEEPFOUR_V3_ADDENDUM.md \u2014 no interpolation method declared. Pinned here: numpy.percentile(\u2026, 80) linear interpolation. Does not affect gate-4 criteria (enumeration/cost/determinism); MUST be ratified (owner/freeze amendment) before scored execution.",
+   "id": "D-A1",
+   "severity": "MUST-PIN-BEFORE-SCORED-G6",
+   "type": "AMBIGUITY"
+  },
+  {
+   "finding": "C2 direction law unstated. PLAYBOOKS L76: '(C2) always-in-RTH baseline \u2014 C\u00d3 PnL path \u21d2 scored identity'; L87 row gives only 'tier 2, c\u00f9ng folds'. Implemented: unconditional LONG entry at D0 fill, hold to era-correct RTH close, no TP/SL (the only reading consistent with 'always-in'). Ratification required before gate 6.",
+   "id": "D-A2",
+   "severity": "MUST-PIN-BEFORE-SCORED-G6",
+   "type": "AMBIGUITY"
+  },
+  {
+   "finding": "C1 RNG algorithm unstated. PLAYBOOKS L76: '(seed c\u1ed1 \u0111\u1ecbnh 20261002, sign-draw deterministic theo session)'. Pinned here: sign=+1 iff sha256('FBES1-PLA-D0-S2|seed=20261002|'+session_date).digest()[0] < 0x80 else \u22121. Ratification required before gate 6 (a different generator = a different placebo path).",
+   "id": "D-A3",
+   "severity": "MUST-PIN-BEFORE-SCORED-G6",
+   "type": "AMBIGUITY"
+  },
+  {
+   "finding": "Window fencing: q80 and SL-donor windows computed chain-wide strict-past (trailing 252 computable-|m| sessions / trailing 20 non-short-flagged sessions), NOT fold-fenced; trading itself is fold-fenced by the frozen eval windows + POSITIONAL warmup carve-out enforced for every identity. Corroboration: under fold-fenced windows the F2-F4 eval heads would have zero trades for ~20+ sessions, contradicting the frozen eval-session counts (375/950/711/890, reproduced exactly).",
+   "id": "D-A4",
+   "severity": "LOW",
+   "type": "IMPLEMENTATION-PIN"
+  },
+  {
+   "finding": "Cost application: all-in/side booked as USD lines at the pinned Variant-A table values (fees 2.25 or 2.24-in-NFA-window + spread 6.25 + tier slippage); fill prices unadjusted; TP/SL levels derive from the fill price per SPEC \u00a74.",
+   "id": "D-A5",
+   "severity": "LOW",
+   "type": "IMPLEMENTATION-PIN"
+  },
+  {
+   "finding": "FOMCIN positional-warmup defect caught and fixed during this rehearsal: the first build traded warmup-position FOMC days (6 of 15 CONT-UP trades, e.g. 2013-03-20, 2018-01-31, 2022-01-26) because FOMC_STATEMENT_DAY has exclusion priority over WARMUP in the frozen list while the warmup carve-out is positional ('warmup 252 sessions per fold head \u2014 excluded from scoring'). Fix: FOMCIN set requires session_date > fold warmup_carve_out.last. Post-fix FOMCIN set = 104 sessions; scan confirms ZERO trades inside any warmup range across all 24 identities.",
+   "id": "D-F1",
+   "severity": null,
+   "type": "FACT"
+  },
+  {
+   "finding": "Single D0 fill-bar gap: 2020-03-16 lacks the 08:31 bar (COVID limit-down open) \u2014 deterministic no-fill skip, no imputation. All other 2,925 eval sessions fill normally.",
+   "id": "D-F2",
+   "severity": null,
+   "type": "FACT"
+  },
+  {
+   "finding": "7 eval sessions are m-unavailable (prior-session actual close or 08:30 open missing): 2012-04-09, 2012-10-31, 2015-04-06, 2021-04-05, 2023-04-10, 2025-01-10, 2026-04-06 (Easter-Monday-adjacent sessions, the 2025-01-10 mourning close, 2026 Easter Monday). E4-consistent no-signal skips.",
+   "id": "D-F3",
+   "severity": null,
+   "type": "FACT"
+  },
+  {
+   "finding": "28 eval sessions have m == 0 exactly (open_0830 print-equal to C_prev) \u2014 no direction; C4 skips them, primaries classify tail=None.",
+   "id": "D-F4",
+   "severity": null,
+   "type": "FACT"
+  },
+  {
+   "finding": "Era-close validation vs baseline chain daily columns: last-RTH-bar close matches chain 'close' on 4,142/4,204 sessions; the 51 differing sessions differ by EXACTLY 1 tick (0.25) \u2014 the chain column embeds a different final-print convention; the consumed law is the panel last print (freeze pin: panel is 'THE ES data panel consumed by every signal/fill/SL computation'). RTH-open matches 4,193/4,204. Evaluation view only; no effect on any pass criterion.",
+   "id": "D-F5",
+   "severity": "LOW",
+   "type": "FACT"
+  },
+  {
+   "finding": "q80 tail share 553/2,926 = 18.9% (UP 289 / DN 264), consistent with the anatomy expectation '~20%' (ES_DEEPFOUR_V3_ADDENDUM L342).",
+   "id": "D-F6",
+   "severity": null,
+   "type": "FACT"
+  },
+  {
+   "finding": "Quarantine law honored: no ledger/counter/registry write anywhere; observed denominator NOT incremented; zero scored cells; S1 SEALED_UNTOUCHED; zero network; heavy-lock law honored (verdict FREE_PROVEN at start, single-shot panel reads, no worker touched, no lock taken).",
+   "id": "D-F7",
+   "severity": null,
+   "type": "FACT"
+  },
+  {
+   "finding": "D-V2-1 (dryrun_v2/DRYRUN_V2_REPORT.md \u00a75: 35 COVERAGE_LT60 -> HOLIDAY_PDF_EQUITY_2011_2015 relabels silently re-admitted those sessions as SL donors, 139 -> 104, changing sl_distance_pts on 244 eval dates / 177 exits) corrected here per the conservative-intent carryover law: the SL-donor exclusion set is again v1's exact 139-session set, evaluated on the V1 class labels (freezegen/exclude_list.json, read-only); the relabels are evidentiary metadata only. Eval surface stays on the v2 freeze (2,925 sessions; 2015-07-02 removed from EVAL). Asserted: donor-excluded == 139 == v1; 2015-07-02 donor-admitted.",
+   "id": "D-V2-1-FIX",
+   "severity": null,
+   "type": "DEFECT-CORRECTION"
+  }
+ ],
+ "freeze_surface": {
+  "exclude_list_v2": "repair/exclude_list_v2.json",
+  "repair_change_vs_v1": "exclude set + exactly one in-panel session 2015-07-02 (F2); eval surface 2926 -> 2925; F2 950 -> 949; warmup sets identical",
+  "selection_freeze_v2": "repair/selection_freeze_v2.json"
+ },
+ "gate": 4,
+ "gate4_verdict": "PASS",
+ "generated_utc": "2026-10-05",
+ "head_sha": "148a7bf52b4e4351ae156e4f704a7e7e22c87f0a",
+ "inputs": {
+  "exclude_list_sha": null,
+  "freeze_schema": "selection_freeze@2",
+  "measured_shas": {
+   "SPEC_PB1_ES.md": "445f749906481f33080185cab1628e6365ef2f6db3b9c4f9f0847646eb6b7073",
+   "es_1m_outright.parquet": "7ae6de2d5896d9e150f70209f2709ca70b625f0b06bbdbfed348b1b0e0227b95",
+   "es_chain_T5.parquet": "7b6179d27a2c9da7dd5972f03d40209ded0119aabfc14a5abc08167894e8f06f",
+   "exclude_list_v2.json": "67060c8ce5bf2402672c847b20e22842c3f2c14a5951b703ff19061b88ffcbcd",
+   "selection_freeze_v2.json": "cf150e248dc8d01acea2e456daa5db550ed396645afd19638f535c7b5cf135b1"
+  }
+ },
+ "lane": "DRYRUN-V2-1",
+ "law_quarantine": "budget counters untouched; outputs descriptive-only; zero scored cells; observed denominator NOT incremented; NO GO exists or is implied",
+ "law_zero_denominator": "no ledger/counter/registry write anywhere; ALL numerics QUARANTINED descriptive-only; zero scored cells; zero denominator consumption; NO GO exists or is implied",
+ "lock_record": {
+  "pre_panel_pass": "FREE_PROVEN (no registry row and the lock file is not flocked)",
+  "pre_run": "FREE_PROVEN (locks inspect at lane start)",
+  "single_shot": true
+ },
+ "panel_stats": {
+  "dash_rows_filtered": 0,
+  "panel_rows": 7825657,
+  "rth_rows_kept": 1834852
+ },
+ "pass_criteria": {
+  "a_enumeration": {
+   "criterion": "M3(a) identity enumeration byte-exact vs selection_freeze.identity_table",
+   "extras": [],
+   "missing": [],
+   "n_frozen": 24,
+   "n_simulated": 24,
+   "order_equal": true,
+   "quarantine": "QUARANTINED DESCRIPTIVE-ONLY \u2014 NOT SCORED \u2014 ZERO DENOMINATOR CONSUMPTION \u2014 pre-GO rehearsal per registered plan \u00a74 gate 4",
+   "set_equal": true,
+   "verdict": "PASS"
+  },
+  "b_cost_recompute": {
+   "all_match": true,
+   "n_sampled": 20,
+   "quarantine": "QUARANTINED DESCRIPTIVE-ONLY \u2014 NOT SCORED \u2014 ZERO DENOMINATOR CONSUMPTION \u2014 pre-GO rehearsal per registered plan \u00a74 gate 4",
+   "samples": [
+    {
+     "identity": "FBES1-PB1-CONT-UP-D0-S2",
+     "match": true,
+     "recomputed_gross": 225.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": 225.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2011-06-14",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PB1-CONT-DN-D0-S2",
+     "match": true,
+     "recomputed_gross": 950.0,
+     "recomputed_rt": 66.98,
+     "recomputed_side": 33.49,
+     "recorded_gross": 950.0,
+     "recorded_rt": 66.98,
+     "reg_window": true,
+     "session_date": "2017-08-29",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PB1-REV-UP-D0-S2",
+     "match": true,
+     "recomputed_gross": -3406.25,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": -3406.25,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2026-06-11",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PB1-REV-DN-D30-S2",
+     "match": true,
+     "recomputed_gross": 1862.5,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": 1862.5,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2019-08-05",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PB1-CONT-UP-D0-S3",
+     "match": true,
+     "recomputed_gross": -1012.5,
+     "recomputed_rt": 92.0,
+     "recomputed_side": 46.0,
+     "recorded_gross": -1012.5,
+     "recorded_rt": 92.0,
+     "reg_window": false,
+     "session_date": "2026-03-23",
+     "tier": "S3"
+    },
+    {
+     "identity": "FBES1-PB1-REV-UP-D0-S1",
+     "match": true,
+     "recomputed_gross": 625.0,
+     "recomputed_rt": 42.0,
+     "recomputed_side": 21.0,
+     "recorded_gross": 625.0,
+     "recorded_rt": 42.0,
+     "reg_window": false,
+     "session_date": "2019-07-01",
+     "tier": "S1"
+    },
+    {
+     "identity": "FBES1-PB1-REV-DN-D0-S3",
+     "match": true,
+     "recomputed_gross": 487.5,
+     "recomputed_rt": 92.0,
+     "recomputed_side": 46.0,
+     "recorded_gross": 487.5,
+     "recorded_rt": 92.0,
+     "reg_window": false,
+     "session_date": "2011-06-15",
+     "tier": "S3"
+    },
+    {
+     "identity": "FBES1-PLA-D0-S2",
+     "match": true,
+     "recomputed_gross": -731.25,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": -731.25,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2014-03-11",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PLA-D0-S2",
+     "match": true,
+     "recomputed_gross": 187.5,
+     "recomputed_rt": 66.98,
+     "recomputed_side": 33.49,
+     "recorded_gross": 187.5,
+     "recorded_rt": 66.98,
+     "reg_window": true,
+     "session_date": "2017-02-02",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PLA-D0-S2",
+     "match": true,
+     "recomputed_gross": -100.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": -100.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2021-01-12",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-PLA-D0-S2",
+     "match": true,
+     "recomputed_gross": -1450.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": -1450.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2024-12-09",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-ALW-D0-S2",
+     "match": true,
+     "recomputed_gross": -950.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": -950.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2012-07-10",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-ALW-D0-S2",
+     "match": true,
+     "recomputed_gross": 887.5,
+     "recomputed_rt": 66.98,
+     "recomputed_side": 33.49,
+     "recorded_gross": 887.5,
+     "recorded_rt": 66.98,
+     "reg_window": true,
+     "session_date": "2016-06-23",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-ALW-D0-S2",
+     "match": true,
+     "recomputed_gross": 1287.5,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": 1287.5,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2020-06-01",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-ALW-D0-S2",
+     "match": true,
+     "recomputed_gross": -12.5,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": -12.5,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2024-04-29",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-DOSE-D0-S2",
+     "match": true,
+     "recomputed_gross": 712.5,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": 712.5,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2011-11-23",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-DOSE-D0-S2",
+     "match": true,
+     "recomputed_gross": 150.0,
+     "recomputed_rt": 66.98,
+     "recomputed_side": 33.49,
+     "recorded_gross": 150.0,
+     "recorded_rt": 66.98,
+     "reg_window": true,
+     "session_date": "2015-12-07",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-DOSE-D0-S2",
+     "match": true,
+     "recomputed_gross": -325.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": -325.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2019-11-18",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-DOSE-D0-S2",
+     "match": true,
+     "recomputed_gross": 837.5,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": 837.5,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2023-10-31",
+     "tier": "S2"
+    },
+    {
+     "identity": "FBES1-DOSE-D0-S2",
+     "match": true,
+     "recomputed_gross": -1575.0,
+     "recomputed_rt": 67.0,
+     "recomputed_side": 33.5,
+     "recorded_gross": -1575.0,
+     "recorded_rt": 67.0,
+     "reg_window": false,
+     "session_date": "2026-09-30",
+     "tier": "S2"
+    }
+   ],
+   "verdict": "PASS"
+  },
+  "c_determinism": {
+   "all_identity_files_byte_identical": true,
+   "criterion": "M3(c) determinism: two full passes, byte-identical per-identity outputs + identical trades-index sha",
+   "files": [
+    {
+     "file": "FBES1-PB1-CONT-UP-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "20d25ee3638a4de1acabccf6a5ff6fb02ccb135c90c206a522902fc3a3497203",
+     "sha_pass2": "20d25ee3638a4de1acabccf6a5ff6fb02ccb135c90c206a522902fc3a3497203"
+    },
+    {
+     "file": "FBES1-PB1-CONT-UP-D30-S2.json",
+     "identical": true,
+     "sha_pass1": "2d74672cb593f945771213971fec445e046193a20fcb70042428ff33188d9084",
+     "sha_pass2": "2d74672cb593f945771213971fec445e046193a20fcb70042428ff33188d9084"
+    },
+    {
+     "file": "FBES1-PB1-CONT-DN-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "924c240c39e47e96301ea4d16108bebe3ba08492d1b4619761985478e8286c55",
+     "sha_pass2": "924c240c39e47e96301ea4d16108bebe3ba08492d1b4619761985478e8286c55"
+    },
+    {
+     "file": "FBES1-PB1-CONT-DN-D30-S2.json",
+     "identical": true,
+     "sha_pass1": "3620ae2e52845d50ffc27d774ef0671ef6b8857e65f3e5de71890ad4c5d962f7",
+     "sha_pass2": "3620ae2e52845d50ffc27d774ef0671ef6b8857e65f3e5de71890ad4c5d962f7"
+    },
+    {
+     "file": "FBES1-PB1-REV-UP-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "4af060cea08350549661acc45583d3c01386fa9b901bdfef5fd09fedb84863cd",
+     "sha_pass2": "4af060cea08350549661acc45583d3c01386fa9b901bdfef5fd09fedb84863cd"
+    },
+    {
+     "file": "FBES1-PB1-REV-UP-D30-S2.json",
+     "identical": true,
+     "sha_pass1": "6a85bf2ef9ecf1f477a6d50fefc12622b93a4672ea77c36e27a3d9bdd2da41a5",
+     "sha_pass2": "6a85bf2ef9ecf1f477a6d50fefc12622b93a4672ea77c36e27a3d9bdd2da41a5"
+    },
+    {
+     "file": "FBES1-PB1-REV-DN-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "03338d91a75f13046a1bc1c0a5cc64ae2c1b6f882dfaac1f324618753aaeb439",
+     "sha_pass2": "03338d91a75f13046a1bc1c0a5cc64ae2c1b6f882dfaac1f324618753aaeb439"
+    },
+    {
+     "file": "FBES1-PB1-REV-DN-D30-S2.json",
+     "identical": true,
+     "sha_pass1": "6fbac3b1ad892c9256bf2a8a1274ecee11c7d8411364cc726cdad0313ef11936",
+     "sha_pass2": "6fbac3b1ad892c9256bf2a8a1274ecee11c7d8411364cc726cdad0313ef11936"
+    },
+    {
+     "file": "FBES1-PB1-CONT-UP-D0-S1.json",
+     "identical": true,
+     "sha_pass1": "8828a73053d0bb20f0814c86014977cd00e39f7c62047c8238b331586d599fdc",
+     "sha_pass2": "8828a73053d0bb20f0814c86014977cd00e39f7c62047c8238b331586d599fdc"
+    },
+    {
+     "file": "FBES1-PB1-CONT-UP-D0-S3.json",
+     "identical": true,
+     "sha_pass1": "890f88b1279ad3368cdfc43caf5bd6df313800fa6ef15ade2ede45c578c173c1",
+     "sha_pass2": "890f88b1279ad3368cdfc43caf5bd6df313800fa6ef15ade2ede45c578c173c1"
+    },
+    {
+     "file": "FBES1-PB1-CONT-DN-D0-S1.json",
+     "identical": true,
+     "sha_pass1": "d502676aec53886c8446478fdcafa6446ea62af0f48870f81eee2688727b0f70",
+     "sha_pass2": "d502676aec53886c8446478fdcafa6446ea62af0f48870f81eee2688727b0f70"
+    },
+    {
+     "file": "FBES1-PB1-CONT-DN-D0-S3.json",
+     "identical": true,
+     "sha_pass1": "f1bc43a1e9463f574c7e2758cf22441f16ff161c63728166dba54b876b4e44d0",
+     "sha_pass2": "f1bc43a1e9463f574c7e2758cf22441f16ff161c63728166dba54b876b4e44d0"
+    },
+    {
+     "file": "FBES1-PB1-REV-UP-D0-S1.json",
+     "identical": true,
+     "sha_pass1": "cd6e7f9fc5c64b515ba59df5e067c63e3e56dfa4db342a4e0b17584d4b5cf55b",
+     "sha_pass2": "cd6e7f9fc5c64b515ba59df5e067c63e3e56dfa4db342a4e0b17584d4b5cf55b"
+    },
+    {
+     "file": "FBES1-PB1-REV-UP-D0-S3.json",
+     "identical": true,
+     "sha_pass1": "1b2b5e086ae57bc32385096a4125260fd8c0f7f7d52276fc84e2344564446e02",
+     "sha_pass2": "1b2b5e086ae57bc32385096a4125260fd8c0f7f7d52276fc84e2344564446e02"
+    },
+    {
+     "file": "FBES1-PB1-REV-DN-D0-S1.json",
+     "identical": true,
+     "sha_pass1": "8bedb179c419b6120d24c825462671cd0d8ff6496fd99a3310075fc9ff81e28c",
+     "sha_pass2": "8bedb179c419b6120d24c825462671cd0d8ff6496fd99a3310075fc9ff81e28c"
+    },
+    {
+     "file": "FBES1-PB1-REV-DN-D0-S3.json",
+     "identical": true,
+     "sha_pass1": "e4e7c9f67a04e8fd93c9428987dedf0852aac6bcda489cc242fd7b213dd30f54",
+     "sha_pass2": "e4e7c9f67a04e8fd93c9428987dedf0852aac6bcda489cc242fd7b213dd30f54"
+    },
+    {
+     "file": "FBES1-PB1-CONT-UP-D0-S2-FOMCIN.json",
+     "identical": true,
+     "sha_pass1": "d26e5700d140ccb826ba03dc6cccc528850481036ae9c081f08c570fda3a067f",
+     "sha_pass2": "d26e5700d140ccb826ba03dc6cccc528850481036ae9c081f08c570fda3a067f"
+    },
+    {
+     "file": "FBES1-PB1-CONT-DN-D0-S2-FOMCIN.json",
+     "identical": true,
+     "sha_pass1": "e7a10503e6f1a8307595c3df5fcc99a688e044e97ca9fcd57429f4246900c7c8",
+     "sha_pass2": "e7a10503e6f1a8307595c3df5fcc99a688e044e97ca9fcd57429f4246900c7c8"
+    },
+    {
+     "file": "FBES1-PB1-REV-UP-D0-S2-FOMCIN.json",
+     "identical": true,
+     "sha_pass1": "b6503027836d6ed75e07ab4165d7e43064d8c445104872dcc53d160f35c564bd",
+     "sha_pass2": "b6503027836d6ed75e07ab4165d7e43064d8c445104872dcc53d160f35c564bd"
+    },
+    {
+     "file": "FBES1-PB1-REV-DN-D0-S2-FOMCIN.json",
+     "identical": true,
+     "sha_pass1": "bce46ec07396334c6dde29f4ac42d2410ad6f36ee82385153d664185067af75a",
+     "sha_pass2": "bce46ec07396334c6dde29f4ac42d2410ad6f36ee82385153d664185067af75a"
+    },
+    {
+     "file": "FBES1-PLA-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "04611d23e62e91f516d02c37b7f9ab69e2a01c5ca0fa816f19553059415f0ac8",
+     "sha_pass2": "04611d23e62e91f516d02c37b7f9ab69e2a01c5ca0fa816f19553059415f0ac8"
+    },
+    {
+     "file": "FBES1-ALW-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "4abb64f92f461438fc587a516f8340a7139a99cc4518b9c9b44a3aa6439b77a4",
+     "sha_pass2": "4abb64f92f461438fc587a516f8340a7139a99cc4518b9c9b44a3aa6439b77a4"
+    },
+    {
+     "file": "FBES1-FLAT.json",
+     "identical": true,
+     "sha_pass1": "2380e3a0ba393356459d4aa28e07e79a7215fc05585b4a02e897124fc8c095a2",
+     "sha_pass2": "2380e3a0ba393356459d4aa28e07e79a7215fc05585b4a02e897124fc8c095a2"
+    },
+    {
+     "file": "FBES1-DOSE-D0-S2.json",
+     "identical": true,
+     "sha_pass1": "07c2c10bdae61b166beba2c8f48a5ef34effa9d7e2f32c7b25c0fa0ac8edf407",
+     "sha_pass2": "07c2c10bdae61b166beba2c8f48a5ef34effa9d7e2f32c7b25c0fa0ac8edf407"
+    }
+   ],
+   "quarantine": "QUARANTINED DESCRIPTIVE-ONLY \u2014 NOT SCORED \u2014 ZERO DENOMINATOR CONSUMPTION \u2014 pre-GO rehearsal per registered plan \u00a74 gate 4",
+   "trades_index_sha_pass1": "eaae8b6b13453db7ef0666bb1ac15a5111898ea01019ebbd0c974a505e6df4a8",
+   "trades_index_sha_pass2": "eaae8b6b13453db7ef0666bb1ac15a5111898ea01019ebbd0c974a505e6df4a8",
+   "verdict": "PASS"
+  },
+  "d_surface_delta": {
+   "criterion": "M2(d) surface delta vs v1 quarantine index: ONLY trades dated 2015-07-02 removed (freeze repair, F2); NO other change permitted (any unexpected difference = CRITICAL)",
+   "identities_with_removed_trades": [
+    "FBES1-ALW-D0-S2",
+    "FBES1-DOSE-D0-S2",
+    "FBES1-PLA-D0-S2"
+   ],
+   "n_trades_removed_total": 3,
+   "per_identity": [
+    {
+     "identity": "FBES1-ALW-D0-S2",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 1,
+     "v1_trades": 2925,
+     "v2_trades": 2924
+    },
+    {
+     "identity": "FBES1-DOSE-D0-S2",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 1,
+     "v1_trades": 2890,
+     "v2_trades": 2889
+    },
+    {
+     "identity": "FBES1-FLAT",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 0,
+     "v2_trades": 0
+    },
+    {
+     "identity": "FBES1-PB1-CONT-DN-D0-S1",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 264,
+     "v2_trades": 264
+    },
+    {
+     "identity": "FBES1-PB1-CONT-DN-D0-S2",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 264,
+     "v2_trades": 264
+    },
+    {
+     "identity": "FBES1-PB1-CONT-DN-D0-S2-FOMCIN",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 2,
+     "v2_trades": 2
+    },
+    {
+     "identity": "FBES1-PB1-CONT-DN-D0-S3",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 264,
+     "v2_trades": 264
+    },
+    {
+     "identity": "FBES1-PB1-CONT-DN-D30-S2",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 265,
+     "v2_trades": 265
+    },
+    {
+     "identity": "FBES1-PB1-CONT-UP-D0-S1",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 289,
+     "v2_trades": 289
+    },
+    {
+     "identity": "FBES1-PB1-CONT-UP-D0-S2",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 289,
+     "v2_trades": 289
+    },
+    {
+     "identity": "FBES1-PB1-CONT-UP-D0-S2-FOMCIN",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 9,
+     "v2_trades": 9
+    },
+    {
+     "identity": "FBES1-PB1-CONT-UP-D0-S3",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 289,
+     "v2_trades": 289
+    },
+    {
+     "identity": "FBES1-PB1-CONT-UP-D30-S2",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 289,
+     "v2_trades": 289
+    },
+    {
+     "identity": "FBES1-PB1-REV-DN-D0-S1",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 264,
+     "v2_trades": 264
+    },
+    {
+     "identity": "FBES1-PB1-REV-DN-D0-S2",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 264,
+     "v2_trades": 264
+    },
+    {
+     "identity": "FBES1-PB1-REV-DN-D0-S2-FOMCIN",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 2,
+     "v2_trades": 2
+    },
+    {
+     "identity": "FBES1-PB1-REV-DN-D0-S3",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 264,
+     "v2_trades": 264
+    },
+    {
+     "identity": "FBES1-PB1-REV-DN-D30-S2",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 265,
+     "v2_trades": 265
+    },
+    {
+     "identity": "FBES1-PB1-REV-UP-D0-S1",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 289,
+     "v2_trades": 289
+    },
+    {
+     "identity": "FBES1-PB1-REV-UP-D0-S2",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 289,
+     "v2_trades": 289
+    },
+    {
+     "identity": "FBES1-PB1-REV-UP-D0-S2-FOMCIN",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 9,
+     "v2_trades": 9
+    },
+    {
+     "identity": "FBES1-PB1-REV-UP-D0-S3",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 289,
+     "v2_trades": 289
+    },
+    {
+     "identity": "FBES1-PB1-REV-UP-D30-S2",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 0,
+     "v1_trades": 289,
+     "v2_trades": 289
+    },
+    {
+     "identity": "FBES1-PLA-D0-S2",
+     "list_identical_after_removal": true,
+     "removed_2015_07_02": 1,
+     "v1_trades": 2925,
+     "v2_trades": 2924
+    }
+   ],
+   "quarantine": "QUARANTINED DESCRIPTIVE-ONLY \u2014 NOT SCORED \u2014 ZERO DENOMINATOR CONSUMPTION \u2014 pre-GO rehearsal per registered plan \u00a74 gate 4",
+   "v1_index_baseline": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep/research/control/FUTURES-ES-PB1-V1/dryrun/quarantine/trades_index.json",
+   "v1_index_quarantine_stamp": "QUARANTINED DESCRIPTIVE-ONLY \u2014 NOT SCORED \u2014 ZERO DENOMINATOR CONSUMPTION \u2014 pre-GO rehearsal per registered plan \u00a74 gate 4",
+   "verdict": "PASS"
+  },
+  "e_warmup_regression": {
+   "criterion": "M2(e) FOMCIN warmup-defect regression (v1 finding D-F1 class): zero trades at or before any fold warmup head and zero trades on WARMUP-labelled sessions, across all 24 identities",
+   "n_trades_scanned": 13185,
+   "quarantine": "QUARANTINED DESCRIPTIVE-ONLY \u2014 NOT SCORED \u2014 ZERO DENOMINATOR CONSUMPTION \u2014 pre-GO rehearsal per registered plan \u00a74 gate 4",
+   "verdict": "PASS",
+   "violations": []
+  }
+ },
+ "quarantine": "QUARANTINED DESCRIPTIVE-ONLY \u2014 NOT SCORED \u2014 ZERO DENOMINATOR CONSUMPTION \u2014 pre-GO rehearsal per registered plan \u00a74 gate 4",
+ "schema": "dryrun_v2_1_digest@1",
+ "summary_table": {
+  "FBES1-ALW-D0-S2": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 2924,
+   "n_trades_per_fold": {
+    "F1": 375,
+    "F2": 949,
+    "F3": 710,
+    "F4": 890
+   },
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 0
+   }
+  },
+  "FBES1-DOSE-D0-S2": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 2889,
+   "n_trades_per_fold": {
+    "F1": 369,
+    "F2": 933,
+    "F3": 705,
+    "F4": 882
+   },
+   "skips": {
+    "skip_m_unavailable": 35,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 0
+   }
+  },
+  "FBES1-FLAT": {
+   "n_sessions_in_set": 0,
+   "n_trades": 0,
+   "n_trades_per_fold": {},
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 0
+   }
+  },
+  "FBES1-PB1-CONT-DN-D0-S1": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 264,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 66,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2653
+   }
+  },
+  "FBES1-PB1-CONT-DN-D0-S2": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 264,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 66,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2653
+   }
+  },
+  "FBES1-PB1-CONT-DN-D0-S2-FOMCIN": {
+   "n_sessions_in_set": 104,
+   "n_trades": 2,
+   "n_trades_per_fold": {
+    "F2": 2
+   },
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 102
+   }
+  },
+  "FBES1-PB1-CONT-DN-D0-S3": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 264,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 66,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2653
+   }
+  },
+  "FBES1-PB1-CONT-DN-D30-S2": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 265,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 67,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2653
+   }
+  },
+  "FBES1-PB1-CONT-UP-D0-S1": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2629
+   }
+  },
+  "FBES1-PB1-CONT-UP-D0-S2": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2629
+   }
+  },
+  "FBES1-PB1-CONT-UP-D0-S2-FOMCIN": {
+   "n_sessions_in_set": 104,
+   "n_trades": 9,
+   "n_trades_per_fold": {
+    "F1": 1,
+    "F2": 1,
+    "F3": 5,
+    "F4": 2
+   },
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 95
+   }
+  },
+  "FBES1-PB1-CONT-UP-D0-S3": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2629
+   }
+  },
+  "FBES1-PB1-CONT-UP-D30-S2": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2629
+   }
+  },
+  "FBES1-PB1-REV-DN-D0-S1": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 264,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 66,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2653
+   }
+  },
+  "FBES1-PB1-REV-DN-D0-S2": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 264,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 66,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2653
+   }
+  },
+  "FBES1-PB1-REV-DN-D0-S2-FOMCIN": {
+   "n_sessions_in_set": 104,
+   "n_trades": 2,
+   "n_trades_per_fold": {
+    "F2": 2
+   },
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 102
+   }
+  },
+  "FBES1-PB1-REV-DN-D0-S3": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 264,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 66,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2653
+   }
+  },
+  "FBES1-PB1-REV-DN-D30-S2": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 265,
+   "n_trades_per_fold": {
+    "F1": 37,
+    "F2": 84,
+    "F3": 67,
+    "F4": 77
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2653
+   }
+  },
+  "FBES1-PB1-REV-UP-D0-S1": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2629
+   }
+  },
+  "FBES1-PB1-REV-UP-D0-S2": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2629
+   }
+  },
+  "FBES1-PB1-REV-UP-D0-S2-FOMCIN": {
+   "n_sessions_in_set": 104,
+   "n_trades": 9,
+   "n_trades_per_fold": {
+    "F1": 1,
+    "F2": 1,
+    "F3": 5,
+    "F4": 2
+   },
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 95
+   }
+  },
+  "FBES1-PB1-REV-UP-D0-S3": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2629
+   }
+  },
+  "FBES1-PB1-REV-UP-D30-S2": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 289,
+   "n_trades_per_fold": {
+    "F1": 39,
+    "F2": 99,
+    "F3": 68,
+    "F4": 83
+   },
+   "skips": {
+    "skip_m_unavailable": 7,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 0,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 2629
+   }
+  },
+  "FBES1-PLA-D0-S2": {
+   "n_sessions_in_set": 2925,
+   "n_trades": 2924,
+   "n_trades_per_fold": {
+    "F1": 375,
+    "F2": 949,
+    "F3": 710,
+    "F4": 890
+   },
+   "skips": {
+    "skip_m_unavailable": 0,
+    "skip_no_entry_bar": 0,
+    "skip_no_fill_bar": 1,
+    "skip_no_q80_window": 0,
+    "skip_no_sl_window": 0,
+    "skip_session_bars_missing": 0,
+    "skip_tail_not_matched": 0
+   }
+  }
+ }
+}

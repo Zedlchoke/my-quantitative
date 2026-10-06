@@ -1,0 +1,85 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-ES-PB1-REGPREP-20261004/FREEZE-AUDIT",
+  "cycle_id": "FUTURES-ES-PB1-V1",
+  "role": "lane FREEZE-AUDIT — sha-pinned freeze-set preparation (audit/extraction only)",
+  "lane": "FREEZE-AUDIT",
+  "round": "FUTURES-ES-PB1-REGPREP-20261004",
+  "generated_utc": "2026-10-04",
+  "dispatch_sha": "ffed828f73fa19fa0ff4aee3ac1b441909a43940",
+  "actual_start_sha": "ffed828f73fa19fa0ff4aee3ac1b441909a43940",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/FUTURES-ES-PB1-REGPREP-20261004/freeze/identity_table_24.json",
+    "research/control/FUTURES-ES-PB1-REGPREP-20261004/freeze/freeze_pins.json",
+    "research/control/FUTURES-ES-PB1-REGPREP-20261004/freeze/cost_freeze_check.json",
+    "research/control/FUTURES-ES-PB1-REGPREP-20261004/freeze/pit_exclude_set.json",
+    "research/control/FUTURES-ES-PB1-REGPREP-20261004/freeze/REGISTRATION_READINESS.md",
+    "research/control/FUTURES-ES-PB1-REGPREP-20261004/dispatch/handoff_FREEZE-AUDIT.json"
+  ],
+  "write_boundary_respected": "All writes confined to research/control/FUTURES-ES-PB1-REGPREP-20261004/{freeze,dispatch}/**; auth/D3_RECORDED.json read-only and byte-unchanged (sha 99661246\u2026715d8 before and after). No staging, no commit, no push, no registry/ledger writes, no P3 worktree access, no S1, no scoring, no network.",
+  "git_commands_run": [
+    "git -C <worktree> rev-parse HEAD (once at start, plus branch abbrev-read in same call) -> ffed828f73fa19fa0ff4aee3ac1b441909a43940 / prep/futures-es-reg-20261004",
+    "git -C <worktree> status --porcelain (start) -> only untracked research/control/FUTURES-ES-PB1-REGPREP-20261004/",
+    "git -C <worktree> status --porcelain (end) -> identical to start"
+  ],
+  "tests": [
+    {
+      "command": "shasum -a 256 research/control/FUTURES-ES-V1-PACKET/SPEC_PB1_ES.md",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "da72dfca613c4a75b857463f97b332e40a7399fc6bf34d1cdcf94e440b2532f6",
+      "result": "SPEC pin MATCH: measured 445f749906481f33080185cab1628e6365ef2f6db3b9c4f9f0847646eb6b7073 == expected byte-frozen proof (corroborated by A7_FEE_REAUDIT \u00a71 same digest recorded MATCH at 893db28c)"
+    },
+    {
+      "command": "python3 validation: re-parse 4 freeze JSONs; assert 24 unique IDs with composition P-A 8 / P-B 8 / FOMC 4 / C1-C4 4; re-hash all 34 pins against disk; assert 18/18 cost cells + 3/3 labels + 0 use-as-value hits; assert 7 PIT components + 8 NOT_RUN items",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "d6b9be83c55f1b43ec2a25cd49be978461fc7ed823b96f0564fe550d8c4cfaa0",
+      "result": "TEST1-TEST5 all PASS; 34/34 pins re-verified against disk at validation time (zero drift); cell-by-cell cost match counts: cells_compared=18, matched_all_three_sources=18, mismatched=0, labels_matched=3, forbidden_value_use_as_value_hits=0"
+    },
+    {
+      "command": "grep -n -E \"1\\.386|21\\.006|33\\.506|46\\.006\" over D3_RECORDED.json + COST_FREEZE_ERRATUM.md + A7_FEE_REAUDIT.md + SHORTLIST_STALE_COST_ERRATUM.md",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "d6b9be83c55f1b43ec2a25cd49be978461fc7ed823b96f0564fe550d8c4cfaa0",
+      "result": "26 raw line-hits total across the 4 files; every hit classified ERRATUM_SELFREF / CLASSIFICATION_QUOTE / disclosed false positive; 0 use-as-value"
+    },
+    {
+      "command": "shasum -a 256 <sibling readiness worktree>/ES_cache/es_1m_outright.parquet",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "da72dfca613c4a75b857463f97b332e40a7399fc6bf34d1cdcf94e440b2532f6",
+      "result": "Panel byte-identical across this worktree and the sibling readiness worktree source path: 7ae6de2d5896d9e150f70209f2709ca70b625f0b06bbdbfed348b1b0e0227b95 in both"
+    }
+  ],
+  "authority_claims": [],
+  "findings": [
+    {"id": "F-A1", "type": "FACT", "severity": null, "finding": "SPEC pin match: 445f7499\u20267073 expected == measured at HEAD ffed828f (byte-frozen proof holds)."},
+    {"id": "F-A2", "type": "FACT", "severity": null, "finding": "Identity table: 24/24 transcribed independently; composition P-A 8 + P-B 8 + FOMC 4 + C1-C4 4 = 24 matches the census claims (IDENTITY_TABLES \u00a70/\u00a73.1, Option ES-0, CONV-A); zero discrepancies; no [PROVISIONAL] markers present in \u00a76."},
+    {"id": "F-A3", "type": "FACT", "severity": null, "finding": "Cost freeze closes: 18/18 cells of the D3=A table (2.25; 21.00/33.50/46.00; RT 42/67/92; window 20.99/33.49/45.99) match COST_FREEZE_ERRATUM \u00a72 Variant-A column AND A7_FEE_REAUDIT \u00a78 Variant-A column; labels 3/3 (MODELED COST / VERIFIED_VS_ACCOUNT=NOT_RUN / documentation-A7 clean AUTHORIZED_WITH_FINDINGS 0 HIGH/0 CRIT)."},
+    {"id": "F-A4", "type": "FACT", "severity": null, "finding": "Zero use-as-value of the retired glued values in any of the three cost-freeze sources; all 26 grep hits classified as erratum-self-reference, glue-classification citation, or disclosed false positive."},
+    {"id": "F-A5", "type": "FACT", "severity": "INFO", "finding": "GO-phrase textual discrepancy (SURFACED, NOT RESOLVED): PLAN_futures_es_v1 \u00a76 (pinned 06140882\u2026) fixes 'GO FUTURES ES V1 SCORED EXECUTION'; this round's dispatch packet text writes 'GO FUTURES-ES-PB1-V1 SCORED EXECUTION'. Under exact-match law the canonical string is what the registered gate carries; owner must see both renderings at registration and register exactly one."},
+    {"id": "F-A6", "type": "FACT", "severity": "INFO", "finding": "Stale committed prints (SPEC \u00a75 L100/L104, PLAN \u00a73) stand as byte-frozen history; superseded by COST_FREEZE_ERRATUM \u00a72 by reference for every future freeze; not consumed by this freeze set; append-only law respected (nothing edited)."},
+    {"id": "F-A7", "type": "FACT", "severity": "INFO", "finding": "DATA_READINESS_ES dim-6 BLOCKED verdict predates D3; the fee-A7-clean + erratum + D3=A chain resolves the ES reg-basis at 2.25/side. VERIFIED_VS_ACCOUNT remains NOT_RUN everywhere \u2014 unchanged, never inferred PASS."},
+    {"id": "F-A8", "type": "FACT", "severity": null, "finding": "Freeze pins: 34 total (23 documents + 11 ES_cache data files), all provenance in-git at this HEAD (ES_cache present in this checkout); 0 outside-git data roots; all 34 re-verified against disk post-write with zero drift."}
+  ],
+  "known_limitations": [
+    "The generated deterministic exclude-list does not exist yet \u2014 it is produced at freeze, post-registration (SPEC \u00a72), and its sha enters the selection freeze then. This lane pins the laws + committed evidence only.",
+    "Freeze pins are point-in-time at HEAD ffed828f with nothing else writing to this worktree; any new commit before registration invalidates pins and requires re-hash by the registering session.",
+    "readiness/K6/A7 artifacts were authored in sibling worktrees at their own HEADs (893db28c, d7fc6231, 05e54939\u2026); this lane pins their bytes as committed at THIS worktree's HEAD and did not re-run their internal verifications (their A7s/verifiers are the authority for their contents).",
+    "es_statistics_daily.parquet and es_vol_regime.parquet are ES_cache companions not load-bearing in any SPEC/readiness-cited claim; pinned for set completeness, marked as such."
+  ],
+  "incidents": [],
+  "tree_status": "clean-of-changes outside the lane write boundary; end `git status --porcelain` identical to start: only `?? research/control/FUTURES-ES-PB1-REGPREP-20261004/` untracked; nothing staged; commit_sha null (lane writes files only)",
+  "workers": [],
+  "outputs": [
+    {"path": "research/control/FUTURES-ES-PB1-REGPREP-20261004/freeze/identity_table_24.json", "sha256": "6e3919808ecea86d147ba67d8e5df4f4e83bed2414973f87de051054da6e471f"},
+    {"path": "research/control/FUTURES-ES-PB1-REGPREP-20261004/freeze/freeze_pins.json", "sha256": "da72dfca613c4a75b857463f97b332e40a7399fc6bf34d1cdcf94e440b2532f6"},
+    {"path": "research/control/FUTURES-ES-PB1-REGPREP-20261004/freeze/cost_freeze_check.json", "sha256": "d6b9be83c55f1b43ec2a25cd49be978461fc7ed823b96f0564fe550d8c4cfaa0"},
+    {"path": "research/control/FUTURES-ES-PB1-REGPREP-20261004/freeze/pit_exclude_set.json", "sha256": "f504c7319f235f75449e5b5707014c74a37ea9bf1e558e32be59c36fada8d2f6"},
+    {"path": "research/control/FUTURES-ES-PB1-REGPREP-20261004/freeze/REGISTRATION_READINESS.md", "sha256": "6114444d92fe792afd3c8f08fd27cac4afbc1433b2d70cd4ca423cfeb4bc3733"}
+  ],
+  "readiness_conclusion": "Freeze set COMPLETE at the freeze-input level (every input pinned, every number source-traced). Authority sufficiency: D3=A closes D3/e.4; e.1-e.3 remain open but FX/NYMEX-scoped and non-blocking for ES (A7_EXECUTION_PACKET \u00a74 definitions quoted verbatim in REGISTRATION_READINESS.md). Remaining gates in order: registration at ROOT (owner-run or explicitly owner-delegated root session \u2014 current authority text does NOT include it) \u2192 prelaunch A7 (spec ready) \u2192 exact-arm dry-run (post-registration by law) \u2192 typed owner GO at the registered gate (exact-match law, dies unconsumed if paraphrased). This lane registered nothing and ran nothing.",
+  "recommended_next_action": "Controller/owner: register cycle FUTURES-ES-PB1-V1 at ROOT (owner-run or explicitly delegated root session), consuming freeze/freeze_pins.json as the selection-freeze input set; resolve the GO-phrase rendering (finding F-A5) into the single registered canonical string at that gate; re-hash pins if HEAD moves before registration."
+}

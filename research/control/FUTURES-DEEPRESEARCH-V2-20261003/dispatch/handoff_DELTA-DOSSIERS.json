@@ -1,0 +1,93 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-DEEPRESEARCH-V2-20261003",
+ "cycle_id": "UNREGISTERED_PREP",
+ "role": "verify",
+ "lane": "DELTA-VERIFY-DOSSIERS",
+ "dispatch_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+ "actual_start_sha": "4f266528439639bd8e58d7e293cf33156ad5e04a",
+ "commit_sha": null,
+ "commit_sha_disclosure": "No commit made: verification lane, read-only except audit/delta/dossiers/** + this handoff; multi-lane shared branch prep/futures-behavior-10syms-20261002, cycle outputs untracked by design (same convention as the DEEP/A7/DOSSIER-ERRATA-V2 lanes); owner/lead commits. HEAD DRIFT DISCLOSED: dispatch base is 26d96eb4 but observed HEAD at verification was 4f266528 (successor_design_2026-10-02 rounds 3-4 commits by other lanes, unrelated to this cycle's artifacts). Every audited file lives untracked under the ignored research/control/FUTURES-DEEPRESEARCH-V2-20261003/ path, so the drift does not touch audited content: all six dossier sha256 prefixes re-hashed this run and match the DOSSIER-ERRATA-V2 handoff artifact block exactly (NQ d3cf621cec3adc22, ES 05f0874f66184ed7, 6E 846055454ea7c795, 6J ef95ad8dd062e654, 6B bc8a1dc357a2107a, 6A 76d32f1c776ceaa6; NQ_a5_cot.py 7b5eedda1d02f363, NQ_deep_lib.py ec810b4d9b789906).",
+ "changed_paths": [
+  "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/delta/dossiers/DELTA_VERIFY.md",
+  "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dispatch/handoff_DELTA-DOSSIERS.json"
+ ],
+ "tests": [
+  {
+   "command": "NQ F2 loader live verification (read-only): import NQ_deep_lib; load_cot_nq_all_lines(); count series_id == COT_LEGACY_NQ__ALT__NASDAQ_100_CONSOLIDATED_CHICAGO_MERCANTILE_EXCHANGE on the on-disk fixed tidy",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "ALT series selects exactly 850 rows, window 2010-06-15 -> 2026-09-22 (matches A7-NQ r5 pin and the NQ_a5_cot.py EXPECTED_ROWS=850 hard guard at lines 34-48); canonical COT_LEGACY_NQ = 1,082 rows; NQ_a5_cot.py sha256 prefix 7b5eedda1d02f363 == DOSSIER-ERRATA-V2 handoff record."
+  },
+  {
+   "command": "6J M-1 MOF tidy live verification (read-only): pandas read of ~/.my-quantitative-data/futures-nonprice-10syms/normalized/mof_intervention_tidy.parquet + .bak_81rows_20261003",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "tidy = 386 rows, observation_period 1991-05-13..2026-05-06; 2022-10-24 row present: value_yen_100m 7296.0, direction JPY_buying, pair_desc 'the US dollar (sold) the Japanese yen (bought)', provenance c2869df8fe6e9c0d...; .bak_81rows_20261003 = 81 rows. Independently corroborates SOURCE_TIDY_RESOLVED and the sibling DELTA-VERIFY-SOURCE D-7 verdict."
+  },
+  {
+   "command": "ES I-1 / 6B M6 sha verification (read-only): shasum -a 256 normalized/cftc_legacy_tidy.parquet",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "f7a2719e745c2f6f... — nonprice root repopulated; matches the sha recorded in ES_DEEP_v2.md §12 I-1 row and 6B_DEEP_v2.md §0 M6 correction (old 4f9cd78944ee79dc = pre-fix .bak, correctly cited only as the old value)."
+  },
+  {
+   "command": "Stale-string sweep (read-only): grep each A7 struck claim against the current dossier — NQ '16.9%', '2026-05-29', 'degraded', 'trickle', '-0.056', '-0.045', '+0.069', '123 era-A'; ES '1 calendar day', 'positions migrate first', '0.4-1.4', '1.3-2.7', '3+ hours', 'early Globex', 'cross-validation PASS', '2017 transition rolls and 2021'; 6E 'n=1,751', '01:00 CT', '12:00-12:07', '2026-01-14', '5.65', 'CONFIRMED descriptively', 'engine-critical', 'scale-normalize'; 6J '81 ops', '1991-04', 'all 9', '3-7 days', 'every >=3% down', 'holidays only', '21 depleted', '6th-largest', '94th-100th', '1.8-4.8', '50-78', '-215 to -132', 'PENDING_SOURCE_TIDY'; 6B 'rank corr = +0.84', '-0.25..0.00pp', 'one week before', '13-16k', '4f9cd789', 'no worse than neutral', '53 carry'; 6A '2,704,795', '2021-02-25', '~4x'",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "All struck strings eliminated from live text — every hit is inside a marked [ERRATUM ...] old->new quote, a strikethrough-resolved bullet, or the per-dossier ERRATA ledger. ONE EXCEPTION (the sole PARTIAL): 6E_DEEP_v2.md line 391 still carries a live 'strict-past 3y percentile >=80' label (A7-6E MINOR-5 second site; first site at lines 377-380 correctly fixed). Cosmetic residue noted: NQ lines 60/62/196 legacy 'hole' shorthand (no absence/degradation/backfill assertion)."
+  },
+  {
+   "command": "ERRATA_SUMMARY §5 OI-join table code-level cross-check (read-only): read the aggregation lines of all 7 named consumers (NQ_a3_term.py, ES_build_panel.py, 6E_a3_term.py, 6E_a5_cot.py, 6B_a3_term.py, 6J_a3_term.py, 6A_a6_hypo_quality.py)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "All 7 rows confirmed at exact code lines: NQ pivot aggfunc='last' (L256-257); ES groupby().last() + pivot last (L222-225); 6E-a3 agg(quantity,'last') (L56-57); 6E-a5 raw d['quantity'].sum() (L156 — the sole RAW-SUM, matching the retraction); 6B sort_values(dt)+drop_duplicates(rd,keep='last') (L186-189); 6J pivot default mean (L220); 6A groupby sum unstack (L186, timing-only + reuse rule as stated). Dispatch asked for 2 spot-verifications; all 7 delivered."
+  },
+  {
+   "command": "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior rev-parse HEAD (drift check vs dispatch)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "4f266528439639bd8e58d7e293cf33156ad5e04a (drift vs dispatch base 26d96eb4 disclosed above; audited artifacts untracked, content identity pinned by re-hashed sha256 prefixes)"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "Text-level delta verification only: this lane confirmed that each A7 finding was correctly applied to the current dossier text (numbers exactly, erratum marks present, struck claims eliminated). It did NOT re-run any price-side pipeline or recompute any statistic — the A7 auditors' fresh recomputes remain the numeric authority, and this lane's live data checks were limited to the three loader/source verifications listed in tests.",
+  "Line references in audit/delta/dossiers/DELTA_VERIFY.md refer to the working-tree files as of 2026-10-03 (sha-pinned in the report header); they will shift under any future edit.",
+  "ERRATUM-site count convention: DOSSIER-ERRATA-V2's handoff claimed NQ '12 sites'; this lane counts 14 [ERRATUM] string occurrences (ES 9, 6E 14, 6J 27, 6B 9, 6A 8 all match) — a counting-convention difference, not a defect.",
+  "Out-of-dossier superseded artifacts remain unregenerated by design (NQ_a7_quality.json vendor_hole_2020 block; 6E_a5_cot.json cot_oi_vs_venue_oi block; handoff_DEEP-NQ.json known_limitations; DISPATCH_MANIFEST.json '53/58') — owner action items already flagged in each dossier ledger and ERRATA_SUMMARY §2.",
+  "NQ 2020 alias-window aggregates remain UNMEASURED on the recovered series (F1 consequence, correctly carried in NQ §6/§9): must be re-measured at $0 before any registered cycle consumes 2020 NQ stats; 6E H2 registration must carry the MAJOR-2 vintage sensitivity and a real-time-SOFR source decision (carried in 6E §8-H2)."
+ ],
+ "incidents": [],
+ "verdict": {
+  "status": "PASS",
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "note": 2,
+  "summary": "DOSSIER-ERRATA-V2's application of the six A7 audit reports to dossiers_v2 is verified: 40 of 41 finding-level items VERIFIED, 0 NOT_VERIFIED, 1 PARTIAL — A7-6E MINOR-5 was applied at one of its two §7 label sites; the imprecise 'strict-past 3y percentile' label survives live at 6E_DEEP_v2.md line 391 (crowded-long/short bucket definition; numbers correct; strict-variant invariance already disclosed at the fixed site lines 377-380; one-line fix for the next errata pass). All MAJOR retractions/restatements verified with exact A7 evidence numbers: NQ F1 alias reclassification + cancelled backfill, F2 CoT __ALT__ re-point with the 850-row loader pin verified live, F3 16.9%->20.1%; ES M-1 same-trading-day OI restatement across §0.1/§4/§8-H1 with publication-lag disclosure + I-1 root-repopulation independently sha-verified; 6E MAJOR-1 venue-OI 2.000x retraction across §1/§7/§9/q5 and MAJOR-2 CIP vintage downgrade (r=-0.107 PIT vs 0.91 latest); 6J M-1 MOF 9->10 ops with SOURCE_TIDY_RESOLVED verified live on disk (386-row tidy, 2022-10-24 row present), M-2/M-3/M-4/M-5 and all six minors; 6B M1-M7 (incl. sha f7a2719e745c2f6f confirmed on disk); 6A MINOR-1/2/3. ERRATA_SUMMARY §5 OI-join table confirmed at code level for all seven consumers — the sole raw-sum venue-OI join in the corpus is 6E a5's retracted ratio. Notes: NQ cosmetic 'hole' shorthand residues at lines 60/62/196 (no retracted assertion). No scored/S1/sealed access; no data writes; writes limited to audit/delta/dossiers/** + this handoff."
+ },
+ "artifacts": {
+  "report": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/delta/dossiers/DELTA_VERIFY.md",
+  "authority_inputs": [
+   "audit/a7_nq/A7_DEEP_NQ.md",
+   "audit/a7_es/A7_DEEP_ES.md",
+   "audit/a7_6e/A7_DEEP_6E.md",
+   "audit/a7_6j/A7_DEEP_6J.md",
+   "audit/a7_6b/A7_DEEP_6B.md",
+   "audit/a7_6a/A7_DEEP_6A.md",
+   "dispatch/handoff_DOSSIER-ERRATA-V2.json",
+   "analysis/ERRATA_SUMMARY.md"
+  ],
+  "verified_targets_sha256_16": {
+   "dossiers_v2/NQ_DEEP_v2.md": "d3cf621cec3adc22",
+   "dossiers_v2/ES_DEEP_v2.md": "05f0874f66184ed7",
+   "dossiers_v2/6E_DEEP_v2.md": "846055454ea7c795",
+   "dossiers_v2/6J_DEEP_v2.md": "ef95ad8dd062e654",
+   "dossiers_v2/6B_DEEP_v2.md": "bc8a1dc357a2107a",
+   "dossiers_v2/6A_DEEP_v2.md": "76d32f1c776ceaa6",
+   "analysis/NQ_a5_cot.py": "7b5eedda1d02f363",
+   "analysis/NQ_deep_lib.py": "ec810b4d9b789906"
+  }
+ }
+}

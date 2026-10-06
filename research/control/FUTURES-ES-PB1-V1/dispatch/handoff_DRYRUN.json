@@ -1,0 +1,74 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "DRYRUN",
+  "cycle_id": "FUTURES-ES-PB1-V1",
+  "role": "lane DRYRUN — gate 4 of the two-key law: exact-arm dry-run, single-shot rehearsal of the frozen 24-identity set at ×1.0 declared Variant-A costs (quarantined, pre-GO)",
+  "lane": "DRYRUN",
+  "round": "FUTURES-ES-PB1-V1",
+  "generated_utc": "2026-10-04",
+  "dispatch_sha": "42885fafd991025499a4da15ed3c54316d9549a6",
+  "actual_start_sha": "42885fafd991025499a4da15ed3c54316d9549a6",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/FUTURES-ES-PB1-V1/dryrun/dryrun_builder.py",
+    "research/control/FUTURES-ES-PB1-V1/dryrun/quarantine/** (26 files: 24 per-identity JSONs + summary.json + trades_index.json)",
+    "research/control/FUTURES-ES-PB1-V1/dryrun/quarantine_rerun/** (26 files, byte-identical to quarantine/)",
+    "research/control/FUTURES-ES-PB1-V1/dryrun/dryrun_digest.json",
+    "research/control/FUTURES-ES-PB1-V1/dryrun/DRYRUN_REPORT.md",
+    "research/control/FUTURES-ES-PB1-V1/dispatch/handoff_DRYRUN.json"
+  ],
+  "write_boundary_respected": "All writes confined to research/control/FUTURES-ES-PB1-V1/{dryrun,dispatch}/** in worktree /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep; everything else read-only (single-shot parquet reads of the pinned ES panel + chain); no ledger/counter/registry write, no S1 access, no network (zero fetch), no commit/stage/push (controller commits).",
+  "git_commands_run": [
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep rev-parse HEAD (once at start) -> 42885fafd991025499a4da15ed3c54316d9549a6",
+    "git -C /Users/hoangminhlong/my-quantitative/.worktrees/futures-es-reg/prep status --porcelain (start: clean; end: only untracked research/control/FUTURES-ES-PB1-V1/{dryrun,dispatch}/** added by this lane)"
+  ],
+  "tests": [
+    {"command": "input-gate sha256 vs freeze pins (SPEC_PB1_ES.md 445f7499…, es_1m_outright.parquet 7ae6de2d…, es_chain_T5.parquet 7b6179d2…) + exclude_list sha round-trip vs selection_freeze embed + cost-contract arithmetic asserts (Variant-A table self-consistency; retired values 1.386/21.006/33.506/46.006 asserted absent)", "exit_code": 0, "verdict": "PASS", "result": "all pins matched pre-run; builder aborts pre-write on any mismatch"},
+    {"command": "M3(a) identity enumeration: builder-instantiated ids vs selection_freeze.identity_table[].id", "exit_code": 0, "verdict": "PASS", "result": "24/24 byte-exact, order and set equal, zero extras, zero missing; unparseable ids would abort"},
+    {"command": "M3(b) cost recomputation: 20 sampled trades recomputed by independent arithmetic vs the Variant-A pinned table", "exit_code": 0, "verdict": "PASS", "result": "20/20 exact match: side = fees 2.25 (2.24 in NFA window 2014-10-01..2017-12-31) + spread 6.25 + slippage 12.50/25.00/37.50; RT = ×2 (sample: S2 normal RT 67.00; S2 window RT 66.98 @ 2017-08-29); gross = dir×(exit−entry)×50 also verified"},
+    {"command": "M3(c) determinism: two independent full passes, each re-reading every input from disk", "exit_code": 0, "verdict": "PASS", "result": "trades-index sha256 db728f5c13c09aa39e6e432daf1670706651fc8df101b46cf5b99e98aeed77fd identical across passes; all 24 per-identity JSONs byte-identical (quarantine/ vs quarantine_rerun/); held across three full runs"},
+    {"command": "fold/exclude surface validation: derived eval sets (window − any-class excluded) vs selection_freeze fold_structure", "exit_code": 0, "verdict": "PASS", "result": "eval counts 375/950/711/890 = 2,926 reproduced exactly with first/last dates matching the freeze (2011-06-10..2012-12-31 · 2014-01-17..2017-12-29 · 2019-01-18..2021-12-31 · 2023-01-18..2026-09-30)"},
+    {"command": "positional-warmup violation scan across all trades of all 24 identities", "exit_code": 0, "verdict": "PASS", "result": "zero trades inside any fold warmup range (defect existed in the first build, caught and fixed during rehearsal — finding D-F1)"},
+    {"command": "era validation (evaluation view): panel-derived RTH marks vs baseline chain daily columns", "exit_code": 0, "verdict": "PASS_WITH_DISCLOSURE", "result": "RTH-close match 4,142/4,204 (51 sessions differ by exactly 1 tick, chain-column final-print convention — finding D-F5); RTH-open match 4,193/4,204"}
+  ],
+  "authority_claims": [
+    "QUARANTINED-ONLY: every numeric output of this lane lands under dryrun/quarantine/ or dryrun/quarantine_rerun/ with the header 'QUARANTINED DESCRIPTIVE-ONLY — NOT SCORED — ZERO DENOMINATOR CONSUMPTION — pre-GO rehearsal per registered plan §4 gate 4'; outputs are descriptive rehearsal artifacts, never gates, never denominators, never publishable as results",
+    "NO DENOMINATOR CONSUMPTION: no ledger/counter/registry write anywhere; the observed denominator was NOT incremented; zero scored cells consumed; C3 flat logs zero trades",
+    "NO GO: no GO exists or is implied by this lane; the typed owner GO ('GO FUTURES-ES-PB1-V1 SCORED EXECUTION', plan §5) remains the only key 2; gate 4 pass = enumeration + cost recompute + determinism only, never PnL quality",
+    "NO S1: S1 data SEALED_UNTOUCHED; zero network access; root repo read-only; Python = root .venv",
+    "HEAVY-LOCK LAW HONORED: locks inspect verdict FREE_PROVEN at start and after the runs; single-shot panel reads; no lock taken; no foreign worker touched; no resource conflict occurred"
+  ],
+  "findings": [
+    {"id": "D-A1", "type": "AMBIGUITY", "severity": "MUST-PIN-BEFORE-SCORED-G6", "finding": "q80 percentile method not pinned by any committed law (SPEC §3 L73-74 'điều kiện |m| ≥ q80(|m|, trailing-252d, strict-past) — q80 từ anatomy …, không tune'; nothing in ESNQ_HYPOTHESES or the DEEPFOUR addenda). Pinned here: numpy.percentile(…, 80) linear. Ratify before gate 6."},
+    {"id": "D-A2", "type": "AMBIGUITY", "severity": "MUST-PIN-BEFORE-SCORED-G6", "finding": "C2 direction law unstated (PLAYBOOKS L76/L87: 'always-in-RTH baseline … tier 2, cùng folds'). Implemented: unconditional LONG, D0 entry, hold to era-correct close, no TP/SL. Ratify before gate 6."},
+    {"id": "D-A3", "type": "AMBIGUITY", "severity": "MUST-PIN-BEFORE-SCORED-G6", "finding": "C1 RNG algorithm unstated (PLAYBOOKS L76: 'seed cố định 20261002, sign-draw deterministic theo session'). Pinned here: sha256('FBES1-PLA-D0-S2|seed=20261002|'+date)[0] < 0x80 → +1 else −1. Ratify before gate 6."},
+    {"id": "D-A4", "type": "IMPLEMENTATION-PIN", "severity": "LOW", "finding": "q80/SL windows chain-wide strict-past (trailing 252 computable-|m| / trailing 20 non-short-flagged sessions); trading fold-fenced; positional warmup enforced for every identity. Fold-fenced windows would contradict the frozen eval counts."},
+    {"id": "D-A5", "type": "IMPLEMENTATION-PIN", "severity": "LOW", "finding": "Costs booked as USD lines at pinned Variant-A values; fill prices unadjusted; TP/SL levels derive from fill price per SPEC §4."},
+    {"id": "D-F1", "type": "FACT", "severity": null, "finding": "FOMCIN positional-warmup defect caught and fixed during rehearsal (first build traded warmup-position FOMC days — FOMC outranks WARMUP in the frozen label priority while the carve-out is positional; post-fix FOMCIN set 104 sessions, zero warmup violations across all identities)."},
+    {"id": "D-F2", "type": "FACT", "severity": null, "finding": "Single D0 fill-bar gap 2020-03-16 (COVID limit-down open, no 08:31 bar) — deterministic no-fill skip, no imputation."},
+    {"id": "D-F3", "type": "FACT", "severity": null, "finding": "7 eval sessions m-unavailable (2012-04-09, 2012-10-31, 2015-04-06, 2021-04-05, 2023-04-10, 2025-01-10, 2026-04-06) — prior-session close or 08:30 open missing; E4-consistent no-signal skips."},
+    {"id": "D-F4", "type": "FACT", "severity": null, "finding": "28 eval sessions with m == 0 exactly (open_0830 print-equal C_prev) — no direction; C4 skips, primaries tail=None."},
+    {"id": "D-F5", "type": "FACT", "severity": "LOW", "finding": "C_prev panel-last-print vs baseline chain daily close column: 4,142/4,204 exact; 51 sessions differ by exactly 1 tick (chain column final-print convention); panel is the consumed law per freeze pin. Evaluation view only."},
+    {"id": "D-F6", "type": "FACT", "severity": null, "finding": "q80 tail share 553/2,926 = 18.9% (UP 289 / DN 264) — consistent with the anatomy ~20% expectation (quarantined descriptive statistic)."},
+    {"id": "D-F7", "type": "FACT", "severity": null, "finding": "Quarantine law honored end-to-end: budget counters untouched; observed denominator NOT incremented; zero scored cells; S1 SEALED_UNTOUCHED; zero network."}
+  ],
+  "known_limitations": [
+    "The three AMBIGUITY pins (D-A1/D-A2/D-A3) are implementation-level declarations required to make the rehearsal deterministic; they are NOT laws — each must be owner-ratified (or re-frozen) before scored execution, else the scored paths for C1/C2 and every q80 threshold could differ from this rehearsal.",
+    "Dry-run n-trades are descriptive counts, not performance: no expectancy/PF/gate metric was computed, and none may be inferred from this lane's outputs.",
+    "Slippage/spread are MODELED COST research assumptions (D1/close-proxy); VERIFIED_VS_ACCOUNT remains NOT_RUN (unchanged).",
+    "NOT_RUN register untouched: 2011-2016 per-day holiday enumeration remains fail-closed-pending (X-A5 of gate 2); BBO/surprise/latency remain NOT_RUN."
+  ],
+  "incidents": [],
+  "tree_status": "end git status --porcelain: only untracked research/control/FUTURES-ES-PB1-V1/{dryrun,dispatch}/** added by this lane; start status was clean; no tracked file modified; HEAD unchanged 42885fafd991025499a4da15ed3c54316d9549a6",
+  "workers": [],
+  "outputs": [
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun/DRYRUN_REPORT.md", "sha256": "97a4ff6a5afb002dba03c264d39d96c13e75ef811714ff189876502b88ea9980"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun/dryrun_digest.json", "sha256": "96aa2d849b8290159ad995d96567d898ffe5ad62633ad3274364774c0f7ca682"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun/dryrun_builder.py", "sha256": "867946f3f1057049c7a1df7637494f15ac6dabaa4f801aa8abeea9f25878e3ee"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun/quarantine/trades_index.json", "sha256": "b063ab0c7fc1462f6680dc70e3bd125aec29e4b159d08b5904be0d127c62e650"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun/quarantine/summary.json", "sha256": "658efe58796883ed10256358534bad75737a20c1c24d3a467c4839e6824227ee"},
+    {"path": "research/control/FUTURES-ES-PB1-V1/dryrun/quarantine_rerun/**", "sha256": "byte-identical to quarantine/** (determinism criterion c)"}
+  ],
+  "readiness_conclusion": "Gate 4 PASS: (a) byte-exact 24-identity enumeration vs selection_freeze; (b) 20/20 sampled-trade cost recomputation matches the pinned Variant-A table exactly; (c) determinism verified by byte-identical double pass (trades-index sha db728f5c…). Rehearsal ran the full machinery over 2,926 eval sessions at ×1.0 declared costs with zero warmup violations. Three law ambiguities (q80 method, C2 direction, C1 RNG) are declared pins requiring ratification before gate 6; nothing else blocks.",
+  "recommended_next_action": "Controller: commit lane outputs by pathspec at the 42885faf… lineage; advance to gate 5 — typed owner GO (owner only, never delegated, canonical phrase per plan §5); carry D-A1/D-A2/D-A3 into gate 6 scoping as MUST-PIN-BEFORE-SCORED items. This lane produced no GO and consumed no denominator."
+}

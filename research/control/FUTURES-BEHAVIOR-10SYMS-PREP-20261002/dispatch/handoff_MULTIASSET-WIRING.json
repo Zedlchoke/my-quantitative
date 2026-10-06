@@ -1,0 +1,115 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+ "cycle_id": "UNREGISTERED_PREP",
+ "role": "lane",
+ "lane": "MULTIASSET-WIRING",
+ "status": "COMPLETE",
+ "dispatch_sha": "eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7",
+ "actual_start_sha": "eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7",
+ "commit_sha": null,
+ "commit_sha_note": "lanes do not commit; uncommitted working tree in the shared prep worktree per lane protocol; pathspec commit is the lead's step",
+ "summary": "Multiasset netting/risk/MTM/DD WIRED and TESTED end-to-end on synthetic multi-symbol universes (no scaffold called ready). engine.py: run() extracted verbatim into a steppable _Replay (single-symbol behavior byte-identical; 211 pre-existing tests green before any new code landed) + new PortfolioEngine: session-lockstep multi-symbol replay over sorted-union calendars, per-symbol netting on the current chain contract, USD cash aggregation asserted every session against an independent event-log recomputation, per-bar portfolio MTM/equity/drawdown on the HELD contract's closes under a frozen-marks protocol (the current close is never visible at its own open), per-session aggregated margin utilization series, portfolio cutoff + future-mutation hooks, and a gate protocol as the ONLY enforcement path (structural caps at the decision close over the effective book incl. same-close pendings; margin admission at the fill open) — every block lands as a VETO/blocked-signal journal record with a machine code, never a silent clip/rescale. composition.py: PortfolioRiskCaps.enforce_veto (wired veto mode; legacy clip-mode enforce demoted to analysis-only), PortfolioRiskGate (reference gate with full audit trail), sleeve series from wired runs (daily sleeve PnL = delta(cash+MTM), exposure-gated), co-loss/overlap descriptives from journals, blocked-signal accounting reconciling gate audit vs journals, combined breakeven under one shared frozen tolerance (ambiguous/censored excluded, never netted), AlwaysOn baseline, portfolio_leave_one_leg full-path harness, baselines flat/always-on/single-leg wired over portfolio runs. accounting.py: drawdown_series/max_drawdown (arithmetic levels only). Adversarial coverage (62 new tests, tests/test_portfolio_*.py): concurrent CL+6J+ES (three quote conventions incl. negative-capable CL and USD-per-JPY 6J) with exact USD cash math reproduced from the declared cost model; roll in one symbol while another holds; margin-cap breach -> blocked+journaled with exact shortfall math, other sleeves byte-identical to the ungated run; per-sleeve/concurrency/gross/notional vetoes counting same-close pendings; portfolio-wide future-mutation invariance + future-view trap + gate-audit calendar bound; breakeven on the combined journal incl. ambiguous-bounds and censored exclusions; leave-one-leg non-additivity PROVEN with a binding margin cap (removing the small 6J leg unblocks ES: marginal effect sign flips vs the leg's own PnL; single-leg sums are not the portfolio decomposition). README: new 'Portfolio / multi-asset disclosures' section (12 wired+tested rows, 8 NOT_IMPLEMENTED rows with one-line reasons, daily/intraday scope table: DAILY fixtures end-to-end TESTED; intraday NOT_IMPLEMENTED incl. intrabar path beyond AMBIGUOUS_ORDER bounds); exec-disclosure rows for MTM/DD/margin/caps and risk-cap freeze updated from NOT_IMPLEMENTED(scaffold) to IMPLEMENTED+TESTED(portfolio layer); suite counts updated.",
+ "findings": [
+  "EXEC-FIX defect found, reproduced with failing tests FIRST, then fixed: the R2 end-of-run independent journal<->cash reconciliation skipped right-censored records wholesale, but a censored record with EXECUTED roll legs has realize events in the ledger -> identity exploded (cash 1,003,757.45 != journal identity 999,997.45 in the repro). Any hold-through-roll-to-end-of-data run tripped it, incl. the ALWAYS-ON baseline the launch draft specifies. BEFORE: AssertionError 'independent journal<->cash reconciliation failed: journal gross 0.0 != ledger realize events 3760.0'. AFTER: censored records contribute their EXECUTED segment gross (record still claims NO point trade PnL; disclosure note + censored_realized_segments_usd stat added). Repro: tests/test_portfolio_composition.py::TestCensoredRollLegReconciliation (single-symbol AND portfolio paths). The defect was in EXEC-FIX's delivered uncommitted engine.py (logic verbatim from their run(); verified by git diff showing only self.-prefix changes around jr_gross).",
+  "Within-session lookahead caught in my own first wiring (self-caught, before any test): marks were published per-symbol mid-session, so symbol S2's fill-time margin check at session t's open could see S1's session-t CLOSE. Fixed with the frozen-marks protocol (gate reads marks of the last COMPLETED session; a just-filled position marks at its own fill price, MTM 0).",
+  "Notional caps at the decision close need the symbol's own same-session close: engine publishes it before the symbol's step (close is settled information at its own decision close); other symbols' prices stay at their latest stepped close (PIT-safe, disclosed).",
+  "Concurrency/gross caps MUST count same-close pending entries (effective book) or N same-close signals each see an empty book and over-admit; implemented in PortfolioEngine.effective_book() and used by the gate.",
+  "Single-symbol engine stays cap-free by design: caps are portfolio-level law; PortfolioEngine is the enforcement surface (README discloses this).",
+  "With the published broker margin tables, portfolio margin interactions make leg PnL provably non-additive: in the tight-cash scenario 6J and CL each trade ONLY inside the portfolio (their solo cash is below their own margin) and removing tiny-cash 6J (margin 3,080 vs cash 500) unblocks ES — the additive shortcut would be directionally wrong, which the leave-one-leg harness now demonstrates mechanically.",
+  "All 62 new tests are offline on deterministic synthetic fixtures in the exact raw IBKR schema; zero real data, zero registration/GO/S1/sweeps."
+ ],
+ "defects": [
+  {
+   "id": "EXEC-FIX-R2-CENSORED-ROLL-SEGMENTS",
+   "found_in": "EXEC-FIX lane's engine.py (uncommitted working tree at eae8c3d2), verbatim R2 final reconciliation",
+   "repro": "tests/test_portfolio_composition.py::TestCensoredRollLegReconciliation (failing first: journal gross 0.0 != ledger realize events 3760.0)",
+   "fix": "futbt/engine.py _Replay.finalize: censored records with executed roll legs contribute sum(gross_segments) to jr_gross; disclosure note on the record; censored_realized_segments_usd added to last_run_stats",
+   "after": "273-test non-DBN suite green incl. both repro paths"
+  }
+ ],
+ "changed_paths": [
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/engine.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/composition.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/accounting.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_portfolio_wiring.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_portfolio_risk_caps.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_portfolio_composition.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/README.md"
+ ],
+ "tests": [
+  {
+   "command": "cd research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m unittest tests.test_accounting tests.test_calendarx tests.test_composition tests.test_costs tests.test_engine tests.test_exec_barrier_fills tests.test_exec_barrier_ordering tests.test_exec_costs tests.test_exec_data_validation tests.test_exec_roll_accounting tests.test_instruments tests.test_journal tests.test_portfolio_composition tests.test_portfolio_risk_caps tests.test_portfolio_wiring tests.test_rawdata tests.test_roll tests.test_walkforward tests.test_wf_pit_prefix tests.test_wf_window_integrity",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "9179c8d57b9f67df44e04c6d96b2f7456219229b7994093315f4bc05ccebc358",
+   "note": "273 tests OK (211 pre-existing + 62 new test_portfolio_*), ~2.4 s, offline stdlib. Full discover incl. the concurrent DBN lane's in-flight test_dbn_* files fluctuates (their lane was editing during this run) — non-DBN scope is the stable, attributable measurement."
+  },
+  {
+   "command": "cd research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m unittest tests.test_portfolio_wiring tests.test_portfolio_risk_caps tests.test_portfolio_composition -v",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "NOT_CAPTURED_VERBOSE",
+   "note": "62/62 new portfolio tests green (21 wiring + 20 risk caps + 21 composition incl. the censored-roll defect repro, now fixed)"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "Intraday/intrabar portfolio anything: NOT_IMPLEMENTED (session-atomic replay; intrabar path beyond AMBIGUOUS_ORDER bounds unknowable from daily bars; no M1/H1 execution layer).",
+  "Intra-symbol multiple concurrent positions / offsetting: NOT_IMPLEMENTED (one net position per sleeve per chain).",
+  "Forced liquidation / de-risking on cap breach mid-run: NOT_IMPLEMENTED (caps block NEW exposure only; no declared liquidation policy exists).",
+  "Maintenance-margin call sequencing: NOT_IMPLEMENTED (admission checks initial margin on new fills).",
+  "Cross-margining / SPAN offsets: NOT_IMPLEMENTED (margins summed from PUBLISHED broker tables; CME SPAN NOT_RUN).",
+  "Notional caps use latest session close x multiplier (abs; negative-CL safe), not live BBO.",
+  "Same-close sequencing across symbols is deterministic sorted order (later symbols' fill admission sees earlier same-open fills; a simultaneous auction is NOT implemented, disclosed as convention).",
+  "Gate margin admission uses pre-fill equity at last-completed-session marks, fill commissions excluded (conservative direction: blocks earlier, not later).",
+  "Sleeve daily PnL for AMBIGUOUS_ORDER exits uses the ledger-booked worst-case bound (disclosed in-series); descriptives remain description-only.",
+  "Real-data portfolio runs: NOT_RUN (registered cycle required).",
+  "Concurrent DBN lane owns futbt/dbn/ + test_dbn_*; untouched by this lane, but full-suite discovers their in-flight tests.",
+  "commit_sha null by design: lane does not commit; Lead integrates and commits (round rule in COOWNER_REVIEW_DISPATCH.json/STEERING_ROUND2_DISPATCH.json)"
+ ],
+ "incidents": [
+  "Predecessor lane agent died on a usage limit ~9 minutes into the round, leaving NOTHING (no artifacts, no partial edits) — this attempt started fresh; nothing of the predecessor's had to be preserved or reverted.",
+  "EXEC-FIX code defect found in their delivered engine.py (censored-record roll legs broke the R2 final reconciliation) — reproduced with failing tests first, fixed, disclosed in defects[] and README R2 row.",
+  "Concurrent DBN lane's test_dbn_* suite was mid-flight during my measurements (failure count fluctuated 10 -> 5 across two discover runs); not this lane's scope, no action taken beyond excluding them from the attributable measurement.",
+  "zsh word-splitting produced one bogus suite invocation (Ran 1 test, FAILED) before the correct ${=MODULES} run; the PASS entry above is the corrected command's result."
+ ],
+ "tree_status": "shared prep worktree prep/futures-behavior-10syms-20261002 at HEAD eae8c3d2d8282f89fb3547ed5572ffe1f88fabc7 (unchanged; no lane commits). Uncommitted changes from MULTIPLE lanes present and expected: EXEC-FIX (engine/costs/journal/accounting/walkforward + their tests + README sections), WF-PIT-FIX, STRATEGY-CONFIGS (configs/), REQUEST-PACKET (data/request, *.md), DBN lane (futbt/dbn/, test_dbn_*, in flight), dossiers/handoffs from earlier rounds, plus THIS lane's 7 changed_paths. Not committed per lane protocol.",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/engine.py",
+   "sha256": "17a98b8aa91ae1ec55fcb40914df2f4ba92c3f9772fc4aeb0863007b03a4c3e9"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/composition.py",
+   "sha256": "6d74e243499ce07e594450044b403d94f526e3c480742ab9f07459699eb6cdde"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/futbt/accounting.py",
+   "sha256": "83a1f6df2442b2d1619f1b28d28286f517711ff846eed8f415ea735fd9be6954"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_portfolio_wiring.py",
+   "sha256": "332de0f05e6e20629a17ff3c8c0325c97969621d22025a31255c928e2d6e27b5"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_portfolio_risk_caps.py",
+   "sha256": "14e0e606e0d0d2bab1d3b1f6aaab6d92efc0752629529f1a1720b1c657d13ed0"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/tests/test_portfolio_composition.py",
+   "sha256": "616b04fbed0af0586516661ad7ebee54e7357f7ac5bbfe4386ec5bd6361ddd1d"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/code/README.md",
+   "sha256": "f21a3a8db9cfd90a0eeab08425fdcb3747438e7f0281fb5526df8eaf92e93a33"
+  }
+ ],
+ "open_questions": [
+  "Should a forced-de-risking policy on cap breach be DECLARED for the launch (caps currently block new exposure only)? Owner decision, deliberately not invented.",
+  "Margin admission equity basis (pre-fill, commissions excluded) is the conservative default — owner may want fill costs deducted too; one-line change in PortfolioRiskGate.admit_entry_fill.",
+  "When the DBN lane stabilizes, re-measure the FULL discover suite (273 + their count) once before the round's pathspec commit."
+ ],
+ "recommended_next_action": "Lead: validate this handoff (dispatch_sha == actual_start_sha == eae8c3d2...), spot-run the recorded non-DBN suite command (log_digest 9179c8d5...), then pathspec-commit this lane's 7 changed_paths after the DBN lane lands; afterwards the round's WAITING_DATABENTO_DATA gate remains about data, not wiring — multiasset netting/risk/MTM/DD/caps/descriptives/leave-one-leg/baselines are wired and tested on daily synthetic fixtures."
+}

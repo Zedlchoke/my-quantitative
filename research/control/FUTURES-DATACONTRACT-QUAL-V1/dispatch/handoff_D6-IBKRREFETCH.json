@@ -1,0 +1,52 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "D6-IBKRREFETCH",
+  "cycle_id": "FUTURES-DATACONTRACT-QUAL-V1",
+  "role": "ibkr-refetch-lane",
+  "lane": "D6-IBKRREFETCH",
+  "dispatch_sha": "73abf15caf76989a42c811630438b8673eb33f8f",
+  "actual_start_sha": "73abf15caf76989a42c811630438b8673eb33f8f",
+  "run_date": "2026-10-03",
+  "commit_sha": "",
+  "verdict": "PASS",
+  "changed_paths": [
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d6_ibkr/canary_run.py",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d6_ibkr/canary.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d6_ibkr/d6_fetch_run.py",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d6_ibkr/d6_fetch_log.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d6_ibkr/d6_staging_manifest.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d6_ibkr/d6_report.md",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_D6-IBKRREFETCH.json"
+  ],
+  "tests": [
+    {"id": 1, "name": "Inspect fut10_probe.py: TWS API socket 127.0.0.1:7497 via ib_insync 0.9.86, readonly=True, unique clientIds, no HTTP/no credentials in script; local gateway listening (pid 913)", "verdict": "FACT"},
+    {"id": 2, "name": "Canary: ESZ6 conId 515416632 TRADES 1day 3D via same code path (clientId 9261, serverVersion 176) -> ok=true, 3 rows, bars 2026-09-30..2026-10-02, 0 errors", "verdict": "FACT"},
+    {"id": 3, "name": "Fetch: 24 serial requests (25 total incl. canary, <= ~30 budget), 2.5s pacing, clientId 9262 readonly, 07:55:52Z..07:57:06Z, budget_exhausted=false", "verdict": "FACT"},
+    {"id": 4, "name": "6 staged front daily-3D files (ES/NQ/6E/6B/6A/6J), all ok=true, n_rows=3, last bar 2026-10-02; sha256 manifest written", "verdict": "FACT"},
+    {"id": 5, "name": "Fronts unchanged vs 2026-10-02 baseline: ESZ6/NQZ6 (2026-12-18), 6EV6/6BV6/6AV6/6JV6 (2026-10-19); newly listable = 0, dropped = 0 (conId-set diff vs S1_IDENTITY.json)", "verdict": "FACT"},
+    {"id": 6, "name": "Expired-wall boundary probes ALL unresolved (TWS error 200): ES/NQ 202506+202503, FX 202509+202506 -> wall did NOT recede at 1-day horizon; walls remain ES/NQ=202509, FX=202512", "verdict": "FACT"},
+    {"id": 7, "name": "Just-expired 202609 contracts (ESU6/NQU6/6EU6/6BU6/6AU6/6JU6) already covered: 10 raw files each from 2026-10-02 bulk (read-only check)", "verdict": "FACT"},
+    {"id": 8, "name": "Boundary compliance: zero files written/appended/modified under futures-10syms-v1/raw/ (find -newermt 2026-10-03 00:00 -> empty); root raw_manifest.jsonl untouched (still 1470 lines, last 2026-10-02T04:11:54Z)", "verdict": "FACT"}
+  ],
+  "summary": {"verdict": "PASS", "canary": "CANARY_PASS", "requests_total": 25, "staged_files": 6, "newly_listable": 0, "wall_receded": false},
+  "authority_claims": [],
+  "known_limitations": [
+    "Staged payloads are 3-row daily probes: they evidence freshness and code-path equivalence, not bulk history.",
+    "Wall non-recession at a 1-day horizon does not falsify weekly recession; discriminating test is a re-probe after the next weekly boundary.",
+    "Active-chain diff relies on the 2026-10-02 S1_IDENTITY.json conId snapshot; IB listing lag could delay new listings by hours.",
+    "Staging dir is outside the git worktree; the Lead must decide promotion into raw/ per the boundary regime (lane did not promote)."
+  ],
+  "incidents": [
+    "Co-Owner boundary update (staging-only, no raw/ writes) arrived mid-run AFTER inspect/canary-script authoring but BEFORE the canary request and before any data write; complied fully - no remediation needed, nothing written outside allowed areas at any point.",
+    "All 12 expired-wall probes returned TWS error 200 (no security definition) - expected negative evidence for boundary months, not an endpoint block; chain and historical requests on resolvable contracts succeeded throughout."
+  ],
+  "tree_status": " M research/control/FUTURES-DATACONTRACT-QUAL-V1/dispatch/DISPATCH.json (pre-existing root-session modification, not this lane); ?? research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d6_ibkr/ (this lane's artifacts). Staging output lives outside the repo at ~/.my-quantitative-data/futures-10syms-v1/staging_refetch_20261003/ (6 files, 4097 bytes).",
+  "workers": 0,
+  "outputs": [
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d6_ibkr/d6_report.md",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d6_ibkr/d6_fetch_log.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d6_ibkr/d6_staging_manifest.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d6_ibkr/canary.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_D6-IBKRREFETCH.json"
+  ]
+}
