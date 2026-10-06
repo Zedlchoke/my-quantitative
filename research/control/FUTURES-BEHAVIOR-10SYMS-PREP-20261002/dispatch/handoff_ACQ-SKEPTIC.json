@@ -1,0 +1,92 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+ "cycle_id": "UNREGISTERED_PREP",
+ "role": "lane",
+ "lane": "ACQ-SKEPTIC",
+ "dispatch_sha": "8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e",
+ "actual_start_sha": "8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e",
+ "commit_sha": null,
+ "commit_sha_disclosure": "null by design: ACQ-SKEPTIC is a read-only audit lane (initial audit + delta verification) and commits nothing; HEAD re-verified 8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e before and after both passes (dispatch_sha == actual_start_sha); outputs left untracked for lead/owner integration.",
+ "changed_paths": [
+  "audit/acq_skeptic/ACQ_SKEPTIC_AUDIT.md",
+  "audit/acq_skeptic/recompute_01_requests_cost_math.py",
+  "audit/acq_skeptic/recompute_02_hypothesis_support.py",
+  "audit/acq_skeptic/recompute_03_delta.py",
+  "dispatch/handoff_ACQ-SKEPTIC.json"
+ ],
+ "tests": [
+  {
+   "command": "PASS 1 /Users/hoangminhlong/my-quantitative/.venv/bin/python audit/acq_skeptic/recompute_01_requests_cost_math.py (offline: request accounting, record-size math, ratio, totals, coverage grid, disk)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "238/260 (237x200+1x422); bytes==rc x size 41/41 lines + 45/45 pairs; ratio 0.931323 on 41/41 + 2 anchors; all totals reproduce; 40/40 cells records>0 in 2010-06-06..2010-12-06; usable 18.60 GB"
+  },
+  {
+   "command": "PASS 1 /Users/hoangminhlong/my-quantitative/.venv/bin/python audit/acq_skeptic/recompute_02_hypothesis_support.py (independent 50-hyp support re-derivation, pre-fix state)",
+   "exit_code": 0,
+   "verdict": "FAIL",
+   "log_digest": "found MAJOR-1: stored B 41/1/8 and C 42/0/8 vs correct B 40/2/8 (SI-H2, CL-H3) and C 41/1/8 (CL-H3) — finalize keyed depth floors on the hypothesis's own root, not requirement symbols [RB,HO]"
+  },
+  {
+   "command": "PASS 2 (DELTA) /Users/hoangminhlong/my-quantitative/.venv/bin/python audit/acq_skeptic/recompute_03_delta.py (verify implementer's post-audit fix: per-requirement-symbol floors, dual floor policy, corrected counts, 96-window/band wording, coverage sha, handoff digests)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "ALL DELTA CHECKS PASS: LITERAL counts mine==stored (A 42+8NVG; A-v1 30/12/8; B 40/2/8 [SI-H2, CL-H3]; C 41/1/8 [CL-H3]); DEFAULT24 (A-v1 31/11/8, B/C identical); CL-H3 reason explicit 'outside the 10-root corpus, in NO package'; 96-window DERIVED math exact; MD band-precision wording + floor-policy paragraph + 96-everywhere confirmed; coverage_results.json sha 319955b4b965217a71c1cf94a2b1f9c35896b245eccdf6a604d6246142de6a4d byte-identical"
+  },
+  {
+   "command": "PASS 2 (DELTA) digest re-verification: shasum -a 256 over handoff_ACQ-OPT.json outputs + all acquisition_optimization/ files",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "13/13 handoff outputs match current files (edited: finalize_analysis.py 2e2830ea..., analysis_summary.json @2 ec3146d9..., ACQUISITION_OPTIMIZATION.md ea6a0d6b..., handoff itself; UNCHANGED: coverage_results.json 319955b4..., both probe scripts, both logs, round1-asrun, all 4 package manifests); dispatch==actual_start_sha; post-audit corrections disclosed in defects[2] + new rerun test"
+  },
+  {
+   "command": "credential-leak scan (both passes): grep -rE 'db-[A-Za-z0-9_-]{12,}' and 'Basic [base16+]' over acquisition_optimization/",
+   "exit_code": 1,
+   "verdict": "PASS",
+   "log_digest": "zero matches in both passes (exit 1 = clean)"
+  }
+ ],
+ "authority_claims": [],
+ "summary": "DELTA VERDICT: DELTA_VERIFIED. Second (delta) pass of the read-only skeptic audit confirms the implementer fixed all four findings from pass 1 with raw evidence untouched: (1) MAJOR-1 FIXED — finalize_analysis.py now evaluates each requirement's own symbols; CL-H3's [RB,HO] legs fail explicitly ('outside the 10-root corpus, in NO package'); independently recomputed counts match the regenerated analysis_summary@2 exactly under BOTH floor policies: LITERAL headline A 42 UNSUPPORTED+8 NVG, A-v1 30/12/8, B 40 SUPPORTED/2 UNSUPPORTED (SI-H2, CL-H3), C 41/1 (CL-H3); DEFAULT24 comparison A-v1 31/11/8 with B/C unchanged — MD headlines corrected. (2) MINOR-1 FIXED — dual floor policy (LITERAL headline: SI-H2 120m, NG-H1 60m base + NG-H4 36m, 6E-H5 93m literal-only; DEFAULT24 comparison; vague-text rule disclosed as policy choice). (3) MINOR-2 FIXED — 96 (12/yr x 8y) roll windows everywhere, ~93 noted as the deliberately-not-taken lower count, DERIVED math still exact. (4) MINOR-3 FIXED — band-precision wording ('first observed records fall inside the refinement band 2010-06-06..2010-12-06'); stale exact-equality strings removed. Bonus addressed: reserve interpretation documented (NOTE-4), 41/41 ratio recomputation cited (NOTE-6). Integrity: coverage_results.json BYTE-IDENTICAL (sha 319955b4... == pre-fix), rerun asserts patches instead of rewriting; handoff_ACQ-OPT.json digests 13/13 consistent with the edited files; edits confined to finalize_analysis.py / analysis_summary@2 / MD / handoff (probe scripts, logs, manifests, round1-asrun unchanged); zero network requests in the fix. Full per-finding register: DELTA_VERIFIED section appended to audit/acq_skeptic/ACQ_SKEPTIC_AUDIT.md (which also corrects pass 1's '14/14' outputs-count typo — the list is 13, binding intact throughout).",
+ "findings": [
+  "DELTA: MAJOR-1 VERIFIED FIXED — per-requirement-symbol floors in finalize_analysis.py:108-137; stored B/CL-H3 reason explicit; counts B 40/2 (SI-H2, CL-H3), C 41/1 (CL-H3), A-v1 30 literal / 31 default reproduce exactly under independent recompute (recompute_03).",
+  "DELTA: MINOR-1 VERIFIED FIXED — floor_policy block (LITERAL headline vs DEFAULT24 comparison; NG-H4 36m, 6E-H5 93m literal-only; vague-text rule disclosed); MD floor-policy paragraph present.",
+  "DELTA: MINOR-2 VERIFIED FIXED — 96 roll windows consistent across MD (lines 106-108, 195), manifests, code; DERIVED costs unchanged and exact.",
+  "DELTA: MINOR-3 VERIFIED FIXED — band-precision wording in MD:56-61; no stale exact-equality claims.",
+  "DELTA integrity: coverage_results.json byte-identical (sha 319955b4...); handoff_ACQ-OPT.json 13/13 output digests match current files, post-audit corrections disclosed; NOTE-4 reserve interpretation and NOTE-6 ratio count also addressed."
+ ],
+ "open_questions": [
+  "None blocking. The LITERAL-vs-DEFAULT24 floor policy is now a disclosed owner-facing choice (only A-v1 differs, 30 vs 31); owner picks the package with either number in hand."
+ ],
+ "known_limitations": [
+  "Delta pass remains offline: verified code logic, regenerated summary, MD claims, byte-identity, and digests — no live re-quotes (unchanged limitation from pass 1).",
+  "6E-H5's 93m literal floor is an interpretation of 'M1 depth >=2019' (2019-01-01..package end); it is the conservative reading and is disclosed, but it is a policy mapping, not a yaml-numeric literal.",
+  "Nonprice lane and other lanes out of scope."
+ ],
+ "incidents": [
+  "None in this lane across both passes. No network calls; no writes outside audit/acq_skeptic/ + dispatch/handoff_ACQ-SKEPTIC.json; key file never read."
+ ],
+ "tree_status": "worktree at HEAD 8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e (branch prep/futures-behavior-10syms-20261002), zero tracked modifications; untracked namespaces: acquisition_optimization/ + dispatch/handoff_ACQ-OPT.json (ACQ-OPT lane, audited pre- and post-fix), nonprice_acquisition/ + dispatch/NONPRICE_DISPATCH.json (sibling lane, untouched), audit/acq_skeptic/ + dispatch/handoff_ACQ-SKEPTIC.json (this lane).",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "audit/acq_skeptic/ACQ_SKEPTIC_AUDIT.md",
+   "sha256": "e154932ff1fe46fa57c80ef44df83d182b8d88bf3490228afe7202b2695a80b3"
+  },
+  {
+   "path": "audit/acq_skeptic/recompute_01_requests_cost_math.py",
+   "sha256": "5187d533fc9d03bc28363e8dd887469b49115a0e70c11d4b861de036d5c1b7e7"
+  },
+  {
+   "path": "audit/acq_skeptic/recompute_02_hypothesis_support.py",
+   "sha256": "b9475109a86474cae164c2ee3dc4cfc3a7dad108e9f2cf505ad47008c6e629a9"
+  },
+  {
+   "path": "audit/acq_skeptic/recompute_03_delta.py",
+   "sha256": "3dd5ca555d94707940fddddca59a8e100ff9d7217efef9725a2a6aa68b3875dd"
+  }
+ ],
+ "recommended_next_action": "Accept the ACQ-OPT deliverables as audit-clean (pass 1 PASS_WITH_FINDINGS -> delta DELTA_VERIFIED; coverage_results.json byte-identical, corrected analysis_summary@2 + MD + handoff digests consistent). Owner budget decision may proceed on the corrected numbers: A 0/42 vendor floors met, A-v1 30 (literal) / 31 (24m-default), B 40/42 with SI-H2+CL-H3 unmet, C 41/42 with CL-H3 unmet (CL-H3 needs an RB/HO product bundle no package contains — if it matters, that is a separate scope decision, not a bigger 10-root package). Re-quote-at-spend discipline unchanged; no spend/download/scored run authorized here.",
+ "generated_utc": "2026-10-02T12:20:00+00:00"
+}

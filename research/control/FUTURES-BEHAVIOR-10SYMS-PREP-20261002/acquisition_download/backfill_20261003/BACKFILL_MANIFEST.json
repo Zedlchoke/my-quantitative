@@ -1,0 +1,104 @@
+{
+ "schema": "futures_behavior_fx_backfill_manifest@1",
+ "task_id": "FUTURES-DEEPRESEARCH-V2-20261003",
+ "lane": "FX-BACKFILL",
+ "parent_task": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+ "generated_utc": "2026-10-03T00:10:00+00:00",
+ "owner_mission_verbatim": "tải lùi về cho các mã tiền tệ thêm xíu nữa",
+ "mission": "Extend 6E/6J/6B/6A ohlcv-1m back-history; new windows butt exactly against the existing 2022-01-01 starts (parent COMPLETION_LEDGER.json, ledger-verified per root: 6E/6J/6B/6A all start 2022-01-01, continuous to 2026-10-01).",
+ "budget": {
+  "owner_ceiling_usd": 125.0,
+  "lane_additional_cap_usd": 16.19,
+  "cumulative_cap_usd": 122.0,
+  "parent_delivered_usd": 105.810097,
+  "quoted_additional_usd": 12.343094,
+  "delivered_additional_usd": 12.343094,
+  "cumulative_delivered_usd": 118.153191,
+  "quote_vs_bill_drift_usd": 0.0,
+  "unused_additional_headroom_usd": 3.846906
+ },
+ "window_selection": {
+  "target_start": "2020-01-01",
+  "fallback_start": "2021-01-01",
+  "chosen_start": "2020-01-01",
+  "end_exclusive": "2022-01-01",
+  "rule": "dispatch target first; symmetric shrink to a common later start ONLY if exact quotes exceed the $16.19 additional cap. Target quotes fit ($12.343094 <= $16.19; cumulative $118.153191 <= $122.00), so 2020-01-01 was used for all four roots — no fallback needed.",
+  "quote_evidence": "BACKFILL_QUOTES.json (metadata-only get_cost/billable_size/record_count per candidate start, zero spend)"
+ },
+ "request_lines": [
+  {
+   "line_id": "AV1B-O1M-6E-BACKFILL2",
+   "dataset": "GLBX.MDP3", "schema": "ohlcv-1m",
+   "symbols": ["6E.FUT"], "stype_in": "parent",
+   "start": "2020-01-01", "end": "2022-01-01", "chunk_months": 24,
+   "no_overlap_note": "ends exactly at existing 6E window start 2022-01-01 (AV1R-O1M-6E-BACKFILL__2022-01-01_2024-01-01); no double-billing"
+  },
+  {
+   "line_id": "AV1B-O1M-6J-BACKFILL2",
+   "dataset": "GLBX.MDP3", "schema": "ohlcv-1m",
+   "symbols": ["6J.FUT"], "stype_in": "parent",
+   "start": "2020-01-01", "end": "2022-01-01", "chunk_months": 24,
+   "no_overlap_note": "ends exactly at existing 6J window start 2022-01-01; no double-billing"
+  },
+  {
+   "line_id": "AV1B-O1M-6B-BACKFILL2",
+   "dataset": "GLBX.MDP3", "schema": "ohlcv-1m",
+   "symbols": ["6B.FUT"], "stype_in": "parent",
+   "start": "2020-01-01", "end": "2022-01-01", "chunk_months": 24,
+   "no_overlap_note": "ends exactly at existing 6B window start 2022-01-01; no double-billing"
+  },
+  {
+   "line_id": "AV1B-O1M-6A-BACKFILL2",
+   "dataset": "GLBX.MDP3", "schema": "ohlcv-1m",
+   "symbols": ["6A.FUT"], "stype_in": "parent",
+   "start": "2020-01-01", "end": "2022-01-01", "chunk_months": 24,
+   "no_overlap_note": "ends exactly at existing 6A window start 2022-01-01; no double-billing"
+  }
+ ],
+ "pipeline": {
+  "script": "backfill_20261003/backfill_pipeline.py",
+  "reuse": "predecessor ACQ-DOWNLOAD discipline verbatim: per-chunk FRESH get_cost re-quote + budget gate immediately before every submit; SUBMITTED-first ledger (job id on disk before waiting); exact-param vendor job dedupe via batch.list_jobs (double-billing guard); vendor sha256 per file; adapter QA via qa_batch.qa_chunk (contract registry read-only, decade-wrap mapping fallback); ints-only parquet; iCloud mirror via mirror_batch.mirror_chunk",
+  "heavy_lock": "governance.heavy_lock machine-wide lock held 2026-10-02T23:29:34Z -> 2026-10-03T00:02:57Z (cycle FUTURES-DEEPRESEARCH-V2-20261003, role FX-BACKFILL), released on exit",
+  "ledger": "backfill_20261003/BACKFILL_LEDGER.json (schema futures_behavior_fx_backfill_ledger@1; chained to parent COMPLETION_LEDGER.json — parent chunks untouched)"
+ },
+ "results": {
+  "n_chunks": 4,
+  "n_mirrored": 4,
+  "qa_pass": 4,
+  "qa_fail": 0,
+  "records_total": 3380943,
+  "raw_dbn_zst_bytes_total": 40400389,
+  "parquet_bytes_total": 37255719,
+  "per_chunk": {
+   "AV1B-O1M-6E-BACKFILL2__2020-01-01_2022-01-01": {
+    "job_id": "GLBX-20261002-94UVSCXK6G",
+    "cost_usd": 3.473309, "records": 951387, "billable_size": 53277672,
+    "state": "MIRRORED", "qa": "PASS", "drift_pct": 0.0},
+   "AV1B-O1M-6J-BACKFILL2__2020-01-01_2022-01-01": {
+    "job_id": "GLBX-20261002-L6WLTE43UD",
+    "cost_usd": 2.966474, "records": 812558, "billable_size": 45503248,
+    "state": "MIRRORED", "qa": "PASS", "drift_pct": 0.0},
+   "AV1B-O1M-6B-BACKFILL2__2020-01-01_2022-01-01": {
+    "job_id": "GLBX-20261002-H56Q57BULG",
+    "cost_usd": 2.893437, "records": 792552, "billable_size": 44382912,
+    "state": "MIRRORED", "qa": "PASS", "drift_pct": 0.0},
+   "AV1B-O1M-6A-BACKFILL2__2020-01-01_2022-01-01": {
+    "job_id": "GLBX-20261002-9XY8K33AYG",
+    "cost_usd": 3.009875, "records": 824446, "billable_size": 46168976,
+    "state": "MIRRORED", "qa": "PASS", "drift_pct": 0.0}
+  },
+  "data_window_actual_all_roots": "2020-01-01T23:00:00Z .. 2021-12-31T21:59:00Z (first/last bar; window QA: min>=requested AND max<end-exclusive on every chunk)",
+  "butt_verification": "independent parquet cross-check: new max ts < 2022-01-01T00:00Z AND existing (AV1R 2022-01-01 chunk) min ts >= 2022-01-02T23:00Z for all four roots — no overlap, exact butt; the ~49h boundary interval is the New Year 2022 holiday weekend (Dec 31 22:00Z close -> Jan 2 23:00Z Globex open), vendor session calendar, not missing data",
+  "vendor_sha256": "16/16 files MATCH (vendor-declared sha256 == local re-hash == ledger record; prefix form 'sha256:<hex>')",
+  "identity": "0 fully-unresolved instruments across all chunks; 7 raw_symbol decade-wrap collisions per chunk vs the 2023-10+ def-window registry (vendor convention, MEASURED on NQ 2010 delta previously; instrument_id is the true identity, mapping fallback in qa_batch)",
+  "negative_prices": "only on calendar-spread instruments (6A 5067, 6B 403 bars; dash raw_symbols like 6AF2-6AZ1 — price differences, vendor convention); 0 on outright contracts; 6E/6J none anywhere",
+  "6J_scale_check": "min 0.008659 / max 0.0099185 USD-per-JPY — sane range",
+  "mirror": "4 chunk dirs under CloudDocs/my-quantitative-futures/av1-trim/AV1B-O1M-{root}-BACKFILL2/{chunk_key}/ (raw .dbn.zst + vendor manifest/condition/metadata + parquet + qa.json + ledger_entry.json); every copy SHA256-verified against source; state COPIED, sync SYNC_PENDING_UNVERIFIED (iCloud upload is macOS's job — never claimed cloud-stored); owner's personal backup of licensed data, no redistribution"
+ },
+ "resulting_coverage_after_backfill": {
+  "6E": "2020-01-01 .. 2026-10-01",
+  "6J": "2020-01-01 .. 2026-10-01",
+  "6B": "2020-01-01 .. 2026-10-01",
+  "6A": "2020-01-01 .. 2026-10-01"
+ }
+}

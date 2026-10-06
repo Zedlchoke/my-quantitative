@@ -1,0 +1,182 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+ "cycle_id": "UNREGISTERED_PREP",
+ "role": "lane",
+ "lane": "NONPRICE-DATA-ACQUISITION",
+ "dispatch_sha": "8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e",
+ "actual_start_sha": "8ce10f7e4b43a0234f33d27fb8e4532b7ff65f9e",
+ "commit_sha": null,
+ "changed_paths": [
+  "nonprice_acquisition/manifest_sources.json",
+  "nonprice_acquisition/hypothesis_readiness.json",
+  "nonprice_acquisition/PUBLIC_DATA_ACQUISITION_REPORT_VI.md",
+  "nonprice_acquisition/OWNER_ONLY_STEPS.md",
+  "nonprice_acquisition/collect/common.py",
+  "nonprice_acquisition/collect/cftc_cot.py",
+  "nonprice_acquisition/collect/fred_alfred.py",
+  "nonprice_acquisition/collect/eia.py",
+  "nonprice_acquisition/collect/bls_bea_fed.py",
+  "nonprice_acquisition/collect/cb_banks.py",
+  "nonprice_acquisition/collect/noaa_cpc.py",
+  "nonprice_acquisition/normalize/cftc_normalize.py",
+  "nonprice_acquisition/normalize/fred_cb_normalize.py",
+  "nonprice_acquisition/normalize/eia_normalize.py",
+  "nonprice_acquisition/normalize/noaa_normalize.py",
+  "nonprice_acquisition/normalize/hdd_cdd_weights.py",
+  "nonprice_acquisition/tests/test_parse.py",
+  "nonprice_acquisition/build_readiness.py",
+  "dispatch/handoff_NONPRICE-DATA-ACQUISITION.json"
+ ],
+ "tests": [
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python nonprice_acquisition/tests/test_parse.py",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "ce86025a753a2fd6fb1953e5a3a32eb40af28b67d9c539ef43925d22894f89b8",
+   "note": "29/29 parse tests: CFTC as-of/release separation 2-7d, latest-vs-vintage distinguishable, issued-vs-observed disjoint, no-future-rows, WNGSR survey extraction, MOF/BoJ/FOMC coverage"
+  },
+  {
+   "command": "collectors smoke runs (cftc_cot.py --smoke; fred_alfred.py --smoke; eia.py --smoke; bls_bea_fed.py --smoke; cb_banks.py --smoke; noaa_cpc.py --smoke)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": null,
+   "note": "each collector executed a 1-request smoke before bulk; dedupe+sha256 checkpoint manifest verified by repeated runs (no re-downloads)"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "ALFRED PIT vintages are year-end snapshots only (per-release-day vintage route requires FRED API key: OWNER_KEY_WAIT for finer granularity); latest series flagged latest_revised_NOT_PIT",
+  "TFF/disaggregated CoT annual histories are classification-backcasts (CFTC Form-40 refresh) - descriptive only, strict PIT needs release-dated weekly files (not collected)",
+  "WNGSR tidy parse: 693/1205 HTML issues carry parsed totals (2014+ ~93-100%); pre-2014 issues retained as raw archive evidence; 254 oldest issues are PDFs (raw only)",
+  "WPSR archive starts 2011-01 (target window 2010-06 not met by as-published archive; dnav revised-latest series cover earlier)",
+  "GFS/NDFD multi-year forecast vintages NOT retrievable free (noaa-ndfd-pds bucket carries no S3 versions - measured; NCEI AIRS is request-based): typed NOT_RUN_PIT; CPC issued 6-10day temp daily is the PIT-legal forecast series from 2012-09-11 (archive start, disclosed vs 2010-06 target)",
+  "CPC 610temp after 2025-07 is big-file regime (~3.3MB/day): daily continuity there typed WAIT_STORAGE; weekly Monday sample archived",
+  "BLS main site + download.bls.gov 403-gated to this client (evidence archived); CPI/NFP PIT fallback = ALFRED CPIAUCSL/PAYEMS vintages (year-end granularity)",
+  "RBA site 403-gated; RBA decision dates/times FACT already in-repo from dossier lane (no fabrication)",
+  "ONS historical release calendar + UK CPI first prints: free route NOT_FOUND (typed MISSING); BoE gilt curves latest-vintage only (DECLARED_LAG)",
+  "BoJ TONA daily free route not located (typed MISSING, exact piece named); FOMC statements 2010 not found at probed routes (2010 meeting dates archived via calendar page)",
+  "WNGSR issues embed The Desk survey median/range (free as-published consensus record for NG storage) - fitness for NG-H1 consensus use is an OWNER adjudication, not a vendor consensus archive",
+  "WPSR table13 PDFs turned out to be NYMEX futures prices (not Cushing stocks); Cushing stocks as-published are the table4 CSV 'Cushing' row (790/790 weeks parsed)",
+  "consensus archives remain BLOCKED_CONSENSUS for 7 hypotheses; actuals never substituted as expected"
+ ],
+ "incidents": [
+  "My own EIA collector process wedged on a slow ir.eia.gov connection (kept connection open, no timeout); I stopped MY OWN process only and resumed from sha256 checkpoints - no foreign worker touched",
+  "One background EIA run was externally killed (task system); resumed via checkpoint dedupe - zero re-downloads",
+  "1960 http_error records in the append-only manifest are mostly superseded first-attempt URL patterns (cftc disagg/tff naming, WPSR missing .php extension, WNGSR old dir roots, MOF pre-2019 english quarterly pages) - corrected patterns re-fetched successfully; gate 403/404s preserved as evidence",
+  "A path-constant typo in one normalizer (missing dot in ~/.my-quantitative-data) caused silent empty output once; fixed and re-run with verified row counts"
+ ],
+ "tree_status": "DIRTY (uncommitted lane outputs under allowed paths; nothing committed at 8ce10f7e modified; acquisition_download/, acquisition_optimization/, audit/acq_skeptic/, dispatch/handoff_ACQ-OPT.json, handoff_ACQ-SKEPTIC.json belong to OTHER active lanes and were never touched)",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "nonprice_acquisition/manifest_sources.json",
+   "sha256": "1b05cd458394cfb3435b107c979a12a66048a885658cf215ed40b6e897bbab17"
+  },
+  {
+   "path": "nonprice_acquisition/hypothesis_readiness.json",
+   "sha256": "6dc3dceae43ca60ca71fbec4e2d49cd0154ba4c776f88c3877ec594749a96725"
+  },
+  {
+   "path": "nonprice_acquisition/PUBLIC_DATA_ACQUISITION_REPORT_VI.md",
+   "sha256": "7e1618032dea6125a96b43f93a0bf30824390c9d3b04fb95e314c71081fab7c8"
+  },
+  {
+   "path": "nonprice_acquisition/OWNER_ONLY_STEPS.md",
+   "sha256": "4e64676accfa073be5616c9f0444f7712a0758b3e6099b29e5a7b932a1287335"
+  },
+  {
+   "path": "nonprice_acquisition/collect/common.py",
+   "sha256": "cce4173954e84319266c435aa25caa2fa6a883a893d429c7bc4b1ca453bf346d"
+  },
+  {
+   "path": "nonprice_acquisition/collect/cftc_cot.py",
+   "sha256": "adbf719fb6eaf5057e7ae25ee8da1808fc9873162ef64b42cf4178084c87b851"
+  },
+  {
+   "path": "nonprice_acquisition/collect/fred_alfred.py",
+   "sha256": "95bd0064c6a9cbdd3e96a5c93e8fa4c4ebe1c16479feeee4ca60b650f2f61baa"
+  },
+  {
+   "path": "nonprice_acquisition/collect/eia.py",
+   "sha256": "fc0b97c6647ae7bac71227150f416adc8b590806441c969b856e120b95340a48"
+  },
+  {
+   "path": "nonprice_acquisition/collect/bls_bea_fed.py",
+   "sha256": "a48da0925124a125faf7ebaf6ca39c7bb20d753c25aac61858807a6ce32d1962"
+  },
+  {
+   "path": "nonprice_acquisition/collect/cb_banks.py",
+   "sha256": "998e644fabe04c52370bd10cdd3a65ab91098db3ef897a563206e84e77b5baeb"
+  },
+  {
+   "path": "nonprice_acquisition/collect/noaa_cpc.py",
+   "sha256": "3c792941a1372bb3375529da36eb0e28263864cc0954bc30bf08c8790732bf8a"
+  },
+  {
+   "path": "nonprice_acquisition/normalize/cftc_normalize.py",
+   "sha256": "d977e55e8e76e5874c8892058bcac90a51a3a79ce1c5f7b38e34a1a0e017d578"
+  },
+  {
+   "path": "nonprice_acquisition/normalize/fred_cb_normalize.py",
+   "sha256": "0ddce5d12f38695dd50da33fef5416e6e6ac760dc1f65dbac04f26a69f969e32"
+  },
+  {
+   "path": "nonprice_acquisition/normalize/eia_normalize.py",
+   "sha256": "6f22928183fdb7181d1801979f22fed8f19d7823ea555ac896f5b8b3a0b3451c"
+  },
+  {
+   "path": "nonprice_acquisition/normalize/noaa_normalize.py",
+   "sha256": "34ec29e4f4f3e4be2f1c71bbc1706cdcb796abaded2b315c9dbb767d4f23abfc"
+  },
+  {
+   "path": "nonprice_acquisition/normalize/hdd_cdd_weights.py",
+   "sha256": "645bcf500b8797e23e60ac8aa9e8c506474929a53d712a457f09641f87865701"
+  },
+  {
+   "path": "nonprice_acquisition/tests/test_parse.py",
+   "sha256": "14feaae338e2d509731da5ad90aea34b6fd05be4a47fcc407f2e879dd6366011"
+  },
+  {
+   "path": "nonprice_acquisition/build_readiness.py",
+   "sha256": "1ee2bdf62481ee1f7803eb568e8de1ffc1d143d3105bab35930fbdd2f59268ed"
+  }
+ ],
+ "outputs_outside_git_summary": {
+  "raw_dir": "/Users/hoangminhlong/.my-quantitative-data/futures-nonprice-10syms/",
+  "files_ok": 10579,
+  "bytes_ok": 1348100000,
+  "bytes_ok_human": "~1.35 GB of 2 GiB cap (noaa family 878 MB of its 1.1 GiB subcap)",
+  "families": {
+   "cftc": [
+    59,
+    85800000.0
+   ],
+   "fred_alfred": [
+    193,
+    21100000.0
+   ],
+   "eia": [
+    5377,
+    293100000.0
+   ],
+   "bls_fed": [
+    159,
+    13400000.0
+   ],
+   "cb": [
+    226,
+    57000000.0
+   ],
+   "noaa": [
+    4565,
+    877600000.0
+   ]
+  },
+  "normalized_parquet_tables": 14,
+  "raw_manifest_sha256_at_close": "b69fc2c9233b1c95612a496fe827d98f1285682b4682c2ffc73f6c2005697d23",
+  "manifest_note": "append-only; sha moves as future runs append"
+ },
+ "recommended_next_action": "Lead + A7 audit: verify raw samples against raw_manifest.jsonl sha256s, re-run nonprice_acquisition/tests/test_parse.py, spot-check PIT separation claims (CoT Friday-vs-Tuesday, WNGSR issue vintages, CPC issued vs observed tables); then owner reviews OWNER_ONLY_STEPS.md (FRED key only if per-release vintages needed; PAID list: consensus/LBMA/dividend-yield/iron-ore/Databento) and adjudicates the WNGSR-embedded The Desk survey as consensus source for NG-H1; GC serial re-fetch (GC-H1) remains time-critical for the data lane before ~Q1-2027 age-out.",
+ "summary": "Downloaded every in-scope free public nonprice source named by the 50 hypotheses: CFTC CoT (3 products, 2006-2026, 10/10 market mappings verified in-file), EIA WNGSR as-published weekly vintages 1996-2026 + WPSR 2011-2026 incl. Cushing as-published, FRED 12 latest + ALFRED 122 PIT year-end snapshots (vintage route verified), FOMC 147 statements + calendars, BoJ 181 statements + MPM calendar, MOF full daily FX-intervention history 1991-2026, ECB ESTR/MRO, BoE bank-rate + gilt curves, NOAA CPC issued 6-10day forecasts daily 2012-09..2025-06 (+weekly sample) and official divisional HDD/CDD 1895-2026 with pre-declared census weights. 34/50 hypotheses READY_DATA on nonprice inputs; 7 BLOCKED_CONSENSUS; remainder partial/typed blockers with exact missing pieces in hypothesis_readiness.json. 29/29 parse tests PASS. 1.35GB of 2GiB cap used; no deletions; no credentials."
+}

@@ -1,0 +1,62 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-DEEPRESEARCH-V2-20261003",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "audit-lane",
+  "lane": "A7-DEEP-ES",
+  "dispatch_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "actual_start_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "commit_sha": null,
+  "commit_sha_disclosure": "Audit lane made no commits: read-only mandate over the shared prep worktree (HEAD 26d96eb4 unchanged); all audit outputs are new untracked files under research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/ plus this handoff.",
+  "changed_paths": [
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/a7_r1_roll.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/a7_r2_sessions.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/a7_r3_fomc.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/a7_r4_cot.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/a7_r5_quality.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/r1_roll.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/r1_es_definitions.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/r1_run.log",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/r2_sessions.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/r3_fomc.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/r4_cot.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/r5_jumps.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/A7_DEEP_ES.md",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dispatch/handoff_A7-DEEP-ES.json"
+  ],
+  "tests": [
+    {
+      "command": "cd research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es && for s in a7_r1_roll a7_r2_sessions a7_r4_cot a7_r5_quality; do /Users/hoangminhlong/my-quantitative/.venv/bin/python $s.py; done (a7_r3_fomc.py rerun with fed statements re-pointed to the iCloud mirror after I-1)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "13/13 recompute rows MATCH (most exact to 3 decimals across full tables): 66 rolls, crossover 3-5/median 5, T5 dev 0..-2 (implied VOL/T5 disagreement = 90 sessions = 97.9% exactly), DECL 6-11/median 9, spreads 27+/39- with 61/66 DFF match and all 17 year-medians identical, 2026-09 +67.75 exact, overnight var shares exact (2020 53.8 / 2018 20.9, all 7 eras + correlations), FOMC 20-bucket vol AND abs-ret ratio tables identical (0.724-0.805 pre / 2.906 release / 3.188 absret / 2.653 +30m; day-level 1.143/1.376 vs 0.991/0.978 on n=131/3913), statement inventory 132/92/85+7/131/91 exact, CoT U-shape/deciles/anchors/Spearman/by-year all exact on both the pre-fix+exact-filter series AND the raw-zip canonical union (100% value equality), 10 jumps >2% all macro minutes exact (incl -5.67% 08:45 halt-reopen and three 07:30 CPI prints), expiry model 66/66 incl ESM6 Juneteenth + ESM7 2027-06-17 from definitions, panel 7,825,657 rows / 0 dups / 71 contracts / 5,425 stat contract-days"
+    },
+    {
+      "command": "floor sensitivity + handoff canonical checks",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "volume-crossover floors 10k/50k/100k IDENTICAL (all 66 dates equal); no-floor gives fake crossovers 150-260 sessions early at 2-402 lots (51/66 rolls affected) -> floor hides nothing real; OI floor removal adds 4 fake crossovers at 644-5,337 lots (ESM6 2->5,337->2 reproduced). Handoff DEEP-ES: 15/15 output sha256 match files; dispatch_sha==actual_start_sha==HEAD 26d96eb4; commit null with accurate disclosure"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Audit recomputes used the iCloud mirror for nonprice inputs after I-1 (raw deacot zips + pre-fix tidy + fed statements); the FIXED cftc_legacy_tidy.parquet no longer exists locally but is regenerable from raw zips; canonical equivalence proven by 100% value match (1,082 rows), so no CoT number depends on which representation is used",
+    "FOMC minute-profile rerun anchored statements from the mirror copy of the as-issued HTML (identical 147-file inventory, 92 timed, 106/147 files with clock text)",
+    "Dispatch prompt's '53/58' figure could not be reproduced as any statement/calendar quantity; dossier's own inventory counts all verify exactly",
+    "Hour-of-day profiles, MOC buckets, Sunday-reopen ratios and era coverage percentages were accepted from the lane's JSONs after the surrounding machinery reproduced exactly (spot-checked, not fully recomputed)"
+  ],
+  "incidents": [
+    "I-1 ENVIRONMENT (not DEEP-ES): local nonprice root ~/.my-quantitative-data/futures-nonprice-10syms/ was EMPTIED during the audit window (raw fed/, cftc/, ... and normalized/ incl the FIXED cftc_legacy_tidy.parquet and its .bak). DATA-BACKUP's handoff reports COPY-to-iCloud (not move) and its mirror holds the PRE-FIX tidy + raw zips; whoever/whatever removed the local originals violated 'raw immutable; no deletions' and broke dossier sec-11 reproduction for nonprice inputs. Owner action: restore root, record in task ledger. Vendor av1trim root intact."
+  ],
+  "tree_status": "HEAD 26d96eb4 unchanged on prep/futures-behavior-10syms-20261002; this lane added untracked files only (audit/a7_es/** and this handoff); sibling lanes' concurrent modifications/untracked dirs present as disclosed in their own handoffs; nothing staged, nothing deleted by this lane.",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/audit/a7_es/A7_DEEP_ES.md",
+      "note": "full audit report: verdict PASS_WITH_ERRATA; BLOCKER 0 / MAJOR 1 / MINOR 3 / NOTE 5 / INCIDENT 1"
+    }
+  ],
+  "recommended_next_action": "Owner: (1) apply the 6 errata in A7_DEEP_ES.md sec-8 (M-1 OI-timezone artifact is the substantive one: OI crosses the SAME trading day as volume, 12/12; 'positions migrate first' unsupported); (2) adjudicate I-1 (nonprice root deletion) and restore/re-point the root; (3) lane DEEP-ES conclusions otherwise stand as written, incl the T5-roll recommendation and the CoT/floor incident handling.",
+  "summary": "A7-DEEP-ES audit complete: verdict PASS_WITH_ERRATA. All 13 mandated recompute rows reproduce exactly from primary data (7,825,657-row vendor panel re-read independently; own chain/marks rebuilt). Stray-print floors validated (10k-100k floors identical; no-floor garbage). CoT: dossier's exact-name filter == raw-zip canonical == fixed-tidy semantics (1,082 rows, 100% value match) -> all CoT claims carry to the fixed source. FOMC statement-time evidence basis proven (132/92/85+7/40/131/91; calendars corroborate). Expiry model 66/66 (Juneteenth ESM6/ESM7 verified; Columbus N/A for ES quarterlies). Handoff canonical (15/15 sha). One MAJOR errata: OI-crossover '1-day lead' is a tz-labeling artifact (all 12 OI dates are Sundays; stat6 alignment test proves ts_ref=T is trading day T; same-day crossover 12/12) plus the OI-chain prior-published nuance; three MINOR wording errata (mismatch-year attribution, sd(ON) range, FOMC elevation band/Globex label); five NOTEs incl the v1 +67.75 coincidence framing. Errata required before owner consumption.",
+  "generated_utc": "2026-10-03T03:20:50.549686+00:00"
+}

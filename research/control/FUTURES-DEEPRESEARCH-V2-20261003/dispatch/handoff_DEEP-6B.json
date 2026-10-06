@@ -1,0 +1,149 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "FUTURES-DEEPRESEARCH-V2-20261003",
+  "cycle_id": "UNREGISTERED_PREP",
+  "role": "lane",
+  "lane": "DEEP-6B",
+  "dispatch_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "actual_start_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+  "commit_sha": null,
+  "commit_sha_disclosure": "Lane does not commit (worktree discipline: lanes leave changes uncommitted in the named worktree/branch for the owner/lead to commit). HEAD verified 26d96eb4bdd4be85e151055dace3354638498a44 on branch prep/futures-behavior-10syms-20261002 throughout the task.",
+  "changed_paths": [
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dossiers_v2/6B_DEEP_v2.md",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_deep_lib.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_build_cache.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_build_report.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a1_regimes.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a1_regimes.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a2_sessions.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a2_sessions.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a3_term.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a3_term.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a4_events.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a4_events.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a5_cot.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a5_cot.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a6_gilts.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a6_gilts.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a7_quality.py",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a7_quality.json",
+    "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_cache/ (derived parquet caches: 6b_outright_1m, 6b_annotated_1m, 6b_sessions, held_calendar, held_volume_crossover, chain_calendar, chain_volume, calendar_spread_120d, gilt_curve — regenerable from scripts, kept for downstream lanes)"
+  ],
+  "tests": [
+    {
+      "command": "for s in 6B_a1_regimes 6B_a2_sessions 6B_a3_term 6B_a4_events 6B_a5_cot 6B_a6_gilts 6B_a7_quality; do .venv/bin/python $s.py; done  (run from research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis with /Users/hoangminhlong/my-quantitative/.venv/bin/python; full log /tmp/6b_test.log)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "sha256:834c892533c7fb5d0866eaaf0aabf3ccf78a33cab197fa4a1d624b9d49bd516b"
+    },
+    {
+      "command": "reproducibility check: re-shasum of all 7 analysis JSONs after full rerun == pre-rerun digests (byte-identical outputs)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "sha256:834c892533c7fb5d0866eaaf0aabf3ccf78a33cab197fa4a1d624b9d49bd516b"
+    },
+    {
+      "command": "json validity: python -c \"import json,glob; [json.load(open(f)) for f in glob.glob('6B_*.json')]\"",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "sha256:834c892533c7fb5d0866eaaf0aabf3ccf78a33cab197fa4a1d624b9d49bd516b"
+    },
+    {
+      "command": "git -C <worktree> rev-parse HEAD (drift check vs dispatch)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "26d96eb4bdd4be85e151055dace3354638498a44"
+    },
+    {
+      "command": "formal unit-test suite (futbt or pytest battery): none exists for this lane's descriptive scripts",
+      "exit_code": null,
+      "verdict": "NOT_RUN",
+      "log_digest": null
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "No PnL evaluation, no conditional mean-return tables, no signal selection — descriptive only per dispatch laws; all such items remain NOT_RUN.",
+    "Price data ends 2026-09-30 23:58 UTC: session 2026-10-01 is truncated and excluded from full-session statistics.",
+    "rv63 rolling-vol uses min_periods=40 (not 63): 116 roll-boundary/thin-session NaN returns would otherwise leave ~5 usable windows (pandas rolling counts non-NaN against min_periods); disclosed in dossier §1.",
+    "a2 city-clock segments are a priority-based partition with a residual 'other' bucket (~22-26% of volume in transitional hours); the London-clock hour profile is the unambiguous statistic and leads the dossier claims.",
+    "a5 CoT forward outcomes exist only from 2020-01 (chain start) though CoT series starts 2006; z needs 156w warmup; n=326.",
+    "a6 gilt coverage ends 2024 (local GLC copy updated 2025-01-21); 2025-2026 gilt coupling NOT_RUN; DECLARED_LAG caveat: gilt data PIT-known only >=1 business day after observation.",
+    "FRED_DFEDTARU used with vintage_flag=latest (not vintage-true PIT; ALFRED year-end vintages only) — used solely for descriptive CIP mapping of policy levels known same-day.",
+    "MPC calendars 2020-2025 assembled from bankofengland.co.uk fetched 2026-10-02 (news 'MPC dates for YYYY' pages + upcoming-mpc-dates + 2020 emergency meetings from the Bank-Rate table); 2020-03-26 scheduled-date ambiguity (meeting brought forward to 03-11/03-19) kept and flagged in lib.",
+    "Data path discrepancy vs dispatch: dataset physically at /Users/hoangminhlong/my-quantitative-data/futures-databento-av1trim/ (dispatch wrote ~/.my-quantitative-data/... which exists only for nonprice); recorded in dossier §0.",
+    "OI from GLBX statistics only 2023-10+; OI-vs-volume crossover comparison covers 11 rolls only.",
+    "Vendor strays quarantined, not adjudicated: GCQ4 (gold prints inside 6B parent response, 2020) and 6BM5 early cluster (Jan-May 2020 prints on a Jun-2025 symbol).",
+    "Cross-asset (6E/ES) analyses deferred — those panels belong to sibling lanes; this dossier's cross-asset rows inherit v1 (13.5-month window) where cited at all."
+  ],
+  "incidents": [
+    {
+      "date_utc": "2026-10-02",
+      "incident": "rv63 rolling-std bug caught during verification: initial a1 run used rolling(63).std() whose default min_periods required all-63-non-NaN windows, silently reducing the regime map to ~5 valid windows; fixed to min_periods=40 and rerun before dossier finalization; affected figures corrected in 6B_DEEP_v2.md (no stale numbers left).",
+      "resolution": "fixed + disclosed + reproducibility rerun PASS"
+    },
+    {
+      "date_utc": "2026-10-02",
+      "incident": "a5 forward-drawdown initially measured against the all-sample cumulative peak (secular 2021-22 decline contaminated every bucket); redefined as window-local 20-session drawdown and rerun.",
+      "resolution": "fixed + disclosed"
+    },
+    {
+      "date_utc": "2026-10-02",
+      "incident": "Gilt XLSX parser needed two fixes (inner-zip open via BytesIO; premature 60k-row safety break truncated 2019-2024); caught by span check, fixed, reparsed to full 2016-2024 coverage.",
+      "resolution": "fixed"
+    },
+    {
+      "date_utc": "2026-10-02",
+      "incident": "First a3 roll table contained 2 artifact rolls (truncated-final-session roll for 6BZ6 and a deferred 2027-contract pair); filtered to genuine front-chain rolls (old contract >=1000 contracts and >=300 bars on roll session) -> 27 rolls.",
+      "resolution": "fixed + filter documented in script"
+    }
+  ],
+  "tree_status": "Worktree /Users/hoangminhlong/my-quantitative/.worktrees/futures-behavior/prep on branch prep/futures-behavior-10syms-20261002 at HEAD 26d96eb4 (unchanged). This lane's files are new untracked paths under research/control/FUTURES-DEEPRESEARCH-V2-20261003/{dossiers_v2,analysis,dispatch}/; no tracked files modified by this lane (pre-existing untracked siblings from other lanes untouched; heavy-runtime lock FREE_PROVEN throughout).",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dossiers_v2/6B_DEEP_v2.md", "sha256": "c0435e67659cce68f4ec4211ebc12e1d8024537378b32bc47cf9bed9d5eed75c"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_deep_lib.py", "sha256": "418d9155a72ce5af8aa3d075710ff11bed70d18f9b27ee10d926d95fafe33c2e"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_build_cache.py", "sha256": "be0a198a5b20f86588dd100b3cab06eec2c30205bb073dbab543e9d3cdd01926"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_build_report.json", "sha256": "787caa90f9ef930408c6ba0b1acfe9651ff8623f3e0f51ee3528f2ac9b21405a"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a1_regimes.py", "sha256": "214cfa929918bd1e34b73e456c7b5eabdf37395ae3d68e1f5f4f528870148fd0"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a1_regimes.json", "sha256": "0b1de32bac34247f219cafd9f15ffa354ea631f5afe1ff5fdbcb7a94aadbd065"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a2_sessions.py", "sha256": "43f286ae4b4dfad9b705012f0be62a63b215a7bfb8e9bfced05fb04722e6bacf"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a2_sessions.json", "sha256": "c1258f492e5b888d44e38e20fd58a0541173ea462960ccb46dc3fc036a5055da"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a3_term.py", "sha256": "f47bc6910bd17c5850e6e2b9ccbb80ee30e225240b2198813379400be6eb7811"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a3_term.json", "sha256": "1453f27aa7d87dc30ac55cc23de3bec0ac490f187d8459f148644232837d0d8b"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a4_events.py", "sha256": "605537a73dc84c1aac2b472196a26fefa1f176adb8fa43080b2b1ed77750f2c1"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a4_events.json", "sha256": "ca058c7d9d9fbbeca5029ef1d7e2c86e8d5fccf4c2a63c2d9627c212c9b37162"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a5_cot.py", "sha256": "1c60473ec9c79faed4daa734e5fb4c100cbd25ac44888e4895d1c63e32091527"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a5_cot.json", "sha256": "418dc21c5db6cf34723826857b37d98a375a5c78a29cce7af006cfa7030a88e6"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a6_gilts.py", "sha256": "ab2c7fcb9b7b935b982499a271f20a8f940856c1f3665826d01d40fbd1e860c1"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a6_gilts.json", "sha256": "f28a4b6a9cac53d6483ffd57b96114d8c2da074f2103cac84032757509bf0667"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a7_quality.py", "sha256": "5b441dde262b2a93217aed907f2753eab362d9020440cfe2d581e2a1faa8af9f"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_a7_quality.json", "sha256": "d4252ad9f7b0bda4df28007f056ec33a8d40361fa8f03607244a3b32b422b644"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_cache/6b_outright_1m.parquet", "sha256": "NOT_DIGESTED_derived_cache"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_cache/6b_annotated_1m.parquet", "sha256": "NOT_DIGESTED_derived_cache"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_cache/6b_sessions.parquet", "sha256": "NOT_DIGESTED_derived_cache"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_cache/held_calendar.parquet", "sha256": "NOT_DIGESTED_derived_cache"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_cache/held_volume_crossover.parquet", "sha256": "NOT_DIGESTED_derived_cache"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_cache/chain_calendar.parquet", "sha256": "NOT_DIGESTED_derived_cache"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_cache/chain_volume.parquet", "sha256": "NOT_DIGESTED_derived_cache"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_cache/calendar_spread_120d.parquet", "sha256": "NOT_DIGESTED_derived_cache"},
+    {"path": "research/control/FUTURES-DEEPRESEARCH-V2-20261003/analysis/6B_cache/gilt_curve.parquet", "sha256": "NOT_DIGESTED_derived_cache"}
+  ],
+  "input_evidence": {
+    "price_parquet_sha256": {
+      "AV1B-O1M-6B-BACKFILL2__2020-01-01_2022-01-01.parquet": "c354cfb704c63f7c5a97a0be8c87118b2bc1ccd274d86156edb6817679944c59",
+      "AV1R-O1M-6B-BACKFILL__2022-01-01_2024-01-01.parquet": "17857809913fa770c8bdd5fda44dbb45f1cf58979ddcaf707d61cb24507db6e5",
+      "AV1R-O1M-6B-BACKFILL__2024-01-01_2026-01-01.parquet": "64423ad861917a1960bfcee49a3015d1c3d706c16a36a81d9495939463c216c0",
+      "AV1R-O1M-6B-BACKFILL__2026-01-01_2026-04-01.parquet": "996aa88ef3f5042a6b947757150c4f24e08433cbf65ad5a873e0f798e38425c8",
+      "AV1T-O1M-6B__2026-04-01_2026-10-01.parquet": "e5338f48ee274bb96157d3fab2353d312326515ded7df0af90f976306c5e387d"
+    },
+    "nonprice_sha256": {
+      "boe_bank_rate_tidy.parquet": "79789ea5112d8e1d674755d8ec494a3139734d170e1f73c63f70f70f5fcd1502",
+      "cftc_legacy_tidy.parquet": "4f9cd78944ee79dcbe2c5df5cf8689fd9ad63e9f4263810c98cd1af0f3b43073",
+      "fred_latest_tidy.parquet": "b53ccd6494522258e443372dd17c40abdf0d0599fb0012c800f3fe89e22475cb",
+      "glcnominalddata.zip": "312d4a0efaf93f5e567e6cb86234c91f0890e9696895c8819914a2487c1d11db"
+    },
+    "note": "All inputs read-only; no raw files touched. Vendor job/ledger authority: COMPLETION_LEDGER.json + backfill_20261003/BACKFILL_LEDGER.json."
+  },
+  "recommended_next_action": "Owner/lead: (1) commit this lane's untracked paths (sha-pinned above) together with sibling DEEP-* lanes; (2) after all DEEP lanes return, run A7-DEEP-AUDIT cross-lane verification (audit/**); (3) for a future registered cycle, the highest-value measured-but-unpriced candidates are 6B-H1'/H6 (roll-timing/carry-aware chain selection — all components measured, 27 rolls) and event-window execution studies (BoE 12:00 London / FOMC 13:00 CT anatomy now release-anchored); every PnL-linked item remains NOT_RUN pending registration/budget/GO. Also consider re-fetching gilt curves 2025-2026 and a licensed surprise-vintage source before any event-signal registration."
+}

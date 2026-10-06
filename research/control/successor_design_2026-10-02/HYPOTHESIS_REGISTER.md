@@ -35,19 +35,14 @@ hypothesis).
   live (crossed guard-IN ∖ S003/S023); the ×1.5 multiplier remains a free
   parameter learned on LEARN (grid {1.5, 2.0, ∞} per RULE_SLATE §4).
   Overfit risk HIGH (n=29, one trade 46%). POST_OUTCOME_HYPOTHESIS.
-  **Sample feasibility (matrix row 5) — RESOLVED STATICALLY by the round-4
-  forensics histogram** (`forensics/guard_spend_band_histogram.json`): all
-  627 fired defers sit at r = spend/cap ∈ [1.00, 1.41] (POLICY med 1.03 max
-  1.20; B1 med 1.06 max 1.41) — **ZERO rows ≥ 1.5×, so the RULE_SLATE grid
-  {1.5, 2.0, ∞} is DEGENERATE in static count: all three nodes admit the
-  identical 331/296 defers (0 true defers; 8/8 folds ≥ 3; min fold 15/12).**
-  Consequence for the successor: either the grid is re-anchored INSIDE
-  [1.00, 1.41] (e.g. m = 1.1 keeps 5%/27% firing, m = 1.2 keeps 0%/15% —
-  with ENDOGENEITY caveats: a counterfactual cap changes the realized spend
-  path and re-binds the guard, and the histogram is conditioned on FIRED
-  defers only), or the hypothesis collapses to the binary form (remove
-  guard vs keep at cap) and the grid disappears. FREEZE-1 election;
-  counts-of-decisions are NOT marginal PnL (full-path replay only).
+  **Sample feasibility (matrix row 5):** node-dependent — ∞ node VAL
+  pooled 248 (safe); m∈{1.5,2.0} NOT ESTIMABLE from committed evidence
+  (no artifact holds the spend distribution between cap and m×cap; if it
+  resembles the matched set: per-fold <3 = 30%, VAL <20 = 32%, LEARN
+  ~100% unmet). BEFORE registration: commit the guard SPEND-BAND HISTOGRAM
+  from the exposed journals (lawful counting exercise) so node feasibility
+  is computed; pre-type NOT_RUN_GRID_THIN on LEARN for every node except
+  ∞.
 - Anti-hypothesis (unchanged, plus): ≥20 admitted defers net ≤ 0 pooled; any
   fold's admitted set nets below −pooled gain; admitted set worsens slate
   DD vs always-on; NEW — solo-S026 evidence suggests the admitted re-entries
@@ -206,9 +201,8 @@ profit) — do not re-mine.
   VAL pooled 55.5–68.3 (JPY, feasible) and 42.75–44.25 (EUR, P(<40) =
   24–32% — pre-typed NOT_RUN_THIN branch); LEARN grids expected
   NOT_RUN_GRID_THIN on BOTH instances (P(unmet) 70–100%) → the de-biasing
-  re-learn is expected inoperative; family-level DESCRIPTIVE pooled read
-  (≈99.8 VAL) may accompany — it satisfies no per-symbol floor, rescues no
-  LEARN grid, and is NOT shared-mechanism evidence (declared at FREEZE-1).
+  re-learn is expected inoperative; family-level pooled mechanism read
+  (≈99.8 VAL) is the registered rescue, declared at FREEZE-1.
 - **Economic mechanism:** orders routed into the handover window pay the
   widening crossing exactly when continuation probability decays
   (PDH-break longs after London close; H4 meanrev votes inside the

@@ -1,0 +1,147 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "FUTURES-DEEPRESEARCH-V2-20261003",
+ "cycle_id": "FUTURES-DEEPRESEARCH-V2-20261003",
+ "role": "FX-BACKFILL",
+ "lane": "FX-BACKFILL",
+ "dispatch_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+ "actual_start_sha": "26d96eb4bdd4be85e151055dace3354638498a44",
+ "commit_sha": null,
+ "changed_paths": [
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/backfill_pipeline.py",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/BACKFILL_QUOTES.json",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/BACKFILL_LEDGER.json",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/BACKFILL_MANIFEST.json",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/BACKFILL_REPORT.md",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/qa/AV1B-O1M-6E-BACKFILL2__2020-01-01_2022-01-01.qa.json",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/qa/AV1B-O1M-6J-BACKFILL2__2020-01-01_2022-01-01.qa.json",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/qa/AV1B-O1M-6B-BACKFILL2__2020-01-01_2022-01-01.qa.json",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/qa/AV1B-O1M-6A-BACKFILL2__2020-01-01_2022-01-01.qa.json",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/qa/AV1B-O1M-6E-BACKFILL2__2020-01-01_2022-01-01.qa_bundle.json",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/qa/AV1B-O1M-6J-BACKFILL2__2020-01-01_2022-01-01.qa_bundle.json",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/qa/AV1B-O1M-6B-BACKFILL2__2020-01-01_2022-01-01.qa_bundle.json",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/qa/AV1B-O1M-6A-BACKFILL2__2020-01-01_2022-01-01.qa_bundle.json",
+  "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/COMPLETION_LEDGER.json (APPEND-ONLY: new top-level backfill_chains pointer section; prior bytes preserved exactly, proof in test log)",
+  "research/control/FUTURES-DEEPRESEARCH-V2-20261003/dispatch/handoff_FX-BACKFILL.json"
+ ],
+ "tests": [
+  {
+   "command": "backfill_pipeline.py --quote-only (metadata-only candidate quotes, zero spend)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "7dbb27e865ed198f1dab3a5a45547d69c32b4f3e197c4b4d297645d268664980"
+  },
+  {
+   "command": "backfill_pipeline.py --start 2020-01-01 (paid run under machine-wide heavy lock: 4 chunks quote->gate->submit->download->QA->mirror)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "d51b0130251d26188136b3396cb6f649934de9d79a875713d9febec1ad1b0acf"
+  },
+  {
+   "command": "vendor sha256 verify: vendor-declared sha256 == local re-hash == ledger record, 16/16 files",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "d51b0130251d26188136b3396cb6f649934de9d79a875713d9febec1ad1b0acf"
+  },
+  {
+   "command": "butt/no-gap verify at parquet level: new max ts < 2022-01-01Z AND existing min ts >= 2022-01-01Z for all 4 roots (assert-passed)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "062f817a5396defb85a3d5b39c16f7a89f0680890564916bf07fab3556e0062b"
+  },
+  {
+   "command": "parent-ledger append preservation check: re-serialize without backfill_chains reproduces prior bytes exactly",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "log_digest": "17581b056322fb205df3ddaa62b5508e9af9d0205caee51fe2f1777f0cadf6b8"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "commit_sha null: lane artifacts left uncommitted in the worktree (dispatch instruction: commit_sha null + disclose; nothing committed, nothing pushed)",
+  "Actual invoice reconciliation vs vendor usage page is owner-side (NOT_RUN_DOC_UNCLEAR: no account balance endpoint exposed to the client; same status as predecessor lane)",
+  "iCloud mirror state is COPIED / SYNC_PENDING_UNVERIFIED on every file \u2014 cloud upload is macOS/iCloud's job, never claimed cloud-stored by this lane",
+  "2020-2021 contract identity relies on instrument_id + DBN-prelude mappings (definition-window registry starts 2023-10); raw_symbol is decade-ambiguous (vendor convention, documented in qa_batch)",
+  "Calendar-spread bars ride along in parent-symbol requests (vendor convention); negative prices exist ONLY on spread instruments (6A 5067, 6B 403 bars) and downstream must keep using the documented OUTRIGHT_RE filter"
+ ],
+ "incidents": [],
+ "tree_status": "dirty-by-design: untracked lane artifacts under backfill_20261003/ + dispatch/ (FUTURES-DEEPRESEARCH-V2-20261003 predates this lane); COMPLETION_LEDGER.json modified append-only; no commit made",
+ "workers": {
+  "paid_run": "backfill_pipeline.py --start 2020-01-01, pid 39705, machine-wide heavy lock FUTURES-DEEPRESEARCH-V2-20261003/FX-BACKFILL held 2026-10-02T23:29:34Z -> released 2026-10-03T00:02:57Z on clean exit (4/4 MIRRORED)"
+ },
+ "result_summary": {
+  "mission": "owner: 'tai lui ve cho cac ma tien te them xiu nua' \u2014 FX ohlcv-1m back-history extension",
+  "windows_delivered": {
+   "6E": "2020-01-01..2022-01-01",
+   "6J": "2020-01-01..2022-01-01",
+   "6B": "2020-01-01..2022-01-01",
+   "6A": "2020-01-01..2022-01-01"
+  },
+  "resulting_coverage": "all four FX roots now 2020-01-01..2026-10-01 continuous (vendor holidays excepted)",
+  "additional_spend_usd": 12.343094,
+  "cumulative_delivered_usd": 118.153191,
+  "caps": {
+   "additional_cap_usd": 16.19,
+   "cumulative_cap_usd": 122.0,
+   "owner_ceiling_usd": 125.0
+  },
+  "quote_vs_bill_drift_usd": 0.0,
+  "chunks": "4 submitted, 4 downloaded, 4 QA PASS (record drift 0.0%), 4 MIRRORED; vendor sha256 16/16 MATCH",
+  "records_total": 3380943
+ },
+ "outputs": [
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/BACKFILL_LEDGER.json",
+   "sha256": "d51b0130251d26188136b3396cb6f649934de9d79a875713d9febec1ad1b0acf"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/BACKFILL_MANIFEST.json",
+   "sha256": "d63bd9e0370a5c3dd6f256c4db5a454ae706228cd3c08644d76805836ca155a1"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/BACKFILL_REPORT.md",
+   "sha256": "3b5226072e50ebef8ad6c43446d92873a10ff333c915795cbbfd2f494de9e584"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/BACKFILL_QUOTES.json",
+   "sha256": "7dbb27e865ed198f1dab3a5a45547d69c32b4f3e197c4b4d297645d268664980"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/backfill_pipeline.py",
+   "sha256": "40b2b2c094642c03cfc6154d71b8d7177f6731b50efad1f4322ff87551bf997c"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/qa/AV1B-O1M-6A-BACKFILL2__2020-01-01_2022-01-01.qa.json",
+   "sha256": "37808ce69ed862832ff96229cdcdac112168866d3aba5913c272267b9bcb2203"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/qa/AV1B-O1M-6B-BACKFILL2__2020-01-01_2022-01-01.qa.json",
+   "sha256": "55bc992049dbabdad63f3c73e6a44d0d10eb81565f122207a9c340ba9acca65c"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/qa/AV1B-O1M-6E-BACKFILL2__2020-01-01_2022-01-01.qa.json",
+   "sha256": "8985058162a7e75299adf67a585d99dc5c62e991ad8433b883d79009b316baae"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/backfill_20261003/qa/AV1B-O1M-6J-BACKFILL2__2020-01-01_2022-01-01.qa.json",
+   "sha256": "2157ba86690def70c8fb02b83760b2c6be2722234b0b3535ee14e4111c32035c"
+  },
+  {
+   "path": "/Users/hoangminhlong/my-quantitative-data/futures-databento-av1trim/parquet/AV1B-O1M-6E-BACKFILL2/AV1B-O1M-6E-BACKFILL2__2020-01-01_2022-01-01.parquet",
+   "sha256": "062f817a5396defb85a3d5b39c16f7a89f0680890564916bf07fab3556e0062b"
+  },
+  {
+   "path": "/Users/hoangminhlong/my-quantitative-data/futures-databento-av1trim/parquet/AV1B-O1M-6J-BACKFILL2/AV1B-O1M-6J-BACKFILL2__2020-01-01_2022-01-01.parquet",
+   "sha256": "1a2a0e6b457b046f1414d6112662ea74e4f439004db609a94354f079b77ec8eb"
+  },
+  {
+   "path": "/Users/hoangminhlong/my-quantitative-data/futures-databento-av1trim/parquet/AV1B-O1M-6B-BACKFILL2/AV1B-O1M-6B-BACKFILL2__2020-01-01_2022-01-01.parquet",
+   "sha256": "c354cfb704c63f7c5a97a0be8c87118b2bc1ccd274d86156edb6817679944c59"
+  },
+  {
+   "path": "/Users/hoangminhlong/my-quantitative-data/futures-databento-av1trim/parquet/AV1B-O1M-6A-BACKFILL2/AV1B-O1M-6A-BACKFILL2__2020-01-01_2022-01-01.parquet",
+   "sha256": "24bda59da784b11340c3af991ef7a389e0e13a82ebbafcb1443080408a39d121"
+  }
+ ],
+ "recommended_next_action": "DEEP-6E/6J/6B/6A lanes can now use full 2020-01-01..2026-10-01 ohlcv-1m range (av1-trim parquet, OUTRIGHT_RE filter for outright bars); DATA-BACKUP lane should include the 4 new AV1B chunk dirs in its av1-trim mirror completeness check (76/76)."
+}

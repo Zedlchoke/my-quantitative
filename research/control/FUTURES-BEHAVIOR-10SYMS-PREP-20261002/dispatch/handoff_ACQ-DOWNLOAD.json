@@ -1,0 +1,95 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "written_utc": "2026-10-02T22:40:03+00:00",
+ "task_id": "FUTURES-BEHAVIOR-10SYMS-PREP-20261002",
+ "cycle_id": "UNREGISTERED_PREP",
+ "role": "lane",
+ "lane": "ACQ-DOWNLOAD",
+ "dispatch_sha": "2b4ab30df8277802a097f1453e0b2f26f75c21d3",
+ "actual_start_sha": "2b4ab30df8277802a097f1453e0b2f26f75c21d3",
+ "commit_sha": null,
+ "commit_sha_disclosure": "lane does not commit; worktree left dirty for lead review",
+ "status": "COMPLETE",
+ "summary": "Owner rescope package FULLY delivered ($105.81 quote): 72/72 active chunks downloaded + QA-PASS + iCloud-mirrored (20 chunks dropped by owner rescope at $0 spend); committed $105.81 == delivered == package quote (drift $0.0000) vs hard stop $118 / ceiling $125; 106,053,893 records; raw 1.75 GB zst + parquet 0.94 GB; max QA record drift 0.0001%; states {\"MIRRORED\": 72, \"DROPPED_BY_OWNER_RESCOPE\": 20}",
+ "outputs": [
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/AV1_TRIM_MANIFEST.json",
+   "sha256": "27ba2ac299e6155180b0e16274badf550223317d50068164c5764bd1926944f2"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/trim_quotes.json",
+   "sha256": "d1ce621695773b63c907b4a9c87c808a5927a460cbea8075a2edc72fc28657f2"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/rescope_quotes.json",
+   "sha256": "45052dd3420e866badb0fdda82ee5fc9fb12b89be1f61198cb42e8118e3691eb"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/RESCOPE_MANIFEST.json",
+   "sha256": "784c2f2821259fa9a7f115d92ab21f55ebdbf7aa72a09bc5cde1f2edde74d59c"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/COMPLETION_LEDGER.json",
+   "sha256": "f981e331f5c8c69861de81e22f879c22977ca40e858a9e538244a11271584906"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/CONTRACT_REGISTRY.json",
+   "sha256": "1c0c47e3f009917b4e2249b52e368b70601c35f056099694a2c473334cad0627"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/DOWNLOAD_REPORT.md",
+   "sha256": "09f7edbe884aeb8f47346148b47a4e5f78f75a6e8c32d4f76478d6c824d3f05d"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/ACQ_DOWNLOAD_REPORT_VI.md",
+   "sha256": "5360c203e791877a7f08c9bb8268953741d5691ff653adee476a871d3fad966d"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/IBKR_OVERLAP_VALIDATION.json",
+   "sha256": "644658951bf3687897c7547d50bd6f656cb5303f24073c5a452b5ebcfd4e3f80"
+  },
+  {
+   "path": "research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/IBKR_OVERLAP_VALIDATION.json",
+   "sha256": "644658951bf3687897c7547d50bd6f656cb5303f24073c5a452b5ebcfd4e3f80"
+  }
+ ],
+ "findings": [
+  "Rescope arithmetic: fixed core (def+stat ALL10 + NQ/ES 36m + FX short windows) $31.39 + NQ delta 2010-06-06..2023-10-01 $21.03 + ES delta $25.60 + FX backfills from 2022-01-01 (equal-dollar $9.24/root; deepest fit) $27.79 = $105.81 total; dropped GC/SI/CL/NG ohlcv avoided $81.65 at zero spend.",
+  "Batch API verified from official client v0.87.0: submit_job -> queued/processing/done/expired; per-file download with vendor sha256 (verified 1:1 on every file); get_cost docstring prices 'historical streaming or batched files' \u2014 same per-GB path; per-chunk quotes summed EXACTLY to package quote ($105.810097 committed == delivered; $0.0000 drift).",
+  "MEASURED vendor conventions (documented, not defects): (1) definitions re-broadcast at each session open + spread legs as leg_index records (0 true dups/conflicts); (2) exchange re-lists spread/strip composites (CLF4-BZF4, NG:SA strips) under new instrument_ids \u2014 registry tracks strict outright pattern ^(NQ|ES|CL|NG|GC|SI|6E|6J|6B|6A)[A-Z][0-9]$ only; (3) GLBX one-digit-year raw symbols wrap per decade (registry NQZ0=Dec2030 vs 2010-era NQZ0 iid 3088) \u2014 instrument_id is true identity; (4) parent ohlcv requests include calendar-spread bars (price DIFFERENCES; 21,430/728,230 in NQ 2010-12 chunk) \u2014 filter by outright pattern downstream; (5) stat ts_ref uses u64 UNDEF sentinel for quote-side types (stored NULL in parquet); (6) one definition window (2026-07..10) has 866/1.06M out-of-order ts_recv records (backward 68-139s, clustered at one capture event; registry applies ts-sorted; thresholded finding); (7) one byte-identical stat re-emission in 3.4M (stat_type 2, feed redundancy).",
+  "Defect found and fixed in lane tooling: an underscore-grouping typo in the i64-max constant nulled EVERY ts_ref in statistics parquets; fixed to (1<<63)-1 and all 18 statistics parquets regenerated + re-mirrored from immutable raw (qa_retries recorded in ledger).",
+  "IBKR overlap NQ (2025-08..2026-10): identity 10/10 (100% PASS); settlement final-vs-IBKR-close n=1631, median|diff|=0.0 tick, 100.0% within 1 tick (PASS); M1 grid 100%, 4806 overlapping bars median|diff|=0.0 tick (PASS); volume median ratio 0.9674 (PASS); literal trade-close-vs-IBKR-close FAILS (median 17.5 ticks on liquid days) with MEASURED cause: IBKR daily close IS the official settlement (settlement check matches 100% at 0 ticks), not a last trade \u2014 trade-vs-settlement spread is market structure, not a data defect",
+  "IBKR overlap CL: NOT_RUN_RESCOPE_DROPPED \u2014 CL ohlcv never downloaded (owner rescope before any CL chunk spend)"
+ ],
+ "defects": [],
+ "open_questions": [
+  "iCloud upload completion is macOS's job (SYNC_PENDING_UNVERIFIED everywhere); owner may verify in Finder/iCloud settings",
+  "actual invoice vs get_cost reconciliation is owner-side (no account endpoint; NOT_RUN_DOC_UNCLEAR)"
+ ],
+ "known_limitations": [
+  "FX ohlcv depth trimmed below every FX hypothesis floor (arithmetic forced by the $115 target); FX data serves reference + IBKR-overlap validation only",
+  "statistics/definition windows are 36 months (2023-10-01 start) matching A-v1; contracts activated before 2023-10-01 resolve via file symbol mappings (partial identity, exchange=UNKNOWN_VIA_MAPPING) if their A records predate the window",
+  "scratch decompressed copies are lane-owned temps deleted after each batch QA; raw .dbn.zst + parquet kept forever"
+ ],
+ "incidents": [
+  "2026-10-02: transient ConnectTimeout on batch.list_files killed the first full run after chunk-2 download; resumed from ledger with zero re-billing (same job id reused)",
+  "2026-10-02: qa_batch import regression (missing sys) killed one relaunch instantly; fixed; no money impact"
+ ],
+ "tree_status": [
+  "?? research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/acquisition_download/",
+  "?? research/control/FUTURES-BEHAVIOR-10SYMS-PREP-20261002/dispatch/handoff_ACQ-DOWNLOAD.json"
+ ],
+ "workers": 0,
+ "budget": {
+  "owner_ceiling_usd": 125.0,
+  "lane_hard_stop_usd": 118.0,
+  "initial_trim_manifest_quote_usd": 113.046032,
+  "rescope_package_quote_usd": 105.810096714644,
+  "committed_usd": 105.810097,
+  "delivered_usd": 105.810097,
+  "dropped_lines_avoided_usd": 81.654771,
+  "dropped_lines_actual_spend_usd": 0.0
+ },
+ "authority_claims": [],
+ "recommended_next_action": "ALL_CHUNKS_DONE"
+}

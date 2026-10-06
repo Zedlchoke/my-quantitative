@@ -1,0 +1,63 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "D5-ESSCHEMA",
+  "cycle_id": "FUTURES-DATACONTRACT-QUAL-V1",
+  "role": "schema-eval-lane",
+  "lane": "D5-ESSCHEMA",
+  "dispatch_sha": "73abf15caf76989a42c811630438b8673eb33f8f",
+  "actual_start_sha": "73abf15caf76989a42c811630438b8673eb33f8f",
+  "run_date": "2026-10-03",
+  "commit_sha": "",
+  "changed_paths": [
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d5_esschema/es_schema_eval.py",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d5_esschema/es_schema_eval.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d5_esschema/es_schema_eval.md",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_D5-ESSCHEMA.json"
+  ],
+  "tests": [
+    {"id": 1, "name": "Vendor ohlcv-1m schema: rtype=33 const, instrument_id u32, ts_event int64 ns, OHLC int64 fixed-point 1e-9, volume u32; NO publication fields (publisher_id/sequence/ts_init absent)", "verdict": "FACT"},
+    {"id": 2, "name": "Tick grid: 0 off-grid OHLC rows on ES outrights (240,629 W1 + 238,322 W2 rows); calendar-spread instruments mixed in (79-84% off 0.25 grid, 0 off 0.05 grid) -> filter raw_symbol containing '-'", "verdict": "FACT"},
+    {"id": 3, "name": "instrument_id stability: 66 ohlcv symbols 2023-10..2026-10, zero symbols with >1 id, all ids resolve in definition map; definitions tick=250000000 (0.25), uom=50000000000 ($50/pt)", "verdict": "FACT"},
+    {"id": 4, "name": "Bar timestamp convention: ts_event = interval START (zero bars 16:00-16:59 CT halt; reopen trades in 17:00-stamped bar); 16:00 CT last trade = 15:59-stamped bar close", "verdict": "FACT"},
+    {"id": 5, "name": "Statistics PRESENT: stat_type 3 SETTLEMENT_PRICE (enum via owned databento_dbn pkg); prelim ~15:00 CT, final ~16:38-16:39 CT; CLOSE_PRICE (11) zero ES rows", "verdict": "FACT"},
+    {"id": 6, "name": "Close conventions n=173 front sessions (2 windows): vendor last-trade vs IBKR daily close med 18.0 ticks; 14:59-bar (ends 15:00 CT) med 4.0-5.0 ticks; vendor final settlement vs IBKR daily close EXACT 0 ticks in 96/96 covered sessions", "verdict": "FACT"},
+    {"id": 7, "name": "IBKR daily ES close is IDENTIFIED as the CME final settlement mark (15:00-CT-anchored calculated mark, med 5 ticks from final pre-15:00 trade), not a 16:00 CT last trade", "verdict": "OBSERVED"},
+    {"id": 8, "name": "Volume semantics: vendor sum(1m trade vol)/IBKR daily vol med 1.189 (p10 1.124, p90 1.258), stable across seasons; exact reconciliation NOT_RUN (no IBKR volume methodology owned)", "verdict": "OBSERVED"},
+    {"id": 9, "name": "S6 spread proxy reproduced EXACTLY: IBKR ASK-close minus BID-close, ESZ6, 2026-09-03..2026-10-01, median 1.0 tick = $12.50, p90 $50.00, crossed 0 == S6_FRONT_SPREADS ES", "verdict": "FACT"},
+    {"id": 10, "name": "Vendor 1m analogue (same 20 sessions, 23,904 transitions): median |dclose| 2.0 ticks (12.6% flat; RTH median 4.0); BID/ASK proxy NOT mirrorable (no BBO owned) - stated, not faked", "verdict": "OBSERVED"},
+    {"id": 11, "name": "Execution-realism / fill / queue / capacity claims from any close proxy: NOT_RUN by design; everything labeled MODELED COST input quality with overstatement caveat", "verdict": "NOT_RUN"}
+  ],
+  "summary": {
+    "mission": "read-only eval of owned ES vendor schema/quotes: schema doc, close conventions, spread-proxy recompute, honest capability statement",
+    "tests_total": 11,
+    "fact": 6,
+    "observed": 3,
+    "not_run": 2,
+    "headline": [
+      "Vendor ohlcv-1m ES is tick-clean on outrights (0/478,951 off-grid) and id-stable; spread combos on 0.05 grid are mixed in and must be filtered.",
+      "IBKR ES daily close == CME final settlement mark, exactly (96/96); it is a 15:00-CT-anchored administrative mark ~18 ticks (~$225/ct) from the 16:00 CT last trade - earlier 15/4-tick finding corroborated and root-caused.",
+      "S6_FRONT_SPREADS ES proxy (1 tick / $12.50 / p90 $50) reproduced exactly from IBKR raw; vendor trade-based analogue 2-4 ticks overstates spread-only cost; both bracket a ~1-tick effective-spread regime for tiering ONLY."
+    ],
+    "runtime": "~1 min script, sample windows 2025-09..2026-09, no sweep of 16y"
+  },
+  "authority_claims": [],
+  "known_limitations": [
+    "Front selection = highest-1m-volume outright per session (schema-lane approximation; T-5 roll rule not applied - immaterial for schema/convention questions).",
+    "Settlement join covers 96/173 sessions because only 4 of 5 statistics chunks were loaded (chunk-coverage artifact, not data absence); every covered session matched IBKR exactly.",
+    "stat_type enum verified from the vendor's databento_dbn Python package in the repo venv, not from a Databento doc page (docs page JS-rendered).",
+    "AV1R/AV1T 2023-10-01 boundary row-level duplicate check NOT_RUN (bulk coverage is another lane's scope).",
+    "Point-in-time 2026-10-03; owned data roots are mutable. No new purchases, no BBO, no commits."
+  ],
+  "incidents": [
+    "Initial script run had two bugs (IBKR filename template missing conId; str/date index mismatch in vendor-proxy join and front join) - fixed in es_schema_eval.py, final run exit 0.",
+    "WebFetch of Databento statistics docs failed (JS-only page); enum resolved offline via installed databento_dbn package instead."
+  ],
+  "tree_status": "untracked research/control/FUTURES-DATACONTRACT-QUAL-V1/ additions under analysis/d5_esschema/ + this handoff; no tracked files modified; no commits made (read-only lane)",
+  "workers": 0,
+  "outputs": [
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d5_esschema/es_schema_eval.md",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d5_esschema/es_schema_eval.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d5_esschema/es_schema_eval.py",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_D5-ESSCHEMA.json"
+  ]
+}

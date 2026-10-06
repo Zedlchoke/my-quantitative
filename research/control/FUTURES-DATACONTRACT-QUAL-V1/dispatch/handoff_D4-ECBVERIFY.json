@@ -1,0 +1,59 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "D4-ECBVERIFY",
+  "cycle_id": "FUTURES-DATACONTRACT-QUAL-V1",
+  "role": "ecb-verify-lane",
+  "dispatch_sha": "73abf15caf76989a42c811630438b8673eb33f8f",
+  "actual_start_sha": "73abf15caf76989a42c811630438b8673eb33f8f",
+  "commit_sha": "",
+  "commit_sha_disclosure": "No commit made: read-only verification lane, no commits authorized. Worktree prep/futures-behavior-10syms-20261002 HEAD verified 73abf15caf76989a42c811630438b8673eb33f8f before and after. Only writes: analysis/d4_ecb/** (2 new files) and this handoff. No data, ledger, registry or sibling-lane file touched.",
+  "changed_paths": [
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d4_ecb/ecb_dates_verification.json",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d4_ecb/ECB_VERIFY_REPORT.md",
+    "research/control/FUTURES-DATACONTRACT-QUAL-V1/dispatch/handoff_D4-ECBVERIFY.json"
+  ],
+  "tests": [
+    {
+      "command": "enumerate canonical hashed press-release URLs for all 55 dates via ECB site search backend (api.addsearch.com, public site key from slow.min.js, single-day dateFrom/dateTo windows, phrase 'Monetary policy decisions'; PEPP title variant for 2020-03-18), paced ~2.0-2.5 s",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "54/55 enumerated with standard phrase + 1 (2020-03-18, ecb.pr200318_1~3949d6f266, pr-slug PEPP emergency announcement) via title-variant query = 55/55 canonical URLs with hash segments resolved"
+    },
+    {
+      "command": "direct-fetch each of the 55 canonical URLs (plain HTTP GET, -L, paced ~2.5 s, max 1 fetch + 1 enumeration query per date)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "55/55 HTTP 200; 54 titles exactly 'Monetary policy decisions'; 2020-03-18 title 'ECB announces EUR 750 billion Pandemic Emergency Purchase Programme (PEPP)' (title variant disclosed); long-form date string present in page content for 55/55 (e.g. '23 January 2020')"
+    },
+    {
+      "command": "ECB SDW Data Portal cross-check: fetch FM/B.U2.EUR.4F.KR.MRR_FR.LEV csv (data-api.ecb.europa.eu, startPeriod=2019) and map rate-change effective dates minus 6 days to assembled decision dates",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "19 MRO rate changes 2020+; effective-minus-6 maps EXACTLY into the 55-date set 19/19 (e.g. effective 2023-06-21 -> 2023-06-15; effective 2026-09-16 -> 2026-09-10); independent corroboration of 19 dates"
+    },
+    {
+      "command": "blocked-route probes: hash-less URL variant, sitemap.xml + robots.txt, mopo index raw HTML, web_reader render, Wayback CDX",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "hash-less URL 404 (hash required, confirms dossier); sitemap.xml 200 but 478 index-level URLs only; robots.txt allows target paths; mopo index raw HTML 200 + correct title but ZERO ecb.mp links (JS-rendered); web_reader renders 2024-2026 listing but truncates ~2024-01 and strips hrefs; Wayback CDX 503 'Temporarily Offline' (same class as 2026-10-02 lane attempt)"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "The dossier's '10 machine-verified' dates were a count without preserved identities (no on-disk artifact lists them); this lane therefore verified ALL 55 dates, which covers any identity of the 10 and all 45 unverified; the +45 delta is stated against the 10/55 dossier count.",
+    "2020-03-18 is verified as the emergency GC meeting's monetary-policy announcement under a DIFFERENT title (PEPP press release, pr slug prefix); treated as VERIFIED with title variant disclosed, not as a standard 'Monetary policy decisions' page.",
+    "Verification is of DATES + existence/title/time-of-release content of the canonical press releases at live ecb.europa.eu on 2026-10-03; pages could be reorganized later (URLs with hash segments recorded per date for re-fetch).",
+    "14:45 CET press-conference time remains NOT re-verifiable from the mopo index page (page silent); 14:15 CET release FACT corroborated verbatim on the rendered index page.",
+    "addsearch is the ECB website's own search backend with a public site key (same call every browser makes); if policy later deems third-party search backends out of bounds, the SDW cross-check (19/19) and the 5 A7 direct fetches remain as independent evidence."
+  ],
+  "incidents": [],
+  "tree_status": "Worktree prep @ 73abf15c unchanged; only new untracked files under FUTURES-DATACONTRACT-QUAL-V1/analysis/d4_ecb/ plus this handoff; /tmp scratch used for probe artifacts; nothing else written.",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d4_ecb/ecb_dates_verification.json", "sha256": "0d4ac70c05504142fae8ff1703044e00bd0c015b6b1dc2a17f72db99cc552b66"},
+    {"path": "research/control/FUTURES-DATACONTRACT-QUAL-V1/analysis/d4_ecb/ECB_VERIFY_REPORT.md", "sha256": "46b622007ffe471e27a7b4e32d649346a8c943d6d4a1ce54d785775d83dac97b"}
+  ],
+  "recommended_next_action": "Fold the 55/55 per-date verification into the ECB event table's PIT provenance for the future PB2 court (per-date canonical URLs + HTTP 200 + title + date-string evidence now on disk). PB2 status unchanged: HOLD. No gate opened by this lane.",
+  "summary": "ECB GC date verification COMPLETE: 55/55 dates machine-verified by direct canonical press-release URL fetch (HTTP 200 + title + in-content date string), up from 10/55 in the dossier (identities of the original 10 were never preserved on disk; this lane verified all 55, delta +45). Enumeration solved via the ECB site's own search backend (single-day windows resolve the unguessable URL hash segments); 2020-03-18 is a disclosed title variant (PEPP emergency announcement, pr slug). Independent SDW MRO cross-check 19/19 exact (effective minus 6 days). Failure taxonomy: Wayback CDX offline-503, hash-less URL 404-by-design, sitemap index-only, archive listings JS-rendered (bypassed via search API). PB2 remains HOLD; this only upgrades ECB event-table PIT-quality.",
+  "generated_utc": "2026-10-03T12:58:00+00:00"
+}
