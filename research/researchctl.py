@@ -217,7 +217,8 @@ def cmd_cycle_update(args) -> int:
     """
     if args.head is None and args.lifecycle is None and args.phase is None \
             and args.workers is None and args.active_heavy is None \
-            and getattr(args, "worktree", None) is None:
+            and getattr(args, "worktree", None) is None \
+            and getattr(args, "budget_used", None) is None:
         print("refused: nothing to update (pass --head and/or --lifecycle)", file=sys.stderr)
         return 2
     reg = _load_registry()
@@ -226,6 +227,7 @@ def cmd_cycle_update(args) -> int:
         REGISTRY_PATH, reg, prev_sha=prev_sha, cycle_id=args.cycle,
         head=args.head, lifecycle=args.lifecycle, reason=args.reason,
         phase=args.phase, worktree=args.worktree,
+        budget_used=args.budget_used,
         workers=None if args.workers is None else int(args.workers),
         active_heavy=None if args.active_heavy is None
         else args.active_heavy == "true",
@@ -366,6 +368,8 @@ def main(argv=None) -> int:
     c.add_argument("--worktree", default=None,
                    help="integration worktree absolute path (binds the structured "
                         "integration_worktree field; required for head measurement)")
+    c.add_argument("--budget-used", type=int, default=None, dest="budget_used",
+                   help="trial budget used counter (0<=used<=max; journaled like all fields)")
     c.add_argument("--workers", default=None, help="live worker count (non-negative int)")
     c.add_argument("--active-heavy", default=None, choices=["true", "false"],
                    help="whether the cycle currently owns the machine-wide heavy slot")

@@ -415,6 +415,7 @@ def update_cycle(path: os.PathLike | str, registry: dict, *, prev_sha: Optional[
                  cycle_id: str, head: Optional[str] = None, lifecycle: Optional[str] = None,
                  phase: Optional[str] = None, workers: Optional[int] = None,
                  active_heavy: Optional[bool] = None, worktree: Optional[str] = None,
+                 budget_used: Optional[int] = None,
                  reason: str = "update") -> tuple:
     """Update a cycle's measured HEAD and/or lifecycle atomically.
 
@@ -426,12 +427,15 @@ def update_cycle(path: os.PathLike | str, registry: dict, *, prev_sha: Optional[
     """
     rec = resolve(registry, cycle_id)
     if head is None and lifecycle is None and phase is None \
-            and workers is None and active_heavy is None and worktree is None:
+            and workers is None and active_heavy is None and worktree is None \
+            and budget_used is None:
         raise ValueError("update: nothing to do (pass --head and/or --lifecycle)")
     if head is not None and not _HEX40.match(head):
         raise ValueError(f"update: head must be a 40-hex sha, got {head!r}")
     if workers is not None and (not isinstance(workers, int) or workers < 0):
         raise ValueError(f"update: workers must be a non-negative int, got {workers!r}")
+    if budget_used is not None and (not isinstance(budget_used, int) or budget_used < 0):
+        raise ValueError(f"update: budget_used must be a non-negative int, got {budget_used!r}")
     if worktree:  # non-empty bind must be a real absolute directory; "" stays legal (planned placeholder)
         if not os.path.isabs(worktree) or not os.path.isdir(worktree):
             raise ValueError(
@@ -457,6 +461,13 @@ def update_cycle(path: os.PathLike | str, registry: dict, *, prev_sha: Optional[
         changes.append({"cycle_id": cycle_id, "field": "integration_worktree",
                         "from": rec.get("integration_worktree", ""), "to": worktree})
         rec["integration_worktree"] = worktree
+    if budget_used is not None and budget_used != rec["budget"]["used"]:
+        if budget_used > rec["budget"]["max"]:
+            raise ValueError(
+                f"update: budget_used {budget_used} exceeds budget max {rec['budget']['max']}")
+        changes.append({"cycle_id": cycle_id, "field": "budget.used",
+                        "from": rec["budget"]["used"], "to": budget_used})
+        rec["budget"]["used"] = budget_used
     if lifecycle is not None and lifecycle != rec["lifecycle"]:
         prev_lifecycle = rec["lifecycle"]
         transition(registry, cycle_id, lifecycle, reason=reason)
