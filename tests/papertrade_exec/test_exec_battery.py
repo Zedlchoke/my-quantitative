@@ -912,3 +912,312 @@ def test_nba_gate_missing_token_refusal(env, capcli):
     code, out = capcli(env, "run-day", "--date", "2026-10-21")
     assert code == EXIT_BLOCKED_NO_GO
     assert not (env["data"] / "ledger").exists()
+
+
+# ------------------------------------------- SOCCER real path (events wiring) --
+
+SOC_EVENT_DAY = "2026-11-12"   # REAL UNL fixture day: England vs Croatia 19:45Z
+
+
+def _events_payload(events: list[dict]) -> bytes:
+    return json.dumps(events).encode()
+
+
+def _fake_odds_env(events: list[dict]):
+    """Offline fake client + the REAL pinned exception classes (no network,
+    no key). Records every call like the core client records quota."""
+    from research.papertrade_exec import load_pinned_package
+    core = load_pinned_package("spt_core", "paper_core")
+    odds_mod = core.odds_client
+    calls = []
+
+    class FakeClient:
+        fingerprint = "sandbox-fake-00"
+
+        def get_events(self, sport_key: str):
+            calls.append(("events", sport_key))
+            return _events_payload(events), {"x-requests-remaining": "493"}
+
+        def get_odds(self, sport_key: str, **kw):
+            calls.append(("odds", sport_key))
+            raise AssertionError("get_odds not expected in this test")
+
+    return odds_mod, FakeClient(), calls
+
+
+def test_soccer_events_schema_hardening():
+    good = {"id": "ev1", "sport_key": "soccer_uefa_nations_league",
+            "sport_title": "UEFA Nations League",
+            "commence_time": "2026-11-12T19:45:00Z",
+            "home_team": "England", "away_team": "Croatia"}
+    # happy path (real observed schema, extra keys tolerated)
+    fx = A.soccer_fixtures_from_events(_events_payload([good]), "k",
+                                       snapshot_sha="a" * 64)
+    assert fx[0].match_id == "ev1" and fx[0].home == "England"
+    assert fx[0].kickoff_utc == "2026-11-12T19:45:00Z"
+    assert "@aaaaaaaaaaaa#" in fx[0].source_ref
+    # non-list payload
+    with pytest.raises(BlockError) as ei:
+        A.soccer_fixtures_from_events(b'{"events": []}', "k")
+    assert ei.value.code == "BLOCKED_FIXTURES_SCHEMA"
+    # required field missing / empty
+    for mutated in ({**good, "away_team": ""}, {k: v for k, v in good.items()
+                                                if k != "commence_time"},
+                    {**good, "id": 42}):
+        with pytest.raises(BlockError) as ei:
+            A.soccer_fixtures_from_events(_events_payload([mutated]), "k")
+        assert ei.value.code == "BLOCKED_FIXTURES_SCHEMA"
+    # unparseable commence_time
+    with pytest.raises(BlockError) as ei:
+        A.soccer_fixtures_from_events(
+            _events_payload([{**good, "commence_time": "not-a-time"}]), "k")
+    assert ei.value.code == "BLOCKED_FIXTURES_SCHEMA"
+    # exact duplicate collapses; conflicting duplicate refuses
+    fx = A.soccer_fixtures_from_events(_events_payload([good, dict(good)]), "k")
+    assert len(fx) == 1
+    with pytest.raises(BlockError) as ei:
+        A.soccer_fixtures_from_events(
+            _events_payload([good, {**good, "home_team": "Scotland"}]), "k")
+    assert ei.value.code == "BLOCKED_FIXTURES_DUPLICATE"
+    # two different ids in one (commence_time, team-set) slot -> ambiguous
+    with pytest.raises(BlockError) as ei:
+        A.soccer_fixtures_from_events(
+            _events_payload([good, {**good, "id": "ev2"}]), "k")
+    assert ei.value.code == "BLOCKED_FIXTURES_DUPLICATE"
+
+
+def test_soccer_real_fixtures_fake_client_day_filter_snapshot(env):
+    odds_mod, client, calls = _fake_odds_env([
+        {"id": "engcro", "home_team": "England", "away_team": "Croatia",
+         "commence_time": "2026-11-12T19:45:00Z"},
+        {"id": "otherday", "home_team": "Italy", "away_team": "Spain",
+         "commence_time": "2026-11-13T19:45:00Z"}])
+    args = argparse.Namespace(data_root=str(env["data"]))
+    fx = execute.real_soccer_fixtures(args, SOC_EVENT_DAY,
+                                      client=client, odds_mod=odds_mod)
+    assert calls == [("events", "soccer_uefa_nations_league")]
+    assert [f.match_id for f in fx] == ["engcro"], "day filter is kickoff-UTC"
+    snap = env["data"] / "data" / "events_soccer_uefa_nations_league.json"
+    meta = json.loads((env["data"] / "data" /
+                       "events_soccer_uefa_nations_league.meta.json").read_text())
+    import hashlib as _h
+    assert meta["sha256"] == _h.sha256(snap.read_bytes()).hexdigest()
+    assert snap.read_bytes() == _events_payload([
+        {"id": "engcro", "home_team": "England", "away_team": "Croatia",
+         "commence_time": "2026-11-12T19:45:00Z"},
+        {"id": "otherday", "home_team": "Italy", "away_team": "Spain",
+         "commence_time": "2026-11-13T19:45:00Z"}])
+    assert fx[0].source_ref.startswith(
+        "the_odds_api/events/soccer_uefa_nations_league@"
+        + meta["sha256"][:12] + "#engcro")
+
+
+def test_soccer_real_fixtures_network_failure_loud(env):
+    odds_mod, _c, _calls = _fake_odds_env([])
+
+    class Boom:
+        fingerprint = "x"
+
+        def get_events(self, key):
+            raise OSError("network down")
+
+    with pytest.raises(BlockError) as ei:
+        execute.real_soccer_fixtures(argparse.Namespace(data_root=str(env["data"])),
+                                     SOC_EVENT_DAY, client=Boom(),
+                                     odds_mod=odds_mod)
+    assert ei.value.code == "BLOCKED_ODDS_API"
+
+
+def test_soccer_extension_crosswalk_laws(env, monkeypatch):
+    ext = REPO / "research" / "papertrade_exec" / \
+        "PROVIDER_NAME_CROSSWALK_EXTENSION.csv"
+    replay_path = A.soccer_engine_available(SOCCER_ROOT / "integration")
+    if replay_path is None:      # resolve via pinned roots like production
+        replay_path = A.soccer_engine_available(execute.PINNED_ROOTS["soccer_root"])
+    # 1) the committed extension verifies and extends the pinned seed
+    mod, mapping = A.soccer_extension_crosswalk(replay_path, ext)
+    assert len(mapping) >= 8 + 2, "seed 8 + at least the 2 evidenced pairs"
+    assert "England" in mapping and mapping["England"] == "England"
+    assert "Croatia" in mapping and mapping["Croatia"] == "Croatia"
+    # 2) tampered extension bytes WITHOUT a deliberate re-pin -> the sha law
+    #    refuses (the committed pin points at the true extension bytes)
+    tampered = env["data"] / "tampered_ext.csv"
+    tampered.write_bytes(ext.read_bytes() + b"Evil,Evil,x,y,z\n")
+    with pytest.raises(BlockError) as ei:
+        A.soccer_extension_crosswalk(replay_path, tampered)
+    assert ei.value.code == "BLOCKED_PIN_DRIFT"
+    # 3) bytes that do NOT extend the pinned seed verbatim -> refused even
+    #    when their own sha is what the pin says (frozen anchor is prefix law;
+    #    a deliberate re-pin cannot launder a seed rewrite)
+    shrunk = env["data"] / "shrunk_ext.csv"
+    shrunk.write_bytes(b"provider_name,corpus_name,evidence,v,s\n"
+                       b"England,England,x,y,EXTENDED\n")
+    import hashlib as _h
+    monkeypatch.setattr(A, "load_pins",
+                        lambda: _pins_with_ext_sha(_h.sha256(
+                            shrunk.read_bytes()).hexdigest()))
+    with pytest.raises(BlockError) as ei:
+        A.soccer_extension_crosswalk(replay_path, shrunk)
+    assert ei.value.code == "BLOCKED_PIN_DRIFT" and "prefix" in ei.value.detail
+    # 4) the split never lets an unresolved name reach the engine
+    fxs = [A.Fixture("SOCCER", "m1", "England", "Croatia",
+                     "2026-11-12T19:45:00Z", "k", "2026-11-12", "s"),
+           A.Fixture("SOCCER", "m2", "Atlantis", "Croatia",
+                     "2026-11-12T20:00:00Z", "k", "2026-11-12", "s")]
+    resolvable, missed = A.soccer_crosswalk_split(mod, mapping, fxs)
+    assert [f.match_id for f in resolvable] == ["m1"]
+    assert len(missed) == 1 and missed[0][0].match_id == "m2" \
+        and "Atlantis" in missed[0][1]
+
+
+def _pins_with_ext_sha(sha: str) -> dict:
+    import research.papertrade_exec as pkg
+    pins = json.loads((REPO / "research" / "papertrade_exec" / "pins.json")
+                      .read_text())
+    pins["data"]["soccer_crosswalk_extension_csv"]["sha256"] = sha
+    return pins
+
+
+def test_soccer_forecast_real_engine_in_memory_only(env):
+    """Real-mode compute_forecasts for SOCCER: pinned engine + extension
+    crosswalk over the REAL fixture identity, IN MEMORY (nothing persisted;
+    sandbox runs never enter this branch)."""
+    fx = A.Fixture("SOCCER", "engcro-probe", "England", "Croatia",
+                   "2026-11-12T19:45:00Z", "soccer_uefa_nations_league",
+                   SOC_EVENT_DAY, "the_odds_api/events/x#engcro-probe")
+    args = argparse.Namespace(sandbox=False, to_date=None,
+                              paper_core_root=None, wnba26_root=None,
+                              nba_harness_root=None, nba26_root=None,
+                              soccer_root=None)
+    drafts, wiring = execute.compute_forecasts(args, "SOCCER", [fx])
+    assert wiring["entry_status"] == "WIRED_ENGINE_READY"
+    assert wiring["engine_mode"] == "ENGINE" and wiring["crosswalk_miss"] == []
+    d = drafts[0]
+    assert set(d["p"]) == {"HOME", "DRAW", "AWAY"}
+    assert abs(sum(d["p"].values()) - 1.0) < 1e-9
+    assert d["mode"] == "ENGINE"
+    drafts2, _ = execute.compute_forecasts(args, "SOCCER", [fx])
+    assert drafts2[0]["p"] == d["p"], "engine path deterministic"
+    # unresolved provider name -> journaled NOT_RUN draft absent, miss recorded
+    fx_bad = A.Fixture("SOCCER", "atl-probe", "Atlantis", "Croatia",
+                       "2026-11-12T20:00:00Z", "soccer_uefa_nations_league",
+                       SOC_EVENT_DAY, "the_odds_api/events/x#atl-probe")
+    drafts3, wiring3 = execute.compute_forecasts(args, "SOCCER", [fx_bad])
+    assert drafts3 == [] and len(wiring3["crosswalk_miss"]) == 1
+    m = wiring3["crosswalk_miss"][0]
+    assert m["match_id"] == "atl-probe" and "Atlantis" in m["reason"]
+
+
+def test_crosswalk_miss_decision_shape_and_terminal(env):
+    core = _core()
+    led = core.ledger.PaperLedger(
+        env["data"] / "sandbox" / "sandbox_ledger.jsonl")
+    led.load()
+    led.genesis(plan_sha256="xw-test", created_at_utc="2026-10-01T00:00:00Z",
+                sandbox=True)
+    fx = A.Fixture("SOCCER", "atl-probe", "Atlantis", "Croatia",
+                   "2026-11-12T20:00:00Z", "soccer_uefa_nations_league",
+                   SOC_EVENT_DAY, "the_odds_api/events/x#atl-probe")
+    row = execute.crosswalk_miss_decision(
+        fx, {"reason": "CrosswalkMissError: provider name 'Atlantis' ..."},
+        NOW)
+    assert row["status"] == "CROSSWALK_MISS" and row["stake_cents"] == 0
+    assert "Atlantis" in row["reason"]
+    led.append_decision(row)
+    assert "atl-probe" in led.decided_match_ids(), \
+        "CROSSWALK_MISS is terminal: decide must skip it (no re-decision)"
+    ok, _ = led.verify_chain()
+    assert ok
+
+
+def test_quote_write_plan_rerun_and_decided_safety():
+    rows = [{"type": "MARKET_QUOTE", "match_id": "m1"},
+            {"type": "MARKET_QUOTE", "match_id": "m2"},
+            {"type": "MARKET_QUOTE", "match_id": "m3"}]
+    journals = [{"type": "DECISION", "match_id": "m4", "status": "NO_QUOTE"},
+                {"type": "DECISION", "match_id": "m5", "status": "NO_QUOTE"}]
+    plan_w = execute._quote_write_plan(rows, journals, existing={"m2": {}},
+                                       decided={"m3", "m5"})
+    assert [r["match_id"] for r in plan_w["write"]] == ["m1"]
+    assert plan_w["skipped_existing"] == ["m2"]
+    assert plan_w["skipped_decided"] == ["m3"]
+    assert [j["match_id"] for j in plan_w["journal"]] == ["m4"]
+    # rerun after applying: everything already decided/existing -> no-op
+    decided2 = {"m3", "m5", "m4"}
+    existing2 = {"m1": {}, "m2": {}}
+    plan_w2 = execute._quote_write_plan(rows, journals, existing2, decided2)
+    assert plan_w2["write"] == [] and plan_w2["journal"] == []
+
+
+def test_journal_quota_skip_never_rejournals_decided(env):
+    core = _core()
+    led = core.ledger.PaperLedger(
+        env["data"] / "sandbox" / "sandbox_ledger.jsonl")
+    led.load()
+    led.genesis(plan_sha256="qs-test", created_at_utc="2026-10-01T00:00:00Z",
+                sandbox=True)
+    fx = execute.synthetic_soccer_fixtures(SOC_DAY)
+    first = execute.journal_quota_skip(led, fx, NOW, "cap", {})
+    assert len(first) == 3
+    decided = led.decided_match_ids()
+    second = execute.journal_quota_skip(led, fx, NOW, "cap again", {},
+                                        decided=decided)
+    assert second == [], "same-day rerun must not duplicate QUOTA_SKIP rows"
+    assert len([r for r in led.rows if r["type"] == "DECISION"]) == 3
+    ok, _ = led.verify_chain()
+    assert ok
+
+
+def test_in_lock_recheck_for_uses_pinned_core(env):
+    """Regression (ERRATUM_EXEC_3 incident): the real quote journal-append
+    path crashed on `from research.papertrade import risk` — a module name
+    that never exists in this worktree (the core is pinned as spt_core).
+    The exact call site — append_decision(recheck=in_lock_recheck_for(...)) —
+    must work against the sandbox gate seams."""
+    core = _core()
+    ledp = env["data"] / "sandbox" / "sandbox_ledger.jsonl"
+    led = core.ledger.PaperLedger(ledp).load()
+    led.genesis(plan_sha256="rlc-test", created_at_utc="2026-10-01T00:00:00Z",
+                sandbox=True)
+    args = argparse.Namespace(sandbox=True, data_root=str(env["data"]),
+                              sandbox_control_dir=str(env["ctrl"]),
+                              sandbox_registry=str(env["ctrl"] /
+                                                   "CYCLE_REGISTRY.json"),
+                              paper_core_root=None, wnba26_root=None,
+                              nba_harness_root=None, nba26_root=None,
+                              soccer_root=None)
+    recheck = execute.in_lock_recheck_for(led, args, NOW)
+    assert callable(recheck)
+    j = {"type": "DECISION", "league": "SOCCER",
+         "match_id": "journal-append-probe",
+         "competition": "soccer_uefa_nations_league", "home": "England",
+         "away": "Croatia", "kickoff_utc": "2026-11-12T19:45:00Z",
+         "decided_at_utc": NOW, "status": "NO_QUOTE",
+         "reason": "unit probe of the exact crash site", "stake_cents": 0,
+         "chosen_leg": None}
+    stored = led.append_decision(j, recheck=recheck)
+    assert stored["status"] == "NO_QUOTE"
+    ok, _ = led.verify_chain()
+    assert ok
+
+
+def test_soccer_dashboard_counts_crosswalk_miss(env, capcli):
+    """Dashboard NOT_RUN counters: a CROSSWALK_MISS decision lands under the
+    identity_crosswalk cause (ledger-visible, never dropped)."""
+    core = _core()
+    ledp = env["data"] / "sandbox" / "sandbox_ledger.jsonl"
+    led = core.ledger.PaperLedger(ledp).load()
+    led.genesis(plan_sha256="xw-dash", created_at_utc="2026-10-01T00:00:00Z",
+                sandbox=True)
+    fx = A.Fixture("SOCCER", "atl-dash", "Atlantis", "Croatia",
+                   "2026-11-12T20:00:00Z", "soccer_uefa_nations_league",
+                   SOC_EVENT_DAY, "the_odds_api/events/x#atl-dash")
+    led.append_decision(execute.crosswalk_miss_decision(
+        fx, {"reason": "CrosswalkMissError: 'Atlantis' has no crosswalk entry"},
+        NOW))
+    outdir = env["data"] / "dash-xw"
+    code, _ = capcli(env, "dashboard", "--out", str(outdir))
+    assert code == EXIT_OK
+    summary = json.loads((outdir / "summary.json").read_text())
+    assert summary["status_counts"].get("CROSSWALK_MISS", 0) == 1
+    assert summary["not_run_by_cause"].get("identity_crosswalk", 0) == 1

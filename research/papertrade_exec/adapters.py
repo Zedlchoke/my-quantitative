@@ -35,8 +35,9 @@ from datetime import datetime, timezone, date as _date, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import (EXIT_BLOCKED_NO_GO, EXIT_BLOCKED_TAMPER, EXIT_PIN_DRIFT,
-               BlockError, load_pins, load_pinned_package, sha256_file)
+from . import (EXIT_BLOCKED_NO_GO, EXIT_BLOCKED_OTHER, EXIT_BLOCKED_TAMPER,
+               EXIT_PIN_DRIFT, BlockError, load_pins, load_pinned_package,
+               sha256_file)
 
 ET = ZoneInfo("America/New_York")
 
@@ -645,21 +646,172 @@ def nba_real_corpus_read(harness_root: Path):
 SOCIER_LEAGUES_NOTE = "sport keys pinned in config.json (start: soccer_uefa_nations_league)"
 
 
-def soccer_fixtures_from_events(events_payload: bytes | str, sport_key: str) -> list[Fixture]:
+def soccer_fixtures_from_events(events_payload: bytes | str, sport_key: str,
+                                *, snapshot_sha: str = "") -> list[Fixture]:
     """Map a The Odds API /v4/sports/{key}/events payload (0-credit endpoint,
-    captured via the core client post-GO) into fixtures. Real path."""
+    captured via the core client post-GO) into fixtures. Real path.
+
+    Schema law (verified against the live 2026-10-07 payload): every event
+    must be an object carrying non-empty string id/home_team/away_team and a
+    parseable UTC commence_time (unknown extra keys are tolerated, required
+    keys are not). Any schema drift is BLOCKED_FIXTURES_SCHEMA — loud, never
+    silently filtered. Duplicate identity is fail-closed: the same event id
+    twice with conflicting fields, or two different ids sharing one
+    (commence_time, team-set) slot, refuse the whole payload (1:1 matching
+    downstream would otherwise be ambiguous). Exact duplicates collapse.
+    """
     events = json.loads(bytes(events_payload).decode())
-    out = []
+    if not isinstance(events, list):
+        raise BlockError("BLOCKED_FIXTURES_SCHEMA",
+                         f"events payload for {sport_key} is not a JSON list",
+                         EXIT_BLOCKED_OTHER)
+    out: list[Fixture] = []
+    by_id: dict[str, Fixture] = {}
+    by_slot: dict[tuple[str, frozenset], str] = {}
     for ev in events:
-        tip = parse_tip(ev["commence_time"].replace("+00:00", "Z")
-                        if not ev["commence_time"].endswith("Z") else ev["commence_time"])
-        out.append(Fixture(
-            league="SOCCER", match_id=str(ev["id"]),
+        if not isinstance(ev, dict):
+            raise BlockError("BLOCKED_FIXTURES_SCHEMA",
+                             f"events payload for {sport_key} has a "
+                             f"non-object entry: {type(ev).__name__}",
+                             EXIT_BLOCKED_OTHER)
+        missing = [k for k in ("id", "home_team", "away_team", "commence_time")
+                   if not isinstance(ev.get(k), str) or not ev.get(k, "").strip()]
+        if missing:
+            raise BlockError("BLOCKED_FIXTURES_SCHEMA",
+                             f"events payload for {sport_key}: entry "
+                             f"{ev.get('id', '?')!r} missing/invalid fields "
+                             f"{missing} (provider schema drift); fail-closed",
+                             EXIT_BLOCKED_OTHER)
+        try:
+            raw = ev["commence_time"]
+            tip = parse_tip(raw.replace("+00:00", "Z")
+                            if not raw.endswith("Z") else raw)
+        except (ValueError, TypeError) as e:
+            raise BlockError("BLOCKED_FIXTURES_SCHEMA",
+                             f"events payload for {sport_key}: event "
+                             f"{ev['id']!r} commence_time "
+                             f"{ev['commence_time']!r} unparseable: {e}",
+                             EXIT_BLOCKED_OTHER)
+        fx = Fixture(
+            league="SOCCER", match_id=ev["id"],
             home=ev["home_team"], away=ev["away_team"], kickoff_utc=iso_z(tip),
             competition=sport_key, et_local_date=et_local_date(tip),
-            source_ref=f"the_odds_api/events/{sport_key}#{ev['id']}"))
+            source_ref=(f"the_odds_api/events/{sport_key}"
+                        + (f"@{snapshot_sha[:12]}" if snapshot_sha else "")
+                        + f"#{ev['id']}"))
+        prior = by_id.get(fx.match_id)
+        if prior is not None:
+            if (prior.home, prior.away, prior.kickoff_utc) != \
+                    (fx.home, fx.away, fx.kickoff_utc):
+                raise BlockError(
+                    "BLOCKED_FIXTURES_DUPLICATE",
+                    f"event id {fx.match_id} appears twice with conflicting "
+                    "identity (provider payload drift); fail-closed",
+                    EXIT_BLOCKED_OTHER)
+            continue                      # exact duplicate echo collapses
+        slot = (fx.kickoff_utc, frozenset({norm(fx.home), norm(fx.away)}))
+        other = by_slot.get(slot)
+        if other is not None:
+            raise BlockError(
+                "BLOCKED_FIXTURES_DUPLICATE",
+                f"events {other} and {fx.match_id} share one (commence_time, "
+                "team-set) slot; 1:1 matching would be ambiguous; fail-closed",
+                EXIT_BLOCKED_OTHER)
+        by_id[fx.match_id] = fx
+        by_slot[slot] = fx.match_id
+        out.append(fx)
     out.sort(key=lambda x: (x.kickoff_utc, x.match_id))
     return out
+
+
+def norm(s: str) -> str:
+    """Fixture-slot normalization (whitespace/case only — never fuzzy)."""
+    return " ".join(str(s).split()).strip().casefold()
+
+
+def soccer_engine_module(replay_path: Path):
+    """Lazy-import Lane C's pinned replay module (the same import
+    `soccer_engine_replay` performs) and return it with the contract symbol
+    checked. Raises BlockError(BLOCKED_SOCCER_ENTRY) on absence/drift."""
+    if not Path(replay_path).exists():
+        raise BlockError("BLOCKED_SOCCER_ENTRY",
+                         f"Lane C replay entry absent: {replay_path}")
+    pkg_dir = Path(replay_path).parent
+    import importlib.util as _ilu
+    spec_pkg = _ilu.spec_from_file_location(
+        "soccer_prep_pkg", pkg_dir / "__init__.py",
+        submodule_search_locations=[str(pkg_dir)])
+    pkg_mod = _ilu.module_from_spec(spec_pkg)
+    sys.modules["soccer_prep_pkg"] = pkg_mod
+    spec_pkg.loader.exec_module(pkg_mod)
+    import importlib as _imp
+    mod = _imp.import_module("soccer_prep_pkg.replay")   # keeps `from . import` working
+    if getattr(mod, "soccer_b1_replay", None) is None:
+        raise BlockError("BLOCKED_SOCCER_ENTRY",
+                         "replay.py landed but exposes no soccer_b1_replay "
+                         "(contract drift)")
+    return mod
+
+
+def soccer_extension_crosswalk(replay_path: Path, extension_path: Path):
+    """Freeze-anchored crosswalk extension law (FREEZE_SKELETON §5 of
+    SOCCER-INTL-WINPROB-PROSPECTIVE-PREP-V1: "extend the 8-pair seed
+    empirically from real payloads; fail-closed until then").
+
+    The pinned engine resolves provider names ONLY through the seed file that
+    sits next to replay.py in the READ-ONLY prep worktree, so growth lands in
+    THIS cycle's own extension file. Fail-closed chain, verified on every
+    real run, before the engine is touched:
+      1. extension sha256 == this cycle's pins.json data pin;
+      2. extension bytes START WITH the pinned seed's exact bytes (the frozen
+         8-pair anchor is a strict byte prefix — the extension can only
+         append, never rewrite or shrink the seed);
+      3. the pinned engine's own load_provider_crosswalk accepts the
+         extension (header law, ambiguity law, 8-pair floor all still run).
+    On success the replay module's crosswalk path is pointed at the extension
+    for this process, so `soccer_b1_replay` itself resolves through the same
+    verified mapping. Returns (module, mapping)."""
+    mod = soccer_engine_module(replay_path)
+    ext_path = Path(extension_path)
+    if not ext_path.exists():
+        raise BlockError("BLOCKED_PIN_DRIFT",
+                         f"crosswalk extension missing: {ext_path}", EXIT_PIN_DRIFT)
+    pin = load_pins().get("data", {}).get("soccer_crosswalk_extension_csv", {})
+    got = sha256_file(ext_path)
+    if not pin.get("sha256") or got != pin["sha256"]:
+        raise BlockError("BLOCKED_PIN_DRIFT",
+                         f"crosswalk extension sha {got[:12]} != pin "
+                         f"{str(pin.get('sha256'))[:12]}; re-pin deliberately "
+                         "with evidence before a real run trusts it",
+                         EXIT_PIN_DRIFT)
+    seed_bytes = Path(mod._PROVIDER_CROSSWALK_PATH).read_bytes()
+    ext_bytes = ext_path.read_bytes()
+    if not ext_bytes.startswith(seed_bytes):
+        raise BlockError("BLOCKED_PIN_DRIFT",
+                         "crosswalk extension does not extend the pinned "
+                         "seed verbatim (frozen 8-pair anchor must be a "
+                         "strict byte prefix); fail-closed", EXIT_PIN_DRIFT)
+    mapping = mod.load_provider_crosswalk(ext_path)   # engine's own laws
+    mod._PROVIDER_CROSSWALK_PATH = ext_path           # engine resolves the
+    return mod, mapping                               # same verified mapping
+
+
+def soccer_crosswalk_split(mod, mapping: dict,
+                           fixtures: list) -> tuple[list, list]:
+    """Per-fixture crosswalk pre-resolution (fail-closed, never fuzzy).
+    Returns (resolvable, missed) where missed carries (fixture, reason) with
+    the exact unresolved provider name — the caller journals them NOT_RUN;
+    they never reach the engine (one miss would otherwise kill the batch)."""
+    resolvable, missed = [], []
+    for f in fixtures:
+        try:
+            mod.resolve_provider_name(f.home, mapping)
+            mod.resolve_provider_name(f.away, mapping)
+        except Exception as e:            # CrosswalkMissError / validation
+            missed.append((f, f"{type(e).__name__}: {e}"))
+            continue
+        resolvable.append(f)
+    return resolvable, missed
 
 
 def soccer_engine_available(soccer_root: Path) -> Path | None:
@@ -671,28 +823,11 @@ def soccer_engine_replay(replay_path: Path, fixtures: list[Fixture],
                          corpus_csv: Path, asof_date: str) -> list[dict]:
     """Lazy-import Lane C's `soccer_b1_replay(fixtures, corpus_csv, asof_date)`.
     Raises BlockError(BLOCKED_SOCCER_ENTRY) when absent (caller falls back)."""
-    if not replay_path.exists():
-        raise BlockError("BLOCKED_SOCCER_ENTRY",
-                         f"Lane C replay entry absent: {replay_path}")
-    pkg_dir = replay_path.parent
-    import importlib.util as _ilu
-    spec_pkg = _ilu.spec_from_file_location(
-        "soccer_prep_pkg", pkg_dir / "__init__.py",
-        submodule_search_locations=[str(pkg_dir)])
-    pkg_mod = _ilu.module_from_spec(spec_pkg)
-    sys.modules["soccer_prep_pkg"] = pkg_mod
-    spec_pkg.loader.exec_module(pkg_mod)
-    import importlib as _imp
-    mod = _imp.import_module("soccer_prep_pkg.replay")   # keeps `from . import` working
-    entry = getattr(mod, "soccer_b1_replay", None)
-    if entry is None:
-        raise BlockError("BLOCKED_SOCCER_ENTRY",
-                         "replay.py landed but exposes no soccer_b1_replay "
-                         "(contract drift)")
+    mod = soccer_engine_module(replay_path)
     fx = [{"match_id": f.match_id, "kickoff_utc": f.kickoff_utc,
            "home_team": f.home, "away_team": f.away, "neutral": False,
            "match_date_local": f.kickoff_utc[:10]} for f in fixtures]
-    return entry(fx, str(corpus_csv), asof_date)
+    return mod.soccer_b1_replay(fx, str(corpus_csv), asof_date)
 
 
 # ------------------------------------------------------- synthetic fallbacks --

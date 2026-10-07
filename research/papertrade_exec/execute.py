@@ -44,8 +44,9 @@ if __package__ in (None, ""):                       # direct-script execution
 
 from research.papertrade_exec import (  # noqa: E402
     BATCH_LEAD_SECONDS, CONTROL_DIR, CONTROL_DIR_NAME, DEFAULT_DATA_ROOT,
-    EXIT_BLOCKED_ANCHOR, EXIT_BLOCKED_KEY, EXIT_BLOCKED_NO_GO, EXIT_BLOCKED_TAMPER,
-    EXIT_HEAD_DRIFT, EXIT_OK, GO_PHRASE, LEAGUES, REGISTRY_PATH, SOCCER_LEAD_SECONDS,
+    EXIT_BLOCKED_ANCHOR, EXIT_BLOCKED_KEY, EXIT_BLOCKED_NO_GO, EXIT_BLOCKED_OTHER,
+    EXIT_BLOCKED_TAMPER, EXIT_HEAD_DRIFT, EXIT_OK, GO_PHRASE, LEAGUES,
+    REGISTRY_PATH, SOCCER_LEAD_SECONDS,
     BlockError, load_pins, nba_payload_composite, sha256_file, verify_pins)
 from research.papertrade_exec import adapters as A  # noqa: E402
 
@@ -74,9 +75,123 @@ DEFAULT_SPORT_KEYS = {"NBA": "basketball_nba", "WNBA": "basketball_wnba",
                       "SOCCER": "soccer_uefa_nations_league"}
 
 
+# ------------------------------------------------------------------ fixtures --
+
 def load_config() -> dict:
     p = Path(__file__).resolve().parent / "config.json"
     return json.loads(p.read_text())
+
+
+def _soccer_sport_keys() -> list[str]:
+    """The registered SOCCER sport keys (config law: starts with
+    soccer_uefa_nations_league; grows ONLY by an explicit config commit)."""
+    keys = load_config()["sport_keys"]["SOCCER"]
+    if not isinstance(keys, list) or not keys or \
+            not all(isinstance(k, str) and k.strip() for k in keys):
+        raise BlockError("BLOCKED_CONFIG",
+                         "sport_keys.SOCCER must be a non-empty list of "
+                         "sport keys (config law)", EXIT_BLOCKED_OTHER)
+    return keys
+
+
+def _odds_for(args):
+    """The pinned core quota-guarded client (shared by the soccer events
+    fetch and the odds capture). Key hygiene failure is BLOCKED_KEY."""
+    core = load_pinned_core(roots=_roots_from_args(args))
+    odds_mod = core.odds_client
+    quota = odds_mod.QuotaLedger(
+        state_path=Path(args.data_root) / "data" / "quota_state.json",
+        journal_path=Path(args.data_root) / "data" / "quota_journal.jsonl")
+    try:
+        client = odds_mod.OddsClient(quota=quota)
+    except (FileNotFoundError, PermissionError, ValueError, OSError) as e:
+        raise BlockError("BLOCKED_KEY",
+                         f"key hygiene failure: {type(e).__name__}: {e}",
+                         EXIT_BLOCKED_KEY)
+    return odds_mod, quota, client
+
+
+def _persist_events_snapshot(args, sport_key: str, body: bytes,
+                             hdrs: dict) -> str:
+    """Persist the raw events response + a meta record (the fixture rows'
+    snapshot source; data files are overwritten per fetch — the append-only
+    law binds the LEDGER, and every fetch is additionally journaled in the
+    quota journal). Returns the snapshot sha256."""
+    out = Path(args.data_root) / "data"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / f"events_{sport_key}.json").write_bytes(body)
+    meta = {
+        "endpoint": f"/v4/sports/{sport_key}/events",
+        "fetched_at_utc": datetime.now(timezone.utc).strftime(NOW_FMT),
+        "bytes": len(body),
+        "sha256": hashlib.sha256(body).hexdigest(),
+        "http_status": 200,
+        "remaining_header": hdrs.get("x-requests-remaining"),
+        "note": "0-credit events endpoint via core quota-guarded client",
+    }
+    (out / f"events_{sport_key}.meta.json").write_text(
+        json.dumps(meta, indent=1, sort_keys=True))
+    return meta["sha256"]
+
+
+def real_soccer_fixtures(args, day: str, client=None, odds_mod=None) -> list:
+    """REAL soccer fixtures from The Odds API /events via the core
+    quota-guarded client (0-credit endpoint, journaled like every call).
+    Union across the registered sport keys, deduped fail-closed, filtered to
+    the UTC kickoff day. Network/HTTP failures are BLOCKED_ODDS_API (loud,
+    nothing written). `client`/`odds_mod` are battery seams (offline fake
+    client with the REAL exception classes); production passes neither."""
+    if client is None:
+        odds_mod, _quota, client = _odds_for(args)
+    fixtures: list = []
+    seen: dict[str, object] = {}
+    for key in _soccer_sport_keys():
+        try:
+            body, hdrs = client.get_events(key)
+        except odds_mod.QuotaSkip as qs:      # 0-cost still honours the guard
+            raise BlockError("BLOCKED_ODDS_API",
+                             f"events fetch refused by the quota guard: {qs}",
+                             EXIT_BLOCKED_OTHER)
+        except odds_mod.KeyHalted as kh:
+            raise BlockError("BLOCKED_KEY",
+                             f"HALT_KEY engaged: {kh}", EXIT_BLOCKED_KEY)
+        except Exception as e:                # URLError/HTTPError → loud
+            raise BlockError("BLOCKED_ODDS_API",
+                             f"events fetch failed for {key}: "
+                             f"{type(e).__name__}: {e}", EXIT_BLOCKED_OTHER)
+        sha = _persist_events_snapshot(args, key, body, hdrs)
+        for fx in A.soccer_fixtures_from_events(body, key, snapshot_sha=sha):
+            prior = seen.get(fx.match_id)
+            if prior is not None:
+                if (prior.home, prior.away, prior.kickoff_utc) != \
+                        (fx.home, fx.away, fx.kickoff_utc):
+                    raise BlockError("BLOCKED_FIXTURES_DUPLICATE",
+                                     f"event id {fx.match_id} conflicts "
+                                     "across registered sport keys",
+                                     EXIT_BLOCKED_OTHER)
+                continue
+            seen[fx.match_id] = fx
+            if fx.kickoff_utc[:10] == day:
+                fixtures.append(fx)
+    fixtures.sort(key=lambda x: (x.kickoff_utc, x.match_id))
+    return fixtures
+
+
+def fixtures_for(args, league: str, day: str) -> list:
+    if league == "NBA":
+        to_day = getattr(args, "to_date", None)
+        if to_day:                       # multi-day batch window (tip-UTC dates)
+            return A.load_nba_fixtures_window(PINNED_DATA["nba_payloads"],
+                                              day, to_day)
+        # unchanged single-day law: the ESPN schedule-day payload file
+        return A.load_nba_fixtures(PINNED_DATA["nba_payloads"], day)
+    if league == "WNBA":
+        return A.load_wnba_fixtures(PINNED_DATA["wnba_schedule"], day)
+    if league == "SOCCER":
+        if getattr(args, "sandbox", False):
+            return synthetic_soccer_fixtures(day)
+        return real_soccer_fixtures(args, day)
+    raise BlockError("BLOCKED_LEAGUE", f"unknown league {league}")
 
 NOW_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -207,26 +322,7 @@ def _roots_from_args(args) -> dict:
 
 
 # ------------------------------------------------------------------ fixtures --
-
-def fixtures_for(args, league: str, day: str) -> list:
-    if league == "NBA":
-        to_day = getattr(args, "to_date", None)
-        if to_day:                       # multi-day batch window (tip-UTC dates)
-            return A.load_nba_fixtures_window(PINNED_DATA["nba_payloads"],
-                                              day, to_day)
-        # unchanged single-day law: the ESPN schedule-day payload file
-        return A.load_nba_fixtures(PINNED_DATA["nba_payloads"], day)
-    if league == "WNBA":
-        return A.load_wnba_fixtures(PINNED_DATA["wnba_schedule"], day)
-    if league == "SOCCER":
-        if getattr(args, "sandbox", False):
-            return synthetic_soccer_fixtures(day)
-        raise BlockError("BLOCKED_FIXTURES_SOURCE",
-                         "real soccer fixtures come from The Odds API events "
-                         "endpoint via the core client (post-GO, quota-guarded); "
-                         "pre-GO use --sandbox rehearsal fixtures")
-    raise BlockError("BLOCKED_LEAGUE", f"unknown league {league}")
-
+# (fixtures_for / real_soccer_fixtures live directly after load_config above)
 
 def synthetic_soccer_fixtures(day: str) -> list:
     """Deterministic SYNTHETIC The-Odds-API-shaped events for the rehearsal.
@@ -411,16 +507,33 @@ def compute_forecasts(args, league: str, fixtures: list) -> tuple[list[dict], di
                              f"soccer/replay.py sha "
                              f"{sha256_file(replay_path)[:12]} != pin "
                              f"{pin[:12]}; re-pin before a real run", 7)
-        res = A.soccer_engine_replay(replay_path, fixtures,
-                                     PINNED_DATA["soccer_corpus"],
-                                     fixtures[0].kickoff_utc[:10])
-        drafts = [{"match_id": r["match_id"],
-                   "p": {"HOME": float(r["p_home"]), "DRAW": float(r["p_draw"]),
-                         "AWAY": float(r["p_away"])},
-                   "model_version_sha": "soccer_b1_replay",
-                   "source_ref": "soccer_b1_replay", "mode": "ENGINE"}
-                  for r in res]
-        wiring.update({"engine_mode": "ENGINE"})
+        # Freeze-anchored crosswalk extension (FREEZE_SKELETON §5: extend the
+        # 8-pair seed empirically from real payloads). Verified fail-closed
+        # (sha pin + seed byte-prefix + the engine's own laws) BEFORE the
+        # engine runs; names still unresolved are split out per-fixture and
+        # journaled NOT_RUN by the caller — never fuzzy, never batch-killing.
+        mod, mapping = A.soccer_extension_crosswalk(
+            replay_path,
+            Path(__file__).resolve().parent / "PROVIDER_NAME_CROSSWALK_EXTENSION.csv")
+        resolvable, missed = A.soccer_crosswalk_split(mod, mapping, fixtures)
+        drafts = []
+        if resolvable:
+            res = A.soccer_engine_replay(replay_path, resolvable,
+                                         PINNED_DATA["soccer_corpus"],
+                                         fixtures[0].kickoff_utc[:10])
+            drafts = [{"match_id": r["match_id"],
+                       "p": {"HOME": float(r["p_home"]), "DRAW": float(r["p_draw"]),
+                             "AWAY": float(r["p_away"])},
+                       "model_version_sha": "soccer_b1_replay",
+                       "source_ref": "soccer_b1_replay", "mode": "ENGINE"}
+                      for r in res]
+        wiring.update({"engine_mode": "ENGINE" if drafts else "NO_ENGINE_ROWS",
+                       "crosswalk_miss": [
+                           {"match_id": f.match_id, "home": f.home,
+                            "away": f.away, "kickoff_utc": f.kickoff_utc,
+                            "competition": f.competition,
+                            "reason": why}
+                           for f, why in missed]})
         return drafts, wiring
     # NBA real mode (EXEC-NBA-REWIRE): the lawful PROSPECTIVE PIT path landed
     # by NBA-WINPROB-PROSPECTIVE-PREP-V1 (byte-pinned `nba26` package). The
@@ -480,13 +593,21 @@ def cmd_forecast(args) -> dict:
     check_anchor(fixtures, league, now)          # refuse BEFORE any write
     core, led = open_ledger(args, create=True)
     existing = forecast_index(led)
+    decided = led.decided_match_ids()
     drafts, wiring = compute_forecasts(args, league, fixtures)
+    draft_by_mid = {d["match_id"]: d for d in drafts}
+    missed = {m["match_id"]: m for m in wiring.get("crosswalk_miss", [])}
     _, per_anchor = batch_anchor(fixtures, league)
-    written, skipped = [], []
-    for f, d in zip(fixtures, drafts):
-        if f.match_id in existing:
-            skipped.append(f.match_id)
+    written, skipped, journaled_miss = [], [], []
+    for f in fixtures:
+        if f.match_id in existing or f.match_id in decided:
+            skipped.append({"match_id": f.match_id,
+                            "why": "forecast row exists" if f.match_id in existing
+                            else "match already decided (terminal)"})
             continue
+        d = draft_by_mid.get(f.match_id)
+        if d is None:
+            continue                    # crosswalk-miss: journaled below
         row = {
             "type": "FORECAST", "league": league, "match_id": f.match_id,
             "competition": f.competition, "home": f.home, "away": f.away,
@@ -499,9 +620,32 @@ def cmd_forecast(args) -> dict:
         }
         led.append(row)
         written.append(f.match_id)
+    for f in fixtures:
+        m = missed.get(f.match_id)
+        if m is None or f.match_id in existing or f.match_id in decided \
+                or f.match_id in draft_by_mid or f.match_id in written \
+                or f.match_id in journaled_miss:
+            continue
+        led.append_decision(crosswalk_miss_decision(f, m, now))
+        journaled_miss.append(f.match_id)
     return {"league": league, "date": args.date, "now_utc": now,
             "written": written, "skipped_existing": skipped,
+            "journaled_crosswalk_miss": journaled_miss,
             "wiring": wiring, "sandbox": bool(args.sandbox)}
+
+
+def crosswalk_miss_decision(fixture, miss: dict, now: str) -> dict:
+    """Terminal NOT_RUN journal for a fixture whose provider team names the
+    pinned+extended crosswalk cannot resolve (dashboard cause:
+    identity_crosswalk). Specific reason, stake 0, never a silent drop."""
+    return {
+        "type": "DECISION", "league": fixture.league,
+        "match_id": fixture.match_id, "competition": fixture.competition,
+        "home": fixture.home, "away": fixture.away,
+        "kickoff_utc": fixture.kickoff_utc, "decided_at_utc": now,
+        "status": "CROSSWALK_MISS", "reason": miss["reason"],
+        "stake_cents": 0, "chosen_leg": None,
+    }
 
 
 def forecast_index(led) -> dict:
@@ -573,7 +717,7 @@ def cmd_quote(args) -> dict:
         return {"league": league, "date": args.date, "now_utc": now,
                 "written": written, "skipped_existing": skipped,
                 "mode": "SYNTHETIC", "sandbox": True}
-    # ---- real capture: core quota-guarded client, pinned sport key ---------
+    # ---- real capture: core quota-guarded client, registered sport keys ----
     odds_mod = core.odds_client
     quota = odds_mod.QuotaLedger(
         state_path=Path(args.data_root) / "data" / "quota_state.json",
@@ -584,33 +728,70 @@ def cmd_quote(args) -> dict:
         raise BlockError("BLOCKED_KEY",
                          f"key hygiene failure: {type(e).__name__}: {e}",
                          EXIT_BLOCKED_KEY)
-    sport_key = DEFAULT_SPORT_KEYS[league]
-    try:
-        body, hdrs = client.get_odds(sport_key)
-    except odds_mod.QuotaSkip as qs:
-        journaled = journal_quota_skip(led, fixtures, now, str(qs), existing)
+    keys = _soccer_sport_keys() if league == "SOCCER" \
+        else [DEFAULT_SPORT_KEYS[league]]
+    decided = led.decided_match_ids()
+    bodies, hdrs, quota_skip = [], None, None
+    for key in keys:
+        try:
+            body, hdrs = client.get_odds(key)
+        except odds_mod.QuotaSkip as qs:
+            quota_skip = qs
+            break
+        except odds_mod.KeyHalted as kh:
+            raise BlockError("BLOCKED_KEY", f"HALT_KEY engaged: {kh}", EXIT_BLOCKED_KEY)
+        except Exception as e:
+            raise BlockError("BLOCKED_ODDS_API",
+                             f"odds capture failed for {key}: "
+                             f"{type(e).__name__}: {e}", EXIT_BLOCKED_OTHER)
+        bodies.append(json.loads(body))
+    if quota_skip is not None:
+        # No partial capture: a mid-loop skip refuses the WHOLE mapping
+        # (conservative) and journals every not-yet-quoted fixture.
+        journaled = journal_quota_skip(led, fixtures, now, str(quota_skip),
+                                       existing, decided=decided)
         return {"league": league, "date": args.date, "quota_skip": True,
                 "journaled": journaled}
-    except odds_mod.KeyHalted as kh:
-        raise BlockError("BLOCKED_KEY", f"HALT_KEY engaged: {kh}", EXIT_BLOCKED_KEY)
+    body = json.dumps([ev for b in bodies for ev in b]).encode()
     rows, journals = map_odds_payload(fixtures, body, now, league,
                                       client.fingerprint)
+    plan_w = _quote_write_plan(rows, journals, existing, decided)
     written, skipped, journaled = [], [], []
-    for r in rows:
-        if r["match_id"] in existing:
-            skipped.append(r["match_id"])
-            continue
+    for r in plan_w["write"]:
         led.append(r)
         written.append(r["match_id"])
-    for j in journals:
-        if j["match_id"] in existing or j["match_id"] in written:
-            continue
+    for j in plan_w["journal"]:
         led.append_decision(j, recheck=in_lock_recheck_for(led, args, now))
         journaled.append(j["match_id"])
     return {"league": league, "date": args.date, "captured_bytes": len(body),
-            "written": written, "skipped_existing": skipped,
+            "written": written,
+            "skipped_existing": plan_w["skipped_existing"],
+            "skipped_decided": plan_w["skipped_decided"],
             "journaled": journaled, "mode": "REAL", "sandbox": False,
-            "quota_remaining": hdrs.get("x-requests-remaining")}
+            "quota_remaining": (hdrs or {}).get("x-requests-remaining")}
+
+
+def _quote_write_plan(rows, journals, existing: dict, decided: set) -> dict:
+    """Append plan for a real capture (rerun-safe, append-only):
+    quote rows are written only for never-quoted, never-decided matches; NO_QUOTE
+    journals only for never-decided matches (a decided match is terminal — its
+    journaled reason stands; nothing is overwritten or duplicated)."""
+    to_write, skipped_existing, skipped_decided = [], [], []
+    for r in rows:
+        if r["match_id"] in existing:
+            skipped_existing.append(r["match_id"])
+        elif r["match_id"] in decided:
+            skipped_decided.append(r["match_id"])
+        else:
+            to_write.append(r)
+    written_ids = {r["match_id"] for r in to_write}
+    to_journal = [j for j in journals
+                  if j["match_id"] not in existing
+                  and j["match_id"] not in written_ids
+                  and j["match_id"] not in decided]
+    return {"write": to_write, "journal": to_journal,
+            "skipped_existing": skipped_existing,
+            "skipped_decided": skipped_decided}
 
 
 WNBA_FULL_NAMES = {
@@ -630,14 +811,16 @@ def _full_name(league: str, abbr: str) -> str:
 
 def in_lock_recheck_for(led, args, now):
     """Core in-lock recheck bound to this runner's GO state (journal rows are
-    stake-0; the recheck keeps them lawful under the append_decision law)."""
+    stake-0; the recheck keeps them lawful under the append_decision law).
+    Resolves the PINNED core (spt_core) via the package loader — the core is
+    never importable as `research.papertrade` from this worktree."""
     ok, _why = exec_go_state(
         Path(args.sandbox_control_dir) if getattr(args, "sandbox", False)
         else CONTROL_DIR,
         Path(args.sandbox_registry) if getattr(args, "sandbox", False)
         else REGISTRY_PATH)
-    from research.papertrade import risk as _R
-    return _R.in_lock_recheck(led, now, ok)
+    return load_pinned_core(roots=_roots_from_args(args)).risk.in_lock_recheck(
+        led, now, ok)
 
 
 def map_odds_payload(fixtures, payload_bytes: bytes, now: str, league: str,
@@ -739,13 +922,16 @@ def map_odds_payload(fixtures, payload_bytes: bytes, now: str, league: str,
     return rows, journals
 
 
-def journal_quota_skip(led, fixtures, now: str, why: str, existing: dict) -> list:
+def journal_quota_skip(led, fixtures, now: str, why: str, existing: dict,
+                       decided: set | None = None) -> list:
     """Journaled QUOTA_SKIP DECISION rows (skipped matches would silently
     vanish; the law journals them instead). No network happened (the core
-    client's precheck raises before any call)."""
+    client's precheck raises before any call). Already-decided matches are
+    terminal — never re-journaled (append-only, one selection law)."""
+    decided = decided or set()
     journaled = []
     for f in fixtures:
-        if f.match_id in existing:
+        if f.match_id in existing or f.match_id in decided:
             continue
         row = {"type": "DECISION", "league": f.league, "match_id": f.match_id,
                "competition": f.competition, "home": f.home, "away": f.away,
@@ -959,7 +1145,9 @@ def cmd_plan(args) -> dict:
                 "NBA": "espn_schedule_2026_27 payloads (pinned, composite 3d527b3c…)",
                 "WNBA": "wnba_schedule_2026.csv (pinned 0ed97faf…)",
                 "SOCCER": ("The Odds API events endpoint via core client "
-                           "(post-GO); sandbox: labeled synthetic events"),
+                           "(live, 0-credit, quota-journaled; snapshot bytes "
+                           "+ .meta persisted under <data-root>/data); "
+                           "sandbox: labeled synthetic events"),
             }[league]
         except BlockError as be:
             entry = {"status": be.code, "detail": be.detail}
