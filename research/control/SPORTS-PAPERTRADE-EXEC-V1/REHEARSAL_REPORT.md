@@ -13,26 +13,30 @@ is labeled SYNTHETIC in its row. Raw evidence:
   branch `orca/spt-exec-v1-integration`, base `8e5c8f81aeecab13539d1d771d49c739100d5306`.
 - Runner: `research/papertrade_exec/execute.py` (+ `adapters.py`, `pins.json`,
   `config.json`, `PINS.md`).
-- Battery: `tests/papertrade_exec/test_exec_battery.py` — **28/28 PASS**
-  (`/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest
-  tests/papertrade_exec/test_exec_battery.py`, exit 0, ~6 s, offline,
-  deterministic, tmp-path sandboxes only).
+- Battery: `tests/papertrade_exec/test_exec_battery.py` — **36/36 PASS**
+  after EXEC-NBA-REWIRE (28 pre-rewire + 8 NBA additions;
+  `/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest
+  tests/papertrade_exec/test_exec_battery.py`, exit 0, ~8 s, offline,
+  deterministic, tmp-path sandboxes only). Sibling suites re-run read-only
+  2026-10-07 (worktree trees clean after the runs): WNBA 79/79, SOCCER 94/94,
+  NBA-prep 81/81.
 
 ## 1. Per-league wiring status (honest)
 
 | league | fixtures source | engine | status |
 |---|---|---|---|
 | **WNBA** | PINNED snapshot `wnba_schedule_2026.csv` (sha 0ed97faf…): 15 remaining 2026 playoff games, census + anchors reproduced from FREEZE_PACKET §5 (401918297→17:20:00Z, 401918298→19:20:00Z exact) | Lane B `wnba26_predict` (landed mid-build 2026-10-07; contract-compatible with the dispatch's `predict_matches(completed_rows, upcoming)` — both names accepted; B1-WNBA K=32/HCA=50/γ=0.65 replay, byte-pinned sha 5fc6459c…) | **WIRED_ENGINE_READY** — contract test replays 344 completed 2026 rows and predicts 401918299 in-memory (p_home∈(0,1), deterministic, 64-hex state_digest); NOTHING stored |
-| **NBA** | PINNED payloads `espn_schedule_2026_27/` (composite 3d527b3c…, re-derived every verify): 11-game opening slate 2026-10-21 with real tips (23:00Z–02:30Z), batch anchor T0−6h10m = 2026-10-21T16:50:00Z == NBA freeze census | scored harness pure functions (`Stream`/`ArmConfig("B1_STAR")` K=32/HCA=100/γ=0.75, `sigmoid`, `Game`, `canonicalize`) lazy-imported from the scored terminal (head a76dadb1 == dispatch); replay verified on SYNTHETIC inputs incl. 2026→2027 season-boundary revert | **WIRED_ENGINE_REPLAY_READY** — with one disclosed blocker: the REAL completed-game corpus read is outcome-bind-token-gated by the scored cycle's own law (`load_oors…` → `OutcomeBindRefused` without a REAL token minted by ITS postgo gate); this cycle's GO cannot mint it → real NBA forecast refuses **BLOCKED_NBA_CORPUS_BIND** until the owner explicitly authorizes that read. Fail-closed; never improvised |
+| **NBA** | PINNED payloads `espn_schedule_2026_27/` (composite 3d527b3c…, re-derived every verify; since EXEC-NBA-REWIRE verification also accepts the post-GO self-hashed `REFRESH_MANIFEST.jsonl` chain anchored at the frozen pin): opening-window 8 real fixtures 2026-10-20/21 (UTC tip dates), batch anchor T0−6h10m = 2026-10-20T12:50:00Z | **EXEC-NBA-REWIRE**: Lane D prospective PIT path `nba26_predict(upcoming, completed, anchor)` lazy-imported from the byte-pinned `nba26` package (`loader.py` 2679be80… + `predict.py` 57f0c810…, content commit 65ebefc4 / head 82542aa8) — frozen B1_STAR law (K=32/HCA=100/γ=0.75 quoted; warm-up R0=1500 carried pre-registration), frozen ESPN payloads ONLY, **never** the scored bind corpus (that path is DEAD — `ERRATUM_NBA_REWIRE.md`) | **WIRED_ENGINE_READY** — real engine path proven in-memory on the frozen snapshot: window 8/8 rows, completed=0 ⇒ every rating at R0=1500, p_home = 1/(1+10^(−100/400)) = 0.640065 for all, state_digest `f2d59f35…`, deterministic; NOTHING stored (see §7) |
 | **SOCCER** | Post-GO: The Odds API events endpoint (0-credit) via the paper core `OddsClient`, sport key `soccer_uefa_nations_league` pinned in `config.json` (quota caps 4/day + 120/month enforced by the core client). Pre-GO rehearsal: labeled SYNTHETIC events | Lane C `soccer_b1_replay(fixtures, corpus_csv, asof_date)` (landed mid-build; pinned sha 22553f6b…; B1 Elo/Davidson K=48/ν=0.6/HCA=65, fail-closed provider crosswalk) | **WIRED_ENGINE_READY** — contract test replays the pinned corpus in-memory through the 8-pair seed crosswalk (USA/Czechia probe; three-way p sums to 1, deterministic); NOTHING stored |
 
 Rehearsal LEDGER rows are SYNTHETIC for all three leagues by law
 (zero real probabilities pre-GO): the `forecast` command always probes and
 reports the engine status (`wiring` field) but writes only
 `mode=SYNTHETIC, model_version_sha=SYNTHETIC_ADAPTER_NOT_ENGINE` rows in
-sandbox mode. Post-GO first real run: WNBA/SOCCER switch to
-`mode=ENGINE` automatically; NBA refuses BLOCKED_NBA_CORPUS_BIND per above
-(all other leagues continue — per-league isolation in `run-day`).
+sandbox mode. Post-GO first real run: WNBA/SOCCER/NBA all switch to
+`mode=ENGINE` automatically (NBA via the rewired prospective PIT path —
+§7 below; NBA additionally refreshes the payload corpus for the batch's
+game-days first, post-GO only).
 
 ## 2. Success-path run log (SANDBOX; commands + exit codes)
 
@@ -48,7 +52,7 @@ always wall-clock). Full log with outputs: `rehearsal/rehearsal_runs.json`.
 | 4–6 | `--sandbox forecast/quote/decide --league WNBA --date 2026-10-09` | 0,0,0 | 1 real fixture; DECISION journaled |
 | 7–9 | `--sandbox forecast/quote/decide --league NBA --date 2026-10-21` | 0,0,0 | 11 real fixtures → 4 BET_PAPER + 7 NO_EDGE |
 | 10–12 | `--sandbox forecast/quote/decide --league SOCCER --date 2026-10-12` | 0,0,0 | 3 synthetic fixtures → journaled |
-| 13 | `--sandbox run-day --date 2026-10-09` | 0 | chains NBA+WNBA+SOCCER; reports go to `sandbox/`, never `runs/` |
+| 13 | `--sandbox run-day --date 2026-10-09` | 0 | chains NBA+WNBA+SOCCER; SANDBOX run reports are written under `<data-root>/sandbox/` (A7 F1 wording precision: the one file that exists under `<data-root>/runs/` is the REAL-mode pre-GO REFUSAL artifact from log entries 15/16 — a `BLOCKED_NO_GO` refusal JSON only, zero rows, itself evidence of the gate working; nothing else is ever written to `runs/` pre-GO) |
 | 14 | `--sandbox settle --league NBA --date 2026-10-21 --results rehearsal_results_sandbox.json` | 0 | 401909091 WIN +3.82 USD; 401909836 POSTPONED_NO_RESCHEDULE → REFUND 0.00 USD (open exposure released) |
 | 15 | `--sandbox dashboard` | 0 | `sandbox/dashboard/index.html` carries the SANDBOX banner ("SANDBOX LEDGER — SYNTHETIC FIXTURES ONLY … TEST ARTIFACT"); summary.json `sandbox:true chain_ok:true` |
 
@@ -111,12 +115,14 @@ re-derived 208/208 OK.
    SPORTS-PAPERTRADE-EXEC-V1; the three absorbed lanes' own phrases die
    UNCONSUMED — accepted nowhere, enforced by the verbatim-phrase check).
 2. `run-day --date <UTC day>` per league: `forecast` lazily imports the
-   pinned engine (WNBA `wnba26_predict`, SOCCER `soccer_b1_replay`; NBA
-   refuses BLOCKED_NBA_CORPUS_BIND until the owner resolves the outcome-bind
-   token — journaled, other leagues unaffected), refuses at/after the batch
-   anchor (T0−6h10m exclusive / soccer ko−6h strict), writes mode=ENGINE
+   pinned engine (WNBA `wnba26_predict`, SOCCER `soccer_b1_replay`, NBA
+   `nba26_predict` over the frozen ESPN payloads — §7), refuses at/after the
+   batch anchor (T0−6h10m exclusive / soccer ko−6h strict), writes mode=ENGINE
    FORECAST rows into the REAL PaperLedger (genesis auto-created once with
-   the key fingerprint, GEN-1). `quote` captures pinnacle h2h via the core
+   the key fingerprint, GEN-1). NBA additionally runs the post-GO incremental
+   payload refresh for the batch's game-days BEFORE forecasting (bytes + .meta
+   + self-hashed manifest chain; refuses BLOCKED_NO_GO without a consumed GO).
+   `quote` captures pinnacle h2h via the core
    quota-guarded client (4/day + 120/month; QuotaSkip journaled as rows;
    HALT_KEY fail-closed). `decide` runs the crosswalk → EV → risk gates with
    the in-lock recheck and appends. `settle` applies results incl. refunds.
@@ -126,14 +132,16 @@ re-derived 208/208 OK.
 
 ## 6. Known limitations / incidents
 
-- **BLOCKED_NBA_CORPUS_BIND (disclosed, fail-closed)**: the scored NBA
-  cycle's `real_loader.load_oos_corpus(mask_outcomes=False)` requires an
-  outcome-bind token with namespace REAL, minted only by ITS postgo gate for
-  ITS (retired-unconsumed) phrase. This cycle's GO does not and must not mint
-  it. Post-GO NBA forecasting needs an explicit owner decision (erratum or
-  token-mint authorization). Everything else about the NBA lane (fixture
-  pipeline, anchor law, decision/settlement laws, dashboard) is wired and
-  rehearsed with the labeled synthetic adapter.
+- **BLOCKED_NBA_CORPUS_BIND — RETIRED by EXEC-NBA-REWIRE (history)**: the
+  original NBA engine path routed real ratings through the SCORED cycle's
+  harness corpus, whose outcome-bind law refused this cycle's GO (the bind
+  token is mintable only by that cycle's own postgo gate; disclosed,
+  fail-closed, never worked around). The rewire replaced it with the lawful
+  prospective PIT path (§7) that never touches the scored corpus; the old
+  code is kept as marked-DEAD history (`adapters.nba_real_corpus_read`,
+  unreachable; `nba_harness` pins retained only for the battery's
+  synthetic-inputs history replay). Full story:
+  `ERRATUM_NBA_REWIRE.md`.
 - Lane B/C landed their entry files WHILE this lane was building (mid-run
   import error caught and adapted). Their bytes are now pinned; if they
   iterate further, pin drift surfaces as BLOCKED_PIN_DRIFT_ENTRY (probe) /
@@ -144,3 +152,64 @@ re-derived 208/208 OK.
   `~/.my-quantitative-data/sports-papertrade-exec-v1/sandbox/control` and are
   labeled fabrications; the real control dir contains no GO_TOKEN and the
   real registry phase is untouched ("REGISTERED (planned)").
+
+## 7. NBA SUCCESS-PATH rehearsal after EXEC-NBA-REWIRE (pre-GO)
+
+Raw evidence: `rehearsal/exec_nba_rewire_rehearsal.json` (every command +
+exit code, row census, engine-path evidence). The run used a PRISTINE sandbox
+copy (fresh tmp data-root; the sandbox GO token/registry copies are labeled
+fabrications; the real control dir untouched). Outcome-masked: no game result
+was read anywhere; the settle step's two results are rehearsal-file entries
+exercising the settlement LAW, not game outcomes. No network; the post-GO
+payload refresh was NOT executed — the frozen snapshot (composite 3d527b3c…,
+208/208 re-verified) is the only lawful PRE-GO corpus state.
+
+Engine path (REAL, in-memory ONLY): Lane D `loader.load_completed /
+load_upcoming` + `predict.nba26_predict` lazy-imported from the byte-pinned
+`nba26` package over the frozen ESPN payloads.
+
+- Window: opening window 2026-10-20/21 (UTC tip dates) = **8 forecast rows**
+  (BOS@DET 19:00Z, PHI@NY 23:00Z, OKC@SA 01:30Z, ATL@ORL 23:00Z, MIL@WSH
+  23:00Z, MIN@MIA 23:30Z, CHA@BKN 23:30Z, CHI@TOR 23:30Z — all real frozen
+  tips/teams; competition regular-season).
+- Batch anchor: T0 − 6h10m with T0 = 2026-10-20T19:00:00Z ⇒
+  **2026-10-20T12:50:00Z** (exclusive; forecast at/after it refuses —
+  battery-pinned).
+- **completed = 0** (zero FINAL games in the frozen snapshot) ⇒ every team
+  enters at **R0 = 1500** (warm-up carried pre-registration) — the lawfully
+  correct opening-night state, NOT a data gap.
+- Probabilities: all eight p_home = 1/(1+10^(−100/400)) = **0.640065**
+  (frozen HCA=100 prediction-only law); state_digest over the rating table
+  `f2d59f35befbb1ffbbb6302fbac62804d51a39cab618ccc836b122f92722c8c5`;
+  deterministic (byte-identical on re-run).
+- **Disclosure (mirrors the earlier lanes):** engine probabilities exist
+  IN-MEMORY ONLY for this proof; every PERSISTED row is `mode=SYNTHETIC`
+  with `model_version_sha=SYNTHETIC_ADAPTER_NOT_ENGINE` and synthetic p, and
+  every quote is `SYNTHETIC_BOOK (rehearsal)` with key_fingerprint
+  `sandbox-synthetic-00`. Zero real probabilities and zero real odds are
+  stored anywhere pre-GO.
+
+SANDBOX chain (all exit 0):
+
+| # | command | result |
+|---|---|---|
+| 1 | `plan --league NBA --date 2026-10-20 --to-date 2026-10-21` (real mode, read-only) | 8 fixtures, anchor 12:50:00Z, all eligible |
+| 2–4 | `--sandbox forecast / quote / decide` (window) | 8 FORECAST + 8 MARKET_QUOTE (SYNTHETIC) + 8 DECISION: 2 BET_PAPER (401909091, 401909836) + 6 NO_EDGE; wiring probe `WIRED_ENGINE_READY` |
+| 5 | `--sandbox decide` again (duplicate-bet law) | full no-op: 8 skipped "already decided", journaled [] |
+| 6 | `--sandbox settle --date 2026-10-21` (rehearsal results file) | 401909091 WIN +3.82 USD; 401909836 POSTPONED_NO_RESCHEDULE → REFUND 0.00 USD |
+| 7 | `--sandbox dashboard` | SANDBOX banner present ("SANDBOX LEDGER … TEST ARTIFACT"); `sandbox:true chain_ok:true` |
+
+Row census after the run: GENESIS 1 · FORECAST 8 · MARKET_QUOTE 8 ·
+DECISION 8 (2 BET_PAPER + 6 NO_EDGE) · SETTLEMENT 2 (1 WIN +382 ¢, 1 REFUND
+0 ¢). Chain verify OK.
+
+Battery additions covering this section (36/36 PASS total):
+`test_nba_prospective_engine_success_opening_window`,
+`test_nba_outcome_leak_injected_completed_row_ignored` (injected FINAL row
+with tip > anchor and tip == anchor moves neither digest nor p),
+`test_nba_adapter_refuses_tampered_payload_dir` (bytes≠meta ⇒
+BLOCKED_NBA_PAYLOAD_TAMPER), `test_nba_adapter_pin_drift_blocked`
+(BLOCKED_PIN_DRIFT_ENTRY probe / BLOCKED_PIN_DRIFT real mode, before any
+corpus touch), `test_nba_refresh_prego_refused_and_postgo_manifest_chain`
+(no network: fake fetch), `test_nba_window_forecast_stale_after_anchor`,
+`test_nba_window_success_chain_sandbox`, `test_nba_real_mode_refuses_prego_exit3`.

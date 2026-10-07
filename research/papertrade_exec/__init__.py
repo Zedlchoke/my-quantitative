@@ -129,13 +129,19 @@ def verify_pins(*, roots: dict | None = None, only_required: bool = True,
                 report["data"][dname] = {"status": "ABSENT_OPTIONAL", "path": str(path)}
             continue
         if dname == "nba_espn_schedule_2026_27":
-            got = nba_payload_composite(path)
-            ok = (got == dpin["composite_sha256"])
+            from .adapters import nba_payload_verdict   # lazy (circular-safe)
+            verdict = nba_payload_verdict(path, dpin["composite_sha256"])
+            ok = bool(verdict["ok"])
+            got = verdict["effective_composite"]
+            report["data"][dname] = {"status": "OK" if ok else "DRIFT",
+                                     "sha256": got, "path": str(path)}
+            if not ok:
+                report["data"][dname]["why"] = verdict["why"]
         else:
             got = sha256_file(path)
             ok = (got == dpin["sha256"])
-        report["data"][dname] = {"status": "OK" if ok else "DRIFT", "sha256": got,
-                                 "path": str(path)}
+            report["data"][dname] = {"status": "OK" if ok else "DRIFT", "sha256": got,
+                                     "path": str(path)}
         if not ok and dpin.get("required"):
             report["drift"].append({"alias": f"data/{dname}", "why": "sha256 mismatch",
                                     "expected": dpin.get("sha256") or dpin.get("composite_sha256"),

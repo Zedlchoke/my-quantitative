@@ -5,6 +5,8 @@ masked (no results used except the explicit rehearsal results file for the
 settlement law). Nothing here types a GO; the real gate refuses (covered)."""
 from __future__ import annotations
 
+import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -19,8 +21,9 @@ sys.path.insert(0, str(REPO))
 
 from research.papertrade_exec import (  # noqa: E402
     EXIT_BLOCKED_ANCHOR, EXIT_BLOCKED_KEY, EXIT_BLOCKED_NO_GO, EXIT_BLOCKED_TAMPER,
-    EXIT_HEAD_DRIFT, EXIT_OK, EXIT_PIN_DRIFT, GO_PHRASE, execute, adapters as A)
-from research.papertrade_exec.execute import main as cli
+    EXIT_HEAD_DRIFT, EXIT_OK, EXIT_PIN_DRIFT, GO_PHRASE, BlockError,
+    execute, adapters as A)
+from research.papertrade_exec.execute import main as cli  # noqa: E402
 
 NOW = "2026-10-06T00:00:00Z"
 WNBA_DAY = "2026-10-09"        # SF Game 3: ATL @ NY  2026-10-09T23:30:00Z (real tip)
@@ -621,3 +624,242 @@ def test_dashboard_never_lists_hidden_rows_and_counts_not_run(env, capcli):
     summary = json.loads((outdir / "summary.json").read_text())
     assert summary["status_counts"].get("NO_QUOTE", 0) == 3
     assert summary["not_run_by_cause"].get("missing_or_invalid_odds", 0) == 3
+
+
+# ------------------------------------------------- NBA rewire (EXEC-NBA-REWIRE) --
+
+NBA26_ROOT = Path("/Users/hoangminhlong/my-quantitative/.worktrees/"
+                  "nba-winprob-prospective-prep-v1/integration")
+NBA_WIN_START, NBA_WIN_END = "2026-10-20", "2026-10-21"  # opening window: 8 rows
+NBA_ANCHOR = "2026-10-20T12:50:00Z"   # earliest tip 2026-10-20T19:00Z - 6h10m
+
+
+def _nba_pins_composite() -> str:
+    return json.loads((REPO / "research" / "papertrade_exec" / "pins.json")
+                      .read_text())["data"]["nba_espn_schedule_2026_27"][
+        "composite_sha256"]
+
+
+def _copy_payload_subset(dst: Path, days=("20261020", "20261021")) -> Path:
+    """Pristine COPY of two frozen per-date payloads + their .meta records
+    (a small internally-consistent corpus for loader-law tests)."""
+    dst.mkdir(parents=True, exist_ok=True)
+    for day in days:
+        for suffix in ("json", "meta"):
+            shutil.copy2(NBA_PAYLOADS / f"scoreboard_{day}.{suffix}",
+                         dst / f"scoreboard_{day}.{suffix}")
+    return dst
+
+
+def _reseal_meta(payload: Path) -> None:
+    """Rewrite the sibling .meta sha256 to match the (modified) bytes — the
+    corpus stays internally consistent so the TAMPER layer is not what fires;
+    the completed-only LAW is what must hold."""
+    meta = payload.with_name(payload.stem + ".meta")
+    lines = [line for line in meta.read_text().splitlines()
+             if not line.startswith("sha256=")]
+    meta.write_text("\n".join(lines) + "\nsha256="
+                    + hashlib.sha256(payload.read_bytes()).hexdigest() + "\n")
+
+
+def test_nba_prospective_engine_success_opening_window(env):
+    """EXEC-NBA-REWIRE success path: the REAL engine (Lane D loader+predict,
+    pinned nba26 bytes, frozen ESPN payloads ONLY — never the scored bind
+    corpus) over the opening window 2026-10-20/21 = 8 forecast rows.
+    IN-MEMORY ONLY: nothing is persisted by this test."""
+    fx = A.load_nba_fixtures_window(NBA_PAYLOADS, NBA_WIN_START, NBA_WIN_END)
+    assert len(fx) == 8
+    anchor, _ = execute.batch_anchor(fx, "NBA")
+    assert anchor == NBA_ANCHOR
+    predict_path = A.nba_engine_available(NBA26_ROOT)
+    assert predict_path is not None
+    wiring = execute.probe_engine("NBA", execute.PINNED_ROOTS)
+    assert wiring["entry_status"] == "WIRED_ENGINE_READY", wiring
+    res = A.nba_engine_predict(NBA_PAYLOADS, anchor, anchor,
+                               expected_composite_sha=_nba_pins_composite(),
+                               predict_path=predict_path)
+    by = {r["match_id"]: r for r in res}
+    window = [by[f.match_id] for f in fx]
+    assert len(window) == 8
+    # zero FINAL games in the frozen snapshot -> every rating at R0=1500
+    # (the lawfully correct opening-night state, warm-up carried law)
+    lmod, _ = A.nba_engine_modules(predict_path)
+    assert lmod.load_completed(NBA_PAYLOADS, anchor) == []
+    r0_p = 1.0 / (1.0 + 10.0 ** (-100.0 / 400.0))
+    for r in window:
+        assert abs(r["p_home"] - r0_p) < 1e-9
+        assert abs(r["p_home"] + r["p_away"] - 1.0) < 1e-9
+        assert len(r["state_digest"]) == 64 and r["model_id"] == "B1_STAR"
+    res2 = A.nba_engine_predict(NBA_PAYLOADS, anchor, anchor,
+                                expected_composite_sha=_nba_pins_composite(),
+                                predict_path=predict_path)
+    assert res2 == res, "engine path must be deterministic"
+
+
+def test_nba_outcome_leak_injected_completed_row_ignored(tmp_path):
+    """Loader law (leak-impossible by construction): a completed row with
+    tip >= anchor — strictly-equal or later — must not move any p or the
+    state digest. Injected into an internally-consistent COPY (meta resealed
+    so the composite/tamper layer is NOT what is under test)."""
+    predict_path = A.nba_engine_available(NBA26_ROOT)
+    dst = _copy_payload_subset(tmp_path / "leak_corpus")
+    base = A.nba_engine_predict(dst, NBA_ANCHOR, NBA_ANCHOR,
+                                predict_path=predict_path)
+    base_by = {r["match_id"]: (r["p_home"], r["state_digest"]) for r in base}
+    payload = dst / "scoreboard_20261020.json"
+    data = json.loads(payload.read_text())
+    src = next(e for e in data["events"] if e["id"] == "401909089")
+    for i, (tip, scores) in enumerate(
+            (("2026-10-20T23:00Z", ("112", "104")),        # tip > anchor
+             (NBA_ANCHOR.replace(":00:00Z", "Z"), ("1", "0")))):  # tip == anchor
+        ev = json.loads(json.dumps(src))
+        ev["id"] = f"99990999{i}"                          # fresh id: no dedupe conflict
+        ev["date"] = tip
+        ev["status"]["type"]["state"] = "post"
+        ev["status"]["type"]["completed"] = True
+        for c, s in zip(ev["competitions"][0]["competitors"], scores):
+            c["score"] = s
+        data["events"].append(ev)
+        payload.write_text(json.dumps(data))
+        _reseal_meta(payload)
+        after = A.nba_engine_predict(dst, NBA_ANCHOR, NBA_ANCHOR,
+                                     predict_path=predict_path)
+        after_by = {r["match_id"]: (r["p_home"], r["state_digest"])
+                    for r in after}
+        assert after_by == base_by, f"leak via tip {tip} changed predictions"
+
+
+def test_nba_adapter_refuses_tampered_payload_dir(tmp_path):
+    """Byte-tamper a copied payload WITHOUT resealing its .meta -> the adapter
+    refuses fail-closed (BLOCKED_NBA_PAYLOAD_TAMPER)."""
+    predict_path = A.nba_engine_available(NBA26_ROOT)
+    dst = _copy_payload_subset(tmp_path / "tampered_corpus")
+    payload = dst / "scoreboard_20261020.json"
+    payload.write_bytes(payload.read_bytes() + b"\n")      # bytes != meta sha
+    with pytest.raises(BlockError) as ei:
+        A.nba_engine_predict(dst, NBA_ANCHOR, NBA_ANCHOR,
+                             expected_composite_sha=_nba_pins_composite(),
+                             predict_path=predict_path)
+    assert ei.value.code == "BLOCKED_NBA_PAYLOAD_TAMPER"
+
+
+def test_nba_adapter_pin_drift_blocked(tmp_path):
+    """nba26 entry bytes drifted from the pins -> BLOCKED_PIN_DRIFT_ENTRY in
+    the wiring probe; real-mode compute_forecasts refuses BLOCKED_PIN_DRIFT
+    BEFORE any corpus touch (refresh can never run on a drifted entry)."""
+    pkg = tmp_path / "wt" / "research" / "papertrade_nba"
+    shutil.copytree(NBA26_ROOT / "research" / "papertrade_nba", pkg,
+                    ignore=shutil.ignore_patterns("__pycache__"))
+    pp = pkg / "predict.py"
+    pp.write_text(pp.read_text() + "\n# drifted byte\n")
+    roots = dict(execute.PINNED_ROOTS)
+    roots["nba26_root"] = pkg.parents[1]          # .../wt (holds research/papertrade_nba)
+    wiring = execute.probe_engine("NBA", roots)
+    assert wiring["entry_status"] == "BLOCKED_PIN_DRIFT_ENTRY", wiring
+    fx = A.load_nba_fixtures_window(NBA_PAYLOADS, NBA_WIN_START, NBA_WIN_END)
+    args = argparse.Namespace(sandbox=False, to_date=None,
+                              paper_core_root=None, wnba26_root=None,
+                              nba_harness_root=None,
+                              nba26_root=str(roots["nba26_root"]),
+                              soccer_root=None)
+    with pytest.raises(BlockError) as ei:
+        execute.compute_forecasts(args, "NBA", fx)
+    assert ei.value.code == "BLOCKED_PIN_DRIFT"
+
+
+def test_nba_refresh_prego_refused_and_postgo_manifest_chain(tmp_path):
+    """Refresh plumbing, offline: PRE-GO refuses (BLOCKED_NO_GO, nothing
+    written); POST-GO (go_ok=True, fake fetch — NO network) writes bytes +
+    .meta and appends the self-hashed manifest chain anchored at the corpus's
+    own composite; verification accepts the chained extension and fails
+    closed on unrecorded bytes."""
+    from research.papertrade_exec import nba_payload_composite
+    dst = _copy_payload_subset(tmp_path / "refresh_corpus")
+    anchor = nba_payload_composite(dst)
+    with pytest.raises(BlockError) as ei:
+        A.nba_incremental_refresh(dst, NBA_WIN_START, "2026-10-22", go_ok=False,
+                                  fetch_fn=lambda d: b"{}",
+                                  anchor_composite=anchor)
+    assert ei.value.code == "BLOCKED_NO_GO"
+    assert not (dst / A.NBA_REFRESH_MANIFEST).exists()
+
+    calls = []
+
+    def fake_fetch(day: str) -> bytes:
+        calls.append(day)
+        return json.dumps({"events": [], "day": day}, sort_keys=True).encode() + b"\n"
+
+    rep = A.nba_incremental_refresh(dst, NBA_WIN_START, "2026-10-22",
+                                    go_ok=True, fetch_fn=fake_fetch,
+                                    anchor_composite=anchor,
+                                    now_utc="2026-10-22T00:00:00Z")
+    assert calls == ["20261020", "20261021", "20261022"]
+    assert [a["action"] for a in rep["fetched"]] == ["refresh", "refresh", "create"]
+    verdict = A.nba_payload_verdict(dst, anchor)
+    assert verdict["ok"], verdict
+    assert verdict["effective_composite"] == rep["effective_composite"]
+    # unrecorded extra payload (valid bytes + meta, but no manifest record):
+    # fail closed — the manifest must lawfully account for every byte
+    extra = dst / "scoreboard_20261023.json"
+    extra.write_bytes(b'{"events": []}\n')
+    (dst / "scoreboard_20261023.meta").write_text(
+        "url=x\nfetched_at_utc=now\nbytes=14\nsha256="
+        + hashlib.sha256(extra.read_bytes()).hexdigest()
+        + "\nhttp_status=200\n")
+    verdict2 = A.nba_payload_verdict(dst, anchor)
+    assert not verdict2["ok"]
+    assert "manifest" in verdict2["why"]
+
+
+def test_nba_window_forecast_stale_after_anchor(env, capcli):
+    """Opening-window batch anchor is 2026-10-20T12:50:00Z (earliest tip
+    19:00Z minus 6h10m, exclusive): at/after it the whole command refuses."""
+    for now in ("2026-10-20T12:50:00Z", "2026-10-20T13:00:00Z"):
+        code, out = capcli(env, "forecast", "--league", "NBA",
+                           "--date", NBA_WIN_START, "--to-date", NBA_WIN_END,
+                           now=now)
+        assert code == EXIT_BLOCKED_ANCHOR
+        assert out["blocked"] == "BLOCKED_ANCHOR_PASSED"
+    assert rows_of(env, "FORECAST") == []
+
+
+def test_nba_window_success_chain_sandbox(env, capcli):
+    """Full chain forecast -> quote -> decide on the 8-row real opening
+    window, SANDBOX, outcome-masked: fixture identity REAL (frozen payloads),
+    persisted p/odds SYNTHETIC and labeled; duplicate decide is a no-op."""
+    code, out = capcli(env, "plan", "--league", "NBA", "--date", NBA_WIN_START,
+                       "--to-date", NBA_WIN_END)
+    assert code == EXIT_OK and out["leagues"]["NBA"]["count"] == 8
+    code, out = capcli(env, "forecast", "--league", "NBA",
+                       "--date", NBA_WIN_START, "--to-date", NBA_WIN_END)
+    assert code == EXIT_OK and len(out["written"]) == 8
+    assert out["wiring"]["entry_status"] == "WIRED_ENGINE_READY"
+    capcli(env, "quote", "--league", "NBA", "--date", NBA_WIN_START,
+           "--to-date", NBA_WIN_END)
+    code, d = capcli(env, "decide", "--league", "NBA",
+                     "--date", NBA_WIN_START, "--to-date", NBA_WIN_END)
+    assert code == EXIT_OK and len(d["journaled"]) == 8
+    fcs = [r for r in rows_of(env, "FORECAST") if r["league"] == "NBA"]
+    assert len(fcs) == 8
+    assert all(r["mode"] == "SYNTHETIC"
+               and r["model_version_sha"] == "SYNTHETIC_ADAPTER_NOT_ENGINE"
+               and "SYNTHETIC" in r["source_ref"] for r in fcs)
+    assert all(r["fixture_source"].startswith("espn_schedule_2026_27/")
+               for r in fcs)
+    assert sorted(r["kickoff_utc"] for r in fcs)[0] == "2026-10-20T19:00:00Z"
+    # duplicate-bet law at runner level: a second decide is a full no-op
+    code, d2 = capcli(env, "decide", "--league", "NBA",
+                      "--date", NBA_WIN_START, "--to-date", NBA_WIN_END)
+    assert code == EXIT_OK and d2["journaled"] == [] and len(d2["skipped"]) == 8
+    assert len(rows_of(env, "DECISION")) == 8
+
+
+def test_nba_real_mode_refuses_prego_exit3(env, capcli):
+    """Missing GO: real-mode mutations still exit 3 on the NBA path too."""
+    code, out = capcli(env, "forecast", "--league", "NBA",
+                       "--date", NBA_WIN_START, "--to-date", NBA_WIN_END,
+                       sandbox=False)
+    assert code == EXIT_BLOCKED_NO_GO and out["blocked"] == "BLOCKED_NO_GO"
+    code, out = capcli(env, "run-day", "--date", "2026-10-21", sandbox=False)
+    assert code == EXIT_BLOCKED_NO_GO
+    assert not (env["data"] / "ledger").exists()

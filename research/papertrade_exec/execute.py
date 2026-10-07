@@ -56,6 +56,8 @@ PINNED_ROOTS = {
     "nba_harness_root": Path("/Users/hoangminhlong/my-quantitative/.worktrees/"
                              "nba-winprob-ng-scored-v1/integration/research/control/"
                              "NBA-WINPROB-NG-SCORED-V1/harness"),
+    "nba26_root": Path("/Users/hoangminhlong/my-quantitative/.worktrees/"
+                       "nba-winprob-prospective-prep-v1/integration"),
     "soccer_root": Path("/Users/hoangminhlong/my-quantitative/.worktrees/"
                         "soccer-intl-winprob-prospective-prep-v1/integration"),
 }
@@ -207,6 +209,11 @@ def _roots_from_args(args) -> dict:
 
 def fixtures_for(args, league: str, day: str) -> list:
     if league == "NBA":
+        to_day = getattr(args, "to_date", None)
+        if to_day:                       # multi-day batch window (tip-UTC dates)
+            return A.load_nba_fixtures_window(PINNED_DATA["nba_payloads"],
+                                              day, to_day)
+        # unchanged single-day law: the ESPN schedule-day payload file
         return A.load_nba_fixtures(PINNED_DATA["nba_payloads"], day)
     if league == "WNBA":
         return A.load_wnba_fixtures(PINNED_DATA["wnba_schedule"], day)
@@ -290,12 +297,28 @@ def probe_engine(league: str, roots: dict) -> dict:
                     "detail": ("wnba26_predict entry present + pin-verified; "
                                "contract predict_matches/wnba26_predict")})
     elif league == "NBA":
-        out.update({"entry_status": "WIRED_ENGINE_REPLAY_READY",
-                    "detail": ("scored-harness pure functions (Stream/ArmConfig/"
-                               "sigmoid/Game) import-verified; REAL corpus read "
-                               "is outcome-bind-token-gated by the scored cycle "
-                               "and refuses here (BLOCKED_NBA_CORPUS_BIND) — "
-                               "owner decision required before a real forecast")})
+        predict_path = A.nba_engine_available(roots["nba26_root"])
+        if predict_path is None:
+            out.update({"entry_status": "BLOCKED_NBA_ENTRY",
+                        "detail": (f"Lane D predict entry absent at "
+                                   f"{roots['nba26_root']}/research/"
+                                   "papertrade_nba/predict.py")})
+            return out
+        drift = A.nba_engine_entry_drift(predict_path)
+        if drift:
+            out.update({"entry_status": "BLOCKED_PIN_DRIFT_ENTRY",
+                        "detail": (drift + "; re-pin required before a real "
+                                   "run trusts it")})
+            return out
+        out.update({"entry_status": "WIRED_ENGINE_READY",
+                    "entry": str(predict_path),
+                    "detail": ("prospective PIT path (Lane D loader.py + "
+                               "predict.py, frozen ESPN payloads ONLY — "
+                               "composite 3d527b3c… / refresh-manifest chain) "
+                               "present + pin-verified; real forecast = "
+                               "nba26_predict under the frozen B1_STAR law "
+                               "(EXEC-NBA-REWIRE; see ERRATUM_NBA_REWIRE.md — "
+                               "the old scored-corpus path is DEAD)")})
     elif league == "SOCCER":
         replay_path = A.soccer_engine_available(roots["soccer_root"])
         if replay_path is None:
@@ -328,9 +351,9 @@ def compute_forecasts(args, league: str, fixtures: list) -> tuple[list[dict], di
     labeled synthetic adapter (zero real probabilities pre-GO) while the
     wiring probe reports what a post-GO real run would use. REAL mode is
     engine-first: WNBA via Lane B's entry, SOCCER via Lane C's entry, NBA via
-    the scored harness replay — each raising its BLOCKED_* family if the
-    pinned entry is absent/drifted at run time (fail-closed, journaled by the
-    caller)."""
+    the prospective PIT path (Lane D loader+predict, frozen ESPN payloads
+    only) — each raising its BLOCKED_* family if the pinned entry is
+    absent/drifted at run time (fail-closed, journaled by the caller)."""
     roots = _roots_from_args(args)
     wiring = probe_engine(league, roots)
     if getattr(args, "sandbox", False):
@@ -398,12 +421,50 @@ def compute_forecasts(args, league: str, fixtures: list) -> tuple[list[dict], di
                   for r in res]
         wiring.update({"engine_mode": "ENGINE"})
         return drafts, wiring
-    # NBA real mode: the scored cycle's outcome-bind law gates the real
-    # corpus; refuse rather than improvise (disclosed limitation).
-    raise BlockError("BLOCKED_NBA_CORPUS_BIND",
-                     "real NBA forecast requires the scored cycle's "
-                     "outcome-bind token (owner decision); refusing instead "
-                     "of improvising a corpus")
+    # NBA real mode (EXEC-NBA-REWIRE): the lawful PROSPECTIVE PIT path landed
+    # by NBA-WINPROB-PROSPECTIVE-PREP-V1 (byte-pinned `nba26` package). The
+    # old scored-corpus path is DEAD (bind token unmintable by this gate —
+    # disclosed); this path reads the frozen ESPN payloads only and NEVER the
+    # scored bind corpus. See ERRATUM_NBA_REWIRE.md.
+    anchor_utc, _ = batch_anchor(fixtures, league)
+    predict_path = Path(roots["nba26_root"]) / "research" / "papertrade_nba" / "predict.py"
+    if not predict_path.exists():
+        raise BlockError("BLOCKED_NBA_ENTRY",
+                         f"Lane D predict entry absent: {predict_path}")
+    drift = A.nba_engine_entry_drift(predict_path)
+    if drift:
+        raise BlockError("BLOCKED_PIN_DRIFT",
+                         f"{drift}; re-pin deliberately before a real run "
+                         "trusts it", 7)
+    # Post-GO cadence: refresh the payload corpus for the batch's game-days
+    # BEFORE forecasting (post-GO only; the rehearsal never reaches this
+    # branch). Entry checks above must stay FIRST so a drifted/absent entry
+    # can never touch the corpus.
+    A.nba_incremental_refresh(
+        PINNED_DATA["nba_payloads"], fixtures[0].kickoff_utc[:10],
+        fixtures[-1].kickoff_utc[:10], go_ok=True)
+    composite_pin = load_pins()["data"]["nba_espn_schedule_2026_27"]["composite_sha256"]
+    res = A.nba_engine_predict(
+        PINNED_DATA["nba_payloads"], anchor_utc, anchor_utc,
+        expected_composite_sha=composite_pin, predict_path=predict_path)
+    by_mid = {str(r["match_id"]): r for r in res}
+    predict_sha = sha256_file(predict_path)
+    drafts = []
+    for f in fixtures:
+        r = by_mid.get(f.match_id)
+        if r is None:
+            raise BlockError("BLOCKED_NBA_ENTRY",
+                             f"engine returned no prediction for {f.match_id}")
+        drafts.append({"match_id": f.match_id,
+                       "p": {"HOME": float(r["p_home"]),
+                             "AWAY": float(r["p_away"])},
+                       "model_version_sha": f"nba26_predict@{predict_sha[:12]}",
+                       "source_ref": (f"nba26_predict@model_id={r['model_id']} "
+                                      f"state={r['state_digest'][:16]} "
+                                      "corpus=frozen ESPN payloads only"),
+                       "mode": "ENGINE"})
+    wiring.update({"engine_mode": "ENGINE"})
+    return drafts, wiring
 
 
 def cmd_forecast(args) -> dict:
@@ -839,31 +900,42 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--paper_core_root", default=None)
     ap.add_argument("--wnba26_root", default=None)
     ap.add_argument("--nba_harness_root", default=None)
+    ap.add_argument("--nba26_root", default=None)
     ap.add_argument("--soccer_root", default=None)
     def add_roots(sub_p):
         # accepted both before and after the subcommand (same dest)
         sub_p.add_argument("--paper_core_root", default=None)
         sub_p.add_argument("--wnba26_root", default=None)
         sub_p.add_argument("--nba_harness_root", default=None)
+        sub_p.add_argument("--nba26_root", default=None)
         sub_p.add_argument("--soccer_root", default=None)
+
+    def add_to_date(sub_p):
+        # NBA multi-day batch window (fixtures whose UTC tip date lies in
+        # [--date, --to-date]); default single-day (unchanged behavior).
+        sub_p.add_argument("--to-date", dest="to_date", default=None)
 
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("plan"); add_roots(p); p.add_argument("--date", required=True)
     p.add_argument("--league", choices=LEAGUES, default=None)
+    add_to_date(p)
     p.set_defaults(fn=lambda a: _emit(cmd_plan(a)))
 
     p = sub.add_parser("forecast"); add_roots(p); p.add_argument("--league", choices=LEAGUES, required=True)
     p.add_argument("--date", required=True)
+    add_to_date(p)
     p.set_defaults(fn=lambda a: _emit(cmd_forecast(a)))
 
     p = sub.add_parser("quote"); add_roots(p); p.add_argument("--league", choices=LEAGUES, required=True)
     p.add_argument("--date", required=True)
     p.add_argument("--key-path", default=None, help="sandbox/test key path override")
+    add_to_date(p)
     p.set_defaults(fn=lambda a: _emit(cmd_quote(a)))
 
     p = sub.add_parser("decide"); add_roots(p); p.add_argument("--league", choices=LEAGUES, required=True)
     p.add_argument("--date", required=True)
+    add_to_date(p)
     p.set_defaults(fn=lambda a: _emit(cmd_decide(a)))
 
     p = sub.add_parser("run-day"); add_roots(p); p.add_argument("--date", required=True)
