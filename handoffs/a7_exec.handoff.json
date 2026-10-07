@@ -1,0 +1,63 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "A7-EXEC",
+  "cycle_id": "SPORTS-PAPERTRADE-EXEC-V1",
+  "role": "quant-auditor",
+  "lane": "a7-exec",
+  "dispatch_sha": "1ae714337a3d971dcce6666a5cca4df2642f705e",
+  "actual_start_sha": "1ae714337a3d971dcce6666a5cca4df2642f705e",
+  "commit_sha": "1ae714337a3d971dcce6666a5cca4df2642f705e",
+  "verdict": "PASS_WITH_FINDINGS",
+  "severity_counts": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 1, "INFO": 3},
+  "changed_paths": [
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/A7_PRELAUNCH_VERDICT.md",
+    "handoffs/a7_exec.handoff.json"
+  ],
+  "measured_state": {
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/sports-papertrade-exec-v1/integration",
+    "branch": "orca/spt-exec-v1-integration",
+    "head": "1ae714337a3d971dcce6666a5cca4df2642f705e",
+    "head_matches_claim": true,
+    "tree_clean_at_measure": true,
+    "boundary_base": "8e5c8f81aeecab13539d1d771d49c739100d5306",
+    "boundary_files": "only research/papertrade_exec/** (6), tests/papertrade_exec/** (1), research/control/SPORTS-PAPERTRADE-EXEC-V1/** (4)",
+    "upstream": "none"
+  },
+  "tests": [
+    {
+      "suite": "tests/papertrade_exec",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/papertrade_exec -q (from the worktree)",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "note": "5.89s, offline; matches claim 28/28"
+    }
+  ],
+  "authority_claims": [
+    "VERIFIED from bytes: production runner research/papertrade_exec/execute.py executable — --help exit 0; read-only plan (WNBA 2026-10-08) exit 0 reading the pinned schedule; verify-pins --expect-head 1ae71433... exit 0 with all 14 file pins + 3 data pins OK (NBA composite 3d527b3c re-derived; WNBA schedule 0ed97faf; soccer corpus df35268f) and self_head == claimed HEAD.",
+    "VERIFIED: THE ONE phrase 'GO SPORTS PAPERTRADE EXEC V1 RUN ALL' is the single live gate. The four retired phrases (GO SPORTS PAPERTRADE V1 CAPTURE / GO WNBA WINPROB 2026 REMAINDER V1 PREDICTIONS / GO NBA WINPROB PROSPECTIVE V1 PREDICTIONS / GO SOCCER INTL WINPROB PROSPECTIVE V1 PREDICTIONS) match NOWHERE in execute.py/adapters.py/__init__.py (grep exit 1).",
+    "VERIFIED by my own tmp-registry rehearsal (real dirs untouched): no token -> BLOCKED_NO_GO exit 3; retired phrase in token -> exit 3 verbatim refusal; right phrase + registry without GO_CONSUMED -> exit 3; direct exec_go_state with BOTH keys (tmp only) -> True (gate is genuinely two-key).",
+    "VERIFIED wiring by re-hash: wnba26/predict.py 5fc6459c964d7802a5a796657be3819653017668a2156a9ff35686716b425fef == pin (WIRED_ENGINE_READY); soccer/replay.py 22553f6b62eacfc7b581737795db5a792e40b4a58a8ffa5de7f3a4e25d2a7e44 == pin (WIRED_ENGINE_READY); NBA WIRED_ENGINE_REPLAY_READY — I rehearsed adapters.nba_real_corpus_read live and it raised BlockError BLOCKED_NBA_CORPUS_BIND (scored cycle's OutcomeBindRefused); adapters.py:318 additionally refuses if an unmasked read ever returned — fail-closed on every path.",
+    "VERIFIED rehearsal evidence: census GENESIS 1 / FORECAST 18 / MARKET_QUOTE 18 / DECISION 18 (6 BET_PAPER + 12 NO_EDGE) / SETTLEMENT 2; all 36 p/odds rows mode=SYNTHETIC with model_version_sha=SYNTHETIC_ADAPTER_NOT_ENGINE, key_fingerprint=sandbox-synthetic-00, bookmaker='SYNTHETIC_BOOK (rehearsal)'; zero ENGINE-mode rows; dashboard chain_ok:true sandbox:true; settlements WIN +382c and POSTPONED->REFUND 0.",
+    "VERIFIED registry (read-only): SPORTS-PAPERTRADE-EXEC-V1 ACTIVE_LIGHT, head == measured 1ae71433..., budget 0/0, go_phrase registered go_phrase_state REGISTERED_NOT_CONSUMED; sibling registry heads == measured worktree heads (sports-papertrade-v1 8105e878..., wnba-2026-remainder-v1 46200b30..., nba-winprob-prospective-prep-v1 d504afad..., soccer-intl-winprob-prospective-prep-v1 1ca5cd7d...); string GO_CONSUMED has ZERO occurrences across all 115 registry cycles.",
+    "VERIFIED zero real paper rows pre-GO: no GO_TOKEN.json anywhere in the worktree (real control dir included); no GENESIS/ledger outside clearly-named SANDBOX files under ~/.my-quantitative-data/sports-papertrade-v1/ or ~/.my-quantitative-data/sports-papertrade-exec-v1/; sandbox GO token labeled 'REHEARSAL-SANDBOX-FABRICATION (NOT an owner GO)'; the single runs/ file is a BLOCKED_NO_GO refusal record with zero rows. NO GO TYPED.",
+    "VERIFIED ops hygiene: locks inspect verdict FREE_PROVEN (no HELD lock); branch -vv shows no upstream for this branch."
+  ],
+  "findings": [
+    {"id": "F1", "severity": "LOW", "summary": "REHEARSAL_REPORT.md prose says run-day reports go to sandbox/ 'never runs/', but one real-mode refusal artifact exists at ~/.my-quantitative-data/sports-papertrade-exec-v1/runs/run_day_2026-10-09_20261007T093411Z.json (from the REAL-mode pre-GO refusal rehearsal). Content is the BLOCKED_NO_GO refusal only — zero rows, zero probabilities. Prose imprecision, not a data violation.", "disposition": "record; optional erratum"},
+    {"id": "F2", "severity": "INFO", "summary": "Sibling worktree heads advanced past pins.json dispatch heads (paper_core a752553f->8105e878, wnba26 d6ed119e->46200b30, soccer 24e5745f->1ca5cd7d); pins declare heads advisory, bytes binding; ALL byte pins verified OK by auditor and verify-pins.", "disposition": "disclosed by design"},
+    {"id": "F3", "severity": "INFO", "summary": "SOCCER readiness is engine-side only; real fixtures/odds arrive post-GO via the 0-credit Odds API events endpoint; 1X2 three-leg odds remain NOT_RUN_ODDS_UNVERIFIED (registry phase carries 'conditional-1X2').", "disposition": "carried into post-GO record"},
+    {"id": "F4", "severity": "INFO", "summary": "Time-sensitive owner note: WNBA SF2 (401918298) anchor 2026-10-07T19:20:00Z was already open at measurement (~09:43Z); missed anchor = NOT_RUN forever per the sibling law; anchor law exclusive at/after anchor (exit 5), test-pinned.", "disposition": "owner awareness only"}
+  ],
+  "known_limitations": [
+    "This is a PRELAUNCH verdict only: it does not type any GO and does not evaluate post-GO live capture behavior (odds payload mapping, quota spend) which is only reachable after the owner's GO.",
+    "NBA real forecasting stays blocked (BLOCKED_NBA_CORPUS_BIND) until the owner explicitly authorizes the scored cycle's outcome-bind read; per-league isolation in run-day keeps WNBA/SOCCER unaffected."
+  ],
+  "incidents": [],
+  "tree_status": "clean (verifier adds only its two artifacts, pathspec)",
+  "workers": 0,
+  "outputs": [
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/A7_PRELAUNCH_VERDICT.md (full claim-by-claim evidence, findings table, explicit no-GO / zero-real-rows / single-phrase statements)",
+    "handoffs/a7_exec.handoff.json (this handoff)"
+  ]
+}
