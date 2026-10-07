@@ -13,7 +13,7 @@ SPORTS-PAPERTRADE-EXEC-V1 for the registered sport key
   fetched_at, sha256, remaining) are persisted under
   `<data-root>/data/events_<key>.json` as the rows' snapshot source; every
   FORECAST row cites `the_odds_api/events/<key>@<sha12>#<event_id>`.
-- Schema law verified against the LIVE payload (first fetch 12:31Z, 0 credit,
+- Schema law verified against the LIVE payload (first fetch 12:20:39Z, 0 credit,
   remaining unchanged 493): every event must carry non-empty string
   id/home_team/away_team + parseable UTC commence_time. Schema drift is
   BLOCKED_FIXTURES_SCHEMA; duplicate identity (same id conflicting fields, or
@@ -89,7 +89,11 @@ cycle's manifest-aware verification (`nba_payload_verdict` via verify-pins)
 accepts the chained corpus; the sibling's own strict test predates the chain.
 Sibling tree is clean at its pinned head 82542aa8. Recorded, not normalized.
 
-## 5. State after this erratum
+## 5. Verifier (independent, fresh context)
+
+PASS_WITH_FINDINGS at 6996f2b0 — 13/13 items PASS (HEAD, pins incl. the required extension pin, seed byte-prefix, battery 46/46, ledger chain + WNBA rows byte-identical to FIRST_ROWS_AUDIT, quota journal fully accounted, snapshot sha, code diff review, dashboard, key hygiene, read-only real-path plan re-run, GO law, erratum truthfulness). Findings: two documentation nits (this file's 12:31Z -> 12:20:39Z; audit events-call count 3 -> 4 — both fixed) and INFO notes (bare-Exception catch in the crosswalk split is fail-safe; sibling suites recorded-not-rerun).
+
+## 6. State after this erratum
 
 - Battery 46/46 (36 prior + 10 new); siblings: WNBA 79/79, soccer 94/94,
   NBA-prep 80/81 (see §4).
