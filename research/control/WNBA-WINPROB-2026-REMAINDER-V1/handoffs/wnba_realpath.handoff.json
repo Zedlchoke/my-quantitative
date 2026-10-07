@@ -1,0 +1,47 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "WNBA-REALPATH",
+  "cycle_id": "WNBA-WINPROB-2026-REMAINDER-V1",
+  "role": "quant-implementer",
+  "lane": "wnba-realpath",
+  "dispatch_sha": "2c9db5e05402ac598ddd2dce55cf5a858e6c3042",
+  "actual_start_sha": "2c9db5e05402ac598ddd2dce55cf5a858e6c3042",
+  "commit_sha": "14c50ab45ec3cbfc2c0bcf0f36298ba79c20fe9a",
+  "changed_paths": [
+    "research/papertrade_wnba26/predict.py",
+    "tests/papertrade_wnba26/test_realpath_predict.py",
+    "research/control/WNBA-WINPROB-2026-REMAINDER-V1/REALPATH_PROOF.md",
+    "research/control/WNBA-WINPROB-2026-REMAINDER-V1/handoffs/wnba_realpath.handoff.json"
+  ],
+  "tests": [
+    {
+      "name": "tests/papertrade_wnba26 (full suite, worktree cwd)",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/papertrade_wnba26 -q",
+      "result": "79 passed",
+      "breakdown": "67 pre-existing (untouched) + 12 new REALPATH tests"
+    }
+  ],
+  "authority_claims": [
+    "pinned snapshot wnba_schedule_2026.csv re-hashed 0ed97fafa4392a38f2467e5a588b0a8713ece835ec7cb4fb96a48f8761d05f26 == pin (test-enforced on every real-path run)",
+    "frozen engine re-hashed at run start: arms.py 82263eab713258b09ef920500a56d1fbf36ef9b9b8ea20965c6b4fd99b04cdd3 == pin; harness.py b9446f7699ce2e29c8ce66490fc0f9941cc38dda0ed02e8e7fc108e65373485e == pin (read-only source, never modified)",
+    "predict.py stream proven bit-for-bit equal to the pinned arms.py B1 parent path (p_home floats and final ratings identical) on a synthetic corpus, test-enforced",
+    "census measured on the pinned snapshot: 360 rows = 345 completed post (HISTORY) + 15 pre (remaining slate); per-game anchors and 11 ET-day gates reproduce FREEZE_PACKET §5 exactly (test-enforced, all 26 values)",
+    "state at SF1 anchor 2026-10-07T17:20:00Z (strict/exclusive) = 344 result-present completed rows, state_digest 8bdf1515159cc2227be338c92314b75edac65969210edc803e0ac2e70a1587ae (sha256 of sorted rating table; independently recomputed, match)",
+    "NO real-game probability stored or committed anywhere; predict.py is a pure function (no I/O, no prints); real probabilities are computed only post-GO by execute.py calling wnba26_predict"
+  ],
+  "known_limitations": [
+    "the rating stream consumes 344 of the 345 completed post rows: game 401857072 (DAL vs NY, 2026-07-17) is STATUS_POSTPONED with no result and is excluded by the FREEZE_PACKET §3 result-present law (never inferred); census remains 345 as dispatched",
+    "self-test family (c) computes REAL engine p values in memory only (disclosed option permitted by dispatch): no assertion inspects probability values, nothing is printed/logged/persisted, values are overwritten with synthetic placeholders (0.5) before any further use",
+    "TBD Finals fixtures resolve both sides to the frozen fresh-entry law (rating 1500); their ledger-side row classification is the recorder's concern, not this lane's",
+    "state_digest is byte-stable per platform via repr(float) shortest round-trip form; cross-platform bit-identity was not claimed or tested",
+    "with <=15 remaining games the window can never reach evaluation MIN_VALID=300 (inherited FREEZE_PACKET §4 constraint, restated not stretched)"
+  ],
+  "incidents": [],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "research/papertrade_wnba26/predict.py (entry wnba26_predict(completed_rows, upcoming) -> list[{match_id, tip_utc, p_home, p_away, state_digest, model_id=B1_WNBA, constants={K:32,HCA:50,gamma:0.65}}]; helpers anchor_for_game strict, per_game_anchor, day_first_tips, replay_stream, state_digest)",
+    "tests/papertrade_wnba26/test_realpath_predict.py (families a-d: determinism, pinned-engine equivalence, anchor-exclusion mutations, REAL rows + REAL fixture ids with sha guard, anchor-law units)",
+    "research/control/WNBA-WINPROB-2026-REMAINDER-V1/REALPATH_PROOF.md (measured path: pins, census 345/344/1/15, SF1 state_digest, 15 per-game anchors, 11 ET-day gates, no-storage statement)"
+  ]
+}
