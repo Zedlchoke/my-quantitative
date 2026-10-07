@@ -1,11 +1,11 @@
 {
-  "schema": "sports_papertrade_exec_config@1",
+  "schema": "sports_papertrade_exec_config@2",
   "sport_keys": {
     "NBA": "basketball_nba",
     "WNBA": "basketball_wnba",
     "SOCCER": ["soccer_uefa_nations_league"]
   },
-  "soccer_sport_keys_note": "The Odds API sport keys for soccer fixtures; the list starts with soccer_uefa_nations_league per the dispatch pin and grows only by an explicit config commit. All odds/event calls flow through the paper core OddsClient (quota caps 4 credits/day + 120/month, journal every call, HALT_KEY on 401/403).",
+  "soccer_sport_keys_note": "The Odds API sport keys for soccer fixtures; the list starts with soccer_uefa_nations_league per the dispatch pin and grows only by an explicit config commit. All odds/event calls flow through the paper core OddsClient (quota caps 4 credits/day + 120/month, journal every call, HALT_KEY on 401/403). 2026-10-07 source survey (sports_snapshot.json sha256 fe60ea5b0e60faec, get_sports 0-credit): the ONLY active men's-international soccer key on this source is soccer_uefa_nations_league — no World-Cup-qualifier, continental-cup, or international-friendly key exists (active or inactive); club keys are out of scope by owner law and structurally fail the corpus crosswalk.",
   "bookmaker": "pinnacle",
   "markets": "h2h",
   "anchor_law": {
@@ -13,5 +13,22 @@
     "WNBA": "T0-6h10m exclusive (same batch law)",
     "SOCCER": "kickoff-6h strict per match"
   },
-  "settlement_refund_results": ["VOID", "PUSH", "CANCELLED", "POSTPONED_NO_RESCHEDULE"]
+  "settlement_refund_results": ["VOID", "PUSH", "CANCELLED", "POSTPONED_NO_RESCHEDULE"],
+  "competition_law_note": "Stage/venue law (owner 2026-10-07 expansion instruction item 4): a soccer match is BET-ELIGIBLE only when the B1 target semantics and the bookmaker h2h settlement semantics are the SAME regulation result. The frozen B1 target is 3-way FULL-TIME 90/120-min with shootouts never flipping it (soccer_b1_replay.make_target), while Pinnacle soccer 1X2 settles on 90 minutes — so any match where extra time is possible is NOT_RUN_STAGE_LAW. Venue law: the frozen adapter passes neutral=False (HCA applies to the listed home side), so only competitions whose format guarantees true home-and-away in the window are eligible; anything else is NOT_RUN. A kickoff date with no covering law window is UNKNOWN -> NOT_RUN (fail-closed; never guessed).",
+  "competition_law": {
+    "soccer_uefa_nations_league": [
+      {
+        "window": {"from": "2026-09-01", "to": "2026-11-30"},
+        "stage": "LEAGUE_PHASE_HOME_AWAY",
+        "bet_eligible": true,
+        "evidence": "UEFA Nations League 2026-27 league phase (matchdays Sep-Nov 2026): home-and-away double headers, regulation 90-minute results, draws stand — no extra time and no neutral venues, so B1 full-time target == Pinnacle 1X2 (90-min) semantics and neutral=False (HCA on the listed home side) is correct."
+      },
+      {
+        "window": {"from": "2027-03-01", "to": "2027-06-30"},
+        "stage": "KNOCKOUT_ET_POSSIBLE",
+        "bet_eligible": false,
+        "evidence": "UNL knockout stage (quarter-final ties and March/June Final Four): single decisive matches where extra time and penalties are possible — B1 target (90/120-min full-time, shootout=draw) diverges from the bookmaker's 90-minute h2h settlement; also single-venue finals may be neutral. Fail-closed NOT_RUN per the owner's same-result law."
+      }
+    ]
+  }
 }

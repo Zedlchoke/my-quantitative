@@ -1149,6 +1149,151 @@ def test_quote_write_plan_rerun_and_decided_safety():
     assert plan_w2["write"] == [] and plan_w2["journal"] == []
 
 
+# ------------------------------------- stage/venue law + cross-key dedup (2026-10-07 expansion) --
+
+def test_soccer_stage_law_classification():
+    league = execute.soccer_stage_law("soccer_uefa_nations_league", "2026-11-12")
+    assert league["bet_eligible"] is True
+    assert league["stage"] == "LEAGUE_PHASE_HOME_AWAY"
+    ko = execute.soccer_stage_law("soccer_uefa_nations_league", "2027-03-25")
+    assert ko["bet_eligible"] is False
+    assert ko["stage"] == "KNOCKOUT_ET_POSSIBLE"
+    unknown_key = execute.soccer_stage_law("soccer_some_club_league", "2026-11-12")
+    assert unknown_key["bet_eligible"] is False and \
+        unknown_key["stage"] == "UNKNOWN_STAGE"
+    uncovered = execute.soccer_stage_law("soccer_uefa_nations_league", "2026-12-15")
+    assert uncovered["bet_eligible"] is False and "outside every" in \
+        uncovered["reason"]
+
+
+def test_soccer_stage_law_blocks_engine_before_crosswalk(env):
+    """Real-mode compute_forecasts: a knockout-window fixture (ET possible ->
+    model 90/120-min target vs bookmaker 90-min h2h mismatch) never reaches
+    the crosswalk or the engine; a league-phase fixture does."""
+    ko_fx = A.Fixture("SOCCER", "ko-probe", "England", "Croatia",
+                      "2027-03-25T19:45:00Z", "soccer_uefa_nations_league",
+                      "2027-03-25", "the_odds_api/events/x#ko-probe")
+    lg_fx = A.Fixture("SOCCER", "lg-probe", "England", "Croatia",
+                      "2026-11-12T19:45:00Z", "soccer_uefa_nations_league",
+                      "2026-11-12", "the_odds_api/events/x#lg-probe")
+    args = argparse.Namespace(sandbox=False, to_date=None,
+                              paper_core_root=None, wnba26_root=None,
+                              nba_harness_root=None, nba26_root=None,
+                              soccer_root=None)
+    drafts, wiring = execute.compute_forecasts(args, "SOCCER", [ko_fx])
+    assert drafts == []
+    assert len(wiring["stage_law_miss"]) == 1
+    m = wiring["stage_law_miss"][0]
+    assert m["status"] == "NOT_RUN_STAGE_LAW" and m["stage"] == "KNOCKOUT_ET_POSSIBLE"
+    assert wiring["crosswalk_miss"] == [], "stage-missed fixture never crosswalked"
+    drafts2, wiring2 = execute.compute_forecasts(args, "SOCCER", [lg_fx])
+    assert wiring2["stage_law_miss"] == [] and len(drafts2) == 1
+
+
+def test_stage_law_journal_terminal(env):
+    core = _core()
+    led = core.ledger.PaperLedger(
+        env["data"] / "sandbox" / "sandbox_ledger.jsonl")
+    led.load()
+    led.genesis(plan_sha256="stage-test", created_at_utc="2026-10-01T00:00:00Z",
+                sandbox=True)
+    fx = A.Fixture("SOCCER", "ko-probe", "England", "Croatia",
+                   "2027-03-25T19:45:00Z", "soccer_uefa_nations_league",
+                   "2027-03-25", "the_odds_api/events/x#ko-probe")
+    row = execute.stage_law_decision(
+        fx, {"stage": "KNOCKOUT_ET_POSSIBLE",
+             "reason": "B1 90/120-min full-time target vs 90-min h2h"}, NOW)
+    assert row["status"] == "NOT_RUN_STAGE_LAW" and row["stake_cents"] == 0
+    assert "KNOCKOUT_ET_POSSIBLE" in row["reason"]
+    led.append_decision(row)
+    assert "ko-probe" in led.decided_match_ids(), "terminal: decide must skip"
+    ok, _ = led.verify_chain()
+    assert ok
+
+
+def test_cross_key_slot_collision_refused(env, monkeypatch):
+    """The same real match listed under two registered sport keys with
+    different event ids must refuse (1:1 ambiguity); genuinely different
+    matches union."""
+    odds_mod, _c, _calls = _fake_odds_env([])
+
+    class TwoKeyClient:
+        fingerprint = "sandbox-two-key"
+        payloads = {
+            "key_a": [{"id": "evA", "home_team": "England",
+                       "away_team": "Croatia",
+                       "commence_time": "2026-11-12T19:45:00Z"}],
+            "key_b": [{"id": "evB", "home_team": "England",
+                       "away_team": "Croatia",
+                       "commence_time": "2026-11-12T19:45:00Z"}],
+        }
+
+        def get_events(self, key):
+            return json.dumps(self.payloads[key]).encode(), {}
+
+    monkeypatch.setattr(execute, "_soccer_sport_keys",
+                        lambda: ["key_a", "key_b"])
+    with pytest.raises(BlockError) as ei:
+        execute.real_soccer_fixtures(
+            argparse.Namespace(data_root=str(env["data"])), SOC_EVENT_DAY,
+            client=TwoKeyClient(), odds_mod=odds_mod)
+    assert ei.value.code == "BLOCKED_FIXTURES_DUPLICATE"
+    assert "key_a" in ei.value.detail and "key_b" in ei.value.detail
+
+    # genuinely different matches across keys union (day-filtered)
+    class GoodClient(TwoKeyClient):
+        payloads = {
+            "key_a": [{"id": "evA", "home_team": "England",
+                       "away_team": "Croatia",
+                       "commence_time": "2026-11-12T19:45:00Z"}],
+            "key_b": [{"id": "evB", "home_team": "Scotland",
+                       "away_team": "Wales",
+                       "commence_time": "2026-11-12T19:45:00Z"},
+                      {"id": "evC", "home_team": "Italy",
+                       "away_team": "Spain",
+                       "commence_time": "2026-11-13T19:45:00Z"}],
+        }
+
+    fx = execute.real_soccer_fixtures(
+        argparse.Namespace(data_root=str(env["data"])), SOC_EVENT_DAY,
+        client=GoodClient(), odds_mod=odds_mod)
+    assert [f.match_id for f in fx] == ["evA", "evB"], "day filter holds"
+
+
+def test_soccer_competition_report_breakdown(env, capcli):
+    """The exec-owned supplement reports BET / NO_BET / NOT_RUN per soccer
+    competition next to the pinned dashboard build."""
+    core = _core()
+    ledp = env["data"] / "sandbox" / "sandbox_ledger.jsonl"
+    led = core.ledger.PaperLedger(ledp).load()
+    led.genesis(plan_sha256="comp-report", created_at_utc="2026-10-01T00:00:00Z",
+                sandbox=True)
+    led.append({"type": "FORECAST", "league": "SOCCER",
+                "match_id": "m1", "competition": "soccer_uefa_nations_league",
+                "kickoff_utc": "2026-11-12T19:45:00Z", "p": {}, "mode": "ENGINE",
+                "recorded_at_utc": NOW, "model_version_sha": "x", "source_ref": "x"})
+    led.append_decision({"type": "DECISION", "league": "SOCCER", "match_id": "m1",
+                         "competition": "soccer_uefa_nations_league",
+                         "home": "England", "away": "Croatia",
+                         "kickoff_utc": "2026-11-12T19:45:00Z",
+                         "decided_at_utc": NOW, "status": "NO_EDGE",
+                         "stake_cents": 0, "chosen_leg": None})
+    led.append_decision({"type": "DECISION", "league": "SOCCER", "match_id": "m2",
+                         "competition": "soccer_uefa_nations_league",
+                         "home": "Scotland", "away": "Wales",
+                         "kickoff_utc": "2026-11-12T20:00:00Z",
+                         "decided_at_utc": NOW, "status": "NOT_RUN_STAGE_LAW",
+                         "reason": "stage", "stake_cents": 0, "chosen_leg": None})
+    outdir = env["data"] / "dash-comp"
+    code, out = capcli(env, "dashboard", "--out", str(outdir))
+    assert code == EXIT_OK
+    rep = json.loads((outdir / "soccer_by_competition.json").read_text())
+    unl = rep["competitions"]["soccer_uefa_nations_league"]
+    assert unl["matches"] == 2 and unl["forecasts"] == 1
+    assert unl["bet"] == 0 and unl["no_bet"] == 1 and unl["not_run_blocked"] == 1
+    assert out["soccer_by_competition"]["soccer_uefa_nations_league"]["no_bet"] == 1
+
+
 def test_journal_quota_skip_never_rejournals_decided(env):
     core = _core()
     led = core.ledger.PaperLedger(

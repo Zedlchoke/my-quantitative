@@ -134,10 +134,94 @@ def _persist_events_snapshot(args, sport_key: str, body: bytes,
     return meta["sha256"]
 
 
+def soccer_stage_law(sport_key: str, kickoff_date: str) -> dict:
+    """Stage/venue classification from the committed competition_law table
+    (config.json; fail-closed, never guessed). A match is BET-ELIGIBLE only
+    where the frozen B1 target semantics (3-way FULL-TIME 90/120-min,
+    shootout=draw) and the bookmaker h2h semantics (90 minutes) are the SAME
+    result AND the competition format guarantees a true home-and-away venue
+    in the window (the frozen adapter passes neutral=False). Everything else
+    — knockout/ET-possible windows, unknown venues, uncovered dates, unknown
+    keys — is NOT_RUN."""
+    law = load_config().get("competition_law", {})
+    windows = law.get(sport_key)
+    if not windows:
+        return {"bet_eligible": False, "stage": "UNKNOWN_STAGE",
+                "reason": (f"no committed competition_law window for sport "
+                           f"key {sport_key}; fail-closed NOT_RUN (never "
+                           "guessed)")}
+    for w in windows:
+        win = w.get("window", {})
+        if str(win.get("from", "")) <= kickoff_date <= str(win.get("to", "")):
+            return {"bet_eligible": bool(w.get("bet_eligible")),
+                    "stage": w.get("stage", "UNKNOWN_STAGE"),
+                    "reason": str(w.get("evidence", ""))}
+    return {"bet_eligible": False, "stage": "UNKNOWN_STAGE",
+            "reason": (f"kickoff date {kickoff_date} outside every committed "
+                       f"competition_law window for {sport_key}; fail-closed "
+                       "NOT_RUN")}
+
+
+def stage_law_decision(fixture, cls: dict, now: str) -> dict:
+    """Terminal NOT_RUN journal for a fixture outside the committed stage/venue
+    law (specific reason; stake 0; never a silent drop)."""
+    return {
+        "type": "DECISION", "league": fixture.league,
+        "match_id": fixture.match_id, "competition": fixture.competition,
+        "home": fixture.home, "away": fixture.away,
+        "kickoff_utc": fixture.kickoff_utc, "decided_at_utc": now,
+        "status": "NOT_RUN_STAGE_LAW",
+        "reason": f"[stage={cls['stage']}] {cls['reason']}",
+        "stake_cents": 0, "chosen_leg": None,
+    }
+
+
+def write_soccer_competition_report(led, out_dir: Path) -> dict:
+    """Exec-owned per-competition supplement (the pinned dashboard breaks
+    NBA/WNBA/SOCCER by league; this adds the per-soccer-competition
+    BET / NO_BET / NOT_RUN breakdown the expansion law requires)."""
+    per: dict[str, dict] = {}
+    for r in led.rows:
+        if r.get("league") != "SOCCER":
+            continue
+        comp = r.get("competition") or "unknown"
+        slot = per.setdefault(comp, {"forecasts": 0, "decisions": {},
+                                     "matches": set()})
+        slot["matches"].add(r.get("match_id"))
+        if r["type"] == "FORECAST":
+            slot["forecasts"] += 1
+        elif r["type"] == "DECISION":
+            st = r.get("status") or "?"
+            slot["decisions"][st] = slot["decisions"].get(st, 0) + 1
+    out = {"schema": "soccer_by_competition@1",
+           "generated_at_utc": now_utc_real(),
+           "law": ("BET_PAPER counts as BET; NO_EDGE counts as NO_BET; every "
+                   "other status counts as NOT_RUN/BLOCKED. Stage/venue law: "
+                   "config competition_law (fail-closed)."),
+           "competitions": {}}
+    for comp, slot in sorted(per.items()):
+        dec = slot["decisions"]
+        out["competitions"][comp] = {
+            "matches": len(slot["matches"]),
+            "forecasts": slot["forecasts"],
+            "bet": dec.get("BET_PAPER", 0),
+            "no_bet": dec.get("NO_EDGE", 0),
+            "not_run_blocked": sum(v for k, v in dec.items()
+                                   if k not in ("BET_PAPER", "NO_EDGE")),
+            "decisions_by_status": dec,
+        }
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "soccer_by_competition.json").write_text(
+        json.dumps(out, indent=1, sort_keys=True))
+    return out
+
+
 def real_soccer_fixtures(args, day: str, client=None, odds_mod=None) -> list:
     """REAL soccer fixtures from The Odds API /events via the core
     quota-guarded client (0-credit endpoint, journaled like every call).
-    Union across the registered sport keys, deduped fail-closed, filtered to
+    Union across the registered sport keys, deduped fail-closed — BOTH by
+    event id and by (commence_time, team-set) slot ACROSS keys (the same real
+    match listed under two keys must never yield two fixtures) — filtered to
     the UTC kickoff day. Network/HTTP failures are BLOCKED_ODDS_API (loud,
     nothing written). `client`/`odds_mod` are battery seams (offline fake
     client with the REAL exception classes); production passes neither."""
@@ -145,6 +229,7 @@ def real_soccer_fixtures(args, day: str, client=None, odds_mod=None) -> list:
         odds_mod, _quota, client = _odds_for(args)
     fixtures: list = []
     seen: dict[str, object] = {}
+    slots: dict[tuple, tuple] = {}        # slot -> (sport_key, match_id)
     for key in _soccer_sport_keys():
         try:
             body, hdrs = client.get_events(key)
@@ -170,6 +255,18 @@ def real_soccer_fixtures(args, day: str, client=None, odds_mod=None) -> list:
                                      "across registered sport keys",
                                      EXIT_BLOCKED_OTHER)
                 continue
+            slot = (fx.kickoff_utc, frozenset({A.norm(fx.home),
+                                               A.norm(fx.away)}))
+            other = slots.get(slot)
+            if other is not None and other[1] != fx.match_id:
+                raise BlockError(
+                    "BLOCKED_FIXTURES_DUPLICATE",
+                    f"events {other[1]} (sport key {other[0]}) and "
+                    f"{fx.match_id} (sport key {key}) share one "
+                    "(commence_time, team-set) slot across sport keys; 1:1 "
+                    "matching would be ambiguous; fail-closed",
+                    EXIT_BLOCKED_OTHER)
+            slots[slot] = (key, fx.match_id)
             seen[fx.match_id] = fx
             if fx.kickoff_utc[:10] == day:
                 fixtures.append(fx)
@@ -507,15 +604,32 @@ def compute_forecasts(args, league: str, fixtures: list) -> tuple[list[dict], di
                              f"soccer/replay.py sha "
                              f"{sha256_file(replay_path)[:12]} != pin "
                              f"{pin[:12]}; re-pin before a real run", 7)
-        # Freeze-anchored crosswalk extension (FREEZE_SKELETON §5: extend the
-        # 8-pair seed empirically from real payloads). Verified fail-closed
-        # (sha pin + seed byte-prefix + the engine's own laws) BEFORE the
-        # engine runs; names still unresolved are split out per-fixture and
-        # journaled NOT_RUN by the caller — never fuzzy, never batch-killing.
+        # Stage/venue law FIRST (owner 2026-10-07 item 4): the frozen B1
+        # target is full-time 90/120-min (shootout=draw) while bookmaker 1X2
+        # settles on 90 minutes — matches outside the committed
+        # LEAGUE_PHASE_HOME_AWAY windows are journaled NOT_RUN_STAGE_LAW and
+        # never reach the engine. Then the freeze-anchored crosswalk
+        # extension (verified fail-closed before the engine runs); names
+        # still unresolved are split out per-fixture and journaled NOT_RUN by
+        # the caller — never fuzzy, never batch-killing.
+        stage_missed = []
+        stage_ok = []
+        for f in fixtures:
+            cls = soccer_stage_law(f.competition, f.kickoff_utc[:10])
+            if cls["bet_eligible"]:
+                stage_ok.append(f)
+            else:
+                stage_missed.append({"match_id": f.match_id, "home": f.home,
+                                     "away": f.away,
+                                     "kickoff_utc": f.kickoff_utc,
+                                     "competition": f.competition,
+                                     "reason": cls["reason"],
+                                     "stage": cls["stage"],
+                                     "status": "NOT_RUN_STAGE_LAW"})
         mod, mapping = A.soccer_extension_crosswalk(
             replay_path,
             Path(__file__).resolve().parent / "PROVIDER_NAME_CROSSWALK_EXTENSION.csv")
-        resolvable, missed = A.soccer_crosswalk_split(mod, mapping, fixtures)
+        resolvable, missed = A.soccer_crosswalk_split(mod, mapping, stage_ok)
         drafts = []
         if resolvable:
             res = A.soccer_engine_replay(replay_path, resolvable,
@@ -528,11 +642,12 @@ def compute_forecasts(args, league: str, fixtures: list) -> tuple[list[dict], di
                        "source_ref": "soccer_b1_replay", "mode": "ENGINE"}
                       for r in res]
         wiring.update({"engine_mode": "ENGINE" if drafts else "NO_ENGINE_ROWS",
+                       "stage_law_miss": stage_missed,
                        "crosswalk_miss": [
                            {"match_id": f.match_id, "home": f.home,
                             "away": f.away, "kickoff_utc": f.kickoff_utc,
                             "competition": f.competition,
-                            "reason": why}
+                            "reason": why, "status": "CROSSWALK_MISS"}
                            for f, why in missed]})
         return drafts, wiring
     # NBA real mode (EXEC-NBA-REWIRE): the lawful PROSPECTIVE PIT path landed
@@ -596,7 +711,9 @@ def cmd_forecast(args) -> dict:
     decided = led.decided_match_ids()
     drafts, wiring = compute_forecasts(args, league, fixtures)
     draft_by_mid = {d["match_id"]: d for d in drafts}
-    missed = {m["match_id"]: m for m in wiring.get("crosswalk_miss", [])}
+    missed = {m["match_id"]: m for m in
+              wiring.get("crosswalk_miss", [])
+              + wiring.get("stage_law_miss", [])}
     _, per_anchor = batch_anchor(fixtures, league)
     written, skipped, journaled_miss = [], [], []
     for f in fixtures:
@@ -626,7 +743,7 @@ def cmd_forecast(args) -> dict:
                 or f.match_id in draft_by_mid or f.match_id in written \
                 or f.match_id in journaled_miss:
             continue
-        led.append_decision(crosswalk_miss_decision(f, m, now))
+        led.append_decision(miss_decision(f, m, now))
         journaled_miss.append(f.match_id)
     return {"league": league, "date": args.date, "now_utc": now,
             "written": written, "skipped_existing": skipped,
@@ -635,9 +752,9 @@ def cmd_forecast(args) -> dict:
 
 
 def crosswalk_miss_decision(fixture, miss: dict, now: str) -> dict:
-    """Terminal NOT_RUN journal for a fixture whose provider team names the
-    pinned+extended crosswalk cannot resolve (dashboard cause:
-    identity_crosswalk). Specific reason, stake 0, never a silent drop."""
+    """Terminal NOT_RUN journal for a fixture the frozen+extended crosswalk
+    cannot resolve (dashboard cause: identity_crosswalk). Specific reason,
+    stake 0, never a silent drop."""
     return {
         "type": "DECISION", "league": fixture.league,
         "match_id": fixture.match_id, "competition": fixture.competition,
@@ -646,6 +763,14 @@ def crosswalk_miss_decision(fixture, miss: dict, now: str) -> dict:
         "status": "CROSSWALK_MISS", "reason": miss["reason"],
         "stake_cents": 0, "chosen_leg": None,
     }
+
+
+def miss_decision(fixture, miss: dict, now: str) -> dict:
+    """Dispatch a NOT_RUN-family journal by its miss kind (stage law vs
+    crosswalk) — one loop in cmd_forecast journals both."""
+    if miss.get("status") == "NOT_RUN_STAGE_LAW":
+        return stage_law_decision(fixture, miss, now)
+    return crosswalk_miss_decision(fixture, miss, now)
 
 
 def forecast_index(led) -> dict:
@@ -987,6 +1112,18 @@ def cmd_decide(args) -> dict:
         if f.match_id in decided:
             skipped.append({"match_id": f.match_id, "why": "already decided"})
             continue
+        if league == "SOCCER" and not getattr(args, "sandbox", False):
+            # Stage/venue law safety net (also covers matches forecasted
+            # before a law window landed): outside the committed law the
+            # match is journaled NOT_RUN_STAGE_LAW — terminal, never bet.
+            cls = soccer_stage_law(f.competition, f.kickoff_utc[:10])
+            if not cls["bet_eligible"]:
+                row = stage_law_decision(f, cls, now)
+                led.append_decision(row)
+                journaled.append({"match_id": f.match_id,
+                                  "status": row["status"],
+                                  "reason": row["reason"][:120]})
+                continue
         ok, why = crosswalk_ok(f, fc.get(f.match_id), qt.get(f.match_id))
         dec = risk.evaluate_match(
             led, league=league, match_id=f.match_id, competition=f.competition,
@@ -1090,11 +1227,17 @@ def cmd_dashboard(args) -> dict:
     if not summary["chain_ok"]:
         raise BlockError("BLOCKED_TAMPER", "chain verify failed at dashboard build",
                          EXIT_BLOCKED_TAMPER)
+    # Exec-owned per-competition supplement (expansion law: BET/NO_BET/
+    # NOT_RUN visible per soccer competition; the pinned dashboard stops at
+    # the league level). Reads the same chain-verified ledger.
+    led = core.ledger.PaperLedger(path).load()
+    by_comp = write_soccer_competition_report(led, out_dir)
     return {"ledger": str(path), "out": str(out_dir), "sandbox": summary["sandbox"],
             "matches": len(summary["matches"]),
             "equity_cents": summary["equity_cents"],
             "open_exposure_cents": summary["open_exposure_cents"],
-            "status_counts": summary["status_counts"]}
+            "status_counts": summary["status_counts"],
+            "soccer_by_competition": by_comp["competitions"]}
 
 
 # --------------------------------------------------------------- plan / pins --
@@ -1123,18 +1266,25 @@ def cmd_plan(args) -> dict:
             now_dt = datetime.now(timezone.utc)
             for f in fixtures:
                 anchor = per_anchor[f.match_id]
+                if league == "SOCCER":
+                    stage = soccer_stage_law(f.competition, f.kickoff_utc[:10])
+                    stage_eligible = bool(stage["bet_eligible"])
+                else:
+                    stage_eligible = True      # no stage law beyond soccer
                 checks = {
                     "tip_utc": f.kickoff_utc,
                     "et_local_date": f.et_local_date,
                     "anchor_utc": anchor,
                     "anchor_open_now": now_dt < A.parse_tip(anchor),
                     "teams_known": "TBD" not in (f.home, f.away),
+                    "stage_bet_eligible": stage_eligible,
                     "forecast_present": f.match_id in fc,
                     "quote_present": f.match_id in qt,
                     "already_decided": f.match_id in decided,
                 }
                 checks["eligible_now"] = (checks["anchor_open_now"]
                                           and checks["teams_known"]
+                                          and checks["stage_bet_eligible"]
                                           and not checks["already_decided"])
                 entry["fixtures"].append({
                     "match_id": f.match_id, "home": f.home, "away": f.away,
