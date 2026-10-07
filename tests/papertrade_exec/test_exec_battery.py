@@ -174,8 +174,22 @@ def test_run_day_chains_three_leagues_sandbox(env, capcli):
     assert any(r["type"] == "GENESIS" and r["sandbox"] for r in all_rows)
 
 
-def test_run_day_refuses_hard_prego_real_mode(env, capcli):
-    code, out = capcli(env, "run-day", "--date", WNBA_DAY, sandbox=False)
+def test_run_day_refuses_missing_token(env, capcli):
+    # world-independent form (the real control dir is post-GO by design): the
+    # missing-token refusal on a tmp control dir via the sandbox seam
+    reg = json.loads((REPO / "plans" / "CYCLE_REGISTRY.json").read_text())
+    cycles = reg.get("cycles", reg)
+    if isinstance(cycles, dict):
+        row = cycles.get("SPORTS-PAPERTRADE-EXEC-V1")
+        if row is not None:
+            row["phase"] = "READY_PENDING_ONE_OWNER_GO"
+    else:
+        for c in cycles:
+            if c.get("cycle_id") == "SPORTS-PAPERTRADE-EXEC-V1":
+                c["phase"] = "READY_PENDING_ONE_OWNER_GO"
+    (env["ctrl"] / "CYCLE_REGISTRY.json").write_text(json.dumps(reg, indent=1))
+    (env["ctrl"] / "GO_TOKEN.json").unlink(missing_ok=True)
+    code, out = capcli(env, "run-day", "--date", WNBA_DAY)
     assert code == EXIT_BLOCKED_NO_GO and out["blocked"] == "BLOCKED_NO_GO"
 
 
@@ -340,19 +354,42 @@ def test_refuse_wrong_go_phrase(env, capcli):
 
 
 def test_refuse_registry_not_consumed(env, capcli):
-    (env["ctrl"] / "CYCLE_REGISTRY.json").write_text(
-        (REPO / "plans" / "CYCLE_REGISTRY.json").read_text())  # real: no GO_CONSUMED
+    # tmp registry WITHOUT GO_CONSUMED (world-independent: the real one may be
+    # GO_CONSUMED post-GO; the law under test is token-without-consumption refusal)
+    reg = json.loads((REPO / "plans" / "CYCLE_REGISTRY.json").read_text())
+    cycles = reg.get("cycles", reg)
+    if isinstance(cycles, dict):
+        row = cycles.get("SPORTS-PAPERTRADE-EXEC-V1")
+        if row is not None:
+            row["phase"] = "READY_PENDING_ONE_OWNER_GO"
+    else:
+        for c in cycles:
+            if c.get("cycle_id") == "SPORTS-PAPERTRADE-EXEC-V1":
+                c["phase"] = "READY_PENDING_ONE_OWNER_GO"
+    (env["ctrl"] / "CYCLE_REGISTRY.json").write_text(json.dumps(reg, indent=1))
     code, out = capcli(env, "forecast", "--league", "WNBA", "--date", WNBA_DAY)
     assert code == EXIT_BLOCKED_NO_GO and "GO_CONSUMED" in out["detail"]
 
 
-def test_refuse_real_mode_mutation_prego(env, capcli):
-    code, out = capcli(env, "forecast", "--league", "WNBA", "--date", WNBA_DAY,
-                       sandbox=False)
-    assert code == EXIT_BLOCKED_NO_GO
-    code, out = capcli(env, "run-day", "--date", WNBA_DAY, sandbox=False)
-    assert code == EXIT_BLOCKED_NO_GO
-    assert not (env["data"] / "ledger").exists(), "no real ledger pre-GO"
+def test_refuse_gate_missing_token(env, capcli):
+    # world-independent form (post-GO the real control dir HAS the token by
+    # design): the law under test is the missing-token refusal on a tmp control
+    # dir + a registry that lacks GO_CONSUMED
+    reg = json.loads((REPO / "plans" / "CYCLE_REGISTRY.json").read_text())
+    cycles = reg.get("cycles", reg)
+    if isinstance(cycles, dict):
+        row = cycles.get("SPORTS-PAPERTRADE-EXEC-V1")
+        if row is not None:
+            row["phase"] = "READY_PENDING_ONE_OWNER_GO"
+    else:
+        for c in cycles:
+            if c.get("cycle_id") == "SPORTS-PAPERTRADE-EXEC-V1":
+                c["phase"] = "READY_PENDING_ONE_OWNER_GO"
+    (env["ctrl"] / "CYCLE_REGISTRY.json").write_text(json.dumps(reg, indent=1))
+    (env["ctrl"] / "GO_TOKEN.json").unlink(missing_ok=True)
+    code, out = capcli(env, "forecast", "--league", "WNBA", "--date", WNBA_DAY)
+    assert code == EXIT_BLOCKED_NO_GO and "absent" in out["detail"]
+    assert not (env["data"] / "ledger").exists(), "no ledger without gate"
 
 
 def test_refuse_head_drift(env, capcli):
@@ -854,12 +891,24 @@ def test_nba_window_success_chain_sandbox(env, capcli):
     assert len(rows_of(env, "DECISION")) == 8
 
 
-def test_nba_real_mode_refuses_prego_exit3(env, capcli):
-    """Missing GO: real-mode mutations still exit 3 on the NBA path too."""
+def test_nba_gate_missing_token_refusal(env, capcli):
+    """Missing GO: the NBA path refuses identically on a control dir without
+    the token (world-independent; the real dir is post-GO by design)."""
+    reg = json.loads((REPO / "plans" / "CYCLE_REGISTRY.json").read_text())
+    cycles = reg.get("cycles", reg)
+    if isinstance(cycles, dict):
+        row = cycles.get("SPORTS-PAPERTRADE-EXEC-V1")
+        if row is not None:
+            row["phase"] = "READY_PENDING_ONE_OWNER_GO"
+    else:
+        for c in cycles:
+            if c.get("cycle_id") == "SPORTS-PAPERTRADE-EXEC-V1":
+                c["phase"] = "READY_PENDING_ONE_OWNER_GO"
+    (env["ctrl"] / "CYCLE_REGISTRY.json").write_text(json.dumps(reg, indent=1))
+    (env["ctrl"] / "GO_TOKEN.json").unlink(missing_ok=True)
     code, out = capcli(env, "forecast", "--league", "NBA",
-                       "--date", NBA_WIN_START, "--to-date", NBA_WIN_END,
-                       sandbox=False)
+                       "--date", NBA_WIN_START, "--to-date", NBA_WIN_END)
     assert code == EXIT_BLOCKED_NO_GO and out["blocked"] == "BLOCKED_NO_GO"
-    code, out = capcli(env, "run-day", "--date", "2026-10-21", sandbox=False)
+    code, out = capcli(env, "run-day", "--date", "2026-10-21")
     assert code == EXIT_BLOCKED_NO_GO
     assert not (env["data"] / "ledger").exists()

@@ -30,6 +30,7 @@ source-root overrides are accepted in sandbox mode ONLY.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import stat
@@ -592,10 +593,150 @@ def cmd_quote(args) -> dict:
                 "journaled": journaled}
     except odds_mod.KeyHalted as kh:
         raise BlockError("BLOCKED_KEY", f"HALT_KEY engaged: {kh}", EXIT_BLOCKED_KEY)
+    rows, journals = map_odds_payload(fixtures, body, now, league,
+                                      client.fingerprint)
+    written, skipped, journaled = [], [], []
+    for r in rows:
+        if r["match_id"] in existing:
+            skipped.append(r["match_id"])
+            continue
+        led.append(r)
+        written.append(r["match_id"])
+    for j in journals:
+        if j["match_id"] in existing or j["match_id"] in written:
+            continue
+        led.append_decision(j, recheck=in_lock_recheck_for(led, args, now))
+        journaled.append(j["match_id"])
     return {"league": league, "date": args.date, "captured_bytes": len(body),
-            "note": "payload mapping to MARKET_QUOTE rows is the post-GO capture "
-                    "path (events->fixtures 1:1); pre-GO this branch is "
-                    "unreachable because the gate refuses first"}
+            "written": written, "skipped_existing": skipped,
+            "journaled": journaled, "mode": "REAL", "sandbox": False,
+            "quota_remaining": hdrs.get("x-requests-remaining")}
+
+
+WNBA_FULL_NAMES = {
+    "ATL": "Atlanta Dream", "CHI": "Chicago Sky", "CONN": "Connecticut Sun",
+    "DAL": "Dallas Wings", "GS": "Golden State Valkyries",
+    "IND": "Indiana Fever", "LA": "Los Angeles Sparks", "LV": "Las Vegas Aces",
+    "MIN": "Minnesota Lynx", "NY": "New York Liberty",
+    "PHX": "Phoenix Mercury", "SEA": "Seattle Storm",
+    "WAS": "Washington Mystics",
+}
+
+
+def _full_name(league: str, abbr: str) -> str:
+    return WNBA_FULL_NAMES.get(abbr.strip().upper(), abbr) if league == "WNBA" \
+        else abbr
+
+
+def in_lock_recheck_for(led, args, now):
+    """Core in-lock recheck bound to this runner's GO state (journal rows are
+    stake-0; the recheck keeps them lawful under the append_decision law)."""
+    ok, _why = exec_go_state(
+        Path(args.sandbox_control_dir) if getattr(args, "sandbox", False)
+        else CONTROL_DIR,
+        Path(args.sandbox_registry) if getattr(args, "sandbox", False)
+        else REGISTRY_PATH)
+    from research.papertrade import risk as _R
+    return _R.in_lock_recheck(led, now, ok)
+
+
+def map_odds_payload(fixtures, payload_bytes: bytes, now: str, league: str,
+                     key_fingerprint: str):
+    """Map a The-Odds-API /odds payload (pinnacle, decimal) to MARKET_QUOTE
+    rows, 1:1 fail-closed against the pinned fixtures: provider event must
+    match on exact commence_time AND the full-name team set; pinnacle must be
+    present with the h2h market and every required leg. No fuzzy matching;
+    unmatched/malformed fixtures are JOURNALED (DECISION NO_QUOTE), never
+    dropped. Per-row PIT law: fetch_ts < tip - 6h strict."""
+    events = json.loads(payload_bytes)
+    by_key = {}
+    for ev in events:
+        names = frozenset({norm_team(ev.get("home_team", "")),
+                           norm_team(ev.get("away_team", ""))})
+        by_key[(ev.get("commence_time"), names)] = ev
+    need = 3 if league == "SOCCER" else 2
+    rows, journals = [], []
+
+    def _journal(f, reason):
+        journals.append({
+            "type": "DECISION", "league": f.league, "match_id": f.match_id,
+            "competition": f.competition, "home": f.home, "away": f.away,
+            "kickoff_utc": f.kickoff_utc, "decided_at_utc": now,
+            "status": "NO_QUOTE", "reason": reason,
+            "stake_cents": 0, "chosen_leg": None,
+        })
+
+    for f in fixtures:
+        names = frozenset({norm_team(_full_name(league, f.home)),
+                           norm_team(_full_name(league, f.away))})
+        ev = by_key.get((f.kickoff_utc, names))
+        if ev is None:
+            _journal(f, "no provider event matched 1:1 (commence_time + team "
+                        "set); fail-closed")
+            continue
+        books = {b.get("key"): b for b in ev.get("bookmakers", [])}
+        pin = books.get("pinnacle")
+        if pin is None:
+            _journal(f, "pinnacle absent from payload; fail-closed")
+            continue
+        last_update = pin.get("last_update") or ""
+        mkt = next((m for m in pin.get("markets", []) if m.get("key") == "h2h"),
+                   None)
+        if mkt is None:
+            _journal(f, "h2h market missing from pinnacle payload")
+            continue
+        outcomes = {}
+        for o in mkt.get("outcomes", []):
+            try:
+                outcomes[str(o.get("name", "")).strip()] = float(o.get("price"))
+            except (TypeError, ValueError):
+                pass
+        nh, na = norm_team(_full_name(league, f.home)), \
+            norm_team(_full_name(league, f.away))
+        odds = {}
+        for oname, price in outcomes.items():
+            n = norm_team(oname)
+            if n == nh:
+                odds["HOME"] = price
+            elif n == na:
+                odds["AWAY"] = price
+            elif n in ("draw", "x"):
+                odds["DRAW"] = price
+        need_legs = ("HOME", "DRAW", "AWAY") if league == "SOCCER" \
+            else ("HOME", "AWAY")
+        missing = [k for k in need_legs if k not in odds]
+        if missing:
+            _journal(f, f"quote missing required legs {missing}; fail-loud")
+            continue
+        tip = datetime.strptime(f.kickoff_utc, "%Y-%m-%dT%H:%M:%SZ")
+        fetch = datetime.strptime(now, "%Y-%m-%dT%H:%M:%SZ")
+        if (tip - fetch).total_seconds() <= 6 * 3600:
+            _journal(f, "fetch inside T-6h window; PIT row law refuses storage")
+            continue
+        if last_update:
+            try:
+                if datetime.strptime(
+                        last_update, "%Y-%m-%dT%H:%M:%SZ") > fetch:
+                    _journal(f, "source_last_update after fetch_ts; row law")
+                    continue
+            except ValueError:
+                pass  # non-ISO stamp kept verbatim, disclosed in the row
+        ev_sha = hashlib.sha256(json.dumps(
+            {"id": ev.get("id"), "commence_time": ev.get("commence_time"),
+             "home_team": ev.get("home_team"), "away_team": ev.get("away_team"),
+             "pinnacle": pin}, sort_keys=True).encode()).hexdigest()
+        rows.append({
+            "type": "MARKET_QUOTE", "league": league,
+            "match_id": f.match_id, "home": f.home, "away": f.away,
+            "kickoff_utc": f.kickoff_utc, "bookmaker": "pinnacle",
+            "market": "h2h", "odds": odds, "fetch_ts_utc": now,
+            "source_last_update_utc": last_update,
+            "commence_time_utc": ev.get("commence_time"),
+            "payload_sha256": ev_sha, "key_fingerprint": key_fingerprint,
+            "mode": "REAL", "source_ref": "the-odds-api v4 /odds "
+                                          "bookmakers=pinnacle",
+        })
+    return rows, journals
 
 
 def journal_quota_skip(led, fixtures, now: str, why: str, existing: dict) -> list:
