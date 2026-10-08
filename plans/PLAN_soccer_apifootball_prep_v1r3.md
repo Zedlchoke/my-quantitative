@@ -27,7 +27,7 @@
   - R1 `GET /odds?date=2026-11-12` (known-good param form, page 1).
     Scan every row for the England–Croatia fixture by (teams OR
     fixture_id→later) — rows do NOT carry team names (V1R1 finding), so
-    match candidates by kickoff timestamp 1765566300 (2026-11-12T19:45Z)
+    match candidates by kickoff timestamp 1794512700 (2026-11-12T19:45Z)
     and league id 5 (UEFA Nations League). Record paging.total.
     - If exactly one candidate row → go to R3 with its fixture id.
     - If ambiguous (multiple rows share kickoff+league — not expected for
