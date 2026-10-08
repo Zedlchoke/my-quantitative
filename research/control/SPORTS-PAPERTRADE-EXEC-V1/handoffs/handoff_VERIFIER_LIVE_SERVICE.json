@@ -1,0 +1,50 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "VERIFIER-LIVE-SERVICE-20261008",
+  "cycle_id": "SPORTS-PAPERTRADE-EXEC-V1",
+  "role": "LANE-VERIFIER-LIVE",
+  "lane": "verify",
+  "dispatch_sha": "958aaa65b6446d87a61f240543bc0817fbba751b",
+  "actual_start_sha": "958aaa65b6446d87a61f240543bc0817fbba751b",
+  "commit_sha": "958aaa65b6446d87a61f240543bc0817fbba751b",
+  "changed_paths": [
+    "research/papertrade_exec/ops_service.py",
+    "research/papertrade_exec/live_dashboard.py",
+    "research/papertrade_exec/results_fetch.py",
+    "tests/papertrade_exec/test_ops_live_service.py",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/ERRATUM_EXEC_5_LIVE_SERVICE.md",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/ops_launchd/com.myquant.sptexec.ops.plist",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/ops_launchd/OpenPaperDeskLive.command"
+  ],
+  "tests": [
+    {
+      "command": "pytest tests/papertrade_exec/ -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "2935d2579bef202b2b19757e401dc14686926bc38925ff98155984f65f7b800b",
+      "log_digest_note": "sha256 of the observed tail summary line '67 passed in 13.33s'"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Verifier ran read-only; the live settle pass was NOT re-executed in real mode (idempotency proven from code + passing test only, per dispatch instruction).",
+    "Row 7 FORECAST (2026-10-07T12:37:58Z, soccer expansion round) and row 8 DECISION NO_QUOTE (2026-10-08T00:11:17Z, quota spend 1 credit at 00:11:18Z) sit inside the dispatch item 3 literal no-new-rows window; both are from prior recorded rounds and predate SERVICE_START 2026-10-08T09:21:03Z, so the live round demonstrably added only the 2 SETTLEMENT rows (finding F-1, LOW).",
+    "Root main HEAD is 2dc84ba9, one registry-only commit (plans/ACTIVE_CYCLES.json projection sync) beyond dispatch-expected b046e153; working tree clean, nothing pushed (finding F-2, LOW).",
+    "Pinned core resolved to the frozen sports-papertrade-v1 worktree (research/papertrade/ledger.py, risk.py) per load_pinned_core; its settled_decision_refs/duplicate-refusal code was read as-is, not re-derived.",
+    "Handoff outputs entry for this file cannot contain its own sha256 (self-referential); compute on read if needed."
+  ],
+  "incidents": [],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/sports-papertrade-exec-v1/integration/research/control/SPORTS-PAPERTRADE-EXEC-V1/LIVE_SERVICE_VERIFIER_20261008.json",
+      "sha256": "0be624576ed0cef8c5ce41029d2f15c84a87329cdfcf9acb59fed69ff87ce021"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/sports-papertrade-exec-v1/integration/research/control/SPORTS-PAPERTRADE-EXEC-V1/handoffs/handoff_VERIFIER_LIVE_SERVICE.json",
+      "sha256": "SELF_NOT_COMPUTABLE(self-referential)"
+    }
+  ],
+  "recommended_next_action": "Owner: record PASS_WITH_FINDINGS (0 HIGH / 0 MEDIUM / 2 LOW) for the 2026-10-08 LIVE_SERVICE round; live service healthy under launchd (running, 127.0.0.1:8791, REAL mode, chain ok, 11 rows, equity 100800c, open 0). Findings are dispatch-wording staleness only, no artifact defects: F-1 ledger rows 7-8 are pre-live-round history consistent with quota journal; F-2 root advanced one registry-only commit 2dc84ba9. No repair, no push, no GO change required; next verifier may normalize the item-3 window wording to 'no non-SETTLEMENT row after the last pre-service timestamp 2026-10-08T00:11:17Z'."
+}
