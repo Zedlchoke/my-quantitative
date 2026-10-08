@@ -1,0 +1,151 @@
+{
+ "schema": "t3_verifier_report@1",
+ "task_id": "PREP3-FRESH-VERIFY-T3",
+ "cycle_id": "PREP3-CAMPAIGN-20261008",
+ "verifier": "T3",
+ "verifier_class": "A7-independent-fresh-context",
+ "verified_utc_start_sha_root_main": "5b1ec2824d78d1dde512492b4619fdbc23241046",
+ "verified_head": {
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/futures-q1q2q3-prep/prep",
+  "branch": "prep/futures-q1q2q3-prep-20261007",
+  "head_sha": "325c40306b878c9edf0c404ff15ff9b4b6980637",
+  "parent": "256df848",
+  "grandparent_lane_h": "b8d52076",
+  "block_commit": "50456e0f",
+  "worktree_clean": true
+ },
+ "overall_verdict": "PASS_WITH_FINDINGS",
+ "gate_statement": "The Lead MAY proceed with (1) recording the owner's two verbatim approvals into a new auth file and (2) deleting research/control/PREP-FUTURES-Q1Q2Q3-20261007/prospective/COLLECTOR_BLOCKED.json in a dedicated commit. Findings F-1/F-5 should be repaired before the next 13:30Z fire but do not gate the lift.",
+ "checks": {
+  "A1_invocation_window": {
+   "result": "PASS",
+   "evidence_lines": {
+    "FORECAST_WINDOW_ET": "q1_collector.py L126",
+    "in_forecast_window": "L836-841",
+    "forecast_step_window_refusal": "L952-958 NOT_RUN_INPUT_WINDOW_STALE exit 5",
+    "bar_completed_precondition": "L127, L844-855 NOT_RUN_BAR_INCOMPLETE, called L959",
+    "fetch_endDateTime_10_et": "L997 et_wallclock(session_date,(10,0,0))",
+    "ib_end_str_utc_dash": "L651-659",
+    "cutoff_refusal": "L227 CUTOFF_ET exclusive, L714-731 cut_input_window NOT_RUN_BAR_CUTOFF_VIOLATION exit 6, invoked L1001"
+   }
+  },
+  "A2_three_timestamps_append_discipline": {
+   "result": "PASS",
+   "evidence_lines": {
+    "bar_completed_at": "L844-847, row field L1032",
+    "data_arrival_at": "L999-1000 per symbol post-fetch, row field L1033",
+    "forecast_made_at_after_all_fetches": "L1060-1063 with require_before_deadline immediately before",
+    "recheck_before_every_append": "L1070-1071 inside append loop, append L1072",
+    "both_before_either": "Phase A L992-1056 no appends; Phase B L1057-1077 duplicate pre-validation L1064-1069 then both appends",
+    "tests": "T11 test_row_timestamp_fields, test_deadline_expiry_after_fetches_appends_nothing, test_nq_failure_after_es_fetch_strands_nothing"
+   }
+  },
+  "A3_block_refusal": {
+   "result": "PASS",
+   "evidence_lines": {
+    "check_block_file": "L872-881 NOT_RUN_BLOCKED_BY_FINDING exit 14, called L943 before any market access",
+    "live_evidence": "ops/ops_log.jsonl 2026-10-08T09:16:09Z TERMINAL_FAIL_CLOSED NOT_RUN_BLOCKED_BY_FINDING exit_code 14",
+    "observe_close_not_gated": "L1085-1201 no block/skip gate (lawful MISSED bookkeeping)"
+   }
+  },
+  "A4_session_skip": {
+   "result": "PASS",
+   "evidence_lines": {
+    "load_session_skip": "L884-920 forecast_step only; malformed -> NOT_RUN_SKIP_FILE_MALFORMED exit 15",
+    "check_session_skip": "L923-935 listed -> NOT_RUN_OWNER_DECLARED_MISSED exit 15; called L970 AFTER block check L943 + duplicate check L961-965, BEFORE first fetch L998",
+    "observe_close_not_gated": "L1106-1123 writes session_missed NOT_RUN_NO_FORECAST_RECORDED, idempotent SKIPPED_SESSION_ALREADY_NOT_RUN",
+    "tests": "T12 a-f (refusal zero-fetch, non-skip unaffected, 8 malformed variants, block precedence, observe-close writes 2 MISSED rows zero-fetch, production manifest == {2026-10-08})"
+   }
+  },
+  "A5_observe_close_enddatetime_utc_dash": {
+   "result": "PASS",
+   "static": "single reqHistoricalData site L688 endDateTime=ib_end_str(end_et); forecast end_et L997 10:00:00 ET; observe end_et L1127 17:10:00 ET; request records L1011/L1131 same ib_end_str",
+   "live_fetch": {
+    "mode": "readonly connect 127.0.0.1:7497 clientId 9418, pacing honored, duration 120 S, PAST session 2026-09-30, throwaway script in /tmp only",
+    "endDateTime_sent": "20260930-14:00:00",
+    "n_bars": 2,
+    "bar_starts_et": ["2026-09-30T09:58:00-04:00", "2026-09-30T09:59:00-04:00"],
+    "tz_aware": true,
+    "no_bar_ge_1000": true,
+    "error_10314": false
+   }
+  },
+  "A6_prior_fail_closed_laws": {
+   "result": "PASS",
+   "pins": {
+    "17_null_calibration_raw_v2.json": "e0dc703e2139a03170e863ee0800c0087db6b245613644ced5e1f3a228aba192",
+    "04_Q1_VOL_PANEL.json": "12dc7fbef954155373d3a5fd2173823e1b7297c7b47633a55e19351555d5a76f",
+    "lane_q1.py": "82d1b8e6dc9dd25927dc35ec3c53a9f5da8bd0ece8ac465e55ac16d589d242c4",
+    "es_expiry_coverage.json": "8e2b98c59263458a960adc65efa0001d182089feb4e917faa6d6a3f02d1f3cb4",
+    "bls_dates.json": "ad41d2a76708229b9eef4a02bf62cd6df44eb023455f2c98d2d21cb5b1363009",
+    "verify_pins": "L263-277 NOT_RUN_PIN_DRIFT exit 4; T6 green incl production-pins-currently-verify"
+   },
+   "heavy_lock_precheck": "L310-315 FREE_PROVEN required, L795-801 first precheck, exit 2 on conflict",
+   "duplicate_refusal": "L357-375 exit 12 + forecast pre-checks L961-965 and L1064-1069",
+   "redaction": "L140/L172-173/L196-206",
+   "pacing": "L136 PACING_S=3.0, sleep L702 after every request",
+   "byte_cap": "L138 50MB, checked L1006-1007",
+   "no_backfill": "L121 FIRST_COLLECTIBLE_SESSION 2026-10-08, L804-814, L946-948"
+   }
+  ,
+  "B_tests": {
+   "result": "PASS",
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/PREP-FUTURES-Q1Q2Q3-20261007/prospective/test_q1_collector.py (from the worktree)",
+   "count": 43,
+   "exit_code": 0,
+   "duration_s": 16.696,
+   "composition": "37 prior (26 lane-G era + 5 T10 + 6 T11) + 6 T12",
+   "T10_asserts": "window constants [10:00,10:05) ET + completion 10:00 + cutoff unchanged; boundary truth table; NOT_RUN_BAR_INCOMPLETE before/at 10:00:00; NOT_RUN_INPUT_WINDOW_STALE exit 5 at deadline; fire_utc = window start DST-correct (2026-11-02 15:00Z, 2026-10-09 14:00Z)",
+   "T11_asserts": "block refusal exit 14 then proceeds when removed; 09:59:59 refused; deadline expiry after BOTH fetches refuses at write gate with ZERO rows (fetch count 2); NQ failure after ES strands no ES row, restart completes; duplicate restart idempotent; three row timestamp fields, single shared forecast_made_at post-fetch, ES->NQ arrivals pre-append",
+   "T12_asserts": "(a) listed 2026-10-08 refused NOT_RUN_OWNER_DECLARED_MISSED exit 15 zero rows zero fetches; (b) 2026-10-09 unaffected full forecast; (c) 8 malformed skip-file variants incl binary garbage -> NOT_RUN_SKIP_FILE_MALFORMED pre-market-access; (d) block-file precedence; (e) observe_close not gated: 2 lawful NOT_RUN_NO_FORECAST_RECORDED rows zero fetches; (f) production manifest loads exactly {2026-10-08}"
+  },
+  "C_parity": {
+   "result": "PASS",
+   "pin_precedes_results": "md §1 'BEFORE any metric computation', §2 'computed AFTER the §1 pin', json pin.recorded_before_computation=true",
+   "es_bit_exact": "md §2 median AND max rel 0.0, RV5/RV30 0.0 all sessions, ES max |d_yhat_full| = 0.0",
+   "nq_rv30": "median_rv30_rel 2.099e-05 > 1e-6, M4 fired; T2 median-convention LOW finding independently reproduced: upper-middle (value-sorted idx 7 of 14) = 2.098851e-05, interpolated median = 1.049426e-05, BOTH > 1e-6, verdict unchanged",
+   "verdict": "BLOCK_PROSPECTIVE_PENDING_OWNER present (md §3 + json) with owner options §3",
+   "option1_verbatim": "ES primary decides ('ES quyết định; NQ báo, không cứu'), NQ control cannot rescue, divergence disclosed, 14-session/one-contract limit recorded",
+   "forbidden_metrics_grep": "delta_R2 / rest30_target_model_evaluation / pnl appear ONLY in md scope-law forbiddance (L4-5) and json forbidden_and_not_computed list — nothing computed",
+   "coverage_limitation": "14 sessions 2026-09-11..09-30, single Z6-era contract 202612, months 2021-03/2024-06 NOT_RUN IBKR error 200 (probe parity_probe_2026-10-08.json)"
+  },
+  "D_owner_decisions_vs_artifacts": {
+   "result": "PASS",
+   "34_doc_matches": "window [10:00:00,10:05:00) ET after 09:59-bar completion; PIT inputs unchanged ('information set moves zero'); trial accounting none; MISSED rules unchanged; observe_close unchanged; fetch endDateTime unchanged",
+   "34_status": "AMENDMENT_DRAFT_NOT_APPROVED / NOT IN FORCE (correct pre-auth)",
+   "36_auth_absent": "no 36_OWNER_AUTH* file in worktree control dir or repo-wide find",
+   "skip_quote_crosscheck": "33B dispatch verbatim == SESSION_SKIP_OWNER.json.owner_instruction_quote"
+  },
+  "E_automation_config": {
+   "result": "PASS_WITH_FINDINGS",
+   "file": "research/control/PREP3-CAMPAIGN-20261008/lead_evidence/automation_state_2026-10-08T1120Z.json",
+   "encoded_ok": ["fire 13:30Z daily (cron 30 13 * * *, nextRunAt 2026-10-08T13:30:00Z, enabled/active, runCount 0)", "STEP 0 block check", "STEP 0b session-skip check 2026-10-08 listed", "PART A [10:00:00,10:05:00) ET sleep-until 10:00:30 ET refuse >=10:05", "PART B observe-close 16:20 ET with MISSED bookkeeping", "owner_decisions_enforced lists all three owner decisions"],
+   "gap": "three-timestamp reporting requirement NOT encoded anywhere in the dump (F-1 MEDIUM); dump carries prompt_note summary only, not verbatim full prompt (F-5 LOW)"
+  },
+  "F_invariants": {
+   "result": "PASS",
+   "ledger_absent": "prospective/ledger_q1_prospective.jsonl and prospective/raw/ do not exist; 0 rows ever (T9 green)",
+   "blocked_file_intact": "on-disk sha256 2302f8d69d882c03975262e85b4e53a5b2c71e9045cce5392a2d9cabb27f6ed0 == content at 50456e0f; git blob b2a96fa3e1cdebdb74b5752e053d5dbe89c9c7d1 identical HEAD vs 50456e0f",
+   "byte_identity_e2e651ac": "66/66 shared control-dir files blob-identical to root-main e2e651ac (incl 26_Q1_TRIAL_LOG.json ace532dc..., 27_Q1_OOS_VAL_RESULTS.json c4089d06...); measured identity stricter than inherited '26/27' phrasing",
+   "skip_manifest": "exists, sha256 f8c660511faa6c2d20af3f7fda7cfd4c4c8e16c69cb06c468efc77fc9f7a3526, sessions exactly [2026-10-08], verbatim owner quote present",
+   "heavy_lock": "FREE_PROVEN at verifier start (locks inspect: no registry row, flock free)",
+   "tws_ports_nc": {"7497": "OPEN", "7496": "closed", "4001": "closed", "4002": "closed"},
+   "no_push": "neither lane branch exists under refs/remotes/*; both local-only"
+  }
+ },
+ "post_lift_proof_spec": {
+  "1_state_delta": "outside-window invocation after removal must refuse NOT_RUN_INPUT_WINDOW_STALE (exit 5), NOT NOT_RUN_BLOCKED_BY_FINDING (exit 14) — delta proves new state read; zero ledger rows",
+  "2_skip_arm": "in-window invocation for 2026-10-08 must refuse NOT_RUN_OWNER_DECLARED_MISSED (exit 15)",
+  "3_observe_close": "observe_close for 2026-10-08 (>=16:15 ET) writes exactly 2 session_missed NOT_RUN_NO_FORECAST_RECORDED rows (ES, NQ), idempotent on repeat; zero forecast rows",
+  "4_automation_next_fire": "next 13:30Z fire takes STEP 0 (proceed), STEP 0b for 2026-10-08 (no forecast), PART A for 2026-10-09 at 10:00:30 ET (14:00:30Z) inside the window — first REAL prospective forecast; report carries bar_completed_at/data_arrival_at/forecast_made_at"
+ },
+ "findings": [
+  {"id": "F-1", "severity": "MEDIUM", "detail": "automation dump does not encode the three-timestamp reporting requirement; not gate-weakening (code L1032-1033/L1063 + T11 enforce), Lead should amend the prompt / dump full text before next fire"},
+  {"id": "F-2", "severity": "LOW", "detail": "COLLECTOR_STATE.json at HEAD holds Lane-H-era script_sha256 ca5d0b96... (current collector sha256 3451d380da382bed0b588d736d6b58f6a155e610f7037e998b9c31ddb98ab33e); stale bookkeeping only, refreshed next run, gate never reads it"},
+  {"id": "F-3", "severity": "LOW", "detail": "NQ RV30 median convention: doc 2.099e-05 = upper-middle of 14 values; interpolated = 1.049e-05; both > 1e-6, M4 fires either way (T2 finding reproduced)"},
+  {"id": "F-4", "severity": "LOW", "detail": "rehearsal 09:41:45Z returned OK exit 0 with TWS connected ('CONNECTED (unexpected in rehearsal)'); OPS+state only, ledger still 0 rows"},
+  {"id": "F-5", "severity": "LOW", "detail": "automation dump prompt_note is a summary, verbatim full prompt not dumped; provenance rests on Lead attestation"}
+ ],
+ "incidents": [],
+ "boundary_statement": "Fresh context, bytes only, nothing repaired, no real forecast (single read-only 120 S fetch of PAST session 2026-09-30 for A5), TEST untouched, no push/merge; writes limited to this verifier dir."
+}

@@ -1,0 +1,55 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "PREP3-FRESH-VERIFY-T3",
+ "cycle_id": "PREP3-CAMPAIGN-20261008",
+ "role": "VERIFIER",
+ "lane": "VERIFY-T3",
+ "dispatch_sha": null,
+ "actual_start_sha": null,
+ "commit_sha": null,
+ "commit_sha_note": "Verifier handoff is itself part of the single verifier commit on ROOT main (pathspec research/control/PREP3-CAMPAIGN-20261008 only, no push), so it cannot contain its own hash; commit sha is reported in the T3 final message and discoverable via git log -- research/control/PREP3-CAMPAIGN-20261008 on main. ROOT main HEAD at verification start was 5b1ec2824d78d1dde512492b4619fdbc23241046; verified lane HEAD 325c40306b878c9edf0c404ff15ff9b4b6980637 on prep/futures-q1q2q3-prep-20261007 (worktree .worktrees/futures-q1q2q3-prep/prep, porcelain-clean). No root history rewritten.",
+ "changed_paths": [
+  "research/control/PREP3-CAMPAIGN-20261008/verifier/T3_VERIFIER_REPORT.md",
+  "research/control/PREP3-CAMPAIGN-20261008/verifier/T3_VERIFIER_REPORT.json",
+  "research/control/PREP3-CAMPAIGN-20261008/verifier/handoffs/handoff_VERIFIER_T3.json"
+ ],
+ "tests": [
+  {"name": "full suite re-run", "command": ".venv/bin/python research/control/PREP-FUTURES-Q1Q2Q3-20261007/prospective/test_q1_collector.py (worktree)", "result": "43 tests, OK, exit 0 (16.696s)"},
+  {"name": "T10WindowLaw (5)", "asserts": "window [10:00:00,10:05:00) ET constants + boundary truth table; NOT_RUN_BAR_INCOMPLETE before/at 10:00:00 ET; NOT_RUN_INPUT_WINDOW_STALE exit 5 at 10:05:00 deadline; fire_utc = window start, DST-correct (2026-11-02 15:00Z / 2026-10-09 14:00Z); cutoff 10:00 unchanged"},
+  {"name": "T11FixedForecastPath (6)", "asserts": "block refusal NOT_RUN_BLOCKED_BY_FINDING exit 14 then proceeds once removed; 09:59:59 invocation refused; deadline expiry AFTER both fetches refuses at write gate with ZERO rows (fetch counter 2); NQ failure after ES fetch strands no ES row and restart completes both; duplicate restart idempotent; rows carry bar_completed_at/data_arrival_at/forecast_made_at with one shared post-fetch forecast_made_at and ES->NQ arrivals"},
+  {"name": "T12SessionSkip (6)", "asserts": "(a) 2026-10-08 refused NOT_RUN_OWNER_DECLARED_MISSED exit 15, zero rows, zero fetches; (b) 2026-10-09 unaffected; (c) 8 malformed skip-file variants incl binary garbage -> NOT_RUN_SKIP_FILE_MALFORMED before market access; (d) block-file precedence while block exists; (e) observe_close NOT gated: 2 lawful NOT_RUN_NO_FORECAST_RECORDED MISSED rows, zero fetches; (f) production SESSION_SKIP_OWNER.json loads exactly {2026-10-08}"},
+  {"name": "A5 live read-only fetch", "result": "endDateTime 20260930-14:00:00 (UTC dash) accepted by TWS build 176 readonly clientId 9418; 2 bars (09:58/09:59 ET starts) tz-aware, none >= 10:00; no error 10314; pacing honored; throwaway script in /tmp only"}
+ ],
+ "authority_claims": [
+  "Code gate verified at exact HEAD 325c40306b878c9edf0c404ff15ff9b4b6980637 (branch prep/futures-q1q2q3-prep-20261007): A1 window law, A2 three timestamps + both-before-either + per-append rechecks, A3 block refusal, A4 session-skip (forecast_step only), A5 UTC-dash endDateTime (static 3 sites + live fetch), A6 pins e0dc703e/12dc7fbe/82d1b8e6/expiry 8e2b98c5/BLS ad41d2a7 + heavy-lock precheck + duplicate refusal + redaction + pacing 3s + byte cap 50MB + no-backfill — all PASS with line numbers in T3_VERIFIER_REPORT.md",
+  "Invariants: ledger absent 0 rows ever; COLLECTOR_BLOCKED.json sha256 2302f8d6... byte-identical to 50456e0f (blob b2a96fa3...); 66/66 shared control files blob-identical to root-main e2e651ac (26_Q1_TRIAL_LOG ace532dc..., 27_Q1_OOS_VAL_RESULTS c4089d06...) — stricter than the inherited '26/27' phrasing; SESSION_SKIP_OWNER.json sha256 f8c66051... lists exactly [2026-10-08] with verbatim owner quote == 33B dispatch; heavy lock FREE_PROVEN at start; TWS 7497 OPEN (7496/4001/4002 closed); no remote refs for either lane branch (no push)",
+  "Parity 35: §1 pin precedes §2 results; ES bit-exact; NQ RV30 median 2.099e-05 (upper-middle) / 1.049e-05 (interpolated) — both > 1e-6, M4 fires either way; verdict BLOCK_PROSPECTIVE_PENDING_OWNER + owner options §3; option 1 semantics verbatim (ES primary decides, NQ cannot rescue, disclose divergence + 14-session/one-contract limit); forbidden metrics (delta_R2/rest30_target_model_evaluation/pnl) present only as forbidden_and_not_computed; coverage limitation (14 sessions, single Z6, 2021-03/2024-06 NOT_RUN error 200) recorded",
+  "34_AMENDMENT content matches owner-approved mechanics and still reads AMENDMENT_DRAFT_NOT_APPROVED (correct pre-auth); 36_OWNER_AUTH_Q1_PROSPECTIVE_LIFT.md does NOT exist; 34 draft activation order = owner approval -> verifier -> Lead deletes block in dedicated commit",
+  "GATE DECISION: PASS_WITH_FINDINGS — the Lead MAY proceed with auth-append (two verbatim owner approvals) + COLLECTOR_BLOCKED.json removal in a dedicated commit; post-lift proof spec in T3_VERIFIER_REPORT.md §G: outside-window invocation must refuse NOT_RUN_INPUT_WINDOW_STALE (exit 5, NOT exit 14) to prove state delta; in-window 2026-10-08 must refuse NOT_RUN_OWNER_DECLARED_MISSED (exit 15); observe-close tonight writes 2 MISSED rows; next 13:30Z fire = STEP 0b for 2026-10-08 then PART A for 2026-10-09 at 10:00:30 ET carrying the three timestamps"
+ ],
+ "known_limitations": [
+  "F-1 (MEDIUM): lead automation dump does not encode the three-timestamp reporting requirement; prompt_note is a summary and verbatim full prompt not dumped (F-5 LOW) — code+T11 enforce the fields, so not gate-weakening; repair before next 13:30Z fire",
+  "F-2 (LOW): COLLECTOR_STATE.json at HEAD carries Lane-H-era script_sha256 ca5d0b96... (current collector sha256 3451d380...); stale bookkeeping, refreshed on next run, gate never reads it",
+  "F-3 (LOW): NQ RV30 median convention (upper-middle 2.099e-05 vs interpolated 1.049e-05) — both above threshold, verdict unchanged; disclosure should state the convention",
+  "F-4 (LOW): rehearsal 09:41:45Z returned OK exit 0 with TWS connected (expected code path; OPS+state only)",
+  "A7-class: verifier ran no real forecast; the single live IBKR touch was one read-only 120 S fetch of PAST session 2026-09-30 (check A5); live in-window behavior of the full forecast path remains unexercised by design until the post-lift proof",
+  "Live-fire of the automation (next 13:30Z) is after this verification window; automation prompt provenance rests on the Lead's attestation pending F-1/F-5 repair"
+ ],
+ "incidents": [],
+ "tree_status": {
+  "root_main_head_at_start": "5b1ec2824d78d1dde512492b4619fdbc23241046",
+  "lane_head": "325c40306b878c9edf0c404ff15ff9b4b6980637",
+  "lane_branch": "prep/futures-q1q2q3-prep-20261007",
+  "lane_worktree_clean": true,
+  "cfd_lane_head_local": "8ba835e4e8a4e0bc54d18cc1c0a66035c6e08280",
+  "heavy_lock": "FREE_PROVEN",
+  "pushed": false
+ },
+ "workers": 0,
+ "outputs": {
+  "report_md": "research/control/PREP3-CAMPAIGN-20261008/verifier/T3_VERIFIER_REPORT.md",
+  "report_json": "research/control/PREP3-CAMPAIGN-20261008/verifier/T3_VERIFIER_REPORT.json",
+  "overall_verdict": "PASS_WITH_FINDINGS",
+  "gate": "OPEN for Lead auth-append + block removal (dedicated commit, no push)"
+ }
+}
