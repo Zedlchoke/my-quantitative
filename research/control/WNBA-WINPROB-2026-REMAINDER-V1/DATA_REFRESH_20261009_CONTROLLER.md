@@ -51,9 +51,14 @@ batch anchor; re-prove store lineage before the ET-day 2026-10-09 anchor
      2026-10-10T21:50Z.
    - `401918303` + `401918304` 04:00Z (ET-day 10-14): anchor 2026-10-13T21:50Z.
    - Finals `401918305`–`401918311` (ET-days 10-17…10-31): day anchors
-     13:20Z(10-17), 17:50Z(10-18), 17:50Z(10-21), 13:20Z(10-24), 17:50Z(10-25),
-     17:50Z(10-28), 17:50Z(10-31) — teams TBD at snapshot (deterministic
-     `tbd:<abbr>` fallback law, disclosed in predict.py).
+     2026-10-17T13:20Z (305), 2026-10-19T17:50Z (306), 2026-10-22T17:50Z (307),
+     2026-10-24T13:20Z (308), 2026-10-26T17:50Z (309), 2026-10-29T17:50Z (310),
+     2026-10-31T17:50Z (311) — == FREEZE_PACKET §6 pins (a controller-note
+     anchor-date drift for 306/307/309/310 was found by the fresh-context A7
+     re-audit and corrected in place; the binding pins live in
+     FREEZE_PACKET.md, which the ledger computes from schedule bytes) — teams
+     TBD at snapshot (deterministic `tbd:<abbr>` fallback law, disclosed in
+     predict.py).
 4. Test battery re-run at branch head `46200b30` (controller, worktree cwd):
    **79 passed** (67 at A7 + 12 realpath-lane tests). Green.
 5. Paper cross-check (no double-record): the shared paper ledger
