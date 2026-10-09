@@ -1,0 +1,62 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "Q1-FIRST-FORECAST-AUDIT",
+ "cycle_id": "PREP3-CAMPAIGN-20261008",
+ "role": "AUDITOR",
+ "lane": "AUDIT-T4",
+ "dispatch_sha": null,
+ "actual_start_sha": null,
+ "commit_sha": null,
+ "commit_sha_note": "Auditor handoff is itself part of the single T4 commit on ROOT main (pathspec research/control/PREP3-CAMPAIGN-20261008 only, no push), so it cannot contain its own hash; discoverable via git log -- research/control/PREP3-CAMPAIGN-20261008 on main. Audited lane HEAD 12854f32a2a51859c44c35008db195124dbbb3eb on prep/futures-q1q2q3-prep-20261007 (worktree .worktrees/futures-q1q2q3-prep/prep, porcelain-clean, matches the dispatch-expected forecast-evidence commit). ROOT main HEAD at audit start was 4c545247e604c262dcb182c03d66d816377b6e33. No root history rewritten.",
+ "changed_paths": [
+  "research/control/PREP3-CAMPAIGN-20261008/verifier/T4_FIRST_FORECAST_AUDIT.md",
+  "research/control/PREP3-CAMPAIGN-20261008/verifier/T4_FIRST_FORECAST_AUDIT.json",
+  "research/control/PREP3-CAMPAIGN-20261008/verifier/T4_recompute.py",
+  "research/control/PREP3-CAMPAIGN-20261008/verifier/T4_g3_tws_probe.json",
+  "research/control/PREP3-CAMPAIGN-20261008/verifier/handoffs/handoff_AUDIT_T4.json"
+ ],
+ "tests": [
+  {"name": "C1 ledger bytes", "result": "PASS — exactly 2 rows (forecast, 2026-10-09, ES+NQ); file sha 02204cc0...; per-line shas 218d4fd5(ES)/c5616cf1(NQ) match ops FORECAST_ISSUED ledger_line_sha256; row2.prev_line_sha256 == sha256(line1+\\n); row1 prev null lawful"},
+  {"name": "C2 timestamps", "result": "PASS — bar_completed_at == 2026-10-09T14:00:00Z exactly (both); data_arrival ES 14:03:12Z / NQ 14:03:16Z and forecast_made_at 14:03:16Z all in (14:00:00Z, 14:05:00Z); forecast_made_at >= both data_arrival_at (NQ equal, same-second post-fetch write); raw fetched_utc == data_arrival_at per symbol"},
+  {"name": "C3 input legality", "result": "PASS — recomputed raw sha256 match rows (ES fdd4e0ec..., NQ 36576798...); max bar-start 13:52:00Z < 14:00:00Z cutoff (epoch-ns check TRUE both); both symbols present; 23 contiguous bars 09:30-09:52 ET, no non-60s gaps, closes>0; request endDateTime 20261009-14:00:00 / 3600 S / TRADES / useRTH=false"},
+  {"name": "C4 pins", "result": "PASS — 17_null e0dc703e..., es_expiry_coverage 8e2b98c5..., bls_dates ad41d2a7... (plus panel 12dc7fbe..., lane_q1 82d1b8e6...) all match expected at HEAD; restored originals byte-identical (same sha256) to nested legacy copies"},
+  {"name": "C5 recompute (T4_recompute.py)", "result": "PASS — independent reimplementation: rv5/rv30/yhat_reduced/yhat_full rel dev exactly 0.0 for BOTH symbols (tolerance 1e-12); row betas == 17_null_calibration_raw_v2.json pinned_coefficients; arithmetic on pinned constants, no fit"},
+  {"name": "C6 G3 forensics + read-only TWS probe (T4_g3_tws_probe.json)", "result": "ROOT CAUSE: paper-feed historical-store publication lag — bars 09:53-09:59 ET missing in both symbols at the 10:03 fetch (23/30 each, 22/29 pairs); IDENTICAL re-request at 14:14:52Z returns 60/60 both symbols. Observe law q1_collector.py:1146-1150 -> outcome will be EXCLUDED_GUARD_FAIL / g3_open_window_incomplete; rows COLLECTED but EXCLUDED; no override"},
+  {"name": "C7 refusal forensics", "result": "PASS — 2x NOT_RUN_PIN_DRIFT (14:01:02Z, 14:02:54Z, exit 4) wrote zero ledger/raw artifacts; FORECAST_ISSUED 14:03:16Z ops entry byte-consistent with ledger"},
+  {"name": "C8 hygiene", "result": "nested stray tree NOT tracked in git (ls-files 0; ignored by /.worktrees/), but IS a registered worktree nested in the lane worktree (prep/.worktrees/futures-es-reg/prep @ 935556cf, branch prep/futures-es-reg-20261004); restored original path is an unregistered plain dir in root's gitignored /.worktrees/ zone; nothing deleted"},
+  {"name": "C9 no-overclaim scan", "result": "PASS — only disclaimers mention edge; rows carry full guard flags incl g3_open_ok=false; commit message records 22/29 as guard flag"}
+ ],
+ "authority_claims": [
+  "Audit executed against exact lane HEAD 12854f32a2a51859c44c35008db195124dbbb3eb (branch prep/futures-q1q2q3-prep-20261007, clean), the dispatch-expected forecast-evidence commit; executed collector blob sha 3451d380... == blob at 325c4030 (Lane K) == HEAD",
+  "Authority chain: amendment 34 (window [10:00,10:05) ET) + parity option 1 approved verbatim in 36_OWNER_AUTH_Q1_PROSPECTIVE_LIFT.md, added by commit df212b28; session 2026-10-08 owner-declared MISSED (SESSION_SKIP_OWNER.json); 2026-10-09 = first lawful real-forecast session; all today's ops events (refusals + issue) inside the approved window",
+  "First real forecast rows are VALID EVIDENCE: 2 rows ES+NQ, timestamps lawful, inputs legal (no bar >= cutoff), pins intact, features/forecasts reproduce exactly, chain intact, refusals fail-closed with zero artifacts",
+  "Findings: F1 MEDIUM operational (feed-store lag truncates input tail inside the fixed window; recurrence would EXCLUDE every session -> zero evaluable accumulation; owner decision needed for any change), F6 MEDIUM adjacent (mandated 2026-10-08 MISSED bookkeeping never ran; its lawful observe window lapsed; record the miss, never backfill), F2 LOW state staleness (script_sha256 ca5d0b96 / ledger_rows 0, pre-declared in auth 36), F3 LOW inert raw-manifest chain (write_raw reads wrong key), F4 LOW pin paths outside version control + nested registered worktree, F5 LOW parity disclosure duty pending at report level",
+  "AUDITOR BOUNDARIES KEPT: read-only against TWS (one historical re-read, clientId 9417) and everywhere else; repaired nothing, deleted nothing, no orders, no push/merge; commit limited to pathspec research/control/PREP3-CAMPAIGN-20261008 on ROOT main"
+ ],
+ "known_limitations": [
+  "The auditor cannot verify IBKR server-side truth beyond the store's responses; the lag root cause is proven operationally (identical request returns complete window 11 minutes later), not from vendor logs",
+  "September parity captures (30/30 open bars) are look-backs from 2026-10-08, so they bound only look-back behavior, not same-moment behavior; same-moment sample size is n=1 session",
+  "Whether the 09:53-09:59 ET bars as now published match what a later same-day fetch would have returned at 10:04:59 ET was not measured minute-by-minute; only the two endpoints (10:03 fetch incomplete, 14:14 re-read complete) were observed",
+  "F6: absence of observe ops entries is evidence of omission in this ops log only; a duplicate/parallel lawful bookkeeping path outside this collector was not found anywhere it would be recorded"
+ ],
+ "incidents": [],
+ "tree_status": {
+  "root_main_head_at_audit_start": "4c545247e604c262dcb182c03d66d816377b6e33",
+  "lane_head": "12854f32a2a51859c44c35008db195124dbbb3eb",
+  "lane_branch": "prep/futures-q1q2q3-prep-20261007",
+  "lane_worktree_clean": true,
+  "heavy_lock": "not required (no heavy job run by auditor)",
+  "pushed": false
+ },
+ "workers": 0,
+ "outputs": {
+  "report_md": "research/control/PREP3-CAMPAIGN-20261008/verifier/T4_FIRST_FORECAST_AUDIT.md",
+  "report_json": "research/control/PREP3-CAMPAIGN-20261008/verifier/T4_FIRST_FORECAST_AUDIT.json",
+  "recompute_script": "research/control/PREP3-CAMPAIGN-20261008/verifier/T4_recompute.py",
+  "g3_tws_probe": "research/control/PREP3-CAMPAIGN-20261008/verifier/T4_g3_tws_probe.json",
+  "overall_verdict": "PASS_WITH_FINDINGS",
+  "ledger_row_count": 2,
+  "timestamp_inequalities": "ALL TRUE (bar_completed_at == 14:00:00Z; 14:00:00Z < data_arrival ES 14:03:12Z / NQ 14:03:16Z < 14:05:00Z; 14:00:00Z < forecast_made_at 14:03:16Z < 14:05:00Z; forecast_made_at >= both arrivals)",
+  "g3_root_cause": "IBKR paper-feed historical-store publication lag (~11 min) at the same-moment fetch; 09:53-09:59 ET bars present on re-read; rows COLLECTED, EXCLUDED_GUARD_FAIL/g3_open_window_incomplete at scoring per law"
+ }
+}
