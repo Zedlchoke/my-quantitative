@@ -45,8 +45,8 @@ if __package__ in (None, ""):                       # direct-script execution
 from research.papertrade_exec import (  # noqa: E402
     BATCH_LEAD_SECONDS, CONTROL_DIR, CONTROL_DIR_NAME, DEFAULT_DATA_ROOT,
     EXIT_BLOCKED_ANCHOR, EXIT_BLOCKED_KEY, EXIT_BLOCKED_NO_GO, EXIT_BLOCKED_OTHER,
-    EXIT_BLOCKED_TAMPER, EXIT_HEAD_DRIFT, EXIT_OK, GO_PHRASE, LEAGUES,
-    REGISTRY_PATH, SOCCER_LEAD_SECONDS,
+    EXIT_BLOCKED_TAMPER, EXIT_HEAD_DRIFT, EXIT_OK, EXIT_PIN_DRIFT, GO_PHRASE,
+    LEAGUES, REGISTRY_PATH, SOCCER_LEAD_SECONDS,
     BlockError, load_pins, nba_payload_composite, sha256_file, verify_pins)
 from research.papertrade_exec import adapters as A  # noqa: E402
 
@@ -745,9 +745,19 @@ def cmd_forecast(args) -> dict:
             continue
         led.append_decision(miss_decision(f, m, now))
         journaled_miss.append(f.match_id)
+    emitted_b1r = []
+    if league == "SOCCER":
+        # Post-switch emission (switch GO-packet step 1): a B1 row written
+        # above (or already in the ledger) must never stand alone — append
+        # its B1R twin now, while every anchor in the batch is still open.
+        b1r_switch_ts_verified(Path(args.sandbox_registry)
+                               if getattr(args, "sandbox", False)
+                               else REGISTRY_PATH)
+        emitted_b1r = emit_b1r_forecasts(led, fixtures, now)
     return {"league": league, "date": args.date, "now_utc": now,
             "written": written, "skipped_existing": skipped,
             "journaled_crosswalk_miss": journaled_miss,
+            "emitted_b1r": emitted_b1r,
             "wiring": wiring, "sandbox": bool(args.sandbox)}
 
 
@@ -778,6 +788,209 @@ def miss_decision(fixture, miss: dict, now: str) -> dict:
 # B1R_SOCCER row when present; the parallel B1 row stays in the ledger as
 # control. Non-soccer selection law unchanged (first FORECAST wins).
 SOCCER_DECISION_MODEL_ID = "B1R_SOCCER"
+
+# B1R fail-closed law (owner instruction 2026-10-10; ERRATUM_2 E-1
+# disposition 2 of SOCCER-INTL-WC-EURO-PAPER-PREP-V1; FREEZE_BOUNDARY.json
+# of the switch cycle). After switch_ts a SOCCER decision may be grounded
+# ONLY in a B1R_SOCCER FORECAST row that (a) carries the frozen inner map
+# sha, (b) resolves control_ref_row_sha256 to the parallel B1 control row
+# of the SAME fixture, (c) is the byte-exact frozen-map transform of that
+# control's p (T4/T6), and (d) was recorded strictly before its anchor.
+# Anything else — including a B1-only match — journals
+# NOT_RUN_NO_B1R_FORECAST (stake 0, terminal). The B1 emission pass makes
+# the B1R twin exist for every post-switch B1 row before any decision.
+B1R_SWITCH_CYCLE = "SOCCER-INTL-B1R-PAPER-SWITCH-V1"
+B1R_SWITCH_TS = "2026-10-10T02:20:20Z"          # registry CAS GO-consumption
+B1R_MAP_INNER_SHA = ("1f4a4c4f26639b31dcb9c79035e8cfe3fb57deb693c5def729e"
+                     "402bba953befd")
+B1R_MODEL_VERSION_SHA = "soccer_b1r_v1"
+B1_CONTROL_MODEL_VERSION_SHAS = {"soccer_b1_replay"}
+B1_CONTROL_MODEL_IDS = {"B1_SOCCER"}
+NOT_RUN_NO_B1R_FORECAST = "NOT_RUN_NO_B1R_FORECAST"
+_B1R_ADAPTER = None
+_B1R_MAP = None
+_B1R_SWITCH_VERIFIED = False
+
+
+def _b1r_adapter():
+    """The switch cycle's b1r_adapter.py, byte-pinned via pins.json
+    (verify_pins refuses on drift BEFORE this loader runs). Read-only
+    cross-cycle reuse — the GO packet's 'reuse byte-for-byte' law."""
+    global _B1R_ADAPTER
+    if _B1R_ADAPTER is None:
+        import importlib.util
+        pkg = load_pins()["packages"]["b1r_switch"]
+        path = Path(pkg["worktree"]) / pkg["pkg_dir"] / "b1r_adapter.py"
+        spec = importlib.util.spec_from_file_location("exec_b1r_adapter", path)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["exec_b1r_adapter"] = mod
+        spec.loader.exec_module(mod)
+        _B1R_ADAPTER = mod
+    return _B1R_ADAPTER
+
+
+def b1r_map():
+    """The frozen draw-calibration map, file+inner sha verified by the
+    adapter's own law. Map-file drift is a HARD block (T1), not a per-match
+    NOT_RUN — nothing may decide under a drifted map."""
+    global _B1R_MAP
+    if _B1R_MAP is None:
+        try:
+            _B1R_MAP = _b1r_adapter().load_map_verified()
+        except _b1r_adapter().Refuse as e:
+            raise BlockError("BLOCKED_B1R_MAP_PIN",
+                             f"frozen B1R draw map refused: {e} "
+                             "(T1; re-pin required)", EXIT_PIN_DRIFT)
+    return _B1R_MAP
+
+
+def b1r_switch_ts_verified(registry_path) -> bool:
+    """The pinned switch_ts must be the registry-recorded GO-consumption
+    instant of the B1R switch cycle. If the registry no longer records it,
+    the B1R decision law cannot be enforced — SOCCER forecast/decide block
+    loudly (fail-closed; NBA/WNBA unaffected)."""
+    if _B1R_SWITCH_VERIFIED:
+        return True
+    reg = json.loads(Path(registry_path).read_text())
+    cycles = reg.get("cycles", reg)
+    if isinstance(cycles, dict):
+        row = cycles.get(B1R_SWITCH_CYCLE) or {}
+    else:
+        row = next((c for c in cycles
+                    if c.get("cycle_id") == B1R_SWITCH_CYCLE), {})
+    state = str(row.get("go_phrase_state", ""))
+    parts = state.split()
+    if not state.startswith("OWNER_GO_TYPED_LIVE") or len(parts) < 2 or \
+            parts[1] != B1R_SWITCH_TS:
+        raise BlockError(
+            "BLOCKED_B1R_SWITCH_TS_UNVERIFIED",
+            f"registry go_phrase_state {state!r} does not record "
+            f"{B1R_SWITCH_CYCLE} GO consumption at the pinned switch_ts "
+            f"{B1R_SWITCH_TS}; the B1R decision law cannot be enforced — "
+            "fail-closed (re-pin with evidence to resume soccer paper)",
+            EXIT_BLOCKED_OTHER)
+    globals()["_B1R_SWITCH_VERIFIED"] = True
+    return True
+
+
+def soccer_b1r_forecast(led, fixture, now: str) -> tuple[dict | None, str]:
+    """The lawful B1R decision forecast for a SOCCER fixture, or
+    (None, reason). Every rejection is specific and journaled by the caller
+    as NOT_RUN_NO_B1R_FORECAST — a B1-only match is NEVER silently used."""
+    rows = [r for r in led.rows if r.get("type") == "FORECAST"
+            and r.get("league") == "SOCCER"
+            and r.get("match_id") == fixture.match_id
+            and r.get("model_id") == SOCCER_DECISION_MODEL_ID]
+    if not rows:
+        return None, ("no B1R_SOCCER forecast row for this match; after "
+                      f"switch_ts {B1R_SWITCH_TS} a B1 row is CONTROL-ONLY "
+                      "and can never ground a soccer decision")
+    if len(rows) > 1:
+        return None, (f"{len(rows)} B1R_SOCCER forecast rows for this "
+                      "match; ambiguous (duplicate law), fail-closed")
+    r = rows[0]
+    if r.get("map_sha256") != B1R_MAP_INNER_SHA:
+        return None, ("B1R row map_sha256 != frozen map pin; fail-closed")
+    if r.get("model_version_sha") != B1R_MODEL_VERSION_SHA:
+        return None, (f"B1R row model_version_sha "
+                      f"{r.get('model_version_sha')!r} != "
+                      f"{B1R_MODEL_VERSION_SHA!r}; fail-closed")
+    cref = r.get("control_ref_row_sha256")
+    ctl = next((x for x in led.rows if x.get("row_sha256") == cref),
+               None) if cref else None
+    if ctl is None:
+        return None, ("control_ref_row_sha256 does not resolve to a ledger "
+                      "row; fail-closed")
+    if ctl.get("type") != "FORECAST" or ctl.get("league") != "SOCCER" or \
+            ctl.get("match_id") != fixture.match_id:
+        return None, ("control row is not a SOCCER FORECAST for this match; "
+                      "fail-closed")
+    if ctl.get("model_version_sha") not in B1_CONTROL_MODEL_VERSION_SHAS \
+            and ctl.get("model_id") not in B1_CONTROL_MODEL_IDS:
+        return None, ("control row is not a B1 forecast (wrong model "
+                      "identity); fail-closed")
+    if r.get("p_control_b1") != ctl.get("p"):
+        return None, ("B1R p_control_b1 != control B1 p (derivation/"
+                      "same-snapshot law T4 violated); fail-closed")
+    m = b1r_map()                       # raises BLOCKED_B1R_MAP_PIN on drift
+    ad = _b1r_adapter()
+    try:
+        t = ad.b1r_transform(ctl["p"]["HOME"], ctl["p"]["DRAW"],
+                             ctl["p"]["AWAY"], m)
+    except ad.Refuse as e:
+        return None, f"frozen transform refused on the control p ({e})"
+    if r.get("p") != t:
+        return None, ("B1R p is not the byte-exact frozen-map transform of "
+                      "the control B1 p (T4/T6); fail-closed")
+    try:
+        rec = A.parse_tip(r["recorded_at_utc"])
+        anch = A.parse_tip(r["anchor_utc"])
+    except (KeyError, TypeError, ValueError):
+        return None, "B1R row timestamps missing/malformed; fail-closed"
+    if rec >= anch:
+        return None, ("B1R row recorded at/after its anchor (PIT law); no "
+                      "late forecast is ever a decision basis")
+    return r, "valid B1R decision forecast"
+
+
+def no_b1r_decision(fixture, why: str, now: str) -> dict:
+    """Terminal NOT_RUN_NO_B1R_FORECAST journal (stake 0; never a silent
+    drop, never a B1-based decision)."""
+    return {
+        "type": "DECISION", "league": fixture.league,
+        "match_id": fixture.match_id, "competition": fixture.competition,
+        "home": fixture.home, "away": fixture.away,
+        "kickoff_utc": fixture.kickoff_utc, "decided_at_utc": now,
+        "status": NOT_RUN_NO_B1R_FORECAST, "reason": why,
+        "stake_cents": 0, "chosen_leg": None,
+    }
+
+
+def emit_b1r_forecasts(led, fixtures: list, now: str) -> list[dict]:
+    """Switch GO-packet step 1 (post-switch SOCCER batches): every B1
+    FORECAST row of this batch gets its B1R twin APPENDED next to it (never
+    replacing; control_ref -> the B1 row; recorded_at = now; anchor inherited
+    and still open). Idempotent: a match that already carries ANY B1R row is
+    skipped (duplicate law T3 — never a second B1R row)."""
+    ad = _b1r_adapter()
+    m = b1r_map()
+    out = []
+    for f in fixtures:
+        if f.match_id in led.decided_match_ids():
+            continue
+        b1_rows = [r for r in led.rows
+                   if r.get("type") == "FORECAST"
+                   and r.get("league") == "SOCCER"
+                   and r.get("match_id") == f.match_id
+                   and (r.get("model_version_sha")
+                        in B1_CONTROL_MODEL_VERSION_SHAS
+                        or r.get("model_id") in B1_CONTROL_MODEL_IDS)]
+        if not b1_rows:
+            continue
+        if len(b1_rows) > 1:
+            raise BlockError("BLOCKED_B1R_CONTROL_AMBIGUOUS",
+                             f"{len(b1_rows)} B1 control rows for "
+                             f"{f.match_id}; 1:1 law refuses", EXIT_BLOCKED_OTHER)
+        if any(r.get("type") == "FORECAST"
+               and r.get("league") == "SOCCER"
+               and r.get("match_id") == f.match_id
+               and r.get("model_id") == SOCCER_DECISION_MODEL_ID
+               for r in led.rows):
+            continue                    # idempotent: the twin already exists
+        b1 = b1_rows[0]
+        try:
+            (row,) = ad.build_forecast_rows(b1, m)
+        except ad.Refuse as e:
+            raise BlockError("BLOCKED_B1R_EMISSION",
+                             f"frozen B1R emission refused for "
+                             f"{f.match_id}: {e}", EXIT_BLOCKED_OTHER)
+        row["recorded_at_utc"] = now
+        if A.parse_tip(now) >= A.parse_tip(row["anchor_utc"]):
+            continue        # never a backfill: the anchor passed, stay away
+        appended = led.append(row)
+        out.append({"match_id": f.match_id,
+                    "row_sha256": appended["row_sha256"]})
+    return out
 
 
 def forecast_index(led) -> dict:
@@ -1135,12 +1348,36 @@ def cmd_decide(args) -> dict:
                                   "status": row["status"],
                                   "reason": row["reason"][:120]})
                 continue
-        ok, why = crosswalk_ok(f, fc.get(f.match_id), qt.get(f.match_id))
+        # B1R fail-closed law (SOCCER-INTL-B1R-PAPER-SWITCH-V1): a SOCCER
+        # decision grounds ONLY in a validated B1R row — a B1-only match
+        # journals NOT_RUN_NO_B1R_FORECAST and is terminal (never a silent
+        # B1 fallback, never a late B1R backfill).
+        fc_row = fc.get(f.match_id)
+        if league == "SOCCER":
+            b1r_switch_ts_verified(Path(args.sandbox_registry)
+                                   if getattr(args, "sandbox", False)
+                                   else REGISTRY_PATH)
+            fc_row, b1r_why = soccer_b1r_forecast(led, f, now)
+            if fc_row is None:
+                row = no_b1r_decision(f, b1r_why, now)
+                led.append_decision(row,
+                                    recheck=in_lock_recheck_for(led, args, now))
+                journaled.append({"match_id": f.match_id,
+                                  "status": row["status"],
+                                  "reason": row["reason"][:120]})
+                continue
+        ok, why = crosswalk_ok(f, fc_row, qt.get(f.match_id))
         dec = risk.evaluate_match(
             led, league=league, match_id=f.match_id, competition=f.competition,
             home=f.home, away=f.away, kickoff_utc=f.kickoff_utc, now_utc=now,
-            forecast=fc.get(f.match_id), quote=qt.get(f.match_id),
+            forecast=fc_row, quote=qt.get(f.match_id),
             crosswalk_ok=ok, go_ok=go_ok)
+        if league == "SOCCER" and dec.get("status") in ("BET_PAPER", "NO_EDGE"):
+            # Decision cites the exact B1R row it was grounded in (map pin +
+            # control reference travel with the row — switch law).
+            dec["decision_forecast_row_sha256"] = fc_row["row_sha256"]
+            dec["map_sha256"] = fc_row.get("map_sha256")
+            dec["control_ref_row_sha256"] = fc_row.get("control_ref_row_sha256")
         led.append_decision(dec, recheck=risk.in_lock_recheck(led, now, go_ok))
         journaled.append({"match_id": f.match_id, "status": dec["status"],
                           "reason": dec.get("reason", "")[:120]})
@@ -1280,8 +1517,16 @@ def cmd_plan(args) -> dict:
                 if league == "SOCCER":
                     stage = soccer_stage_law(f.competition, f.kickoff_utc[:10])
                     stage_eligible = bool(stage["bet_eligible"])
+                    try:
+                        b1r_valid = led is not None and \
+                            soccer_b1r_forecast(led, f, now_utc_real())[0] \
+                            is not None
+                    except BlockError:
+                        b1r_valid = False      # map/registry drift: report,
+                        # never crash the read-only plan; decide still blocks
                 else:
                     stage_eligible = True      # no stage law beyond soccer
+                    b1r_valid = True           # B1R law is soccer-only
                 checks = {
                     "tip_utc": f.kickoff_utc,
                     "et_local_date": f.et_local_date,
@@ -1290,6 +1535,7 @@ def cmd_plan(args) -> dict:
                     "teams_known": "TBD" not in (f.home, f.away),
                     "stage_bet_eligible": stage_eligible,
                     "forecast_present": f.match_id in fc,
+                    "b1r_decision_forecast_valid": b1r_valid,
                     "quote_present": f.match_id in qt,
                     "already_decided": f.match_id in decided,
                 }

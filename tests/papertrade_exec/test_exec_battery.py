@@ -469,23 +469,45 @@ def test_decide_missing_odds_no_quote(env, capcli):
 
 
 def test_soccer_missing_draw_leg_refused(env, capcli):
+    # B1R law: inject the lawful control+twin pair per fixture so each match
+    # reaches the quote evaluation (a B1-only match stops at
+    # NOT_RUN_NO_B1R_FORECAST before the quote law applies — the dedicated
+    # battery lives in test_b1r_fail_closed.py).
     capcli(env, "forecast", "--league", "SOCCER", "--date", SOC_DAY)
-    core = _core()
-    led = core.ledger.PaperLedger(env["data"] / "sandbox" / "sandbox_ledger.jsonl")
+    reg = str(env["data"] / "sandbox" / "control" / "CYCLE_REGISTRY.json")
+    execute.b1r_switch_ts_verified(reg)
+    led = _core().ledger.PaperLedger(env["data"] / "sandbox" / "sandbox_ledger.jsonl")
     led.load()
+    for f in execute.synthetic_soccer_fixtures(SOC_DAY):
+        p = A.synthetic_three_way_p(f.match_id)
+        led.append({"type": "FORECAST", "league": "SOCCER",
+                    "match_id": f.match_id, "competition": f.competition,
+                    "home": f.home, "away": f.away,
+                    "kickoff_utc": f.kickoff_utc, "recorded_at_utc": NOW,
+                    "anchor_utc": f.kickoff_utc,   # battery shortcut: 1:1 rows
+                    "model_version_sha": "soccer_b1_replay",
+                    "p": p, "source_ref": "battery B1 control", "mode": "ENGINE",
+                    "fixture_source": f.source_ref})
+    led2 = _core().ledger.PaperLedger(env["data"] / "sandbox" / "sandbox_ledger.jsonl")
+    led2.load()
+    emitted = execute.emit_b1r_forecasts(
+        led2, execute.synthetic_soccer_fixtures(SOC_DAY), NOW)
+    assert len(emitted) == 3, emitted
+    led3 = _core().ledger.PaperLedger(env["data"] / "sandbox" / "sandbox_ledger.jsonl")
+    led3.load()
     for f in execute.synthetic_soccer_fixtures(SOC_DAY):
         p = A.synthetic_three_way_p(f.match_id)
         odds = {k: v for k, v in A.synthetic_odds(f.match_id, p).items()
                 if k != "DRAW"}
-        led.append({"type": "MARKET_QUOTE", "league": "SOCCER",
-                    "match_id": f.match_id, "home": f.home, "away": f.away,
-                    "kickoff_utc": f.kickoff_utc,
-                    "bookmaker": "SYNTHETIC_BOOK (rehearsal)", "market": "h2h",
-                    "odds": odds, "fetch_ts_utc": NOW,
-                    "source_last_update_utc": NOW,
-                    "commence_time_utc": f.kickoff_utc,
-                    "payload_sha256": "1" * 64,
-                    "key_fingerprint": "sandbox-synthetic-00", "mode": "SYNTHETIC"})
+        led3.append({"type": "MARKET_QUOTE", "league": "SOCCER",
+                     "match_id": f.match_id, "home": f.home, "away": f.away,
+                     "kickoff_utc": f.kickoff_utc,
+                     "bookmaker": "SYNTHETIC_BOOK (rehearsal)", "market": "h2h",
+                     "odds": odds, "fetch_ts_utc": NOW,
+                     "source_last_update_utc": NOW,
+                     "commence_time_utc": f.kickoff_utc,
+                     "payload_sha256": "1" * 64,
+                     "key_fingerprint": "sandbox-synthetic-00", "mode": "SYNTHETIC"})
     code, out = capcli(env, "decide", "--league", "SOCCER", "--date", SOC_DAY)
     assert code == EXIT_OK
     decs = rows_of(env, "DECISION")
@@ -654,13 +676,20 @@ def test_soccer_fixtures_from_events_shape():
 
 
 def test_dashboard_never_lists_hidden_rows_and_counts_not_run(env, capcli):
+    # B1R law (owner 2026-10-10): a B1-only sandbox soccer match journals
+    # NOT_RUN_NO_B1R_FORECAST (stake 0, terminal) — the dashboard census
+    # must count it like every NOT_RUN family (cause-bucket display for
+    # statuses newer than the pinned core follows the NOT_RUN_STAGE_LAW
+    # precedent: status census yes, cause strip no).
     capcli(env, "forecast", "--league", "SOCCER", "--date", SOC_DAY)
     code, out = capcli(env, "decide", "--league", "SOCCER", "--date", SOC_DAY)
     outdir = env["data"] / "dash2"
     capcli(env, "dashboard", "--out", str(outdir))
     summary = json.loads((outdir / "summary.json").read_text())
-    assert summary["status_counts"].get("NO_QUOTE", 0) == 3
-    assert summary["not_run_by_cause"].get("missing_or_invalid_odds", 0) == 3
+    assert summary["status_counts"].get("NOT_RUN_NO_B1R_FORECAST", 0) == 3
+    assert summary["status_counts"].get("NO_QUOTE", 0) is not None
+    decs = rows_of(env, "DECISION")
+    assert all(d["stake_cents"] == 0 for d in decs)
 
 
 # ------------------------------------------------- NBA rewire (EXEC-NBA-REWIRE) --

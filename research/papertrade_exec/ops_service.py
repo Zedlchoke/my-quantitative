@@ -343,10 +343,22 @@ class OpsService:
         actions = {}
         forecast_ran = {"ok": False}
         quote_ran = {"ok": False}
+
+        def _needs_forecast() -> bool:
+            for f in eligible:
+                if not f.get("forecast_present"):
+                    return True
+                # B1R switch law: a SOCCER match without a VALID B1R decision
+                # forecast still needs the (idempotent) emission pass; decide
+                # will journal NOT_RUN_NO_B1R_FORECAST if the anchor then
+                # refuses a lawful twin.
+                if league == "SOCCER" and \
+                        not f.get("b1r_decision_forecast_valid", True):
+                    return True
+            return False
+
         steps = (
-            ("forecast",
-             lambda: any(not f.get("forecast_present") for f in eligible),
-             forecast_ran),
+            ("forecast", _needs_forecast, forecast_ran),
             ("quote",
              lambda: forecast_ran["ok"] or
              any(f.get("forecast_present") and not f.get("quote_present")
