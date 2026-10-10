@@ -64,10 +64,16 @@ ledger, one-flock in-lock rechecks, and every data-source rights law.
    `walk_the_book(asks, budget_usdc = stake_cents/100)` — multi-level VWAP,
    `filled_shares`, `fee_total` (fee_i = 0.05·p_i·(1−p_i) per share,
    Sports taker law), `budget_short_usdc` MUST be 0 per leg.
-4. Effective decimal per leg: `d_eff = stake / (stake − fee_total)` —
-   equivalently `1/(avg_cost_per_share_incl_fee)`; enters the UNCHANGED EV
-   gate `p·d_eff − 1 − 0.02 ≥ 0.05` (fee counted exactly once; c continues
-   to cover residual slippage — R4 §3 verbatim).
+4. Effective decimal per leg: `d_eff = 1/(avg_cost_per_share_incl_fee) =
+   filled_shares / stake` — the R4 §3 per-share form
+   `d_eff = 1/(ask + fee_per_share)` generalized to the multi-level walk
+   (fee counted exactly once; c continues to cover residual slippage —
+   R4 §3 verbatim). DATED NOTE 2026-10-10 (post-implementation, before A7):
+   an earlier draft of this line also showed `stake/(stake−fee_total)` —
+   that form is NOT identical and is DROPPED; the walk consumes the budget
+   INCLUSIVE of fees (Σ p_i·sh_i + fee_i·sh_i = stake), which is the only
+   form that reconciles R4 §3, §2.4 and §3.6 simultaneously. Enters the
+   UNCHANGED EV gate `p·d_eff − 1 − 0.02 ≥ 0.05`.
 5. argmax-EV leg; all existing gates in the existing order; cap/availability
    bounds per §2 with `stake_cents` (not a constant).
 6. Row records: `stake_cents`, `equity_at_decision_cents`, `stake_law:
