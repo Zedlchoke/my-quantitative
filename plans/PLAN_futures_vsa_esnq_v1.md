@@ -92,3 +92,22 @@ ERRATUM-1 kết luận "NQ-VSA-H15 UNDERPOWERED ở cost $47" là **SAI chiều 
 ngày) ⇒ **NQ-VSA-H15 POWERED ở RT $47**. Family ES+NQ SUM vẫn UNDERPOWERED (MDE $53–99 >
 $43) — withdrawal giữ nguyên. Hệ quả: amendment "bỏ NQ" KHÔNG còn bắt buộc bởi power;
 khuyến nghị mặc định = giữ NQ block (budget 8 nguyên). Owner vẫn quyết định cuối.
+
+## ERRATUM-3 2026-10-10 (round-3 audit — 15_AUDIT_GO_ROUND3)
+
+1. **Sửa sai số học (F4)**: mọi câu nói kiểu "NQ 30/60m MDE $31.8/$41.5 > $47" là SAI —
+   $31.8 và $41.5 đều **< $47** ⇒ với RT $47, NQ powered-to-detect-cost-floor ở CẢ 3 hold
+   (post-X5 day-level: $22.4/$31.8/$41.5, 293 ngày). Giữ nguyên identity NQ-VSA-H15.
+2. **Ngữ nghĩa "powered" (F4)**: "MDE ≤ cost" CHỈ nghĩa phép đo đủ nhạy phát hiện một
+   effect giả định bằng mức chi phí — KHÔNG phải bằng chứng net edge, KHÔNG tuyên bố có
+   lợi nhuận, KHÔNG đổi identity/budget. Cost pin NQ $47 RT giữ (authority
+   PLAN_futures_nq_v1 per-side ×2); VERIFIED_VS_ACCOUNT=NOT_RUN; fill/BBO chưa xác minh.
+3. **14_NQ_AMENDMENT_PACKET (F4)**: tiền đề "UNDERPOWERED" của packet đã bị ERRATUM-2 hủy
+   ⇒ các phương án A/B/C MOOT. Giữ làm hồ sơ lịch sử; owner không cần chọn A/B/C để GO;
+   NQ block GIỮ (ERRATUM-2), owner quyền quyết cuối nếu muốn re-scope sau.
+4. **F1**: registry head đã repair qua CAS tới SHA đo được (39589687, cat-file=commit,
+   40-char) — previous head là SHA gõ tay không tồn tại; governance note: researchctl nên
+   cat-file verify head trước ghi (gợi ý improvement, ngoài scope cycle).
+5. **F2/F3**: scored production giờ bắt buộc --twin + twin.match True + accounting.complete
+   True + publish/handoff thành công mới EXECUTION_COMPLETE; --fault-inject hooks cho
+   fault tests (sandbox-only). Đã kiểm: fault suite 17/17 PASS.
