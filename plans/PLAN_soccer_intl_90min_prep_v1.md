@@ -103,3 +103,43 @@ be large — a documented zero-coverage answer is valid) | BLOCKED_REPRODUCTION
 (engine bytes/floats drift vs the recorded artifacts) | NOT_RUN_* |
 BLOCKED_* | TECHABORT_*. GO phrase stays unconsumed; no scored run is
 authorized by this plan.
+
+## ROUND 2 addendum (owner instruction 2026-10-10) — AMENDS ROUND-1 BOUNDARIES
+
+Scope (only these three lanes; everything else from round 1 frozen):
+1. **L_PROBE984** — EXECUTE the archived 3-request football-data.org probe
+   IF and ONLY IF endpoint/access/quota permit, tested from real responses
+   (owner authorization 2026-10-10 supersedes the round-1 no-API-call
+   boundary FOR THIS LANE ONLY). R1 = GET /v4/competitions (anonymous
+   first; a stored key at ~/.config/my-quantitative-secrets/ may be used
+   if present, never printed). R2 = GET /v4/competitions/CAF/matches
+   (AFCON depth + regularTime). R3 = GET /v4/competitions/EC/matches with
+   dateFrom=2016-06-21&dateTo=2016-06-23 (euro-2016 date-error rows +
+   historic regularTime). Log: URL, retrieval UTC, raw bytes + sha256,
+   response headers (auth material never logged). From RESPONSES ONLY:
+   score.regularTime presence/population, coverage vs the 984, 1:1
+   joinability on (UTC-date, unordered mapped pair), duplicates/conflicts,
+   the two euro-2016 rows, timestamps, storage/research-rights evidence.
+   No coverage or rights inference from documentation. Copa America and
+   remaining 984 rows stay NOT_RUN unless a response proves otherwise.
+   Refusal/4xx/quota errors are recorded evidence, never retried into
+   additional requests beyond the 3-request budget.
+2. **L_DRAWHYP** — draw-calibration hypothesis, train-only: fit a
+   monotone (isotonic PAV) recalibration map g: p_D -> p_D' for the frozen
+   B1 arm using ONLY predictions with dates < 2001-01-01 (fit window
+   [1971-01-01, 1991-01-01); train-internal holdout [1991-01-01,
+   2001-01-01) reported as TRAIN_INTERNAL_DIAGNOSTIC only). Map form fixed
+   a priori; NO OOS/2023+ contact of any kind; B1/V1/B0 baselines
+   immutable; the exposed-window p_D gap is cited as retrospective
+   diagnosis, never as fitting evidence. Deliverables: frozen map JSON
+   (SHA-256) + pre-registered prospective test (n>=500 floor, LL/RPS vs
+   B1, Wilson decile calibration, rejection criteria, trial budget 2 for
+   the family, PIT law, 90-minute target).
+3. **L_FREEZE-R2** — refresh FREEZE/DECISION packets with probe outcome +
+   hypothesis registration; knockout stays NOT_RUN for paper until target
+   and odds settlement law are both proven 90-minute.
+
+Verdants unchanged: no GO, no scored OOS, no change to the running paper
+model, its odds, wallet or ledger; no purchases; no push/merge; GO phrase
+never typed by a lane. Verifier re-derives probe counts, joins,
+calibration freeze and boundaries.
