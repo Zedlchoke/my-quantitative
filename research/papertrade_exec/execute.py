@@ -74,12 +74,86 @@ PINNED_DATA = {
 DEFAULT_SPORT_KEYS = {"NBA": "basketball_nba", "WNBA": "basketball_wnba",
                       "SOCCER": "soccer_uefa_nations_league"}
 
+# --- CAPITAL LAW V3 (SPORTS-PAPERTRADE-CAPITAL-V3; plan §1–§5) ---------------
+# The v3 path is DEAD CODE until BOTH (a) config.json carries
+# capital_law={"version":3,"effective_utc":...} AND (b) the cycle registry
+# row SPORTS-PAPERTRADE-CAPITAL-V3 records go_phrase_state OWNER_GO_TYPED_LIVE.
+# Absent/malformed either side => v2 behavior byte-for-byte (a pre-GO
+# crash/restart is indistinguishable from the pre-v3 program).
+
+CAPITAL_V3_CYCLE_ID = "SPORTS-PAPERTRADE-CAPITAL-V3"
+
+
+def _capital_v3_registry_path(args) -> Path:
+    """Mirror of require_gate's registry resolution (sandbox fixture vs the
+    worktree's plans/CYCLE_REGISTRY.json via REGISTRY_PATH)."""
+    if getattr(args, "sandbox", False):
+        return Path(args.sandbox_registry)
+    return REGISTRY_PATH
+
+
+def capital_law_for(args, core, config: dict | None = None) -> int:
+    """2|3 resolution for a decision pass. Registry row extraction mirrors
+    exec_go_state (cycles dict-or-list); the config half and the decision are
+    the PINNED CORE's own capital_law_version() — fail-closed to 2."""
+    row = {}
+    try:
+        reg = json.loads(_capital_v3_registry_path(args).read_text())
+        cycles = reg.get("cycles", reg)
+        if isinstance(cycles, dict):
+            row = cycles.get(CAPITAL_V3_CYCLE_ID) or {}
+        else:
+            row = next((c for c in cycles
+                        if c.get("cycle_id") == CAPITAL_V3_CYCLE_ID), {})
+    except Exception:                     # absent/malformed registry => v2
+        row = {}
+    cfg = load_config() if config is None else config
+    return core.capital_law_version(cfg, row)
+
+
+def wsl_configured() -> bool:
+    """CAPITAL-V3 §4 gating: WSL joins the runner ONLY when config.json
+    registers sport_keys.WSL (the config template is never auto-applied; the
+    live config commit is a post-GO controller act)."""
+    try:
+        return "WSL" in (load_config().get("sport_keys") or {})
+    except Exception:
+        return False
+
+
+
+def maybe_wsl(args, cmd_name: str):
+    """WSL lane call-site (plan §4): route the WSL league to wsl_lane
+    (fixtures -> pinned-engine forecast -> Polymarket quote -> core decide
+    with the in-lock WSL phrase gate). Any other league returns None
+    (unchanged path). WSL without the config key is BLOCKED_LEAGUE — the
+    identical refusal the pre-v3 runner gave for an unknown league."""
+    if getattr(args, "league", None) != "WSL":
+        return None
+    if not wsl_configured():
+        raise BlockError("BLOCKED_LEAGUE",
+                         "league WSL is not registered in config sport_keys "
+                         "(see research/capital_v3/config.capital_v3.template."
+                         "json; the live config commit is a post-GO act)",
+                         EXIT_BLOCKED_OTHER)
+    from research.papertrade_exec import wsl_lane
+    return getattr(wsl_lane, f"cmd_{cmd_name}")(args)
+# --- end CAPITAL LAW V3 runner block -----------------------------------------
+
 
 # ------------------------------------------------------------------ fixtures --
 
 def load_config() -> dict:
     p = Path(__file__).resolve().parent / "config.json"
     return json.loads(p.read_text())
+
+
+# CAPITAL-V3 apply-fix 2026-10-10 (activation incident A-1, RE-FIX: the block originally sat ABOVE load_config's definition and its import-time call hit NameError->except->False; moved below the definition): the CLI surface
+# must accept --league WSL whenever the lane is configured — ops_service's
+# per-league cadence invokes these subcommands, and argparse choices=LEAGUES
+# (core 3-tuple) exited 2 on WSL and crash-looped the supervisor (12:47Z).
+# Fail-closed: without wsl_configured() the choices are the core 3-tuple.
+LEAGUE_CHOICES = tuple(LEAGUES) + (("WSL",) if wsl_configured() else ())
 
 
 def _soccer_sport_keys() -> list[str]:
@@ -697,6 +771,9 @@ def compute_forecasts(args, league: str, fixtures: list) -> tuple[list[dict], di
 
 
 def cmd_forecast(args) -> dict:
+    _r = maybe_wsl(args, "forecast")
+    if _r is not None:
+        return _r
     require_gate(args)
     verify_pins(roots=_roots_from_args(args))
     now = now_of(args)
@@ -1026,6 +1103,9 @@ def now_of(args) -> str:
 # -------------------------------------------------------------------- quote --
 
 def cmd_quote(args) -> dict:
+    _r = maybe_wsl(args, "quote")
+    if _r is not None:
+        return _r
     require_gate(args)
     verify_pins(roots=_roots_from_args(args))
     now = now_of(args)
@@ -1158,18 +1238,20 @@ def _full_name(league: str, abbr: str) -> str:
         else abbr
 
 
-def in_lock_recheck_for(led, args, now):
+def in_lock_recheck_for(led, args, now, capital_law: int = 2):
     """Core in-lock recheck bound to this runner's GO state (journal rows are
     stake-0; the recheck keeps them lawful under the append_decision law).
-    Resolves the PINNED core (spt_core) via the package loader — the core is
-    never importable as `research.papertrade` from this worktree."""
+    capital_law passes the resolved CAPITAL-V3 version through to the pinned
+    core (2 = pre-v3 law). Resolves the PINNED core (spt_core) via the
+    package loader — the core is never importable as `research.papertrade`
+    from this worktree."""
     ok, _why = exec_go_state(
         Path(args.sandbox_control_dir) if getattr(args, "sandbox", False)
         else CONTROL_DIR,
         Path(args.sandbox_registry) if getattr(args, "sandbox", False)
         else REGISTRY_PATH)
     return load_pinned_core(roots=_roots_from_args(args)).risk.in_lock_recheck(
-        led, now, ok)
+        led, now, ok, capital_law=capital_law)
 
 
 def map_odds_payload(fixtures, payload_bytes: bytes, now: str, league: str,
@@ -1319,12 +1401,16 @@ def crosswalk_ok(fixture, forecast_row, quote_row) -> tuple[bool, str]:
 
 
 def cmd_decide(args) -> dict:
+    _r = maybe_wsl(args, "decide")
+    if _r is not None:
+        return _r
     require_gate(args)
     verify_pins(roots=_roots_from_args(args))
     core, led = open_ledger(args, create=True)
     risk = core.risk
     go_ok = True   # gate passed above; evaluate_match still re-checks PIT laws
     now = now_of(args)
+    capital_law = capital_law_for(args, core)   # 2|3; absent pair => 2 (v3 §5)
     league = args.league
     fixtures = fixtures_for(args, league, args.date)
     if not fixtures:
@@ -1360,8 +1446,9 @@ def cmd_decide(args) -> dict:
             fc_row, b1r_why = soccer_b1r_forecast(led, f, now)
             if fc_row is None:
                 row = no_b1r_decision(f, b1r_why, now)
-                led.append_decision(row,
-                                    recheck=in_lock_recheck_for(led, args, now))
+                led.append_decision(
+                    row, recheck=in_lock_recheck_for(led, args, now,
+                                                     capital_law=capital_law))
                 journaled.append({"match_id": f.match_id,
                                   "status": row["status"],
                                   "reason": row["reason"][:120]})
@@ -1371,14 +1458,17 @@ def cmd_decide(args) -> dict:
             led, league=league, match_id=f.match_id, competition=f.competition,
             home=f.home, away=f.away, kickoff_utc=f.kickoff_utc, now_utc=now,
             forecast=fc_row, quote=qt.get(f.match_id),
-            crosswalk_ok=ok, go_ok=go_ok)
+            crosswalk_ok=ok, go_ok=go_ok, capital_law=capital_law)
         if league == "SOCCER" and dec.get("status") in ("BET_PAPER", "NO_EDGE"):
             # Decision cites the exact B1R row it was grounded in (map pin +
             # control reference travel with the row — switch law).
             dec["decision_forecast_row_sha256"] = fc_row["row_sha256"]
             dec["map_sha256"] = fc_row.get("map_sha256")
             dec["control_ref_row_sha256"] = fc_row.get("control_ref_row_sha256")
-        led.append_decision(dec, recheck=risk.in_lock_recheck(led, now, go_ok))
+        led.append_decision(
+            dec, recheck=risk.in_lock_recheck(led, now, go_ok,
+                                              capital_law=capital_law),
+            capital_law=capital_law)
         journaled.append({"match_id": f.match_id, "status": dec["status"],
                           "reason": dec.get("reason", "")[:120]})
     return {"league": league, "date": args.date, "now_utc": now,
@@ -1390,7 +1480,10 @@ def cmd_decide(args) -> dict:
 def cmd_run_day(args) -> dict:
     report = {"date": args.date, "leagues": {}}
     hard = None
-    for league in LEAGUES:
+    # CAPITAL-V3 §4: WSL joins the run-day chain ONLY when the committed
+    # config registers sport_keys.WSL (inert otherwise).
+    leagues = list(LEAGUES) + (["WSL"] if wsl_configured() else [])
+    for league in leagues:
         try:
             fc = run_sub(cmd_forecast, args, league)
             qt = run_sub(cmd_quote, args, league)
@@ -1429,6 +1522,9 @@ def write_run_report(args, report: dict) -> Path:
 # ------------------------------------------------------------------- settle --
 
 def cmd_settle(args) -> dict:
+    _r = maybe_wsl(args, "settle")
+    if _r is not None:
+        return _r
     require_gate(args)
     verify_pins(roots=_roots_from_args(args))
     core, led = open_ledger(args, create=False)
@@ -1493,10 +1589,15 @@ def cmd_dashboard(args) -> dict:
 def cmd_plan(args) -> dict:
     report = {"date": args.date, "generated_at_utc": now_utc_real(),
               "leagues": {}}
-    leagues = [args.league] if args.league else list(LEAGUES)
+    leagues = [args.league] if args.league else \
+        list(LEAGUES) + (["WSL"] if wsl_configured() else [])
     for league in leagues:
         entry = {"fixtures": []}
         try:
+            if league == "WSL":
+                from research.papertrade_exec import wsl_lane
+                report["leagues"][league] = wsl_lane.plan_entry(args, args.date)
+                continue
             fixtures = fixtures_for(args, league, args.date)
             _, per_anchor = batch_anchor(fixtures, league) if fixtures else ({}, {})
             led = None
@@ -1654,22 +1755,22 @@ def build_parser() -> argparse.ArgumentParser:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("plan"); add_roots(p); p.add_argument("--date", required=True)
-    p.add_argument("--league", choices=LEAGUES, default=None)
+    p.add_argument("--league", choices=LEAGUE_CHOICES, default=None)
     add_to_date(p)
     p.set_defaults(fn=lambda a: _emit(cmd_plan(a)))
 
-    p = sub.add_parser("forecast"); add_roots(p); p.add_argument("--league", choices=LEAGUES, required=True)
+    p = sub.add_parser("forecast"); add_roots(p); p.add_argument("--league", choices=LEAGUE_CHOICES, required=True)
     p.add_argument("--date", required=True)
     add_to_date(p)
     p.set_defaults(fn=lambda a: _emit(cmd_forecast(a)))
 
-    p = sub.add_parser("quote"); add_roots(p); p.add_argument("--league", choices=LEAGUES, required=True)
+    p = sub.add_parser("quote"); add_roots(p); p.add_argument("--league", choices=LEAGUE_CHOICES, required=True)
     p.add_argument("--date", required=True)
     p.add_argument("--key-path", default=None, help="sandbox/test key path override")
     add_to_date(p)
     p.set_defaults(fn=lambda a: _emit(cmd_quote(a)))
 
-    p = sub.add_parser("decide"); add_roots(p); p.add_argument("--league", choices=LEAGUES, required=True)
+    p = sub.add_parser("decide"); add_roots(p); p.add_argument("--league", choices=LEAGUE_CHOICES, required=True)
     p.add_argument("--date", required=True)
     add_to_date(p)
     p.set_defaults(fn=lambda a: _emit(cmd_decide(a)))
@@ -1677,7 +1778,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("run-day"); add_roots(p); p.add_argument("--date", required=True)
     p.set_defaults(fn=lambda a: _emit(cmd_run_day(a)))
 
-    p = sub.add_parser("settle"); add_roots(p); p.add_argument("--league", choices=LEAGUES, required=True)
+    p = sub.add_parser("settle"); add_roots(p); p.add_argument("--league", choices=LEAGUE_CHOICES, required=True)
     p.add_argument("--date", required=True)
     p.add_argument("--results", required=True, help="results JSON {match_id: {result, source_ref}}")
     p.set_defaults(fn=lambda a: _emit(cmd_settle(a)))
