@@ -84,3 +84,11 @@ reconcile --verify PASS. Owner GO typed riêng.
    amendment được owner chọn.
 3. Cost tier: VERIFIED_VS_ACCOUNT = NOT_RUN (trung thực) — re-pin tiếp chỉ khi owner cấp
    quyền account evidence.
+
+## ERRATUM-2 2026-10-10 (sửa ERRATUM-1 — công khai theo §39.5)
+
+ERRATUM-1 kết luận "NQ-VSA-H15 UNDERPOWERED ở cost $47" là **SAI chiều đọc**: MDE $22.40
+≤ cost $47 nghĩa là phép đo ĐỦ nhạy để phát hiện effect cỡ cost (n_needed ≈ 67 ngày ≪ 293
+ngày) ⇒ **NQ-VSA-H15 POWERED ở RT $47**. Family ES+NQ SUM vẫn UNDERPOWERED (MDE $53–99 >
+$43) — withdrawal giữ nguyên. Hệ quả: amendment "bỏ NQ" KHÔNG còn bắt buộc bởi power;
+khuyến nghị mặc định = giữ NQ block (budget 8 nguyên). Owner vẫn quyết định cuối.
