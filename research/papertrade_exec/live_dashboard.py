@@ -72,6 +72,11 @@ _REFRESH_HTML = '''<!doctype html>
 <table id="upcoming"><thead><tr><th>League</th><th>Match</th>
 <th>Anchor (UTC)</th><th>Countdown</th><th>Eligible now</th><th>Note</th>
 </tr></thead><tbody></tbody></table>
+<h2>WSL (shared wallet · CAPITAL-V3 §4)</h2>
+<table id="wsl"><thead><tr><th>Match</th><th>Kickoff (UTC)</th>
+<th>Forecast p×3</th><th>PM book (best/vwap · fee · depth)</th>
+<th>Decision</th><th>Stake</th><th>Result / PnL</th></tr></thead>
+<tbody></tbody></table>
 <h2>Incidents (tail)</h2><table id="incidents"><thead><tr><th>ts</th>
 <th>kind</th><th>detail</th></tr></thead><tbody></tbody></table>
 <div class="foot" id="foot"></div>
@@ -190,6 +195,28 @@ function render(S){
   <td class="sub">${esc(u.note||"")}</td></tr>`).join("") ||
   `<tr><td colspan="6" class="muted">no upcoming fixtures in rolling
    horizon</td></tr>`;
+ $("wsl").querySelector("tbody").innerHTML = (S.chain.ok ? (S.wsl||[]) : [])
+  .map(m=>{const d=m.decision||{};const q=m.quote||{};
+   const pm=q.pm_outcomes?Object.entries(q.pm_outcomes).map(([l,o])=>
+    `${l}: ${o.best_ask}/${o.vwap_ask} · fee ${o.fee_total_usdc?.toFixed(3)} · `+
+    `${o.filled_shares?.toFixed(2)}sh${o.budget_short_usdc>0?" · SHORT":""}`
+   ).join("<br>"):"—";
+   return `<tr><td>${esc(m.home)} v ${esc(m.away)}<div class="sub">`+
+    `${esc(m.competition||"")} · ${esc(m.match_id)}</div></td>`+
+    `<td>${esc(m.kickoff_utc||"")}</td>`+
+    `<td>${m.forecast?Object.entries(m.forecast.p).map(([k,v])=>
+      `${k} ${(100*v).toFixed(1)}%`).join("<br>"):"—"}</td>`+
+    `<td>${pm}</td>`+
+    `<td>${pill(d.status||"—",statusClass(d.status))}`+
+    `${d.chosen_leg?` · ${esc(d.chosen_leg)}`:""}`+
+    `<div class="sub">${esc(d.reason||"")}</div>`+
+    `${d.stake_law?`<div class="sub">${esc(d.stake_law)} @ eq `+
+     `${esc(d.equity_at_decision_cents??"—")}c</div>`:""}</td>`+
+    `<td class="num">${d.stake_cents?money(d.stake_cents):"—"}</td>`+
+    `<td>${m.settlement?`${esc(m.settlement.outcome_for_leg)} `+
+     `<b>${money(m.settlement.pnl_cents)}</b>`:(m.is_open?pill("OPEN","warn"):"")}`+
+    `</td></tr>`;}).join("") ||
+  `<tr><td colspan="7" class="muted">no WSL rows in the shared ledger</td></tr>`;
  $("incidents").querySelector("tbody").innerHTML=(S.incidents_tail||[])
   .slice().reverse().map(i=>`<tr><td>${esc(i.ts_utc)}</td>
   <td>${pill(i.kind,(i.kind||"").includes("SETTLE")?"ok":(i.kind||"").includes("BLOCK")?"bad":"warn")}
@@ -249,6 +276,11 @@ def enrich_matches(rows: list[dict]) -> list[dict]:
                           "fetch_ts_utc": r.get("fetch_ts_utc"),
                           "source_last_update_utc":
                               r.get("source_last_update_utc")}
+            # CAPITAL-V3 §4.5: WSL PM quote rows carry the walked book.
+            if r.get("pm_outcomes"):
+                m["quote"]["pm_outcomes"] = r.get("pm_outcomes")
+                m["quote"]["event_id"] = r.get("event_id")
+                m["quote"]["payout_rules"] = r.get("payout_rules")
         elif t == "DECISION":
             m["decision"] = {"status": r.get("status"),
                              "chosen_leg": r.get("chosen_leg"),
@@ -257,7 +289,11 @@ def enrich_matches(rows: list[dict]) -> list[dict]:
                              "p_frozen": r.get("p_frozen"),
                              "odds_frozen": r.get("odds_frozen"),
                              "decided_at_utc": r.get("decided_at_utc"),
-                             "reason": r.get("reason")}
+                             "reason": r.get("reason"),
+                             # CAPITAL-V3 §3.6 row fields (v3 rows only)
+                             "equity_at_decision_cents":
+                                 r.get("equity_at_decision_cents"),
+                             "stake_law": r.get("stake_law")}
         elif t == "SETTLEMENT":
             m["settlement"] = {"result": r.get("result"),
                                "outcome_for_leg": r.get("outcome_for_leg"),
@@ -277,7 +313,8 @@ def enrich_matches(rows: list[dict]) -> list[dict]:
 def build_state(*, core, ledger_path: str | Path, data_root: Path,
                 sandbox: bool, key_fingerprint: str | None,
                 heartbeat: dict | None, incidents: list[dict],
-                upcoming: list[dict], serve_latency_ms=None) -> dict:
+                upcoming: list[dict], capital_law: int = 2,
+                serve_latency_ms=None) -> dict:
     """Fresh state: re-read + verify the chain FIRST; fail closed on tamper by
     withholding financials (the client renders the alarm banner)."""
     led = core.ledger.PaperLedger(ledger_path).load()
@@ -315,7 +352,7 @@ def build_state(*, core, ledger_path: str | Path, data_root: Path,
         state["service"] = svc
     if chain_ok:
         settled_refs = led.settled_decision_refs()
-        pnl_by_sport = {"NBA": 0, "SOCCER": 0, "WNBA": 0}
+        pnl_by_sport = {"NBA": 0, "SOCCER": 0, "WNBA": 0, "WSL": 0}
         outcomes = {"WIN": 0, "LOSE": 0, "REFUND": 0}
         settled = 0
         for r in led.rows:
@@ -327,19 +364,30 @@ def build_state(*, core, ledger_path: str | Path, data_root: Path,
                     outcomes.get(r.get("outcome_for_leg"), 0) + 1
         total_pnl = sum(pnl_by_sport.values())
         drawdown = led.drawdown_frac()
+        # CAPITAL-V3 §2: the open-cap display follows the RESOLVED law
+        # (caller passes capital_law; 2 => 100.00, 3 => 500.00).
+        cap_cents = 50_000 if capital_law == 3 else 10_000
         state["wallet"] = {
             "equity_cents": led.equity_cents(),
             "peak_cents": led.equity_peak_cents(),
             "drawdown_frac": drawdown,
             "paused": drawdown >= 0.10,
             "open_exposure_cents": led.open_exposure_cents(),
-            "open_exposure_cap_cents": 10_000,
+            "open_exposure_cap_cents": cap_cents,
+            "capital_law": ("v3-1pct (stake 1% equity half-up; cap $500 + "
+                            "availability)" if capital_law == 3 else
+                            "v2 fixed $5 stake; cap $100"),
             "open_count": sum(1 for m in state["matches"] if m["is_open"]),
             "settled_count": settled,
             "total_pnl_cents": total_pnl,
             "sport_pnl_cents": pnl_by_sport,
             "outcomes": outcomes,
         }
+    # CAPITAL-V3 §4.5: WSL section rendered from the SHARED ledger's own
+    # rows (forecast p x3, walked market/price/fee/depth, decision + precise
+    # NOT_RUN reason, stake, PnL) — same chain-verified rows as above; the
+    # WSL standalone provenance ledger is NEVER rendered as bets.
+    state["wsl"] = [m for m in state["matches"] if m.get("league") == "WSL"]
     qpath = Path(data_root) / "data" / "quota_state.json"
     if qpath.exists():
         state["quota"] = json.loads(qpath.read_text())

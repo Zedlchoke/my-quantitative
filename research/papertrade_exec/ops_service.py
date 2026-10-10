@@ -50,8 +50,22 @@ CADENCE_THROTTLE_S = 900           # min spacing per (league, date) attempt
 ESPN_SETTLE_THROTTLE_S = 1800      # free source; keep it polite anyway
 SOCCER_SETTLE_THROTTLE_S = RF.SOCCER_RETRY_MIN_SECONDS
 DASHBOARD_MAX_AGE_S = 300
-DEFAULT_LOOKAHEAD_H = {"NBA": 24, "WNBA": 24, "SOCCER": 48}
+DEFAULT_LOOKAHEAD_H = {"NBA": 24, "WNBA": 24, "SOCCER": 48,
+                       # CAPITAL-V3 §4: WSL cadence lookahead (mirrors SOCCER)
+                       "WSL": 48}
 SERVICE_PORT = 8791
+
+
+def _cadence_leagues() -> tuple:
+    """CAPITAL-V3 §4: WSL joins the cadence ONLY when the committed config
+    registers sport_keys.WSL (inert otherwise — identical league set)."""
+    leagues = list(LEAGUES)
+    try:
+        if "WSL" in (execute.load_config().get("sport_keys") or {}):
+            leagues.append("WSL")
+    except Exception:
+        pass
+    return tuple(leagues)
 
 
 def now_utc() -> str:
@@ -218,6 +232,11 @@ class OpsService:
 
     def _fetch_results(self, league, date, rows, all_rows):
         mids = [r["match_id"] for r in rows]
+        if league == "WSL":
+            # CAPITAL-V3: no WSL results source is pinned in this cycle;
+            # bets stay OPEN (fail-closed; never a guessed settlement).
+            return {}, [{"match_id": m, "why": "WSL results source not "
+                         "pinned; bet kept OPEN (fail-closed)"} for m in mids]
         if league in ("NBA", "WNBA"):
             return RF.fetch_espn_results(
                 league=league, date=date, match_ids=mids,
@@ -270,7 +289,7 @@ class OpsService:
         upcoming = []
         cache_path = self.state_dir / "plan_cache.json"
         cache = self._load_json(cache_path, {})
-        for league in LEAGUES:
+        for league in _cadence_leagues():
             league_notes = []
             for d in dates:
                 key = f"cadence:{league}:{d}"
@@ -524,13 +543,19 @@ class OpsService:
             fp = core.odds_client.read_key_fingerprint()
         except Exception:
             fp = None
+        capital_law = 2
+        try:
+            capital_law = execute.capital_law_for(
+                self._runner_args("dashboard"), core)
+        except Exception:
+            capital_law = 2                     # fail-closed display
         return live_dashboard.build_state(
             core=core,
             ledger_path=execute.ledger_path_for(
                 self._runner_args("dashboard")),
             data_root=self.data_root, sandbox=self.sandbox,
             key_fingerprint=fp, heartbeat=hb, incidents=inc_lines,
-            upcoming=upcoming,
+            upcoming=upcoming, capital_law=capital_law,
             serve_latency_ms=int((time.time() - t0) * 1000))
 
 
