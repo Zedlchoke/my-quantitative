@@ -71,3 +71,16 @@ kia độc lập. Không re-param sau khi nhìn PnL; mọi amendment = plan mớ
 Đăng ký chỉ effective khi: (i) A7 prelaunch độc lập PASS 0 HIGH/CRITICAL tại committed
 SHA; (ii) dry-run exact-arm non-vacuous PASS; (iii) cost re-pin hoàn tất; (iv) registry
 reconcile --verify PASS. Owner GO typed riêng.
+
+## ERRATUM 2026-10-10 (audit pre-GO — 14_AUDIT_GO_READY / 14_NQ_AMENDMENT_PACKET)
+
+1. **NQ cost unit (F1)**: §2 bảng cost ghi NQ $23.50 — ĐÚNG THEO authority là **PER SIDE**
+   (PLAN_futures_nq_v1 §Cost); RT = **$47.00 = 9.4t**. ES $42.00 RT không đổi
+   (13_COMPUTE_SIGMA_BUDGET@74831a2c L95 "ticks RT"). Engine + MDE đã re-pin
+   (COST_PIN.json; 07_FAMILY_ESTIMAND_USD v2).
+2. **Hệ quả NQ-VSA-H15**: MDE post-X5 day-level $22.40 ≪ $47 ⇒ UNDERPOWERED ⇒ identity 4
+   **chờ amendment owner** (14_NQ_AMENDMENT_PACKET: A bỏ block NQ [khuyến nghị, budget 8→6]
+   / B giữ khai báo underpowered / C re-scope = từ chối). Cycle KHÔNG GO_READY cho tới khi
+   amendment được owner chọn.
+3. Cost tier: VERIFIED_VS_ACCOUNT = NOT_RUN (trung thực) — re-pin tiếp chỉ khi owner cấp
+   quyền account evidence.
