@@ -1,0 +1,69 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "V10_VERIFY",
+  "cycle_id": "SPORTS-PAPERTRADE-EXEC-V1",
+  "role": "independent-verifier (A7-style fresh context)",
+  "lane": "r10-verify-go-reconciliation",
+  "dispatch_sha": "n/a (verbal dispatch; start head measured)",
+  "actual_start_sha": "14871d762b51cc2176ce3c60520e06086fe3c2d0",
+  "commit_sha": "SEE git log of this branch after this file (verifier commit on orca/spt-exec-v1-integration)",
+  "verdict": "RECONCILIATION_CONFIRM",
+  "severity_counts": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 0, "INFO": 3},
+  "measured_state": {
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/sports-papertrade-exec-v1/integration",
+    "branch": "orca/spt-exec-v1-integration",
+    "head_at_start": "14871d762b51cc2176ce3c60520e06086fe3c2d0 (ERRATUM_EXEC_6 commit) — matches controller claim",
+    "root_main": "105318e682c85f5014073f7267e640ea90c84ceb — matches ~105318e6 claim",
+    "tree": "clean before and after all verifier runs",
+    "heavy_lock": "FREE_PROVEN (researchctl locks inspect)",
+    "spent": "$0"
+  },
+  "items": {
+    "1_go_timeline": "PASS — GO_TOKEN.json phrase+typed_at exact; root journal lines 1758/1759 (11:08:47Z transcription + GO_CONSUMED, verbatim phrase + 'owner typed'), 1762 (11:19:08Z consumed root+mirror per ERRATUM_EXEC_1 D-1); commit b250bfb1 ancestor of HEAD; GENESIS 11:09:54Z strictly after typing; ordering proves consumption; zero re-typing events anywhere after 2026-10-07 (root journal 9 RUN-ALL mentions all pre-GO/consumption/descriptive-drift; mirror journal and .runtime journal 0 hits)",
+    "2_stale_field_history": "PASS — ERRATUM_EXEC_5 §D-4 (written 2026-10-08, pre-round-9) quoted; DRIFT NOTE in journal since event 1818 2026-10-08T09:25:46Z, carried through events 1821/1969/1978/1980/1994",
+    "3_cas_fix": "PASS — row now go_phrase 'GO SPORTS PAPERTRADE EXEC V1 POLYMARKET CUTOVER', state REGISTERED_NOT_CONSUMED with inline consumed history; save event 1991 write_token GO_STATE_FIX 2026-10-10T03:45:02Z sha 8daa51c2…; structured diff 0c110b73→105318e6: only spt-exec row changed {go_phrase, go_phrase_state, head, phase, updated_at_utc}; spot-checks CUTOVER-PREP/SOCCER-WC-EURO/CRYPTO-NG1 (and all 134 rows) byte-equal; head now 14871d76 == branch HEAD. O1: go_phrase write has no per-field CYCLE_UPDATED event (REGISTRY_SAVED 1991 is the record). O2: B1R_RESEAL verbatim phase text replaced 63s later by journaled R10 phase update (old text preserved in event 1994 from/to + amendment file)",
+    "4_lawfulness": "PASS_WITH_FINDING — P-8 §19.3 + house rules support consumed-GO irreusability; ERRATUM_EXEC_6 does not reuse RUN ALL ('CONSUMED and is spent'); new phrase unique across all 97 registered phrases (zero exact/normalized collisions). FINDING F1 below",
+    "5_settlement_401918299": "PASS — own-code recompute: pnl exactly 670 (Fraction 500×(2.34−1)); equity 100000→100395→100800→101470; independent canonical walk of all 19 rows sha+prev OK, head 53449ef5ad920c900f6a9236cd5bc1709d2dc39a0aa24ddc095ddcbeea044bb3; source_ref ESPN Final NY83–ATL85 completed=true fetched 02:30:29Z; ops CADENCE_DECIDE_OK 2026-10-08T17:24:01Z journaled BET_PAPER 'EV_net 0.271768>=0.05 on AWAY'; EV identity recovered: EV_net = p·d − 1 − 0.02 (c exactly 0.02 both legs), p recovered from EV bit-identical to p_frozen 0.5520377200086570; dispatch's alt d_eff=1/(a+f) parametrization does NOT reproduce the row (0.234016) — row identity is p·d−1−0.02",
+    "6_dashboard": "PASS — /api/state generated 2026-10-10T03:57:15Z fresh; REAL; chain.ok true; 19 rows; equity 101470; settled 3; open 1 (401918300); total_pnl 1470=395+405+670",
+    "7_pm_reprobe": "PASS ZERO DELTA — own re-run live_probe.py: asof 2026-10-10T03:57:57Z, 2100 events scanned, NBA 82 / WNBA 15 / SOCCER 2 / WSL 147, all 0 markets 0 quotes (identical to controller 03:44:02Z probe); no listing appeared",
+    "8_isolation": "PASS — commit 14871d76 touches only ERRATUM_EXEC_6.md (+61); registry diff proves only spt-exec row changed; ledger mtime == settlement instant 02:30:31Z, no controller writes; dashboard chain.ok true, service cadence only"
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "MEDIUM",
+      "title": "Residual stale GO phrase in sibling row SPORTS-POLYMARKET-CUTOVER-PREP-V1",
+      "detail": "That registry row still carries go_phrase = 'GO SPORTS PAPERTRADE EXEC V1 RUN ALL' (the phrase proven CONSUMED/spent under P-8) with plain go_phrase_state REGISTERED_NOT_CONSUMED (no inline correction), and its phase text still reads 'both gates REGISTERED_NOT_CONSUMED (RUN ALL shared + WSL split)'; the same stale framing also stands in plans/ACTIVE_CYCLES.json and was repeated in ERRATUM_EXEC_6 §4. The row was registered 2026-10-10T02:15:33Z under the round-9 stale belief; the R10 CAS fix touched only the spt-exec row (proven by the 0c110b73→105318e6 structured diff). Registry now shows two conflicting activation phrases for the same cutover; an owner reading the sibling row could type the dead phrase.",
+      "remediation": "Controller plane: apply the same governance CAS + erratum mechanism to the CUTOVER-PREP row (point its shared-gate phrase at 'GO SPORTS PAPERTRADE EXEC V1 POLYMARKET CUTOVER' or reference the program row), and refresh ACTIVE_CYCLES.json + ERRATUM_EXEC_6 §4 framing, with or before the next owner decision."
+    },
+    {
+      "id": "O1",
+      "severity": "INFO",
+      "title": "No per-field journal events for the CAS go_phrase write",
+      "detail": "REGISTRY_SAVED event 1991 (GO_STATE_FIX) is the sole journal record of the go_phrase/go_phrase_state change; head/phase saves do emit field-level CYCLE_UPDATED events.",
+      "remediation": "None required (save event + content/projection shas present); consider symmetric field events in a future researchctl version."
+    },
+    {
+      "id": "O2",
+      "severity": "INFO",
+      "title": "B1R_RESEAL verbatim phase text replaced 63 s after the CAS save",
+      "detail": "ERRATUM_EXEC_6 §2 'phase carried forward untouched' is true of the 03:45:02Z CAS save; the separately journaled 03:46:05Z save replaced the phase with the condensed R10 text ('B1R_RESEAL carried'). Old verbatim text preserved in event 1994 from/to and events 1969/1978/1980; amendment terms live in AMENDMENT_SOURCE_SWITCH_POLYMARKET.md.",
+      "remediation": "None required."
+    },
+    {
+      "id": "O3",
+      "severity": "INFO",
+      "title": "Worktree mirror journal is a snapshot",
+      "detail": "The worktree plans/CYCLE_REGISTRY.events.jsonl ends at this cycle's registration 2026-10-07T08:48:33Z; the GO consumption and R10 events live only in the root journal (the authority per ERRATUM_EXEC_1 D-1 — root registry + mirror JSON/GO_TOKEN).",
+      "remediation": "Optional: re-sync the mirror journal on next lawful touch."
+    }
+  ],
+  "coherence_for_next_owner_decision": "Typed-GO state is coherent: RUN ALL is proven spent and nothing re-types it; the live cutover gate is the new phrase 'GO SPORTS PAPERTRADE EXEC V1 POLYMARKET CUTOVER' REGISTERED_NOT_CONSUMED on the program row (typing it today would be a lawful no-op activation — READY_LEAGUES_NONE, 0/246 markets re-confirmed). The one incoherence is F1: the sibling CUTOVER-PREP row still presents the spent RUN ALL as an unconsumed shared gate and must be corrected with/before the next owner decision.",
+  "evidence": {
+    "report": "research/control/SPORTS-PAPERTRADE-EXEC-V1/R10_VERIFY/V10_VERIFY_GO_RECONCILIATION.md",
+    "root_journal": "/Users/hoangminhlong/my-quantitative/plans/CYCLE_REGISTRY.events.jsonl",
+    "root_registry_diff": "git diff 0c110b73 105318e6 -- plans/CYCLE_REGISTRY.json (root repo)",
+    "ledger": "/Users/hoangminhlong/.my-quantitative-data/sports-papertrade-exec-v1/ledger/paper_ledger.jsonl",
+    "pm_probe_reports": "/Users/hoangminhlong/.my-quantitative-data/sports-polymarket-cutover-prep-v1/live/probe_report_20261010T034402Z.json, probe_report_V10_VERIFY_PROBE_20261010T035757Z.json"
+  }
+}
