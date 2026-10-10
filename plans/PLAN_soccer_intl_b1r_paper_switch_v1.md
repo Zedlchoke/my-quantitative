@@ -33,10 +33,11 @@ explicitly NOT a GO phrase. No GO is consumed by any lane.
 
 Live ledger `~/.my-quantitative-data/sports-papertrade-exec-v1/ledger/
 paper_ledger.jsonl` measured 17 rows, hash-chained
-(prev_row_sha256 → row_sha256). Frozen facts: **0 soccer DECISION rows
-exist**; soccer has 1 FORECAST row (England–Croatia 2026-11-12,
-model_version_sha `soccer_b1_replay`, row_sha256 `efea6160…`) + 1
-NO_QUOTE row. Boundary law:
+(prev_row_sha256 → row_sha256). Frozen facts: **0 soccer BET_PAPER
+decision rows exist**; soccer has 1 FORECAST row (England–Croatia
+2026-11-12, model_version_sha `soccer_b1_replay`, row_sha256
+`efea6160…`) + 1 DECISION-type row with status NO_QUOTE (no order).
+Boundary law:
 - All 17 rows immutable; no relabel/recompute of anything pre-switch
   (and nothing post-switch may rewrite any row; ledger append-only).
 - The existing B1 FORECAST row for 2026-11-12 is retained verbatim as
