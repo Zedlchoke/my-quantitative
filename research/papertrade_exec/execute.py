@@ -773,11 +773,22 @@ def miss_decision(fixture, miss: dict, now: str) -> dict:
     return crosswalk_miss_decision(fixture, miss, now)
 
 
+# B1R switch (SOCCER-INTL-B1R-PAPER-SWITCH-V1; owner GO consumed
+# 2026-10-10T02:20:20Z): for SOCCER matches the decision forecast is the
+# B1R_SOCCER row when present; the parallel B1 row stays in the ledger as
+# control. Non-soccer selection law unchanged (first FORECAST wins).
+SOCCER_DECISION_MODEL_ID = "B1R_SOCCER"
+
+
 def forecast_index(led) -> dict:
     idx = {}
     for r in led.rows:
         if r["type"] == "FORECAST":
             idx.setdefault(r["match_id"], r)
+    for r in led.rows:
+        if (r["type"] == "FORECAST" and r.get("league") == "SOCCER"
+                and r.get("model_id") == SOCCER_DECISION_MODEL_ID):
+            idx[r["match_id"]] = r
     return idx
 
 

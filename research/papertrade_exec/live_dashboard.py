@@ -219,7 +219,8 @@ def enrich_matches(rows: list[dict]) -> list[dict]:
                            "competition": r.get("competition"),
                            "kickoff_utc": r.get("kickoff_utc"),
                            "forecast": None, "quote": None, "decision": None,
-                           "settlement": None, "is_open": False}
+                           "settlement": None, "is_open": False,
+                           "forecasts": []}
             order.append(mid)
         m = by_mid[mid]
         t = r.get("type")
@@ -228,6 +229,20 @@ def enrich_matches(rows: list[dict]) -> list[dict]:
                              "mode": r.get("mode"),
                              "recorded_at_utc": r.get("recorded_at_utc"),
                              "source_ref": r.get("source_ref")}
+            # B1R switch (SOCCER-INTL-B1R-PAPER-SWITCH-V1): keep every
+            # forecast per match; when both the B1 control and the B1R
+            # treatment are present, expose the draw-probability delta.
+            m["forecasts"].append({"p": r.get("p"),
+                                   "model": r.get("model_id"),
+                                   "recorded_at_utc":
+                                       r.get("recorded_at_utc")})
+            ps = {f["model"]: (f.get("p") or {}).get("DRAW")
+                  for f in m["forecasts"]
+                  if f.get("p") and f.get("p").get("DRAW") is not None}
+            if "B1_SOCCER" in ps and "B1R_SOCCER" in ps:
+                m["draw_delta_b1r_minus_b1"] = (ps["B1R_SOCCER"]
+                                                - ps["B1_SOCCER"])
+                m["decision_model_id"] = "B1R_SOCCER"
         elif t == "MARKET_QUOTE":
             m["quote"] = {"odds": (r.get("odds") or {}), 
                           "bookmaker": r.get("bookmaker"),
