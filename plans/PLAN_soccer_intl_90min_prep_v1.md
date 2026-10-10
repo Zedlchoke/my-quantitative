@@ -143,3 +143,44 @@ Verdants unchanged: no GO, no scored OOS, no change to the running paper
 model, its odds, wallet or ledger; no purchases; no push/merge; GO phrase
 never typed by a lane. Verifier re-derives probe counts, joins,
 calibration freeze and boundaries.
+
+## ROUND 3 addendum (owner instruction 2026-10-10, token-provided) — AMENDS ROUND 2
+
+The Owner stored a football-data.org token at
+`~/.config/my-quantitative-secrets/football_data_api_key` (0600). Token
+law: read in-process only; never printed, never fingerprinted, never in
+chat/logs/git/argv; no auth header or account-bearing response content
+persisted to git; the Owner is never asked to re-paste it.
+
+**Frozen request budget for round 3: exactly 3 GET requests** (the
+round-2 anonymous 3/3 budget is spent and NOT reset — different plan,
+different counter; this addendum creates the new budget). Frozen ladder,
+each step journaled (URL WITHOUT token, retrieval UTC, HTTP status,
+quota headers with x-authenticated-client VALUE REDACTED to
+PRESENT/ABSENT, raw bytes + sha256 in the data plane):
+
+1. R1: GET /v4/competitions/EC/matches?dateFrom=2016-06-21&dateTo=
+   2016-06-23 — tests whether the token unlocks the EC window that 403'd
+   anonymous, and (if 200) measures the two euro-2016 date-error rows
+   and score.regularTime on EC finals rows.
+2. R2: GET /v4/competitions/AC/matches — AFCON with the MEASURED code
+   `AC` (never `CAF`): match access + score.regularTime population +
+   coverage depth vs the 272 AFCON rows.
+3. R3 (only if budget remains): GET /v4/competitions/CA/matches — Copa
+   América vs the 157 CA rows.
+
+Frozen stop law: 401 (invalid token) ⇒ STOP ALL; 429 (quota) ⇒ STOP ALL;
+403/404 ⇒ record exact body and CONTINUE down the ladder (a 403 at R1
+does not pre-empt measuring R2/R3 — different tiers); any other 5xx/2xx
+anomaly recorded as evidence. No retries beyond one attempt per step, no
+purchases, no account changes.
+
+Analysis law: from responses ONLY — score.regularTime coverage, 1:1 join
+on (UTC date, unordered mapped pair) with fail-closed crosswalk extensions
+only on measured name evidence; duplicates/conflicts; euro-2016 rows;
+per-group resolution counts with reasons. Account ≠ access: no coverage
+inference from the catalog; every unresolved group keeps NOT_RUN with its
+measured reason. PREP ONLY: no GO, no scored OOS, no B1R refit, no model/
+paper-ledger/odds changes, no orders, no push/merge; results are a
+LABEL source only — never treated as pre-match odds. Verifier re-checks
+journal, hashes, labels, joins.
