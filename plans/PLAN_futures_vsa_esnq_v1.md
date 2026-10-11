@@ -111,3 +111,26 @@ khuyến nghị mặc định = giữ NQ block (budget 8 nguyên). Owner vẫn q
 5. **F2/F3**: scored production giờ bắt buộc --twin + twin.match True + accounting.complete
    True + publish/handoff thành công mới EXECUTION_COMPLETE; --fault-inject hooks cho
    fault tests (sandbox-only). Đã kiểm: fault suite 17/17 PASS.
+
+## ERRATUM-4 2026-10-10 (owner "đưa tới GO gate bảo vệ được bằng chứng end-to-end" — pre-outcome)
+
+1. **G7 twin nâng hợp đồng** (mục 2): "detached twin" cũ (chạy lại cùng `build_trades`,
+   perturb-flag, chỉ so net_usd) KHÔNG đạt chuẩn — thay bằng **independent re-derivation**
+   (`twin_engine.py`, không import engine, viết lại theo 03_RULEBOOK_AMBIGUITY) so
+   **FULL-FIELD** (machines_days + mọi per-date dir/entry_tod/gross_usd/net_usd), byte-match;
+   lệch ⇒ REFUSE. Scored thật chạy 2× compute — chấp nhận.
+2. **Terminal commit fail-closed** (mục 1): EXECUTION_COMPLETE chỉ được công bố SAU cùng —
+   ledger artifact (atomic) → result PENDING → TERMINAL_HANDOFF (sandbox-REACHABLE) →
+   read-back → lock-release FINISHED + evidence đo luật → ghi COMPLETE cuối. Mọi lỗi ⇒
+   FAILURE supersede + exit non-zero; identity đã tính GIỮ observed denominator; mọi ghi
+   atomic (tmp+fsync+rename+read-back); retry idempotent; test-flags fail-closed ngoài sandbox.
+3. **Hợp quy rulebook (17b)**: engine sai rulebook đã khóa tại 3 điểm (iFVG-confirm dead
+   code; S3-FVG window đảo [sweep,confirm]→[confirm,k); EQ50 leg thiếu bar confirm) — sửa
+   THEO rulebook (không phải re-param; phát hiện trước mọi outcome, budget 0/8). Mọi count
+   dry-run cũ vô hiệu cho freeze; dry-run re-take tại HEAD mới.
+4. **K2/terminal verdict**: engine v3 tự kết luận identity PASS/FAIL + K2 DEAD/ALIVE +
+   REJECT_ALL (PLAN §4/§6) — trước đây thiếu; verifier độc lập kiểm bằng fixture
+   hand-computed (verify_gates.py).
+5. **Cost**: MODELED giữ (không tìm thấy bằng chứng phí IBKR trong workspace/data);
+   19_COST_MODELED_PACKET trình owner 3 lựa chọn W1/W2/W3 tại gate — §7(iii) chỉ đạt khi
+   owner W1-accept (ghi trong GO record) hoặc W2 re-pin. VERIFIED_VS_ACCOUNT=NOT_RUN trung thực.
