@@ -83,6 +83,7 @@ _REFRESH_HTML = '''<!doctype html>
 <script>
 const $=id=>document.getElementById(id);
 const AUTO_REFRESH_SECONDS=8;   // <= the 10s refresh law
+const HEARTBEAT_STALE_S=180;     // same threshold as the server
 const money=c=>(c/100).toLocaleString("en-US",{style:"currency",currency:"USD"});
 function esc(s){return String(s??"").replace(/[&<>"]/g,
  c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
