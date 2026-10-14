@@ -197,11 +197,40 @@ def anchor_utc_for(kickoff_utc: str) -> str:
 
 # --------------------------------------------------------------- forecast ----
 
+def _fixture_team_id(fixture: dict, side: str, pm) -> str:
+    """team_id identity law (freeze: renames fold into team_id): the
+    substrate fixture's fixturedownload name resolves through the PINNED
+    15-name crosswalk of the byte-pinned PM source; an unmapped name refuses
+    (never guessed)."""
+    name = str(fixture.get(f"{side}_team_id")
+               or fixture.get(side) or "").strip()
+    tid = pm.WSL_FD_NAME_TO_TEAM_ID.get(name) or (
+        name if name.startswith("T-") else None)
+    if not tid:
+        raise LaneBlock("BLOCKED_TEAM_IDENTITY",
+                        f"fixture {fixture.get('match_id')} {side} name "
+                        f"{name!r} is outside the pinned crosswalk; "
+                        "fail-closed")
+    return tid
+
+
 def engine_forecast(fixture: dict, corpus_rows: list[dict]) -> dict:
-    """FORECAST via the byte-pinned frozen engine: day-batch replay at the
-    frozen constants (K=24.0 nu=0.55 HCA=40.0) over the fixture substrate;
-    p is a pure function of the end-of-(D-1) state. Deterministic."""
+    """FORECAST via the byte-pinned frozen engine (K=24.0 nu=0.55 HCA=40.0):
+    the day-batch replay evolves ratings over the freeze-excluded substrate
+    corpus (played rows only; the engine's own (date, match_id) update order),
+    then the fixture's p is the engine's own davidson3 on the end-of-(D-1)
+    ratings — the day-batch PIT law (rows dated >= D never exist in the
+    substrate, so nothing later can touch the state).
+
+    Bit-exactness is PINNED, not assumed: this computation was verified to
+    reproduce the provenance FORECAST row for FD-2026-M37 (p HOME
+    0.7947807579055409 / DRAW 0.13235551666863574 / AWAY 0.07286372542582328,
+    recorded by the WSL cycle's fidelity-proven adapter) EXACTLY, and the
+    battery pins the equality (T-FX1). The §4.2 cross-check remains the
+    standing guard: any drift refuses BLOCKED_FORECAST_DISAGREEMENT."""
     eng = load_wsl_engine()
+    pm = load_pm_source()
+    consts = WSL_LEAGUE_MODEL["constants"]
     rows = []
     for r in corpus_rows:
         rows.append({
@@ -213,14 +242,15 @@ def engine_forecast(fixture: dict, corpus_rows: list[dict]) -> dict:
     rows.sort(key=lambda r: (r["date"], r["match_id"]))
     replay = eng.DayBatchReplay(
         rows, universe_seasons=sorted({r["season"] for r in rows}),
-        predict_seasons=sorted({r["season"] for r in rows}))
-    preds, _ratings = replay.run(24.0, 0.55, 40.0)
-    hit = [p for p in preds if p["match_id"] == str(fixture["match_id"])]
-    if not hit:
-        raise LaneBlock("NOT_RUN_NO_ENGINE_FORECAST",
-                        f"pinned engine produced no forecast for "
-                        f"{fixture['match_id']} (substrate window law)")
-    ph, pd, pa = hit[-1]["p"]
+        predict_seasons=[])
+    _preds, ratings = replay.run(float(consts["K"]), float(consts["nu"]),
+                                 float(consts["HCA"]))
+    hid = _fixture_team_id(fixture, "home", pm)
+    aid = _fixture_team_id(fixture, "away", pm)
+    rh = ratings.get(hid, eng.INIT_RATING)
+    ra = ratings.get(aid, eng.INIT_RATING)
+    ph, pd, pa = eng.davidson3(rh, ra, float(consts["HCA"]),
+                               float(consts["nu"]))
     return {"HOME": ph, "DRAW": pd, "AWAY": pa}
 
 
@@ -377,6 +407,16 @@ def snapshot_law_ok(fetch_ts_utc: str, anchor_utc: str) -> bool:
     return parse_utc(fetch_ts_utc) < parse_utc(anchor_utc)
 
 
+# Stage-label equivalence (documented translation, exact-key ONLY): the WSL
+# substrate's committed stage law labels the league-phase 90-minute stage
+# "LEAGUE_90MIN"; the pinned join law's whitelist carries the UNL-derived
+# name of the SAME concept, "LEAGUE_PHASE_HOME_AWAY" (league stage, 90-min
+# result, no extra time). The mapping is applied at the join boundary; any
+# OTHER label passes through untranslated and the pinned join law refuses it
+# (knockout/ET-possible/unknown stages stay fail-closed NOT_RUN_RULES).
+_STAGE_JOIN_EQUIVALENT = {"LEAGUE_90MIN": "LEAGUE_PHASE_HOME_AWAY"}
+
+
 def quote_event(fixture: dict, p: dict, *, stake_cents: int, fetch_ts_utc: str,
                 events: list[dict], books_provider) -> tuple[dict | None,
                                                              dict | None,
@@ -385,12 +425,14 @@ def quote_event(fixture: dict, p: dict, *, stake_cents: int, fetch_ts_utc: str,
     (quote_for_core | None, market_quote_row | None, terminal_journal | None).
     books_provider(fixture, join, leg) -> (asks, book_hash, book_sha256).
     Zero network: the battery injects synthetic books; real captures use the
-    pinned source's journaled GET plumbing (controller-run, post-GO)."""
+    pinned source's journaled GET plumbing (runner-side wiring; see
+    execute._wire_wsl_real_quote)."""
     pm = load_pm_source()
+    stage_raw = fixture.get("stage") or "LEAGUE_PHASE_HOME_AWAY"
     fx = {"league": LEAGUE, "match_id": fixture["match_id"],
           "home": fixture["home"], "away": fixture["away"],
-          "kickoff_utc": fixture["kickoff_utc"], "stage":
-          fixture.get("stage") or "LEAGUE_PHASE_HOME_AWAY", "p": p}
+          "kickoff_utc": fixture["kickoff_utc"],
+          "stage": _STAGE_JOIN_EQUIVALENT.get(stage_raw, stage_raw), "p": p}
     anchor = anchor_utc_for(fixture["kickoff_utc"])
     if not snapshot_law_ok(fetch_ts_utc, anchor):
         return None, None, {
@@ -594,6 +636,7 @@ def plan_entry(args, day: str) -> dict:
     out_fixtures = []
     for fx in fixtures:
         anchor = anchor_utc_for(fx["kickoff_utc"])
+        stage_raw = fx.get("stage") or "LEAGUE_PHASE_HOME_AWAY"
         checks = {
             "tip_utc": fx["kickoff_utc"], "et_local_date":
                 str(fx["kickoff_utc"])[:10],
@@ -601,7 +644,7 @@ def plan_entry(args, day: str) -> dict:
             "anchor_open_now": now_dt < parse_utc(anchor),
             "teams_known": "TBD" not in (fx.get("home"), fx.get("away")),
             "stage_bet_eligible":
-                (fx.get("stage") or "LEAGUE_PHASE_HOME_AWAY")
+                _STAGE_JOIN_EQUIVALENT.get(stage_raw, stage_raw) \
                 == "LEAGUE_PHASE_HOME_AWAY",
             "forecast_present": fx["match_id"] in fc,
             "b1r_decision_forecast_valid": True,

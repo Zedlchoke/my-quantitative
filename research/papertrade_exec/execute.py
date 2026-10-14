@@ -122,12 +122,48 @@ def wsl_configured() -> bool:
 
 
 
+def _wire_wsl_real_quote(args) -> None:
+    """CAPITAL-V3 §4.3 REAL quote plumbing for the WSL lane (the missing
+    piece the first WSL quote incident exposed as BLOCKED_NO_QUOTE_PLUMBING):
+    in real mode the RUNNER fetches the Gamma open-events page set once per
+    command and binds a books_provider — both through the byte-pinned
+    polymarket_source's own journaled + append-only snapshot GETs (raw body,
+    url, retrieval UTC, sha256 pinned BEFORE parsing). The lane module and
+    its laws stay untouched; this is the runner-side call-site wiring only.
+    Sandbox mode returns untouched (the battery injects synthetic books via
+    the same seam attributes)."""
+    if getattr(args, "sandbox", False):
+        return
+    import urllib.parse
+    from research.papertrade_exec import wsl_lane
+    pm = wsl_lane.load_pm_source()
+    run = f"wsl_lane_{now_utc_real().replace(':', '')}"
+
+    def books_provider(fixture, join, leg):
+        token = join["legs"][leg]["token_id_yes"]
+        body, _ent = pm.http_get_json(
+            f"{pm.CLOB_BOOK_URL}?{urllib.parse.urlencode({'token_id': token})}",
+            now=now_utc_real(), journal_run=run,
+            snapshot_kind="clob_books",
+            snapshot_name=f"wsl_{join['event_id']}_{leg}")
+        book = body if isinstance(body, dict) else {}
+        asks = book.get("asks") or []
+        return asks, str(book.get("hash")), hashlib.sha256(
+            json.dumps(book, sort_keys=True).encode()).hexdigest()
+
+    events, _page_metas = pm.gamma_fetch_open_events(
+        now=now_utc_real(), journal_run=run, live=True)
+    args.wsl_pm_events = events
+    args.wsl_books_provider = books_provider
+
+
 def maybe_wsl(args, cmd_name: str):
     """WSL lane call-site (plan §4): route the WSL league to wsl_lane
     (fixtures -> pinned-engine forecast -> Polymarket quote -> core decide
     with the in-lock WSL phrase gate). Any other league returns None
     (unchanged path). WSL without the config key is BLOCKED_LEAGUE — the
-    identical refusal the pre-v3 runner gave for an unknown league."""
+    identical refusal the pre-v3 runner gave for an unknown league. Real-mode
+    quote commands get the journaled Gamma/CLOB plumbing bound here."""
     if getattr(args, "league", None) != "WSL":
         return None
     if not wsl_configured():
@@ -136,6 +172,8 @@ def maybe_wsl(args, cmd_name: str):
                          "(see research/capital_v3/config.capital_v3.template."
                          "json; the live config commit is a post-GO act)",
                          EXIT_BLOCKED_OTHER)
+    if cmd_name == "quote":
+        _wire_wsl_real_quote(args)
     from research.papertrade_exec import wsl_lane
     return getattr(wsl_lane, f"cmd_{cmd_name}")(args)
 # --- end CAPITAL LAW V3 runner block -----------------------------------------
