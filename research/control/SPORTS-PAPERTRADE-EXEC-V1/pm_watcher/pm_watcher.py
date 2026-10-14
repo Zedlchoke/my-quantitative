@@ -100,6 +100,7 @@ WC_EURO_MATRIX = {
 WC_EURO_YEARS = ["2027", "2028", "2029", "2030", "2031"]
 ESPN_SCOREBOARD = ("https://site.api.espn.com/apis/site/v2/sports/soccer/"
                    "{league}/scoreboard?dates={year}")
+WSL_GAMMA_TAG_ID = "105959"  # Verified on Gamma event 1167584, 2026-10-14.
 
 NOW_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -308,7 +309,8 @@ def load_recorded_forecasts():
 # -------------------------------------------------------------------- scan --
 
 def scan_scope(ps, scope: str, fixtures: list[dict], events: list[dict],
-               forecasts: dict, now_dt: datetime) -> dict:
+               forecasts: dict, now_dt: datetime,
+               scan_complete: bool = True) -> dict:
     """One scope through the cutover join law; CLOB books only for JOINED
     events. statuses: per-fixture NOT_RUN taxonomy or QUOTED."""
     results = []
@@ -327,8 +329,14 @@ def scan_scope(ps, scope: str, fixtures: list[dict], events: list[dict],
             results.append(rec)
             continue
         if not joins:
-            rec.update({"status": "NOT_RUN_NO_MARKET",
-                        "reason": ps.NOT_RUN_TAXONOMY["NOT_RUN_NO_MARKET"]})
+            if scan_complete:
+                rec.update({"status": "NOT_RUN_NO_MARKET",
+                            "reason": ps.NOT_RUN_TAXONOMY["NOT_RUN_NO_MARKET"]})
+            else:
+                rec.update({"status": "NOT_RUN_SOURCE_SCAN_INCOMPLETE",
+                            "reason": "Gamma's broad event scan hit the offset "
+                                      "limit; absence of a market cannot be "
+                                      "established"})
             results.append(rec)
             continue
         join = joins[0]
@@ -421,10 +429,52 @@ def scan_scope(ps, scope: str, fixtures: list[dict], events: list[dict],
             "status_counts": counts, "results": results, "signature": sig}
 
 
-def gamma_events(ps) -> tuple[list[dict], list[dict]]:
-    return ps.gamma_fetch_open_events(
-        now=now_s(), journal_run="pm_watcher_" + now_s().replace(":", ""),
-        live=True)
+def gamma_wsl_events(ps, now: str) -> tuple[list[dict], list[dict]]:
+    """Use Gamma's verified WSL tag; its broad offset cap misses live games.
+
+    A full tagged scan is required before reporting NOT_RUN_NO_MARKET. Every
+    page uses the pinned source's append-only HTTP snapshot journal.
+    """
+    events, metas = [], []
+    for page in range(21):
+        q = urllib.parse.urlencode({
+            "tag_id": WSL_GAMMA_TAG_ID, "closed": "false", "limit": "100",
+            "offset": str(page * 100), "end_date_min": now})
+        url = f"{ps.GAMMA_EVENTS_URL}?{q}"
+        body, ent = ps.http_get_json(
+            url, now=now, journal_run="pm_watcher_" + now.replace(":", ""),
+            snapshot_kind="gamma_events", snapshot_name=f"wsl_tag_p{page:02d}")
+        page_events = body.get("events", body) if isinstance(body, dict) else body
+        if not isinstance(page_events, list):
+            raise ValueError("WSL Gamma tag response is not an event list")
+        events.extend(page_events)
+        metas.append({"page": page, "n_events": len(page_events),
+                      "sha256": ent["sha256"], "url": url})
+        if len(page_events) < 100:
+            return events, metas
+    raise RuntimeError("WSL Gamma tag scan exceeded the provider offset limit")
+
+
+def gamma_events(ps, scopes: list[str]) -> tuple[list[dict], dict]:
+    now = now_s()
+    broad_events, broad_metas = (ps.gamma_fetch_open_events(
+        now=now, journal_run="pm_watcher_" + now.replace(":", ""),
+        live=True) if set(scopes) != {"WSL"} else ([], []))
+    broad_complete = bool(broad_metas) and any(
+        isinstance(m.get("n_events"), int) and m["n_events"] < 100
+        for m in broad_metas)
+    by_id = {str(e.get("id")): e for e in broad_events}
+    wsl_metas = []
+    if "WSL" in scopes:
+        wsl_events, wsl_metas = gamma_wsl_events(ps, now)
+        by_id.update({str(e.get("id")): e for e in wsl_events})
+    return list(by_id.values()), {
+        "gamma_pages": len(broad_metas), "n_open_events": len(by_id),
+        "broad_scan_complete": broad_complete,
+        "broad_scan_last_page": broad_metas[-1] if broad_metas else None,
+        "wsl_tag_pages": len(wsl_metas),
+        "wsl_tag_events": sum(m["n_events"] for m in wsl_metas),
+        "wsl_tag_complete": bool(wsl_metas)}
 
 
 # ------------------------------------------------------------------ state --
@@ -463,8 +513,7 @@ def main(argv=None) -> int:
                                      "detail": f"unknown scopes {unknown}"}))
 
     forecasts = load_recorded_forecasts()
-    events, page_metas = gamma_events(ps)
-    note = {"gamma_pages": len(page_metas), "n_open_events": len(events)}
+    events, note = gamma_events(ps, scopes)
 
     report = {"schema": "pm_watcher_report@1", "generated_at_utc": now_s(),
               "mode": "READ_ONLY_WATCH (no production change; cutover GO "
@@ -492,7 +541,10 @@ def main(argv=None) -> int:
                     "years": WC_EURO_YEARS}
         else:
             continue
-        res = scan_scope(ps, scope, fixtures, events, forecasts, now_dt)
+        scan_complete = (note["wsl_tag_complete"] if scope == "WSL"
+                         else note["broad_scan_complete"])
+        res = scan_scope(ps, scope, fixtures, events, forecasts, now_dt,
+                         scan_complete=scan_complete)
         res["source_meta"] = meta
         prev = state["scopes"].get(scope, {})
         prev_sig = prev.get("signature")

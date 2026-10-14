@@ -53,6 +53,19 @@ NOT_RUN_NO_RECORDED_FORECAST, NO_QUOTE, QUOTED_EV_COMPUTED). "Có market"
 chưa đồng nghĩa "đủ điều kiện paper": EV/risk gates và BET_PAPER vẫn thuộc
 shared core + các GO của từng cycle.
 
+## Gamma pagination correction (2026-10-14)
+
+The broad `/events` request returns HTTP 422 at offset 2100 with the body
+`offset too large, use /events/keyset for deeper pagination`. That response
+does **not** prove that all open events were scanned. The watcher now marks
+unmatched fixtures in an incomplete broad scan
+`NOT_RUN_SOURCE_SCAN_INCOMPLETE`. WSL is additionally scanned through the
+verified Gamma tag `105959` (`wsl`) with append-only page snapshots; only a
+complete tagged scan may say `NOT_RUN_NO_MARKET` for WSL. The correction
+found event `1167584` Arsenal–Birmingham and six other joined WSL fixtures.
+The watcher remains read-only and its $5 quote walk is diagnostic; the live
+capital-v3 decision must re-walk the book at the actual 1%-of-equity stake.
+
 ## Silence law
 
 A scope whose signature (match_id, status, event_id set) is unchanged emits
