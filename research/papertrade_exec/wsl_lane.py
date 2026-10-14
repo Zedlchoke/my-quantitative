@@ -552,6 +552,55 @@ def _lane_status(src_status: str) -> str:
             }.get(src_status, src_status)
 
 
+# ERRATUM_WSL_LANE_1 (2026-10-14): the pinned row below is a CONTROLLER-
+# ERROR artifact — the first real quote run shipped the broad Gamma open-
+# events scan (provably blind to the WSL tag listing; fixed in the same
+# round a1e73cd3+), a same-name DIFFERENT event ('Bitcoin') surfaced as the
+# join refusal, and the lane journaled NOT_RUN_UNMAPPED_TEAM for
+# FD-2026-M37. The row remains in the shared ledger byte-frozen (append-only
+# law); the lane treats EXACTLY these pinned row shas as NON-TERMINAL
+# incident evidence — they neither block a later quote/decide pass nor count
+# as the match's one decision. NO gate is loosened: the 1:1 join, verbatim
+# 90-min rules, snapshot-before-anchor, full-stake depth, EV, shared risk
+# bounds and the in-lock two-key phrase gate all still apply to every later
+# row. Scope is the exact row sha, never a status pattern.
+CONTROLLER_ERROR_NON_TERMINAL_ROWS = {
+    "992aba48b6499dd140eb745c5e090c720de5d2d597eb1f8fed3c0f9cda2eaa2b":
+        ("FD-2026-M37",
+         "ERRATUM_WSL_LANE_1: broad-scan wiring artifact (fixed same round); "
+         "a same-name different event surfaced as the join refusal"),
+}
+
+
+def non_terminal_matches(rows: list[dict]) -> set:
+    """Matches whose EVERY decision row is a pinned controller-error
+    artifact (a match with any real terminal row stays decided)."""
+    art = set(CONTROLLER_ERROR_NON_TERMINAL_ROWS)
+    by_match: dict[str, set] = {}
+    for r in rows:
+        if r.get("type") == "DECISION":
+            by_match.setdefault(r.get("match_id"), set()).add(
+                r.get("row_sha256"))
+    return {mid for mid, shas in by_match.items() if shas and shas <= art}
+
+
+class _NonTerminalView:
+    """Read-only ledger view for the lane passes: identical to the real
+    ledger except decided_match_ids() excludes matches decided ONLY by
+    pinned controller-error rows (ERRATUM_WSL_LANE_1). Everything else
+    (chain, equity, exposure, append-target rows) delegates untouched."""
+
+    def __init__(self, led):
+        self._led = led
+
+    def __getattr__(self, name):
+        return getattr(self._led, name)
+
+    def decided_match_ids(self) -> set:
+        return self._led.decided_match_ids() - non_terminal_matches(
+            self._led.rows)
+
+
 def terminal_journal(fixture: dict, status: str, reason: str, now: str) -> dict:
     """Terminal stake-0 journal row (never a silent drop; never a bet)."""
     return {
@@ -759,9 +808,10 @@ def cmd_quote(args) -> dict:
                         "post-GO through the pinned source's journaled GET "
                         "plumbing; the battery injects synthetic books)")
     written, journaled = [], []
+    view = _NonTerminalView(led)
     for fx in fixtures_for_day(args, args.date):
         if fx["match_id"] in qt_index(led) or fx["match_id"] in \
-                led.decided_match_ids():
+                view.decided_match_ids():
             continue
         fc_rows = [r for r in led.rows if r.get("type") == "FORECAST"
                    and r.get("league") == LEAGUE
@@ -814,8 +864,9 @@ def cmd_decide(args) -> dict:
         registry = (getattr(args, "sandbox_registry", None)
                     or REGISTRY_PATH)
     journaled = []
+    view = _NonTerminalView(led)
     for fx in fixtures_for_day(args, args.date):
-        if fx["match_id"] in led.decided_match_ids():
+        if fx["match_id"] in view.decided_match_ids():
             continue                     # one-decision law (idempotent)
         fc_rows = [r for r in led.rows if r.get("type") == "FORECAST"
                    and r.get("league") == LEAGUE
@@ -847,10 +898,10 @@ def cmd_decide(args) -> dict:
                      "commence_time_utc": qrow["commence_time_utc"],
                      "payload_sha256": qrow["payload_sha256"]}
             stake = core.stake_for_decision(led.equity_cents())
-            recheck = make_in_lock_recheck(led, core, registry, go_ok=True,
+            recheck = make_in_lock_recheck(view, core, registry, go_ok=True,
                                            walked_stake_cents=stake)
             dec = core.risk.evaluate_match(
-                led, league=LEAGUE, match_id=fx["match_id"],
+                view, league=LEAGUE, match_id=fx["match_id"],
                 competition=fx.get("competition") or "WSL_LEAGUE",
                 home=fx["home"], away=fx["away"],
                 kickoff_utc=fx["kickoff_utc"], now_utc=now,

@@ -370,3 +370,43 @@ def test_decide_phrase_gate_tampered_registry(env, tmp_path,
         wsl_lane.cmd_decide(ns(env, "decide",
                                wsl_registry=str(tampered)))
     assert ei.value.code == "BLOCKED_NO_GO"
+
+
+def test_controller_error_artifact_is_non_terminal(env, real_ledger_untouched):
+    """ERRATUM_WSL_LANE_1: a match whose ONLY decision row is a pinned
+    controller-error artifact stays quoteable/decidable; a match with ANY
+    real terminal row stays decided. (The ledger's append law recomputes
+    row_sha256, so the scoping is exercised as a pure row-list property; the
+    production effect is proven by the live quote pass writing over the real
+    artifact row in the shared ledger.)"""
+    sha = next(iter(wsl_lane.CONTROLLER_ERROR_NON_TERMINAL_ROWS))
+    mid = wsl_lane.CONTROLLER_ERROR_NON_TERMINAL_ROWS[sha][0]
+    artifact_only = [{"type": "DECISION", "league": "WSL", "match_id": mid,
+                      "status": "NOT_RUN_UNMAPPED_TEAM", "stake_cents": 0,
+                      "row_sha256": sha, "decided_at_utc": NOW_OK}]
+    assert wsl_lane.non_terminal_matches(artifact_only) == {mid}
+
+    class _Stub:
+        def __init__(self, rows, decided):
+            self._rows, self._decided = rows, decided
+
+        @property
+        def rows(self):
+            return self._rows
+
+        def decided_match_ids(self):
+            return set(self._decided)
+
+    view = wsl_lane._NonTerminalView(_Stub(artifact_only, {mid}))
+    assert mid not in view.decided_match_ids()
+    # a real terminal row makes the match decided again (scope guard)
+    with_real = artifact_only + [{"type": "DECISION", "league": "WSL",
+                                  "match_id": mid, "status": "NO_QUOTE",
+                                  "stake_cents": 0, "row_sha256": "b" * 64}]
+    view2 = wsl_lane._NonTerminalView(_Stub(with_real, {mid}))
+    assert mid in view2.decided_match_ids()
+    # and the REAL artifact row bytes are still exactly in the shared ledger
+    real = [json.loads(l) for l in REAL_LEDGER.read_text().splitlines()
+            if l.strip()]
+    art = [r for r in real if r.get("row_sha256") == sha]
+    assert len(art) == 1 and art[0]["status"] == "NOT_RUN_UNMAPPED_TEAM"

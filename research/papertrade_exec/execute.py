@@ -122,14 +122,22 @@ def wsl_configured() -> bool:
 
 
 
+# Gamma's verified WSL tag (the broad open-events offset scan provably misses
+# live WSL games — measured and fixed for the watcher 2026-10-14, verified ON
+# Gamma event 1167584 = Arsenal WFC v Birmingham City WFC). The lane's quote
+# wiring therefore scans the TAG completely; every page is journaled and
+# pinned append-only through the pinned source's own GET plumbing.
+WSL_GAMMA_TAG_ID = "105959"
+
+
 def _wire_wsl_real_quote(args) -> None:
     """CAPITAL-V3 §4.3 REAL quote plumbing for the WSL lane (the missing
     piece the first WSL quote incident exposed as BLOCKED_NO_QUOTE_PLUMBING):
-    in real mode the RUNNER fetches the Gamma open-events page set once per
-    command and binds a books_provider — both through the byte-pinned
-    polymarket_source's own journaled + append-only snapshot GETs (raw body,
-    url, retrieval UTC, sha256 pinned BEFORE parsing). The lane module and
-    its laws stay untouched; this is the runner-side call-site wiring only.
+    in real mode the RUNNER fetches the WSL-tagged Gamma events completely
+    and binds a books_provider — both through the byte-pinned polymarket_
+    source's own journaled + append-only snapshot GETs (raw body, url,
+    retrieval UTC, sha256 pinned BEFORE parsing). The lane module and its
+    laws stay untouched; this is the runner-side call-site wiring only.
     Sandbox mode returns untouched (the battery injects synthetic books via
     the same seam attributes)."""
     if getattr(args, "sandbox", False):
@@ -151,8 +159,30 @@ def _wire_wsl_real_quote(args) -> None:
         return asks, str(book.get("hash")), hashlib.sha256(
             json.dumps(book, sort_keys=True).encode()).hexdigest()
 
-    events, _page_metas = pm.gamma_fetch_open_events(
-        now=now_utc_real(), journal_run=run, live=True)
+    events = []
+    for page in range(30):                     # full tagged scan (offset law)
+        q = urllib.parse.urlencode({
+            "tag_id": WSL_GAMMA_TAG_ID, "closed": "false", "limit": "100",
+            "offset": str(page * 100), "end_date_min": now_utc_real()})
+        url = f"https://gamma-api.polymarket.com/events?{q}"
+        body, _ent = pm.http_get_json(
+            url, now=now_utc_real(), journal_run=run,
+            snapshot_kind="gamma_events",
+            snapshot_name=f"wsl_tag_p{page:02d}")
+        page_events = body.get("events", body) if isinstance(body, dict) \
+            else body
+        if not isinstance(page_events, list):
+            raise BlockError("BLOCKED_WSL_GAMMA",
+                             "WSL Gamma tag response is not an event list",
+                             EXIT_BLOCKED_OTHER)
+        events.extend(page_events)
+        if len(page_events) < 100:
+            break
+    else:
+        raise BlockError("BLOCKED_WSL_GAMMA",
+                         "WSL Gamma tag scan exceeded the provider offset "
+                         "limit; refusing to quote from a partial scan",
+                         EXIT_BLOCKED_OTHER)
     args.wsl_pm_events = events
     args.wsl_books_provider = books_provider
 
