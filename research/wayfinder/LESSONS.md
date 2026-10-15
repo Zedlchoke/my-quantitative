@@ -1181,3 +1181,33 @@ Su kien: corpus chi co ngay khong gio — thay vi NOT_RUN_PIT, lane PIT chung mi
 
 ## P-38 — SOCCER-INTL-WINPROB-SCORED-V1 (TERMINAL 2026-10-07): goi gate cung la code — stub ngam tren duong post-GO chi lo ra luc GO; va window "khong cham" phai dung o cap engine
 Su kien: luc consummate GO, gate tu choi vi (1) genesis go_token pin la placeholder bat-thiet-ke (verify = frozen pins) va khong co duong hop phao nao de pin — engine docstring noi "pinned in genesis" nhung ledger append-only khong cho sua genesis; (2) engine doi chuoi "CONSUMED" trong khi house convention ghi "OWNER_GO_TYPED_LIVE". Ca hai sua bang gate-only remediation (go_pin row + chap nhan convention nha) TRUOC khi chay, A7 delta-audit tai SHA moi. Sau scored: INC-SIS-1 — khoi claims kiem tra "ll" sai tang long nhau, phat NOT_RUN du metrics day du; xu ly bang disclosure + arithmetic tren outputs da ghi, KHONG re-run (tranh double-dip). Them: window heldout nam trong danh sach windows dong bang nen metrics 2023+ bi ghi vao artifact du khong dung — 2023+ thanh partially revealed. Bai hoc: (1) "duong post-GO khong con stub" phai duoc chung minh bang mot DIEN TAP PASS-path (go_pin rehearsal), khong chi rehearse refusal — refusal rehearsal khong phat hien khong co duong PASS; (2) convention registry la hop dong — engine doc doc registry phai doc convention cua nha truoc; (3) window "giu nguyen khong mo" phai bi loai khoi engine runtime, khong chi ghi trong van ban freeze — boilerplate liet ke window cung la exposure; (4) claims/verdict block la code tinh toan — phai co golden fixture cau truc (metrics nam o tang nao) ngay tu synthtest.
+
+## P-40 — FUTURES-R2S-CAMPAIGN-V1 (2026-10-16): loader law diffing, permutation nulls on identity keys, and the bill that keeps a real signal
+
+- **New loader over an existing surface must diff the chain-of-record
+  loader law BEFORE first use** (INC-FUTR2S-1): the Databento trim
+  surface carried calendar-spread rows, (instrument_id, ts_event)
+  duplicates, fixed-point 1e-9 prices, and per-contract session
+  semantics; the first ad-hoc loader skipped all four and was caught
+  only by a `validate="one_to_one"` merge guard. Consequence: P-CHK-16
+  (row-count + price-level diff vs the chain-of-record loader is a
+  precondition, one command).
+- **The permutation null applied to an IDENTITY KEY is the cheapest
+  decisive kill in the program's futures history**: 10 of 24 K1 rows
+  died because randomly reassigned level keys reproduced 0.83–0.84× of
+  the anchor's logloss gain — the "level memory" was grouping
+  structure, not level information. Q-11 (a null must move the signal)
+  delivered a whole-family kill at zero scored cost. Consequence:
+  identity-key permutation joins the standard D2/control battery for
+  any feature family defined over grouping keys.
+- **A signal that survives every information gate can still die by
+  arithmetic**: K3's NQ−β·ES reversion hit 0.60–0.64, symmetric,
+  majority- and clock-clean — and gross:cost 0.13–0.37 at REFERENCE
+  bands. The kill is (2·hit−1)·E|move|·notional vs RT cost, published
+  with its reopening condition (measured venue costs), per Q-10. No
+  rescue by optimism about fills.
+- **Operator class**: object-dtype Timestamp arrays in Python loops are
+  an O(n·sessions) richcmp hotspot (41 CPU-minutes burned, own job
+  killed; P-CHK-17: int64 before unique/mask); a hash-chain ledger must
+  resume from its tail, not GENESIS (INC-FUTR2S-2); piping background
+  runs through `tail` masks exit codes — verify artifacts, not pipes.

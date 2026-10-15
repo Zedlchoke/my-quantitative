@@ -1571,3 +1571,24 @@ First historical scored successor executed end-to-end under the two-key law (own
 
 ### NWSL-WINPROB-SCORED-PREP-V1 (TERMINAL 2026-10-15, SCORED_PASS_COMPLETE_B1_REJECTED)
 First NWSL win-prob cycle: corpus ESPN 1,438 rows (warm-up 2016–2018 = 335, TRAIN 2019–2022 = 372 with 2020 excluded + 41 nwslR CC/Fall rows disclosed separately, OOS 2023–2025 = 515 game-IDs frozen sha bf293cab BEFORE any OOS metric, HIST-2026 216 not scored); deterministic 90-minute label law (ET/Pens/Golden Goal ⇒ DRAW-90, 14 rows); dispute law: 2017-06-17 kept as D via SoccerStatsUS third source, 2021-09-04 excluded; owner-frozen design (7 decisions); synthetic battery 9/9 incl. 5 mandated refusal cases; train-internal selection KEEP_B1 (all 6 hypothesis CIs incl 0 → third scored cell RELEASED, effective budget 2); single scored pass B0+B1 on the frozen list: **REJECT_B1_VS_B0** (RS dLL +0.004004/game, dRPS +6.46e-05 vs thresholds ≤−0.01/≤−0.005; B1 OOS slopes collapse to 0.225 pooled vs TRAIN 1.060 — OOS overconfidence; per-season incoherent +0.078/+0.062/−0.083). Repro twin ALL_MATCH; A7 prelaunch AUTHORIZED_WITH_FINDINGS + DELTA_VERIFIED; A7 terminal CONFIRM_WITH_FINDINGS 0C/0H with independent replay bit-exact. Claim cap: partially-exposed-window evidence, NO edge claims; prices-history research-only; NWSL paper scope untouched (NOT_RUN_NWSL_PAPER_HOOKUP). Worktree .worktrees/nwsl-winprob-scored-prep-v1/integration @ acf8b395. Successor: new round + changed mechanism axis only (K/ν/HCA re-tune on the same OOS ancestry-fenced).
+
+## FUTURES-R2S-CAMPAIGN-V1 (CLOSED 2026-10-16) — research-to-strategy campaign: honest zero, one real-but-cost-dead signal, futures history audited
+
+- Verdict `CAMPAIGN_COMPLETE_WITH_FINDINGS` (A7 fresh-context
+  AUTHORIZED_WITH_FINDINGS 0C/0H/3L at terminal 269d4047). Owner
+  sections A–J executed: W0 futures FAILURE_ATLAS (7 surfaces, 10
+  groups, 5-class taxonomy, 17 preventive checks) → W1 tested layers
+  (sealed chain-of-record loader, PIT level-memory adapter, bounded
+  runner w/ hard 24-cap, fold law, hash-chained ledgers, deterministic
+  agent + simulator + NO-ORDER boundary) → W2 five dossiers, frozen
+  rubric, K1+K3 developed (20/24 configs, 0 scored) → K1 0/24 rows
+  (permutation-null kills: level-memory gain on NQ reproduced 0.83× by
+  random level assignment) → K3 real reversion signal (hit 0.60–0.64,
+  symmetric, clean controls) cost-dead at reference bands (0.13–0.37×).
+- Durable: campaign control dir on the terminal branch (atlas, evidence
+  index, dossiers, verdicts, agent replay proof, capital feasibility,
+  next-gate packet); sealed loader + bounded runner + fold law + agent
+  machinery in `research/futr2s/` + `agent/` on that branch.
+- Standing facts added: CME/macropin debts unchanged; IBKR handshake
+  still UNVERIFIED; validator family_failures enum lacks `futures`
+  (disclosed). S1 untouched; no orders; no push.
