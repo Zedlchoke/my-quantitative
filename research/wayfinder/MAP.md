@@ -1595,3 +1595,21 @@ First NWSL win-prob cycle: corpus ESPN 1,438 rows (warm-up 2016–2018 = 335, TR
 
 ### SOL-MEME-WALLET-FOLLOW-PREP-V1 (TERMINAL 2026-10-16, PREP_COMPLETE_PENDING_OWNER_SCORED_DECISION)
 First Solana new-token (memecoin) wallet-follow PREP: owner-authorized feasibility + specs + read-only core, ZERO scored cells (0/0), no GO by design, no push. Verdict: machinery verified, data authority PARTIAL. L1 SOURCE_MATRIX 19 sources (only SRC-SOLRPC-PUBLIC AUTHORIZED at $0; pump.fun frontend REJECTED_LICENSE ToS §21(h); Flipside/SolanaFM dead; Bitquery archive drops Trade_Side → structurally unfit for trader replay; Helius $49/mo = ORC-1 owner request; verdict BOUNDED_REPLAY_PARTIAL_CONDITIONAL), 7 program IDs pinned from official docs (independently cross-checked by the controller probe). G4 measured probe (36 archived requests/17.8MB, budget ≤400/20MB): public RPC serves blocks at measured ages 61/146/313/646 days; current solana-core 4.3.0 REFUSES blocks containing transaction version 1 unless `maxSupportedTransactionVersion:1` (-32015 silent completeness trap); failed txs visible (3/5 recent sample); sample mint Token-2022 (metadataPointer+tokenMetadata, freeze/mint authority null); NO historical account state on non-archive node → pool replay must bootstrap from creation tx; NO source anywhere exposes historical provider receive time → all latency MODELED. L2 specs: universe+no-lookahead wallet selection law; 3 concepts A/B/C with wave-1 budget exactly 12 configs (A×4,B×2,C×2,CTRL×3,BASE×1), all SPEC_CANDIDATE; execution latency-cost law with 12-cell MODELED_LATENCY grid. L3 core `research/solmeme/` stdlib-only (journal/dedupe/attribution fee-payer≠trader + hop-dedupe/Token-2022 flags/gates/shadow position STUCK_NO_EXIT/cost-latency exact-Fraction/deterministic replay/census-only NO PnL) + 137 tests PASS + NO_BROADCAST_PROOF. L4 fresh-context verifier: **PASS_WITH_FINDINGS** 12/12 items, 0 FAIL, 0 CRITICAL/HIGH, 2 MEDIUM + 5 LOW (F1 16→12 typo errata'd; F2 entry-delay timestamp assertion = pre-freeze blocker; F3 eligibility-snapshot module deferred; F7 12 SPEC_REGISTERED rows at acceptance). NEXT_GATE_PACKET: pre-freeze blockers + ORC-1..4 owner decisions; recommendation NOT-YET-scored. Worktree .worktrees/sol-meme-wallet-follow-prep-v1/integration @ a3e35cd3. Report_VI in control dir. Lesson P-41.
+
+### FUTURES-FIRSTPASS-M1 (TERMINAL 2026-10-16, RUN_COMPLETE_M-A_FAIL)
+First registered forecast-model experiment on the first-passage target
+(owner pinned materiality M-A verbatim; lineage PREP-FORECAST-DESIGN →
+TARGET-CENSUS-20261016 → FIRSTPASS-MODEL-PREP-20261016 → this cycle).
+108/108 fits computed (3 specs × ES/NQ × z0.10/z0.05 × 9 evaluable folds
+2014–2022 + 12 frozen empty-train records), single pass under
+governance.heavy_lock; primary contrast S2−S1 paired Δlogloss ES z0.10 =
+**+0.00281 nats (CI [+0.00106,+0.00460]) — level-position block WORSE
+than fair context baseline; 0/3 eras; calibration slopes 0.149/0.049** →
+M-A_FAIL, terminal verifier CONFIRM (independent reproduction 3.3e-17).
+Diagnostics recorded without rescue: NQ|z0.1 −0.0025 (post-hoc flip,
+fenced), z0.05 mixed. Fence: FUTR-FP-M1-LEVEL-POSITION-REJECT (no
+re-tune rescue of context+level-position softmax on this target).
+Durable: run_driver + frozen runner (digest 1fd92dea), deterministic
+fold law with NOT_EVALUABLE_EMPTY_TRAIN handling, non-vacuous synthetic
+dry-run machinery, terminal verifier artifacts. Control dir on terminal
+branch @ 78e19823. All EXPLORATORY_OUTCOME_EXPOSED; NO PnL; S1 untouched.

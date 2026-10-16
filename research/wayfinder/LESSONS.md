@@ -1237,3 +1237,14 @@ Su kien: luc consummate GO, gate tu choi vi (1) genesis go_token pin la placehol
   `Trade_Side` — an owner should never be asked to buy a source that cannot
   answer the question. Consequence: SOURCE_MATRIX status enums
   (AUTHORIZED/REJECTED/UNAVAILABLE) are research outputs, not paperwork.
+- **A fair context baseline is a stronger fence than it looks**: on the
+  ES first-passage census, every drop of measured side/clock/vol
+  asymmetry already lives in S1 (tod, role, rel_atr), so the declared
+  level-position block added pure variance — logloss got WORSE
+  (+0.0028 nats, CI excluding zero on the wrong side) and calibration
+  collapsed (slopes 0.05–0.15). Consequence: for behavioral forecast
+  experiments on this factory, the increment claim must beat the fair
+  baseline, not the unconditional prior; an estimator that cannot beat
+  S0 should be reported as such (here S2−S0 = +0.0032) and never dressed
+  up as "close". Cross-dataset sign flips (NQ −0.0025) are post-hoc
+  observations to fence, not to rescue with.
