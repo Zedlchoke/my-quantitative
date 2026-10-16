@@ -1211,3 +1211,29 @@ Su kien: luc consummate GO, gate tu choi vi (1) genesis go_token pin la placehol
   killed; P-CHK-17: int64 before unique/mask); a hash-chain ledger must
   resume from its tail, not GENESIS (INC-FUTR2S-2); piping background
   runs through `tail` masks exit codes — verify artifacts, not pipes.
+
+## P-41 — SOL-MEME-WALLET-FOLLOW-PREP-V1 (2026-10-16): versioned-block negotiation is a silent completeness trap, and "free" history has a measured ceiling
+
+- **A provider can refuse an ENTIRE block over one undeclared field**: the
+  current public Solana node (solana-core 4.3.0, measured 2026-10-16) rejects
+  `getBlock`/`getTransaction` on any block containing a version-1
+  transaction with `-32015` unless the request sets
+  `maxSupportedTransactionVersion: 1`. A naive poller that treats the error
+  as transient loses every recent block with no per-row trace. Consequence:
+  ingestion clients must declare the highest supported tx version explicitly
+  and a version-refusal counter must be a loud metric, not a retry footnote
+  (Q-8 again: API behavior is measured, never assumed stable across node
+  upgrades).
+- **"Free" has a measured ceiling — write it down before designing the
+  experiment**: the only $0/no-account source (public RPC) serves block
+  bytes ≥61 days (measured to ~646 days) but has NO historical account
+  state (non-archive) and no historical receive timestamps anywhere in any
+  provider — so pool-state replay must bootstrap from creation
+  transactions and all latency is MODELED by construction. Feasibility
+  ceilings belong in SOURCE_MATRIX, not in a scored plan's assumptions.
+- **License walls are data facts**: pump.fun frontend is REJECTED_LICENSE
+  (ToS §21(h) monitoring ban, Last Updated 2026-10-08) and one paid
+  candidate (Bitquery archive) is structurally unfit because its cubes drop
+  `Trade_Side` — an owner should never be asked to buy a source that cannot
+  answer the question. Consequence: SOURCE_MATRIX status enums
+  (AUTHORIZED/REJECTED/UNAVAILABLE) are research outputs, not paperwork.
