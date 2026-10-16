@@ -87,6 +87,21 @@ drift, or any need for credentials/purchases. Codes: `NOT_RUN_LABEL`,
 
 plans/ clean ✓ (measured) · heavy lock FREE at execution time (last measured
 HELD by the SRML-DEV lane — re-measure immediately before; held ⇒
-NOT_RUN_RESOURCE_CONFLICT) · owner approves THIS plan + MODEL_SPEC v1.1 +
+`NOT_RUN_RESOURCE_CONFLICT`) · owner approves THIS plan + MODEL_SPEC v1.1 +
 AMENDMENTS v3.2/v3.3 (D4/D5/D8 per DECISION_REVIEW) · deploy commands per
 DEPLOY_COMMANDS_DRAFT (safe-teardown law included).
+
+## 8. M-2 gate (owner design rulings 2026-10-16 — registration of record; NOT a scored GO)
+
+Owner rulings for the FIRST scored run, binding: (R1) frozen panel v3, 3,566
+L1 rows (`m1_fc_eligible_l1 == YES`); (R2) the 9 recovered labels stay OUT —
+no panel v3.1; (R3) per-run `NOT_RUN_VERSION` stands + GFS era-evidence
+annotation on every results table; (R4) look budget = ONE VAL pass, ONE TEST
+report, no re-fit after TEST is viewed. Execution packet:
+`research/control/WEATHER-TEMP-PROB-V1/m2_prep/M2_GATE_PACKET.md` (split
+identity hashes, pre-fit trial-ledger rows, leakage QC battery, stop
+conditions, look-budget enforcement). **Scored budget: stays 0/0** — no
+cycle-law document sets the M-2 maximum; the owner must set it when typing
+the GO (fail-closed; not guessed). Preconditions for the scored run: typed
+owner GO at this cycle's own gate (P-8) + owner-set budget max + heavy lock
+FREE + pin/verifier drift gate clean.
