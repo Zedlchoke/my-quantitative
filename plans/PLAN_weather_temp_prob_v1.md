@@ -91,17 +91,28 @@ HELD by the SRML-DEV lane — re-measure immediately before; held ⇒
 AMENDMENTS v3.2/v3.3 (D4/D5/D8 per DECISION_REVIEW) · deploy commands per
 DEPLOY_COMMANDS_DRAFT (safe-teardown law included).
 
-## 8. M-2 gate (owner design rulings 2026-10-16 — registration of record; NOT a scored GO)
+## 8. M-2 gate (owner design rulings 2026-10-16, rounds 1–2 — registration of record; NOT a scored GO)
 
-Owner rulings for the FIRST scored run, binding: (R1) frozen panel v3, 3,566
-L1 rows (`m1_fc_eligible_l1 == YES`); (R2) the 9 recovered labels stay OUT —
-no panel v3.1; (R3) per-run `NOT_RUN_VERSION` stands + GFS era-evidence
+Round-1 rulings, binding: (R1) frozen panel v3, 3,566 L1 rows
+(`m1_fc_eligible_l1 == YES`); (R2) the 9 recovered labels stay OUT — no
+panel v3.1; (R3) per-run `NOT_RUN_VERSION` stands + GFS era-evidence
 annotation on every results table; (R4) look budget = ONE VAL pass, ONE TEST
-report, no re-fit after TEST is viewed. Execution packet:
-`research/control/WEATHER-TEMP-PROB-V1/m2_prep/M2_GATE_PACKET.md` (split
-identity hashes, pre-fit trial-ledger rows, leakage QC battery, stop
-conditions, look-budget enforcement). **Scored budget: stays 0/0** — no
-cycle-law document sets the M-2 maximum; the owner must set it when typing
-the GO (fail-closed; not guessed). Preconditions for the scored run: typed
-owner GO at this cycle's own gate (P-8) + owner-set budget max + heavy lock
-FREE + pin/verifier drift gate clean.
+report, no re-fit after TEST is viewed.
+
+Round-2 rulings, binding: (R5) **scored budget max = 6 cells, six fixed
+identities B0/B1/B2 × {VAL, TEST}**; TRAIN fits consume no cell; one arm ×
+one split = one cell; no slot reuse for new variants (registry budget
+{used: 0, max: 6}); (R6) independent A7 prelaunch audit sits BEFORE the
+owner GO and before the first scored cell; (R7) the exact M-2 driver must
+pass a sanitized synthetic dry-run (refusal/resume/stop paths, no real
+labels) before the gate is presented.
+
+Execution packet + driver: `research/control/WEATHER-TEMP-PROB-V1/m2_prep/
+M2_GATE_PACKET.md` and `research/control/WEATHER-TEMP-PROB-V1/m2_run/
+run_driver_m2.py` (frozen forms from `wtp_core_frozen.py`, sha 4b847007…;
+dry-run report `m2_run/dryrun/DRYRUN_REPORT.md`). Preconditions for the
+scored run: A7 AUTHORIZED (R6) → typed owner GO at this cycle's own gate
+(P-8) → heavy lock FREE → drift gate clean. Budget law recorded: the
+repo's trial-freeze contract (identities frozen pre-score, no cell
+replacement, no unused-budget recovery) is compatible with arm×split
+counting; the owner is the budget authority.
