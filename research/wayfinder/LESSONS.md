@@ -1248,3 +1248,36 @@ Su kien: luc consummate GO, gate tu choi vi (1) genesis go_token pin la placehol
   S0 should be reported as such (here S2−S0 = +0.0032) and never dressed
   up as "close". Cross-dataset sign flips (NQ −0.0025) are post-hoc
   observations to fence, not to rescue with.
+
+## P-42 — SOL-MEME-SHADOW-PILOT-V1 (2026-10-17): sample the firehose's tail distribution BEFORE promising a cohort, and never let "schema OK" stand in for "data flowing"
+
+- **Discovery yield is a measured property of the stream, not a config
+  hope**: pump.fun's program emits ~41.7 tx/s (a 1000-signature window
+  spans 24 seconds — measured) and creations are <0.87% of it (344
+  decodes, 0 found; 95% UB). A 6-decodes/tick sampler had an expected
+  yield of 0.03–0.12 creations per tick — the 90-minute cohort window was
+  arithmetically doomed before activation. Consequence: any discovery
+  design must FIRST measure (a) stream rate, (b) target-event share, (c)
+  decode/request throughput under provider rate limits (~1.3/s sustained
+  keyless here; 80/100 HTTP429 at 4/s), and then show the cohort-fill
+  arithmetic closes. No cohort law may lock an empty cohort: at deadline
+  without members the only lawful state is DEGRADED stop + notification.
+- **Health must distinguish schema health from data health**: window 1
+  reported `status=OK` for 60+ ticks that ingested nothing. Exit 0 proves
+  the machinery ran, never that the mission progressed. Consequence:
+  every tick must carry last-network-success, last-parsed-event, cohort
+  size, backlog/gaps and stale-duration, and a no-progress streak is an
+  actionable failure, not a quiet success.
+- **Rate limiters define the real decode budget** (Q-8 again): the same
+  endpoint served 20% success at 4 req/s and 100% at 0.75s pacing —
+  provider-sustained throughput is a measured constant that belongs in
+  the frozen quota math, and the free-tier limiter (not the decoder) is
+  what made a $0 live-creation cohort infeasible. Block-scan lens check:
+  scanning chain-wide blocks for a program-specific event wastes ~50x the
+  bytes — sample the program stream, not the chain.
+- **Stub-masked integration mismatches are found by wiring probes, not by
+  green suites**: the collector's tests stubbed the F2 gate, so a wrong
+  assumed API (kwargs vs candidate object) passed 102 tests while
+  production would have refused 100% of decisions. Consequence: every
+  seam between sibling lanes needs one offline real-module probe before
+  any activation gate.
