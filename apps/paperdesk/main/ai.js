@@ -12,8 +12,9 @@
 // EVIDENCE (P0): sources are captured by THIS SYSTEM before the model call —
 // PM Gamma/CLOB reads (raw bytes sha256-journaled by the provider) and
 // allow-listed web fetches. Model-claimed URLs are recorded as
-// verified:false/claimed_by_model:true and COUNT TOWARD NOTHING: with zero
-// verified sources any verdict is forced to ABSTAIN (NOT_RUN_EVIDENCE law).
+// systemCaptured:false/claimed_by_model:true and COUNT TOWARD NOTHING: with
+// zero system-captured sources any verdict is forced to ABSTAIN
+// (NOT_RUN_EVIDENCE law).
 // Web content is UNTRUSTED_DATA — provenance, never instructions.
 //
 // FAIL-CLOSED: HTTP non-200, null choices, malformed JSON, unknown verdict,

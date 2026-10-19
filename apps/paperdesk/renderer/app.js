@@ -447,7 +447,9 @@ function opHtml(op) {
         <span>${esc(s.kind)}: ${esc(s.ref)}</span>
         ${s.claimed_by_model
           ? '<span class="untrusted">CLAIMED_BY_MODEL — DISCARDED</span>'
-          : (s.verified ? '<span class="green">VERIFIED</span>' : '')}
+          : (s.systemCaptured
+            ? '<span class="green">SYSTEM-CAPTURED</span>'
+            : '')}
         ${s.untrusted ? '<span class="untrusted">UNTRUSTED_DATA</span>'
           : ''}</div>`).join('')}
     ${op.error ? `<div class="src red">✖<span>${esc(op.error)}</span></div>`

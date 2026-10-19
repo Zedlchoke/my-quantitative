@@ -108,10 +108,12 @@ function boot() {
     } catch (e) { /* best-effort */ }
   }
   let windowClosePolicy = readPolicy();
-  let aiAutomation = 'Machinery TESTED (candidate builder + window law '
-    + '+ idempotence, 26/26 seam); scheduler IDLE while mode is '
-    + 'disabled-no-entitlement — no opinions are generated; GLM live is '
-    + 'NOT_RUN_AI_RUNTIME_ENTITLEMENT (no Z.ai General API key)';
+  let aiAutomation = 'Machinery TESTED (canonical candidate builder + '
+    + 'rolling-window budget + anchor-law windows + idempotence, 37/37 '
+    + 'seam); scheduler IDLE while mode is disabled-no-entitlement — no '
+    + 'opinions are generated. GLM live: NOT_RUN_AI_RUNTIME_ENTITLEMENT '
+    + '(key present in Keychain but General API probe returned HTTP 429 '
+    + 'errCode 1113 quota/balance on 2026-10-20)';
   let ticker2 = null;
   let ticker3 = null;
 
