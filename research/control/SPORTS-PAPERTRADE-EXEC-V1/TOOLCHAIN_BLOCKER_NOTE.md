@@ -28,7 +28,11 @@ The ClangImporter loads both → redefinition error. Workarounds tried:
   honored on the importer's include of these maps
 
 Rejected: editing/deleting Apple's system modulemap files (system-state
-mutation beyond this cycle's scope).
+mutation beyond this cycle's scope). SCOPE OF THIS FINDING: the breakage is
+proven only for the CURRENT toolchain state (CLT-only, Swift 6.1.2,
+cmdline-tools 16.x) — it is not claimed permanent; a full Xcode install or
+an Apple CLT fix would remove the blocker and the SwiftUI design could be
+revived (the architecture ports 1:1).
 
 ## Decision
 

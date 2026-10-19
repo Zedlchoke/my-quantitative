@@ -92,3 +92,27 @@ trùng lặp — chi tiết: `TOOLCHAIN_BLOCKER_NOTE.md`). Theo tiêu chí Owner
   `apps/paperdesk/test_ai_seam.js` (14),
   `apps/paperdesk/e2e_evidence.sh` (17 check chính),
   `apps/paperdesk/e2e_lifecycle.sh` (12 check takeover trên runner thật).
+
+## 6. Round-2 hardening (owner independent audit, 2026-10-19)
+
+Sau audit độc lập của Owner ở afed4a4e:
+- P0 lifecycle: mọi signal đều yêu cầu identity (pid + process-start token
+  `lstart` + command chứa ops_service + data-root của app); PID reuse /
+  foreign process ⇒ REFUSE, không kill. bootout thất bại ⇒ stop bị hủy
+  (fail-closed, KeepAlive sẽ revive). Quit chỉ thoát khi clean VÀ lock FREE;
+  ngược lại app giữ mở + error dialog (`QUIT_BLOCKED`).
+- P0 AI automation: scheduler chạy mỗi 30s, deadline = anchor law
+  (SOCCER/WSL kickoff−6h, NBA/WNBA T0−6h10m — mirror display-only), cửa sổ
+  [deadline−15min, deadline], idempotent theo (match, deadline); cửa sổ đóng
+  thiếu opinion ⇒ TIMEOUT_LATE_INVALID ghi nhận rõ, không âm thầm.
+- P0 AI evidence: nguồn CHỈ tính khi do hệ thống capture trước gọi model
+  (PM Gamma/CLOB raw+sha256 từ pm_ui_snapshots, web allow-list ≤5 request/
+  60s); nguồn model tự khai bị ghi `claimed_by_model, verified:false` và
+  KHÔNG tính; 0 nguồn verified ⇒ ép ABSTAIN. HTTP non-200 / choices null ⇒
+  API_ERROR_FAIL_CLOSED.
+- P0 missed windows: `reconcile_missed_windows()` journal INCIDENT
+  `MISSED_WINDOW_ANCHOR_PASSED` cho scope today..+2, idempotent — incidents
+  only, KHÔNG ledger row, KHÔNG backfill.
+- P1: PM snapshot tên duy nhất content-addressed + đếm journal failure;
+  Health ghi rõ PM là display/AI-evidence, quote quyết định chưa đổi cho
+  đến khi owner tiêu cutover GO.
