@@ -87,14 +87,22 @@ class PolymarketProvider {
   constructor(snapshotDir) {
     this.snapshotDir = snapshotDir;
     this.snapshots = [];
-    this.lastEvents = [];      // cached display payload (fresh <120s)
+    this.journalFailures = 0;   // surfaced by the UI health page
+    this.lastEvents = [];       // cached display payload (fresh <120s)
     this.lastEventsAt = 0;
+    this.lastShaByKind = {};    // kind -> latest body sha256
+    this._seq = 0;
   }
+
+  /// Latest journaled body sha for a kind (used by the AI evidence capture
+  /// to cite system-captured provenance).
+  lastSnapshotSha(kind) { return this.lastShaByKind[kind] || null; }
 
   record(kind, url, body, status, note) {
     const sha = body
       ? crypto.createHash('sha256').update(body, 'utf8').digest('hex')
       : 'NO_BODY';
+    if (body) this.lastShaByKind[kind] = sha;
     const rec = { at_utc: nowZ(), kind, url, sha256: sha, status,
                   note: note || null };
     this.snapshots.push(rec);
@@ -102,13 +110,22 @@ class PolymarketProvider {
     try {
       fs.mkdirSync(this.snapshotDir, { recursive: true });
       if (body) {
+        // unique + content-addressed name: same-second double fetches and
+        // identical payloads can never overwrite journaled bytes
+        this._seq += 1;
+        const stamp = nowZ().replace(/[-:]/g, '').replace('Z', '');
         fs.writeFileSync(path.join(this.snapshotDir,
-          `${nowZ().replace(/[-:]/g, '').replace('Z', '')}_${kind}.json`),
-          body);
+          `${stamp}_${String(this._seq).padStart(6, '0')}`
+          + `_${kind}_${sha.slice(0, 12)}.json`), body);
       }
       fs.appendFileSync(path.join(this.snapshotDir, 'snapshots.jsonl'),
         JSON.stringify(rec) + '\n');
-    } catch (e) { /* journaling best-effort */ }
+    } catch (e) {
+      // journaling failures are counted and surfaced, never silent
+      this.journalFailures += 1;
+      console.error('pm snapshot journal failure #' + this.journalFailures,
+                    e.message);
+    }
   }
 
   httpsGet(url, kind) {

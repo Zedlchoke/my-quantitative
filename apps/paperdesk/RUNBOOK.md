@@ -24,7 +24,7 @@ access to the data root `~/.my-quantitative-data/sports-papertrade-exec-v1`.
 | Open app | Probes the runner: attaches to a live one (heartbeat+flock) or starts EXACTLY ONE child `ops_service`. Refuses to spawn into a held lock. |
 | Launchd-managed runner found | Shows "TAKE OVER" — one click bootouts `com.myquant.sptexec.ops` (kills RunAtLoad/KeepAlive auto-start) and respawns the runner as the app's child. Takeover is journaled (`controller_log.jsonl`, `takeover.json`). |
 | Close window | Asks (default): **Pause decisions** (flag `ops/control/pause_decisions.flag` — new forecast/quote/decision stop; settlement+dashboard CONTINUE) or keep running. App stays in Dock. |
-| Quit (⌘Q) | Confirm dialog → graceful SIGTERM → waits for exit + lock release → app exits. Open bets stay OPEN; missed windows journal NOT_RUN on next start (never backfilled). |
+| Quit (⌘Q) | Confirm dialog → graceful SIGTERM with identity verification (pid + process-start token + our data root; a recycled/foreign PID is never signaled) → waits for exit + lock release → app exits. If ANY step cannot be verified (bootout failure, lock still held, identity lost), Quit is REFUSED: the app stays open with an error. Open bets stay OPEN; missed in-scope windows (today..+2) are journaled as `MISSED_WINDOW_ANCHOR_PASSED` incidents at next start — incidents only, never ledger rows, never backfilled. |
 | Not run at login | After takeover, nothing auto-starts at login; paper runs only while the app runs (or while a previously spawned child survives an app crash — it is re-adopted on relaunch). |
 | Second app instance | Refused (app.lock flock) with a dialog. Second runner instance: refused by the runner's own `service.lock` (exit 3). |
 
@@ -66,10 +66,11 @@ PaperDesk.app/Contents/MacOS/PaperDesk --self-check-ledger <ledger.jsonl>
 - `tests/papertrade_exec/test_ui_control_seam.py` — 6/6 PASS (pause flag:
   cadence-only gate, corrupt-flag fail-closed, transition journal, ledger
   byte-invariance while paused).
-- `apps/paperdesk/test_ai_seam.js` — 14/14 PASS (entitlement gate, MOCK
+- `apps/paperdesk/test_ai_seam.js` — 26/26 PASS (round-2: anchor-law deadlines, auto-scheduler idempotence, evidence verification law, API fail-closed) (entitlement gate, MOCK
   labeling, deadline law, malformed/prompt-injection fail-closed,
   auto-ABSTAIN no-source law, sidecar store).
-- `apps/paperdesk/e2e_evidence.sh` — 17/17 PASS (chain parity vs pinned
+- `apps/paperdesk/e2e_lifecycle_safety` (test_lifecycle_safety.js) — 13/13 PASS (identity/lstart/data-root guards, PID-reuse refusal, unexplained-lock refusal, bootout-failure fail-closed)
+- `apps/paperdesk/e2e_evidence.sh` — 19/19 PASS (chain parity vs pinned
   Python on the REAL ledger, attach, second-instance refusal, crash
   recovery, sandbox lifecycle incl. pause flag + graceful quit, tamper
   fail-closed + UI banner evidence, AI seam, UI screenshots).

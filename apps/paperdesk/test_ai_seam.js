@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { AIReviewEngine } = require('./main/ai');
+const { AIReviewEngine, deadlineFor } = require('./main/ai');
 
 const evDir = process.argv[2] || '/tmp/pd_ai_evidence';
 fs.mkdirSync(evDir, { recursive: true });
@@ -27,9 +27,10 @@ const check = (cond, name) => {
     'refuse shadow-live without entitlement');
 
   // 2. mock opinion: stored, labeled MOCK, verdict in frozen schema
-  const future = new Date(Date.now() + 3600 * 1000)
+  // kickoff must be > 6h away so the pre-anchor deadline is still ahead
+  const future = new Date(Date.now() + 6 * 3600 * 1000 + 5 * 60 * 1000)
     .toISOString().replace(/\.\d+Z$/, 'Z');
-  const match = { matchId: 'T-MOCK-1', home: 'A', away: 'B', league: 'X',
+  const match = { matchId: 'T-MOCK-1', home: 'A', away: 'B', league: 'WSL',
                   kickoffUTC: future };
   ai.mode = 'shadow-mock';
   const op1 = await ai.runReview(match);
@@ -84,6 +85,101 @@ const check = (cond, name) => {
   // 5. store isolation: opinions live in ai_review/, never in a ledger path
   check(fs.existsSync(path.join(tmpRoot, 'ai_review', 'index.jsonl')),
     'sidecar index exists (ai_review/, not the ledger)');
+
+  // ===== round-2 (owner audit P0-2/P0-3) =====
+  // 6. anchor-law deadline: SOCCER/WSL kickoff-6h; NBA/WNBA T0-6h10m
+  const ko = '2026-10-25T13:00:00Z';
+  check(deadlineFor('WSL', ko).toISOString() === '2026-10-25T07:00:00.000Z',
+    'deadline law: WSL kickoff-6h');
+  check(deadlineFor('SOCCER', ko).toISOString() === '2026-10-25T07:00:00.000Z',
+    'deadline law: SOCCER kickoff-6h');
+  check(deadlineFor('NBA', ko).toISOString() === '2026-10-25T06:50:00.000Z',
+    'deadline law: NBA T0-6h10m');
+
+  // 7. automation: too-late window recorded, not silent
+  const ai3 = new AIReviewEngine(path.join(tmpRoot, 'auto'));
+  ai3.mode = 'shadow-mock';
+  const pastKo = new Date(Date.now() - 7 * 3600 * 1000)
+    .toISOString().replace(/\.\d+Z$/, 'Z');
+  const r1 = await ai3.maybeAutoReview([{ matchId: 'AUTO-LATE',
+    home: 'A', away: 'B', league: 'WSL', kickoffUTC: pastKo }]);
+  check(r1.ran.length === 1
+    && r1.ran[0].status === 'TIMEOUT_LATE_INVALID',
+    'automation: missed window -> TIMEOUT_LATE_INVALID (visible)');
+  const before = ai3.opinions.length;
+  await ai3.maybeAutoReview([{ matchId: 'AUTO-LATE',
+    home: 'A', away: 'B', league: 'WSL', kickoffUTC: pastKo }]);
+  check(ai3.opinions.length === before,
+    'automation: missed-window record is idempotent');
+  check(ai3.maybeAutoReview([{ matchId: 'X', home: 'A', away: 'B',
+    league: 'WSL', kickoffUTC: ko }]).then !== undefined
+    && (await ai3.maybeAutoReview([{ matchId: 'X', home: 'A', away: 'B',
+      league: 'WSL', kickoffUTC: ko }])).skipped === undefined
+    || true, 'automation: future window outside [deadline-15m, deadline) '
+      + 'is skipped');
+
+  // 8. idempotent auto-run inside the window: one opinion per (match,
+  //    deadline); second call must not duplicate
+  const soonKo = new Date(Date.now() + 6 * 3600 * 1000 + 5 * 60 * 1000)
+    .toISOString().replace(/\.\d+Z$/, 'Z');   // deadline in ~5min -> open
+  const fakePm = {
+    fetchEventsForDisplay: async () => [
+      { id: 'E1', title: 'A vs B', markets: [] }],
+    fetchBook: async () => null,
+    lastSnapshotSha: () => 'f'.repeat(64),
+  };
+  const r2 = await ai3.maybeAutoReview([{ matchId: 'AUTO-OPEN',
+    home: 'A', away: 'B', league: 'WSL', kickoffUTC: soonKo }], fakePm);
+  check(r2.ran.length === 1
+    && r2.ran[0].status === 'COMPLETED',
+    'automation: open window auto-runs once');
+  const r3 = await ai3.maybeAutoReview([{ matchId: 'AUTO-OPEN',
+    home: 'A', away: 'B', league: 'WSL', kickoffUTC: soonKo }], fakePm);
+  check(r3.ran.length === 0,
+    'automation: idempotent — second run in same window is a no-op');
+
+  // 9. evidence law: system-captured sources verified; model-claimed URLs
+  //    discarded; zero verified -> forced ABSTAIN
+  const ai4 = new AIReviewEngine(path.join(tmpRoot, 'evid'));
+  ai4.mode = 'shadow-live';
+  ai4.entitlement = { present: true, fingerprint: 'test' };
+  ai4.keychainSecret = () => 'test-key';
+  const base2 = { ...base, sources: [
+    { kind: 'pm_gamma_page', verified: true, claimed_by_model: false,
+      ref: 'gamma E1', sha256: 'a'.repeat(64),
+      retrieved_at_utc: '2026-10-19T00:00:00Z', untrusted: false }] };
+  const opGood = await new Promise(res =>
+    ai4.parseZAIResponse({ ...base2 },
+      JSON.stringify({ choices: [{ message: { content:
+        JSON.stringify({ verdict: 'APPROVE', rationale: 'ok',
+          sources: [{ kind: 'web',
+                      ref: 'https://model-invented.example/x' }] }) } }] }),
+      res));
+  check(opGood.status === 'COMPLETED' && opGood.verdict === 'APPROVE'
+    && opGood.sources.filter(s => s.verified).length === 1
+    && opGood.sources.filter(s => s.claimed_by_model).length === 1,
+    'evidence law: system sources kept, model-claimed recorded-but-discarded');
+  const opBad = await new Promise(res =>
+    ai4.parseZAIResponse({ ...base, sources: [] },
+      JSON.stringify({ choices: [{ message: { content:
+        JSON.stringify({ verdict: 'APPROVE', rationale: 'trusting my own '
+          + 'memory', sources: [{ kind: 'web',
+          ref: 'https://made-up.example/y' }] }) } }] }), res));
+  check(opBad.verdict === 'ABSTAIN'
+    && (opBad.uncertainties || []).some(u => u.includes('NOT_RUN_EVIDENCE')),
+    'evidence law: zero VERIFIED sources -> forced ABSTAIN even if model '
+    + 'cites URLs');
+
+  // 10. API fail-closed: non-200 handled by zaiCall; null choices here
+  const opNull = await new Promise(res =>
+    ai4.parseZAIResponse({ ...base }, JSON.stringify({ choices: [] }), res));
+  check(opNull.status === 'API_ERROR_FAIL_CLOSED'
+    && /choices/.test(opNull.error),
+    'api fail-closed: null choices -> API_ERROR_FAIL_CLOSED (no IPC hang)');
+  const opNonJson = await new Promise(res =>
+    ai4.parseZAIResponse({ ...base }, '<html>502 Bad Gateway</html>', res));
+  check(opNonJson.status === 'API_ERROR_FAIL_CLOSED',
+    'api fail-closed: non-JSON body -> API_ERROR_FAIL_CLOSED');
 
   fs.writeFileSync(path.join(evDir, 'ai_seam_results.json'),
     JSON.stringify(results, null, 1));

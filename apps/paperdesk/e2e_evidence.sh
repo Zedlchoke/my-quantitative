@@ -19,6 +19,15 @@ ok()   { PASS=$((PASS+1)); echo "[PASS] $*"; }
 bad()  { FAIL=$((FAIL+1)); echo "[FAIL] $*"; }
 check(){ if [ "$1" = "0" ]; then ok "$2"; else bad "$2"; fi; }
 
+echo "== PHASE PRE: launchd-managed runner for phases B/D ="
+launchctl print "gui/$(id -u)/com.myquant.sptexec.ops" >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+  launchctl load "$HOME/Library/LaunchAgents/com.myquant.sptexec.ops.plist"
+  sleep 14
+fi
+launchctl print "gui/$(id -u)/com.myquant.sptexec.ops" >/dev/null 2>&1
+check $? "PRE launchd agent loaded (B/D precondition)"
+
 echo "== PHASE A: chain verify parity (REAL ledger, JS app vs pinned Python) ="
 JS=$("$APP" --self-check-ledger $REAL_LEDGER | /usr/bin/python3 -c "import sys,json;d=json.load(sys.stdin);print(d['chain_ok'],d['rows'])")
 PL=$($PY -c "
@@ -48,12 +57,19 @@ echo "== PHASE C: second app instance refused ="
 [ $? -eq 3 ]; check $? "C1 second instance exit code 3"
 
 echo "== PHASE D: app crash (kill -9) leaves launchd runner untouched ="
-RUNNER_PID=$($PY -c "
-import json; print(json.load(open('$REAL_OPS/state/heartbeat.json'))['pid'])")
 kill -9 $APP_PID 2>/dev/null
 sleep 3
 kill -0 $APP_PID 2>/dev/null && bad "D1 app should be dead" || ok "D1 app killed"
-kill -0 $RUNNER_PID 2>/dev/null; check $? "D2 runner pid $RUNNER_PID survived app crash"
+# the LAW point: the launchd-managed runner is unharmed by an app crash —
+# verified via the live domain + a FRESH heartbeat (never a stale pid)
+launchctl print "gui/$(id -u)/com.myquant.sptexec.ops" >/dev/null 2>&1
+check $? "D2a launchd agent still loaded after app crash"
+$PY -c "
+import json, sys, datetime
+hb = json.load(open('$REAL_OPS/state/heartbeat.json'))
+age = (datetime.datetime.utcnow() - datetime.datetime.strptime(
+    hb['ts_utc'], '%Y-%m-%dT%H:%M:%SZ')).total_seconds()
+sys.exit(0 if hb.get('pid') and age < 180 else 1)"; check $? "D2b runner heartbeat FRESH & alive after app crash"
 
 echo "== PHASE E: sandbox lifecycle (isolated /tmp data root) ="
 SB="$EV/sandbox_root"; rm -rf "$SB"; mkdir -p "$SB"

@@ -16,7 +16,7 @@ const path = require('path');
 const { parseLedger } = require('./ledger');
 const { RunnerController } = require('./runner');
 const { HealthStore, PolymarketProvider } = require('./market');
-const { AIReviewEngine } = require('./ai');
+const { AIReviewEngine, deadlineFor } = require('./ai');
 const { LIVE_EXECUTION_SEAL, PAPER_DECISION_OUTCOMES }
   = require('./seal');
 
@@ -107,6 +107,11 @@ function boot() {
     } catch (e) { /* best-effort */ }
   }
   let windowClosePolicy = readPolicy();
+  let aiAutomation = 'ARMED (auto-reviews inside each fixture\'s pre-anchor '
+    + 'window when AI mode is MOCK or Z.ai SHADOW; disabled mode records '
+    + 'nothing)';
+  let ticker2 = null;
+  let ticker3 = null;
 
   function ledgerPath() {
     return sandbox
@@ -151,6 +156,7 @@ function boot() {
           || (Date.now() - health.liveLastOK) > 180000,
         live: health.liveState,
         pmProbe: health.pmProbe,
+        pmJournalFailures: pm.journalFailures,
       },
       ai: {
         mode: ai.mode, entitlement: ai.entitlement,
@@ -158,6 +164,7 @@ function boot() {
         runtime: ai.mode === 'disabled-no-entitlement'
           ? 'NOT_RUN_AI_RUNTIME_ENTITLEMENT' : 'SHADOW · '
             + (ai.mode === 'shadow-mock' ? 'MOCK' : 'GLM-5.3-Flash live'),
+        automation: aiAutomation,
       },
       seal: { statement: LIVE_EXECUTION_SEAL.statement,
               activationConditions: LIVE_EXECUTION_SEAL
@@ -167,7 +174,12 @@ function boot() {
     };
   }
 
-  function broadcast() { if (win) win.webContents.send('state', uiState()); }
+  let ticker = null;
+  function broadcast() {
+    if (win && !win.isDestroyed()) {
+      try { win.webContents.send('state', uiState()); } catch (e) {}
+    }
+  }
 
   function createWindow() {
     win = new BrowserWindow({
@@ -238,7 +250,10 @@ function boot() {
                 win.focus(); }
   });
 
-  // QUIT LAW: ⌘Q / Quit = ngừng paper. Graceful stop, THEN exit.
+  // QUIT LAW: ⌘Q / Quit = ngừng paper — but FAIL-CLOSED: a stop that cannot
+  // be verified complete (runner alive, identity lost, bootout failed, lock
+  // still held) keeps the app OPEN with a visible error; half-stopped is
+  // worse than running.
   app.on('before-quit', e => {
     if (app.quitting) return;
     app.quitting = true;
@@ -248,13 +263,30 @@ function boot() {
         type: 'question',
         message: 'Quit PaperDesk and stop the paper runner?',
         detail: 'Quit sends a graceful stop: no new forecast/quote/decision '
-          + 'will run. Open bets stay OPEN in the ledger; the next start '
-          + 'journals missed windows as NOT_RUN (never backfilled).',
+          + 'will run. Open bets stay OPEN in the ledger. Windows missed '
+          + 'entirely while stopped are never backfilled — the cadence only '
+          + 'looks at today..+2, and a startup reconciliation journals any '
+          + 'in-scope missed window as an incident.',
         buttons: ['Quit & stop paper', 'Cancel'],
         defaultId: 0, cancelId: 1,
       });
       if (r.response !== 0) { app.quitting = false; return; }
-      await runner.gracefulStopRunner('app-quit');
+      for (const t of [ticker, ticker2, ticker3]) {
+        if (t) clearInterval(t);
+      }
+      const clean = await runner.gracefulStopRunner('app-quit');
+      const stillHeld = runner.flockHeld(runner.serviceLockPath);
+      if (!clean || stillHeld) {
+        app.quitting = false;
+        runner.audit('QUIT_BLOCKED',
+          { clean, still_held: stillHeld });
+        dialog.showErrorBox('Quit blocked — paper runner NOT safely stopped',
+          'The graceful stop did not fully complete (clean=' + clean
+          + ', service.lock held=' + stillHeld + ').\n\n'
+          + 'PaperDesk stays open. Check System Health and the controller '
+          + 'journal, then try Quit again.');
+        return;
+      }
       app.exit(0);
     })();
   });
@@ -316,15 +348,59 @@ function boot() {
     await runner.establish();
     refreshLedger();
     broadcast();
-    setInterval(() => { refreshLedger(); broadcast(); }, 2000);
+    ticker = setInterval(() => { refreshLedger(); broadcast(); }, 2000);
+    // AI auto-scheduler (P0 fix): every 30 s, gather candidate fixtures
+    // (no decision row yet, kickoff in the future — from the ledger and the
+    // runner's upcoming plan) and run due pre-anchor reviews. Idempotent per
+    // (match, deadline); disabled mode records nothing.
+    let aiSchedBusy = false;
     setInterval(() => {
+      if (aiSchedBusy || ai.mode === 'disabled-no-entitlement') return;
+      aiSchedBusy = true;
+      try {
+        const upcoming = (health.liveState
+          && health.liveState.upcoming) || [];
+        const fromLedger = (ledger.matches || [])
+          .filter(m => !m.decisionStatus && m.kickoffUTC
+                   && Date.parse(m.kickoffUTC) > Date.now())
+          .map(m => ({ matchId: m.matchId, home: m.home, away: m.away,
+                       league: m.league, kickoffUTC: m.kickoffUTC,
+                       decisionStatus: null, decision: null,
+                       webHints: m.league === 'WSL'
+                         ? ['https://wsl-full.com/'] : [] }));
+        const fromPlan = upcoming
+          .filter(f => f.kickoff_utc && Date.parse(f.kickoff_utc) > Date.now())
+          .map(f => ({ matchId: `${f.league || '?'}-`
+              + `${(f.home || '?') + '-' + (f.away || '?')}`
+                .replace(/\s+/g, '_'),
+              home: f.home || '?', away: f.away || '?',
+              league: f.league || '?', kickoffUTC: f.kickoff_utc,
+              decisionStatus: null, decision: null,
+              webHints: f.league === 'WSL'
+                ? ['https://wsl-full.com/'] : [] }));
+        const seen = new Set();
+        const candidates = [...fromLedger, ...fromPlan]
+          .filter(c => !seen.has(c.matchId + c.kickoffUTC)
+                       && seen.add(c.matchId + c.kickoffUTC));
+        ai.maybeAutoReview(candidates, pm)
+          .then(res => {
+            if (res.ran && res.ran.length) {
+              runner.audit('AI_AUTO_REVIEW', { ran: res.ran });
+              broadcast();
+            }
+          })
+          .catch(e => runner.audit('AI_AUTO_REVIEW_FAILED',
+                                   { error: String(e).slice(0, 200) }));
+      } finally { aiSchedBusy = false; }
+    }, 30000);
+    ticker2 = setInterval(() => {
       health.fetchState(runner.heartbeat ? runner.heartbeat.port : null)
         .then(broadcast)
         .catch(e => runner.audit('POLL_FAILED', { error: String(e) }));
     }, 4000);
-    health.probePolymarket().then(broadcast).catch(() => {});
-    setInterval(() => health.probePolymarket().then(broadcast)
+    ticker3 = setInterval(() => health.probePolymarket().then(broadcast)
       .catch(() => {}), 60000);
+    health.probePolymarket().then(broadcast).catch(() => {});
 
     if (uiEvidenceDir) {
       setTimeout(() => runEvidenceTour(uiEvidenceDir), 5000);

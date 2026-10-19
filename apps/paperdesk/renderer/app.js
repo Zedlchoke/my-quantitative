@@ -366,7 +366,10 @@ function matchDetail(m) {
       <button id="ai-run" data-mid="${esc(m.matchId)}">✦ Run shadow
         review</button>
       <span class="note" style="margin:0">Advisory only — no effect on any
-        decision; deadline law: must finish before the kickoff anchor.</span>
+        decision. Deadline law: finish before the fixture's pre-anchor
+        deadline (SOCCER/WSL kickoff−6h · NBA/WNBA T0−6h10m); automation
+        runs every candidate inside [deadline−15min, deadline], one opinion
+        per (match, deadline).</span>
     </div>
   </div>
   <div class="card">
@@ -433,6 +436,7 @@ function opHtml(op) {
       <span class="verdict v-${esc(op.verdict || 'ABSTAIN')}">${esc(verdict)}</span>
       ${op.isMock ? '<span class="v-MOCK-chip">MOCK</span>' : ''}
       <span class="dim mono" style="font-size:10px">${esc(op.createdAtUTC)}</span>
+      <span class="dim mono" style="font-size:10px">via ${esc(op.scheduledBy || 'manual')}</span>
     </div>
     ${op.rationale ? `<div style="margin-top:5px;user-select:text">${
       esc(op.rationale)}</div>` : ''}
@@ -441,6 +445,9 @@ function opHtml(op) {
     ${(op.sources || []).map(s =>
       `<div class="src">${s.untrusted ? '⚠' : '🔗'}
         <span>${esc(s.kind)}: ${esc(s.ref)}</span>
+        ${s.claimed_by_model
+          ? '<span class="untrusted">CLAIMED_BY_MODEL — DISCARDED</span>'
+          : (s.verified ? '<span class="green">VERIFIED</span>' : '')}
         ${s.untrusted ? '<span class="untrusted">UNTRUSTED_DATA</span>'
           : ''}</div>`).join('')}
     ${op.error ? `<div class="src red">✖<span>${esc(op.error)}</span></div>`
@@ -560,6 +567,11 @@ function viewHealth() {
       : 'not probed yet')}
     ${kv('polymarket clob books', 'read-only walks on demand (snapshot '
       + 'journaled to pm_ui_snapshots/)')}
+    ${kv('pm snapshot journal failures', String(S.health.pmJournalFailures
+      ?? 0), (S.health.pmJournalFailures | 0) > 0 ? 'orange' : 'green')}
+    ${kv('pm role', 'DISPLAY + AI evidence ONLY — the paper decision quote '
+      + 'source is unchanged per pinned lanes until the Polymarket cutover '
+      + 'GO is consumed by the owner')}
     ${kv('websocket market feed', 'NOT_USED_IN_THIS_BUILD — UI updates via '
       + '2–4s poll + heartbeat & stale alarm (equivalent mechanism, no venue '
       + 'WS)')}
@@ -594,6 +606,7 @@ function viewHealth() {
       + 'opinion; all web content UNTRUSTED_DATA')}
     ${kv('opinions stored', `${S.ai.opinions.length} (sidecar ai_review/, `
       + 'not the ledger)')}
+    ${kv('auto-scheduler', esc(S.ai.automation || '—'))}
   </div>
   <div class="card health-block">
     <div class="health-head">▸ GOVERNANCE GATES (display only)</div>

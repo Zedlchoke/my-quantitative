@@ -120,6 +120,56 @@ class OpsService:
         self.last_rebuild = None
 
     # ------------------------------------------------------------- plumbing --
+    def reconcile_missed_windows(self) -> int:
+        """AMENDMENT_MACOS_APP_UI_V1 round-2 (owner audit P0-5): make missed
+        decision windows EVIDENCED instead of silent. Scope = the cadence
+        plan window only (today..+2 — identical to cadence_pass). A fixture
+        whose anchor already passed without a decision gets ONE ops INCIDENT
+        (`MISSED_WINDOW_ANCHOR_PASSED`), deduplicated forever by state file.
+        This is the ops audit plane: NEVER a ledger row, NEVER a bet, NEVER a
+        backfill — the no-backfill law is unchanged; the skip is simply
+        journaled so an operator can see it."""
+        seen_path = self.state_dir / "missed_windows.json"
+        seen = set((self._load_json(seen_path, {}) or {}).get("matches", []))
+        today = datetime.now(timezone.utc).date()
+        dates = [(today + timedelta(days=i)).isoformat() for i in range(3)]
+        now_dt = datetime.now(timezone.utc)
+        journaled = 0
+        for league in _cadence_leagues():
+            for d in dates:
+                ns = self._runner_args("plan", date=d, league=league)
+                try:
+                    report = execute.cmd_plan(ns)
+                except Exception:
+                    continue          # plan refuses (gate/none) — skip quietly
+                entry = (report or {}).get("leagues", {}).get(league, {})
+                for f in entry.get("fixtures") or []:
+                    if not f.get("teams_known") or f.get("already_decided"):
+                        continue
+                    anchor = f.get("anchor_utc")
+                    if not anchor:
+                        continue
+                    try:
+                        anchor_dt = _parse_ts(anchor)
+                    except Exception:
+                        continue
+                    if anchor_dt >= now_dt:
+                        continue
+                    key = f"{league}:{d}:{f.get('match_id')}"
+                    if key in seen:
+                        continue
+                    self.incident(
+                        "MISSED_WINDOW_ANCHOR_PASSED",
+                        f"{league} {f.get('match_id')} "
+                        f"{f.get('home')} v {f.get('away')} "
+                        f"anchor={anchor} passed with no decision — window "
+                        "skipped forever (no backfill, no row)",
+                        league=league, match_id=f.get("match_id"), date=d)
+                    seen.add(key)
+                    journaled += 1
+        _atomic_write(seen_path, {"matches": sorted(seen)[-2000:]})
+        return journaled
+
     def _load_json(self, path: Path, default):
         if path.exists():
             try:
@@ -552,6 +602,13 @@ class OpsService:
         self.incident("SERVICE_START",
                       f"pid={os.getpid()} sandbox={self.sandbox} "
                       f"port={self.port if self.serve_enabled else '-'}")
+        try:
+            missed = self.reconcile_missed_windows()
+            if missed:
+                self.incident("MISSED_WINDOWS_RECONCILED",
+                              f"journaled {missed} missed window(s)")
+        except Exception as e:            # reconciliation never blocks service
+            self.incident("RECONCILE_ERROR", f"{type(e).__name__}: {e}")
         if self.serve_enabled:
             self._srv = live_dashboard.serve(self.state_fn, self.port)
         try:

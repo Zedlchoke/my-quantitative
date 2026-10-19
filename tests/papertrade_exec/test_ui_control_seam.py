@@ -124,3 +124,59 @@ def test_pause_never_unblocks_a_blocked_row(env):
     rows = ledger_rows(env)
     assert sum(1 for r in rows if r.get("type") == "SETTLEMENT") == 0
     assert sum(1 for r in rows if r.get("type") == "DECISION") == 1
+
+
+# ---------------------------------------------------------------------------
+# AMENDMENT round-2 (owner audit P0-5): missed-window reconciliation must
+# journal INCIDENTS (never ledger rows) for in-scope fixtures whose anchor
+# passed without a decision — idempotent, no backfill.
+def test_missed_window_reconciliation_journals_incidents_once(env, monkeypatch):
+    from research.papertrade_exec import execute
+    past_anchor = "2026-10-01T00:00:00Z"
+    fake_report = {"leagues": {"WNBA": {"fixtures": [
+        {"match_id": "M-MISS", "home": "AAA", "away": "BBB",
+         "anchor_utc": past_anchor, "teams_known": True,
+         "already_decided": False},
+        {"match_id": "M-DECIDED", "home": "CCC", "away": "DDD",
+         "anchor_utc": past_anchor, "teams_known": True,
+         "already_decided": True},
+        {"match_id": "M-FUTURE", "home": "EEE", "away": "FFF",
+         "anchor_utc": "2099-01-01T00:00:00Z", "teams_known": True,
+         "already_decided": False},
+    ]}}}
+    from datetime import datetime, timedelta, timezone
+    today_iso = datetime.now(timezone.utc).date().isoformat()
+
+    def fake_plan(ns):
+        # a fixture appears under exactly ONE plan date in reality
+        if getattr(ns, "date", None) == today_iso:
+            return fake_report
+        return {"leagues": {}}
+
+    monkeypatch.setattr(execute, "cmd_plan", fake_plan)
+    svc = make_svc(env)
+    journaled = svc.reconcile_missed_windows()
+    assert journaled == 1
+    kinds = [i["kind"] for i in incidents(env)]
+    assert "MISSED_WINDOW_ANCHOR_PASSED" in kinds
+    row = next(i for i in incidents(env)
+               if i["kind"] == "MISSED_WINDOW_ANCHOR_PASSED")
+    assert "M-MISS" in row["detail"]
+    assert "no backfill" in row["detail"]
+    # decided + future fixtures are never journaled
+    assert "M-DECIDED" not in row["detail"]
+    assert not any("M-FUTURE" in i["detail"] for i in incidents(env))
+    # idempotent: second pass journals nothing new
+    assert svc.reconcile_missed_windows() == 0
+    # the ledger is untouched by reconciliation (incidents are not rows)
+    assert sum(1 for r in ledger_rows(env)
+               if r.get("type") == "SETTLEMENT") == 0
+
+
+def test_reconciliation_error_never_blocks_service(env, monkeypatch):
+    from research.papertrade_exec import execute
+    def boom(ns):
+        raise RuntimeError("plan exploded")
+    monkeypatch.setattr(execute, "cmd_plan", boom)
+    svc = make_svc(env)
+    assert svc.reconcile_missed_windows() == 0   # swallows per-league errors

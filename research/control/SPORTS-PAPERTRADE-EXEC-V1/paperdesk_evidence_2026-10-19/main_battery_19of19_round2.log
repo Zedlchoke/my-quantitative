@@ -1,0 +1,63 @@
+== PHASE PRE: launchd-managed runner for phases B/D =
+[PASS] PRE launchd agent loaded (B/D precondition)
+== PHASE A: chain verify parity (REAL ledger, JS app vs pinned Python) =
+js=True 42 py=True 42
+[PASS] A1 chain parity + OK on REAL ledger
+== PHASE B: attach + UI evidence tour (REAL, read-only display) =
+[PASS] B1 app running
+[PASS] B2 controller attached to live runner (journal)
+[PASS] B3 attach source = launchd
+== PHASE C: second app instance refused =
+[PASS] C1 second instance exit code 3
+== PHASE D: app crash (kill -9) leaves launchd runner untouched =
+./e2e_evidence.sh: line 61: 17300 Killed: 9               "$APP" --ui-evidence "$EV/ui" > /dev/null 2>&1
+[PASS] D1 app killed
+[PASS] D2a launchd agent still loaded after app crash
+<string>:4: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+[PASS] D2b runner heartbeat FRESH & alive after app crash
+== PHASE E: sandbox lifecycle (isolated /tmp data root) =
+[PASS] E1 sandbox runner heartbeat exists
+[PASS] E2 controller spawned exactly one child
+[PASS] E3 child runner became ready
+[PASS] E4 heartbeat exposes decisions_paused=true (≤48s)
+[PASS] E5 runner gracefully stopped after app quit
+[PASS] E6 SERVICE_STOP journaled
+[PASS] E7 service.lock released
+== PHASE F: ledger tamper fail-closed =
+[PASS] F1 tampered ledger detected by app verifier
+./e2e_evidence.sh: line 124: 17430 Killed: 9               "$APP" --data-root "$TAMPER" --ui-evidence "$EV/ui_tamper" > /dev/null 2>&1
+[PASS] F2 tamper UI evidence captured
+== PHASE G: AI seam (node-level; MOCK-labeled, fail-closed laws) =
+[PASS] entitlement missing -> NOT_RUN_AI_RUNTIME_ENTITLEMENT
+[PASS] mode disabled without key
+[PASS] refuse shadow-live without entitlement
+[PASS] mock opinion labeled MOCK
+[PASS] verdict within frozen schema
+[PASS] mock completes inside window
+[PASS] prompt + snapshot digests recorded
+[PASS] sidecar store persisted the opinion
+[PASS] late fixture -> invalid
+[PASS] late opinion carries no verdict
+[PASS] non-JSON web-injected text -> MALFORMED_FAIL_CLOSED
+[PASS] unknown verdict -> fail closed
+[PASS] APPROVE without sources -> auto-ABSTAIN (NOT_RUN_EVIDENCE law)
+[PASS] sidecar index exists (ai_review/, not the ledger)
+[PASS] deadline law: WSL kickoff-6h
+[PASS] deadline law: SOCCER kickoff-6h
+[PASS] deadline law: NBA T0-6h10m
+[PASS] automation: missed window -> TIMEOUT_LATE_INVALID (visible)
+[PASS] automation: missed-window record is idempotent
+[PASS] automation: future window outside [deadline-15m, deadline) is skipped
+[PASS] automation: open window auto-runs once
+[PASS] automation: idempotent — second run in same window is a no-op
+[PASS] evidence law: system sources kept, model-claimed recorded-but-discarded
+[PASS] evidence law: zero VERIFIED sources -> forced ABSTAIN even if model cites URLs
+[PASS] api fail-closed: null choices -> API_ERROR_FAIL_CLOSED (no IPC hang)
+[PASS] api fail-closed: non-JSON body -> API_ERROR_FAIL_CLOSED
+ai seam: 26/26 pass
+[PASS] G1 ai seam battery
+== H/I lifecycle phases: run apps/paperdesk/e2e_lifecycle.sh separately =
+(kept out of the main battery: they mutate the REAL runner's lifecycle)
+
+== RESULT: PASS=19 FAIL=0 =
+evidence: /Users/hoangminhlong/my-quantitative/.worktrees/sports-papertrade-exec-v1/integration/apps/paperdesk/build/e2e_evidence
