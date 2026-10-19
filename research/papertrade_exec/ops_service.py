@@ -101,8 +101,15 @@ class OpsService:
         self.ops = self.data_root / ("sandbox/ops" if sandbox else "ops")
         self.state_dir = self.ops / "state"
         self.results_dir = self.ops / "results"
+        self.control_dir = self.ops / "control"
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.results_dir.mkdir(parents=True, exist_ok=True)
+        self.control_dir.mkdir(parents=True, exist_ok=True)
+        # AMENDMENT_MACOS_APP_UI_V1: the external UI controller may pause the
+        # DECISION loop only (never settle, never laws) by atomically placing
+        # pause_decisions.flag here; payload {by, at_utc, reason} is copied
+        # into the incident journal on every observed transition.
+        self._last_pause_state = None
         self._incidents: list[dict] = []
         self._stop = False
         self._srv = None
@@ -127,6 +134,36 @@ class OpsService:
         self._incidents = self._incidents[-500:]
         with open(self.state_dir / "incidents.jsonl", "a") as f:
             f.write(json.dumps(row, sort_keys=True, default=str) + "\n")
+
+    # ------------------------------------------------------------ ui control --
+    def pause_flag_payload(self) -> dict | None:
+        """Read the pause-decisions flag; None when absent. A corrupt flag is
+        read as PAUSED (payload {"corrupt": true}) — fail-closed, and settle
+        keeps running regardless (the flag gates cadence only)."""
+        p = self.control_dir / "pause_decisions.flag"
+        if not p.exists():
+            return None
+        try:
+            payload = json.loads(p.read_text())
+            return payload if isinstance(payload, dict) else {"corrupt": True}
+        except (json.JSONDecodeError, OSError):
+            return {"corrupt": True}
+
+    def decisions_paused(self) -> bool:
+        return self.pause_flag_payload() is not None
+
+    def _pause_watch(self) -> None:
+        """Journal every observed paused<->running transition (audit trail)."""
+        payload = self.pause_flag_payload()
+        paused = payload is not None
+        if paused != self._last_pause_state:
+            if paused:
+                self.incident("DECISIONS_PAUSED_BY_UI",
+                              json.dumps(payload or {}, sort_keys=True))
+            else:
+                self.incident("DECISIONS_RESUMED_BY_UI",
+                              "pause_decisions.flag removed")
+            self._last_pause_state = paused
 
     def _runner_args(self, sub: str, **kw):
         """In-process runner invocation with the exact CLI law (same parser,
@@ -461,6 +498,7 @@ class OpsService:
             if self.last_settle else None,
             "last_dashboard_rebuild_utc": self.last_rebuild[0]
             if self.last_rebuild else None,
+            "decisions_paused": self.decisions_paused(),
             "tick_summary": results,
             "lookahead_hours": self.lookahead,
             "port": self.port if self.serve_enabled else None,
@@ -470,9 +508,18 @@ class OpsService:
     def tick(self) -> dict:
         t0 = time.time()
         self.tick_count += 1
+        self._pause_watch()
         results = {}
         results["settle"] = self.settle_pass()
-        results["cadence"] = self.cadence_pass()
+        if self.decisions_paused():
+            # AMENDMENT_MACOS_APP_UI_V1: the UI paused new DECISIONS only.
+            # Settlement and dashboard rebuild continue — an already-open
+            # BET_PAPER row still settles from pinned sources while paused;
+            # no new forecast/quote/decision attempt is made at all.
+            results["cadence"] = "PAUSED_BY_UI_FLAG"
+            self.last_cadence = (now_utc(), "PAUSED_BY_UI_FLAG")
+        else:
+            results["cadence"] = self.cadence_pass()
         self.maybe_rebuild_dashboard()
         self.last_tick_ms = int((time.time() - t0) * 1000)
         self._write_heartbeat(t0, results)
