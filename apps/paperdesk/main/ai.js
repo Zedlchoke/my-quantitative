@@ -32,7 +32,7 @@ const MAX_BUDGET_SECONDS = 600;
 const START_WINDOW_SECONDS = 15 * 60;   // opens 15 min before the deadline
 
 // Anchor-law mirrors of the pinned runner constants (display-only use):
-// research/papertrade/__init__.py BATCH_LEAD_SECONDS / SOCCER_LEAD_SECONDS.
+// research/papertrade_exec/__init__.py BATCH_LEAD_SECONDS / SOCCER_LEAD_SECONDS.
 const ANCHOR_LEAD = {
   SOCCER: 6 * 3600, WSL: 6 * 3600,              // kickoff − 6h strict
   NBA: 6 * 3600 + 10 * 60, WNBA: 6 * 3600 + 10 * 60,  // T0 − 6h10m
