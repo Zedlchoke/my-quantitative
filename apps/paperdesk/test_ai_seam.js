@@ -6,6 +6,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { AIReviewEngine, deadlineFor } = require('./main/ai');
+const { AIWebConnector } = require('./main/ai');
+const { buildCandidates } = require('./main/candidates');
 
 const evDir = process.argv[2] || '/tmp/pd_ai_evidence';
 fs.mkdirSync(evDir, { recursive: true });
@@ -17,9 +19,13 @@ const check = (cond, name) => {
 };
 
 (async () => {
+  // 1. entitlement law — DETERMINISTIC via a construction-time prototype
+  //    stub (the machine may hold a real key; the no-key branch must be
+  //    testable regardless)
+  const realKeychain = AIReviewEngine.prototype.keychainSecret;
+  AIReviewEngine.prototype.keychainSecret = () => null;
   const ai = new AIReviewEngine(tmpRoot);
-
-  // 1. entitlement: no keychain key in this context => mock-only mode
+  AIReviewEngine.prototype.keychainSecret = realKeychain;
   check(ai.entitlement.present === false,
     'entitlement missing -> NOT_RUN_AI_RUNTIME_ENTITLEMENT');
   check(ai.mode === 'disabled-no-entitlement', 'mode disabled without key');
@@ -124,7 +130,9 @@ const check = (cond, name) => {
     .toISOString().replace(/\.\d+Z$/, 'Z');   // deadline in ~5min -> open
   const fakePm = {
     fetchEventsForDisplay: async () => [
-      { id: 'E1', title: 'A vs B', markets: [] }],
+      { id: 'E1', title: 'A vs B', markets: [] },
+      { id: 'E2', title: 'Bristol City Women vs Reading Women',
+        markets: [] }],
     fetchBook: async () => null,
     lastSnapshotSha: () => 'f'.repeat(64),
   };
@@ -145,7 +153,7 @@ const check = (cond, name) => {
   ai4.entitlement = { present: true, fingerprint: 'test' };
   ai4.keychainSecret = () => 'test-key';
   const base2 = { ...base, sources: [
-    { kind: 'pm_gamma_page', verified: true, claimed_by_model: false,
+    { kind: 'pm_gamma_page', systemCaptured: true, claimed_by_model: false,
       ref: 'gamma E1', sha256: 'a'.repeat(64),
       retrieved_at_utc: '2026-10-19T00:00:00Z', untrusted: false }] };
   const opGood = await new Promise(res =>
@@ -156,7 +164,7 @@ const check = (cond, name) => {
                       ref: 'https://model-invented.example/x' }] }) } }] }),
       res));
   check(opGood.status === 'COMPLETED' && opGood.verdict === 'APPROVE'
-    && opGood.sources.filter(s => s.verified).length === 1
+    && opGood.sources.filter(s => s.systemCaptured).length === 1
     && opGood.sources.filter(s => s.claimed_by_model).length === 1,
     'evidence law: system sources kept, model-claimed recorded-but-discarded');
   const opBad = await new Promise(res =>
@@ -181,7 +189,88 @@ const check = (cond, name) => {
   check(opNonJson.status === 'API_ERROR_FAIL_CLOSED',
     'api fail-closed: non-JSON body -> API_ERROR_FAIL_CLOSED');
 
-  fs.writeFileSync(path.join(evDir, 'ai_seam_results.json'),
+  // ===== round-3 (owner audit: budget window + canonical ids + relabel) =====
+  // 11. rolling-window budget with an injected fake clock + stub transport
+  let now = 1_000_000;
+  const conn = new AIWebConnector(new Set(['example.com']), 3, 60,
+                                  () => now);
+  conn._httpsGet = (url, done) => done(null, 200, 'stub-body');
+  const fetchOk = async () => (await conn.fetch('https://example.com/a')).ok;
+  check((await fetchOk()) && (await fetchOk()) && (await fetchOk())
+        && !(await fetchOk()),
+        'budget: 4th request inside the 60s window refused (limit 3)');
+  now += 61_000;                       // window has rolled over
+  check(await fetchOk(),
+    'budget: request allowed again after the rolling window passes');
+  check(conn.usedRequests === 4 && conn.windowUsed() === 1,
+    'budget: lifetime counter kept separately from the window count');
+  check((await conn.fetch('https://not-allowed.com/a')).ok === false,
+    'budget: allow-list still enforced');
+  const conn2 = new AIWebConnector(new Set(['example.com']), 5, 60,
+                                   () => now);
+  conn2._httpsGet = (url, done) => done(null, 500, 'err');
+  check(!(await conn2.fetch('https://example.com/b')).ok,
+    'budget: non-200 transport -> ok:false (no hang)');
+
+  // 12. canonical-id candidate builder
+  const kickoffTs = Date.now() + 6 * 3600 * 1000 + 5 * 60 * 1000;
+  const nowIso = new Date(kickoffTs).toISOString().replace(/\.\d+Z$/, 'Z');
+  const anchorIso = new Date(kickoffTs - 6 * 3600 * 1000)
+    .toISOString().replace(/\.\d+Z$/, 'Z');       // deadline in ~5 min: OPEN
+  const ledgerM = [{ matchId: 'FD-2026-M50', home: 'Arsenal', away: 'Chelsea',
+                     league: 'WSL', kickoffUTC: nowIso,
+                     decisionStatus: null }];
+  const planU = [
+    { match_id: 'FD-2026-M50', home: 'Arsenal', away: 'Chelsea',
+      league: 'WSL', kickoff_utc: nowIso, anchor_utc: anchorIso },
+    { home: 'NoId', away: 'Also', league: 'WSL', kickoff_utc: nowIso },
+  ];
+  const built = buildCandidates({ ledgerMatches: ledgerM, upcoming: planU });
+  check(built.candidates.length === 1
+    && built.candidates[0].matchId === 'FD-2026-M50',
+    'candidates: fixture in BOTH ledger and plan -> ONE canonical id');
+  check(built.candidates[0].deadlineUTC === anchorIso,
+    'candidates: plan anchor_utc is the authoritative deadline');
+  check(built.skipped.length === 1
+    && built.skipped[0].reason.includes('no synthetic ids'),
+    'candidates: plan entry WITHOUT match_id skipped (no synthetic ids)');
+  const built2 = buildCandidates({ ledgerMatches: [], upcoming: planU });
+  check(built2.candidates.length === 1
+    && built2.candidates[0].origin === 'plan',
+    'candidates: plan-only fixture uses canonical plan match_id');
+
+  // 13. scheduler idempotence across BOTH views of the same fixture:
+  //     identical (matchID, deadline) key -> exactly one opinion
+  const ai5 = new AIReviewEngine(path.join(tmpRoot, 'canon'));
+  ai5.mode = 'shadow-mock';
+  const planView = [{ matchId: 'FD-2026-M50', home: 'Arsenal',
+    away: 'Chelsea', league: 'WSL', kickoffUTC: nowIso,
+    deadlineUTC: anchorIso }];
+  const ledgerView = [{ matchId: 'FD-2026-M50', home: 'Arsenal',
+    away: 'Chelsea', league: 'WSL', kickoffUTC: nowIso,
+    deadlineUTC: null }];   // heuristic deadlineFor == same instant
+  const rp = await ai5.maybeAutoReview(planView, fakePm);
+  const rl = await ai5.maybeAutoReview(ledgerView, fakePm);
+  check(rp.ran.length === 1 && rl.ran.length === 0
+    && ai5.opinions.filter(o => o.matchID === 'FD-2026-M50').length === 1,
+    'idempotence: plan view then ledger view of the SAME fixture -> one '
+    + 'opinion (shared canonical (matchID, deadline) key)');
+
+  // 14. evidence relabel: captured sources carry systemCaptured (never a
+  //     bare 'verified' implying fixture authentication); name-match-only
+  //     caveat present in the note
+  const opRelabel = await ai5.runReview({ matchId: 'FD-2026-M51',
+    home: 'Bristol', away: 'Reading', league: 'WSL',
+    kickoffUTC: nowIso, deadlineUTC: anchorIso }, fakePm, 'manual');
+  check(opRelabel.status === 'COMPLETED'
+    && opRelabel.sources.length >= 1
+    && opRelabel.sources.every(s => s.systemCaptured === true)
+    && opRelabel.sources.some(s => String(s.note)
+      .includes('NOT fixture-authenticated')),
+    'relabel: captured sources flagged systemCaptured + name-match-only '
+    + 'caveat disclosed');
+
+    fs.writeFileSync(path.join(evDir, 'ai_seam_results.json'),
     JSON.stringify(results, null, 1));
   const fails = results.filter(r => !r.pass).length;
   console.log(`ai seam: ${results.length - fails}/${results.length} pass`);

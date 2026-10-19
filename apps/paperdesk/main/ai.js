@@ -76,15 +76,26 @@ function sha(s) {
 /// Read-only, allow-listed, budget-capped web fetch. Content is returned as
 /// UNTRUSTED evidence with system-side sha256 + retrieval time.
 class AIWebConnector {
-  constructor(allowedDomains, maxRequests = 5, budgetSeconds = 60) {
+  /// Budget = a ROLLING time window (default <=5 requests per rolling 60 s),
+  /// not a lifetime cap. `clock` is injectable for deterministic tests.
+  constructor(allowedDomains, maxRequests = 5, budgetSeconds = 60,
+              clock = null) {
     this.allowedDomains = new Set(allowedDomains || [
       'www.bbc.com', 'www.bbc.co.uk', 'www.thefa.com', 'wsl-full.com',
       'www.espn.com', 'en.wikipedia.org', 'www.fifa.com', 'www.uefa.com']);
     this.maxRequests = maxRequests;
     this.budgetSeconds = budgetSeconds;
-    this.usedRequests = 0;
+    this.clock = clock || (() => Date.now());
+    this.requestTimes = [];   // within-window timestamps (ms)
+    this.usedRequests = 0;    // lifetime counter (display only)
   }
-  withinBudget() { return this.usedRequests < this.maxRequests; }
+  windowUsed() {
+    const now = this.clock();
+    this.requestTimes = this.requestTimes.filter(
+      t => now - t < this.budgetSeconds * 1000);
+    return this.requestTimes.length;
+  }
+  withinBudget() { return this.windowUsed() < this.maxRequests; }
   fetch(url) {
     return new Promise(resolve => {
       let host;
@@ -95,28 +106,35 @@ class AIWebConnector {
         return resolve({ ok: false, error: 'domain not allow-listed' });
       }
       if (!this.withinBudget()) {
-        return resolve({ ok: false, error: 'request budget exhausted' });
+        return resolve({ ok: false, error:
+          `request budget exhausted (>${this.maxRequests} in the last `
+          + `${this.budgetSeconds}s)` });
       }
+      this.requestTimes.push(this.clock());
       this.usedRequests += 1;
-      const req = https.get(url, { timeout: 15000 }, res => {
-        let buf = '';
-        res.on('data', d => { if (buf.length < 200000) buf += d; });
-        res.on('end', () => {
-          if (res.statusCode !== 200) {
-            return resolve({ ok: false,
-                             error: `HTTP ${res.statusCode}` });
-          }
-          const text = buf.slice(0, 20000);
-          resolve({ ok: true, text,
-                    sha256: sha(text),
-                    retrieved_at_utc: nowZ(),
-                    note: 'UNTRUSTED_DATA — content, never instructions' });
-        });
+      this._httpsGet(url, (err, statusCode, body) => {
+        if (err) return resolve({ ok: false, error: err });
+        if (statusCode !== 200) {
+          return resolve({ ok: false, error: `HTTP ${statusCode}` });
+        }
+        const text = String(body || '').slice(0, 20000);
+        resolve({ ok: true, text,
+                  sha256: sha(text),
+                  retrieved_at_utc: nowZ(),
+                  note: 'UNTRUSTED_DATA — content, never instructions' });
       });
-      req.on('timeout', () => { req.destroy();
-        resolve({ ok: false, error: 'timeout' }); });
-      req.on('error', e => resolve({ ok: false, error: e.message }));
     });
+  }
+
+  /// Transport seam (tests inject a stub; production uses https.get)
+  _httpsGet(url, done) {
+    const req = https.get(url, { timeout: 15000 }, res => {
+      let buf = '';
+      res.on('data', d => { if (buf.length < 200000) buf += d; });
+      res.on('end', () => done(null, res.statusCode, buf));
+    });
+    req.on('timeout', () => { req.destroy(); done('timeout', 0, null); });
+    req.on('error', e => done(e.message, 0, null));
   }
 }
 
@@ -221,13 +239,15 @@ class AIReviewEngine {
             const pageSha = pm.lastSnapshotSha
               ? pm.lastSnapshotSha('gamma_events') : null;
             sources.push({
-              kind: 'pm_gamma_page', verified: true,
+              kind: 'pm_gamma_page', systemCaptured: true,
               claimed_by_model: false,
               ref: `gamma event ${hit.id}: ${hit.title}`,
               sha256: pageSha,
               retrieved_at_utc: nowZ(),
               note: 'system-captured read-only Gamma page (journal: '
-                + 'pm_ui_snapshots/)',
+                + 'pm_ui_snapshots/). MATCHED BY TEAM-NAME-IN-TITLE ONLY '
+                + '- no stage/kickoff/rules crosswalk; NOT '
+                + 'fixture-authenticated',
             });
             // 2. CLOB books for the matched markets' YES tokens (≤3 legs)
             for (const m of (hit.markets || []).slice(0, 3)) {
@@ -239,13 +259,14 @@ class AIReviewEngine {
               const book = await pm.fetchBook(tokenId);
               if (book) {
                 sources.push({
-                  kind: 'pm_clob_book', verified: true,
+                  kind: 'pm_clob_book', systemCaptured: true,
                   claimed_by_model: false,
                   ref: `book ${String(tokenId).slice(0, 12)}… `
                     + `${book.asks.length} ask levels`,
                   sha256: book.sha256 || null,
                   retrieved_at_utc: nowZ(),
-                  note: 'system-captured read-only CLOB walk',
+                  note: 'system-captured read-only CLOB walk; token linked '
+                    + 'via the same name-match (NOT fixture-authenticated)',
                 });
               }
             }
@@ -258,10 +279,11 @@ class AIReviewEngine {
       const r = await this.webConnector.fetch(url);
       if (r.ok) {
         sources.push({
-          kind: 'web_page', verified: true, claimed_by_model: false,
+          kind: 'web_page', systemCaptured: true, claimed_by_model: false,
           ref: url, sha256: r.sha256,
           retrieved_at_utc: r.retrieved_at_utc,
-          note: r.note + '; first 20kB captured',
+          note: r.note + '; first 20kB captured; generic/contextual page '
+            + '- NOT fixture-authenticated evidence',
         });
         r.truncated_text = r.text;
         (match._webTexts = match._webTexts || []).push(r.text);
@@ -295,8 +317,9 @@ class AIReviewEngine {
     }
     const ran = [];
     for (const c of candidates || []) {
-      const dl = deadlineFor(c.league, c.kickoffUTC);
-      if (!dl) continue;
+      const dl = c.deadlineUTC ? new Date(c.deadlineUTC)
+        : deadlineFor(c.league, c.kickoffUTC);
+      if (!dl || Number.isNaN(dl.getTime())) continue;
       const deadlineUTC = dl.toISOString().replace(/\.\d+Z$/, 'Z');
       const win = AIReviewEngine.windowState(deadlineUTC);
       const existing = this.opinions.filter(o =>
@@ -348,7 +371,11 @@ class AIReviewEngine {
   }
 
   async runReview(match, pm, scheduledBy = 'manual') {
-    const deadline = deadlineFor(match.league, match.kickoffUTC);
+    // authoritative anchor_utc from the runner plan wins; heuristic mirror
+    // (deadlineFor) is the fallback for ledger-only candidates
+    const deadline = match.deadlineUTC
+      ? new Date(match.deadlineUTC)
+      : deadlineFor(match.league, match.kickoffUTC);
     const deadlineUTC = deadline
       ? deadline.toISOString().replace(/\.\d+Z$/, 'Z')
       : (match.kickoffUTC || '');
@@ -555,14 +582,15 @@ class AIReviewEngine {
     const claimed = (parsed.sources || []).map(s => ({
       kind: s.kind || 'claimed', ref: String(s.ref || '?').slice(0, 200),
       retrieved_at_utc: null, sha256: null, untrusted: true,
-      verified: false, claimed_by_model: true,
+      systemCaptured: false, claimed_by_model: true,
       note: 'claimed by the model — discarded for the evidence law' }));
     op.sources = (op.sources || []).map(s => ({
-      ...s, untrusted: s.kind === 'web_page', verified: true })).concat(claimed);
-    const verifiedCount = op.sources.filter(s => s.verified).length;
-    if (verifiedCount === 0) {
+      ...s, untrusted: s.kind === 'web_page',
+      systemCaptured: true })).concat(claimed);
+    const capturedCount = op.sources.filter(s => s.systemCaptured).length;
+    if (capturedCount === 0) {
       if (op.verdict !== 'ABSTAIN') {
-        op.uncertainties.push('zero verified system-captured sources — '
+        op.uncertainties.push('zero system-captured sources — '
           + 'verdict forced to ABSTAIN (NOT_RUN_EVIDENCE law)');
       }
       op.verdict = 'ABSTAIN';

@@ -13,7 +13,13 @@
 - Tách seam `MarketDataProvider` / `PaperExecution` / `LiveExecution`;
   `LiveExecution` NIÊM PHONG (không endpoint, không key, không đường gửi lệnh).
 - AI review GLM-5.3-Flash ở SHADOW, sidecar store, fail-closed; mock demo có
-  nhãn MOCK; `NOT_RUN_AI_RUNTIME_ENTITLEMENT` (không có key General API).
+  nhãn MOCK. AI runtime: key có trong Keychain nhưng General API probe trả
+  HTTP 429 errCode 1113 (quota/balance) ⇒ vẫn
+  `NOT_RUN_AI_RUNTIME_ENTITLEMENT`. "AI automation" = machinery đã test
+  (anchor-law deadline, canonical-id scheduler, idempotent); scheduler idle
+  khi disabled — CHƯA có GLM live. Evidence chỉ tính nguồn hệ thống tự
+  capture (team-name match, KHÔNG fixture-authenticated); web connector
+  ≤5 request/rolling-60s (trước đây ghi lifetime cap — đã sửa).
 - Battery seam 6/6 PASS + e2e + UI evidence + A7 độc lập.
 
 Không có lệnh nào bị sửa/backfill; ledger chỉ có đúng một writer (pinned core)

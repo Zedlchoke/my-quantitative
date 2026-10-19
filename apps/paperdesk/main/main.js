@@ -17,6 +17,7 @@ const { parseLedger } = require('./ledger');
 const { RunnerController } = require('./runner');
 const { HealthStore, PolymarketProvider } = require('./market');
 const { AIReviewEngine, deadlineFor } = require('./ai');
+const { buildCandidates } = require('./candidates');
 const { LIVE_EXECUTION_SEAL, PAPER_DECISION_OUTCOMES }
   = require('./seal');
 
@@ -107,9 +108,10 @@ function boot() {
     } catch (e) { /* best-effort */ }
   }
   let windowClosePolicy = readPolicy();
-  let aiAutomation = 'ARMED (auto-reviews inside each fixture\'s pre-anchor '
-    + 'window when AI mode is MOCK or Z.ai SHADOW; disabled mode records '
-    + 'nothing)';
+  let aiAutomation = 'Machinery TESTED (candidate builder + window law '
+    + '+ idempotence, 26/26 seam); scheduler IDLE while mode is '
+    + 'disabled-no-entitlement — no opinions are generated; GLM live is '
+    + 'NOT_RUN_AI_RUNTIME_ENTITLEMENT (no Z.ai General API key)';
   let ticker2 = null;
   let ticker3 = null;
 
@@ -360,28 +362,17 @@ function boot() {
       try {
         const upcoming = (health.liveState
           && health.liveState.upcoming) || [];
-        const fromLedger = (ledger.matches || [])
-          .filter(m => !m.decisionStatus && m.kickoffUTC
-                   && Date.parse(m.kickoffUTC) > Date.now())
-          .map(m => ({ matchId: m.matchId, home: m.home, away: m.away,
-                       league: m.league, kickoffUTC: m.kickoffUTC,
-                       decisionStatus: null, decision: null,
-                       webHints: m.league === 'WSL'
-                         ? ['https://wsl-full.com/'] : [] }));
-        const fromPlan = upcoming
-          .filter(f => f.kickoff_utc && Date.parse(f.kickoff_utc) > Date.now())
-          .map(f => ({ matchId: `${f.league || '?'}-`
-              + `${(f.home || '?') + '-' + (f.away || '?')}`
-                .replace(/\s+/g, '_'),
-              home: f.home || '?', away: f.away || '?',
-              league: f.league || '?', kickoffUTC: f.kickoff_utc,
-              decisionStatus: null, decision: null,
-              webHints: f.league === 'WSL'
-                ? ['https://wsl-full.com/'] : [] }));
-        const seen = new Set();
-        const candidates = [...fromLedger, ...fromPlan]
-          .filter(c => !seen.has(c.matchId + c.kickoffUTC)
-                       && seen.add(c.matchId + c.kickoffUTC));
+        // CANONICAL-ID candidate building (round-3): plan entries without a
+        // canonical match_id are skipped; no synthetic ids; a fixture in
+        // both ledger and plan is ONE candidate; plan anchor_utc is the
+        // authoritative deadline. See main/candidates.js (unit-tested).
+        const built = buildCandidates({
+          ledgerMatches: ledger.matches || [], upcoming,
+        });
+        if (built.skipped.length) {
+          runner.audit('AI_SCHED_SKIPPED', { skipped: built.skipped });
+        }
+        const candidates = built.candidates;
         ai.maybeAutoReview(candidates, pm)
           .then(res => {
             if (res.ran && res.ran.length) {

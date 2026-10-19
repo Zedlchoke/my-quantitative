@@ -42,9 +42,15 @@ only), consume any GO phrase, change any pinned number.
 
 ## 4. AI runtime (GLM-5.3-Flash)
 
-- Status this build: **NOT_RUN_AI_RUNTIME_ENTITLEMENT** — no Z.ai General API
-  key exists on this machine; the app ships with the MOCK demo (clearly
-  labeled, deterministic, local, no network).
+- Status this build: **NOT_RUN_AI_RUNTIME_ENTITLEMENT (refined 2026-10-20)** —
+  a key IS present in Keychain now, but the single live probe of the General
+  API returned HTTP 429 / errCode 1113 (quota/balance), so GLM live is still
+  unusable; the app ships with the MOCK demo (clearly labeled, deterministic,
+  local, no network). Auto-scheduler is IDLE while mode is
+  disabled-no-entitlement — the tested machinery generates no opinions.
+  Evidence sources are SYSTEM-CAPTURED (team-name match in Gamma titles,
+  NOT fixture-authenticated); web connector budget = ≤5 requests per
+  ROLLING 60s window.
 - To enable SHADOW-live later: store a General API key in Keychain —
   `security add-generic-password -s com.myquant.paperdesk -a zai-api-key -w`.
   The Coding-Plan API is banned as an opinion backend. The app calls only

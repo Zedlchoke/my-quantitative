@@ -116,3 +116,26 @@ Sau audit độc lập của Owner ở afed4a4e:
 - P1: PM snapshot tên duy nhất content-addressed + đếm journal failure;
   Health ghi rõ PM là display/AI-evidence, quote quyết định chưa đổi cho
   đến khi owner tiêu cutover GO.
+
+## 7. Round-3 hardening (owner audit of a5e04783, 2026-10-20)
+
+- Budget: `AIWebConnector` giờ là **rolling time-window** (≤5 request trong
+  cửa sổ 60s trượt, clock injectable để test; lifetime counter chỉ để hiển
+  thị). Claim "≤5 req/60s" trước đây thực chất là lifetime cap — đã sửa cả
+  code lẫn claim.
+- Canonical ID: candidate builder tách thành `main/candidates.js` (pure,
+  tested). match_id canonical BẮT BUỘC từ ledger/plan; plan thiếu match_id ⇒
+  SKIP (không synthetic id); fixture có ở cả hai nguồn ⇒ ĐÚNG MỘT candidate;
+  `anchor_utc` từ runner là deadline có tính-authoritative.
+- Evidence relabel: `verified` → `systemCaptured` — nghĩa là "hệ thống tự
+  capture" (sha256 + retrieval time), KHÔNG phải xác thực fixture; note ghi
+  rõ "matched by team-name-in-title ONLY — no stage/kickoff/rules crosswalk;
+  NOT fixture-authenticated". 0 nguồn systemCaptured ⇒ ép ABSTAIN.
+- webHints homepage chung đã BỎ (không phải chứng cứ trận); connector vẫn
+  sẵn cho per-fixture URL có nguồn hợp lệ sau này.
+- AI runtime probe (1 call, 2026-10-20): key CÓ trong Keychain (fingerprint
+  ca2793462eda4970…), General API trả **HTTP 429 errCode 1113 (quota/
+  balance)** ⇒ live vẫn KHÔNG dùng được. Trạng thái giữ
+  NOT_RUN_AI_RUNTIME_ENTITLEMENT (kèm chi tiết probe). Scheduler idle ở
+  disabled mode — "AI automation" = machinery đã test offline, CHƯA có GLM
+  live. Owner tự bật nếu muốn (UI toggle), mọi opinion live lỗi sẽ fail-closed.

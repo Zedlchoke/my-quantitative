@@ -575,6 +575,9 @@ function viewHealth() {
     ${kv('websocket market feed', 'NOT_USED_IN_THIS_BUILD — UI updates via '
       + '2–4s poll + heartbeat & stale alarm (equivalent mechanism, no venue '
       + 'WS)')}
+    ${kv('pm evidence quality', 'team-name match in Gamma titles ONLY — '
+      + 'no stage/kickoff/rules crosswalk; NOT fixture-authenticated; '
+      + 'advisory AI input, never a decision input')}
     ${kv('fixture source', live ? 'runner plan (ESPN schedules / The Odds '
       + 'API / PM Gamma per pinned lane)' : 'runner offline')}
     ${kv('UI data source age', h.liveLastOK
@@ -602,8 +605,8 @@ function viewHealth() {
       : '<span class="orange">NOT_RUN_AI_RUNTIME_ENTITLEMENT</span>')}
     ${kv('authority', 'SHADOW — opinions recorded, never influence '
       + 'decisions; veto/alternative needs registered policy + owner GO')}
-    ${kv('web connector', 'read-only, allow-listed domains, ≤5 requests/'
-      + 'opinion; all web content UNTRUSTED_DATA')}
+    ${kv('web connector', 'read-only, allow-listed domains, ≤5 requests '
+      + 'per ROLLING 60s window; all web content UNTRUSTED_DATA')}
     ${kv('opinions stored', `${S.ai.opinions.length} (sidecar ai_review/, `
       + 'not the ledger)')}
     ${kv('auto-scheduler', esc(S.ai.automation || '—'))}
