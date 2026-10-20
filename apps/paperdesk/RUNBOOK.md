@@ -40,24 +40,32 @@ CANNOT: write the ledger, place orders (no endpoint, no credentials —
 `LiveExecution` is a sealed type), let AI affect decisions (SHADOW sidecar
 only), consume any GO phrase, change any pinned number.
 
-## 4. AI runtime (GLM-5.3-Flash)
+## 4. AI runtime (OpenRouter free chain — GLM/Z.ai STOPPED by owner)
 
-- Status this build: **NOT_RUN_AI_RUNTIME_ENTITLEMENT (refined 2026-10-20)** —
-  a key IS present in Keychain now, but the single live probe of the General
-  API returned HTTP 429 / errCode 1113 (quota/balance), so GLM live is still
-  unusable; the app ships with the MOCK demo (clearly labeled, deterministic,
-  local, no network). Auto-scheduler is IDLE while mode is
-  disabled-no-entitlement — the tested machinery generates no opinions.
-  Evidence sources are SYSTEM-CAPTURED (team-name match in Gamma titles,
-  NOT fixture-authenticated); web connector budget = ≤5 requests per
-  ROLLING 60s window.
-- To enable SHADOW-live later: store a General API key in Keychain —
-  `security add-generic-password -s com.myquant.paperdesk -a zai-api-key -w`.
-  The Coding-Plan API is banned as an opinion backend. The app calls only
-  `https://api.z.ai/api/paas/v4/chat/completions` with model `glm-5.3-flash`.
-- Budget law: ≤10 min per fixture, must complete before the decision
-  deadline (anchor); late/malformed/errored opinions are recorded with
-  explicit fail-closed statuses and are never used.
+- 2026-10-20 owner order: **stop Z.ai API probes** (account insufficient
+  balance — recorded probe: HTTP 429 errCode 1113). The live SHADOW provider
+  is now **OpenRouter's free model chain**, ranked by evidence from the live
+  models listing (artifact: `ai_review/model_ranking.json`, sources:
+  openrouter.ai/api/v1/models + openrouter.ai/docs).
+- Ranked chain (fallback on 429/quota/5xx/timeout/unavailable; ONE bounded
+  retry per model; deadline enforced between attempts):
+  1. `minimax/minimax-m3.1-flash:free` — **live-verified 2026-10-20: HTTP
+     200, strict JSON round-trip, $0**
+  2. `google/gemma-4-31b-it:free`
+  3. `nvidia/nemotron-3-ultra-550b-a55b:free`
+  4. `thinkingmachines/inkling:free`
+  5. `openrouter/free` (auto-router, last resort)
+- Key: macOS Keychain `com.myquant.paperdesk / openrouter-api-key` — never
+  logged, never rendered; only an HTTP Authorization header to
+  openrouter.ai. OpenCode: NOT required (a suitable free hosted API exists
+  via OpenRouter).
+- Failure law: every model fails ⇒ opinion `ALL_PROVIDERS_FAILED` with
+  verdict **ABSTAIN** and a full per-attempt journal (provider/model/http/
+  fallback reason); deadline aborts chain ⇒ `TIMEOUT_LATE_INVALID`.
+- AI automation = tested machinery (37→43-check seam); scheduler IDLE while
+  mode is disabled-no-entitlement. AI remains SHADOW: opinions are advisory
+  evidence with zero effect on the paper pipeline; evidence is
+  SYSTEM-CAPTURED (team-name match, NOT fixture-authenticated).
 
 ## 5. CLI modes (for e2e + A7, no UI needed)
 

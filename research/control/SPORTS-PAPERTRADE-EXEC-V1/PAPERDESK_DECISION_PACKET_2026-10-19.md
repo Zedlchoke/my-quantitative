@@ -20,6 +20,12 @@
   khi disabled — CHƯA có GLM live. Evidence chỉ tính nguồn hệ thống tự
   capture (team-name match, KHÔNG fixture-authenticated); web connector
   ≤5 request/rolling-60s (trước đây ghi lifetime cap — đã sửa).
+- **Round-4 (2026-10-20):** Z.ai probes DỪNG theo lệnh Owner (insufficient
+  balance). Live provider = OpenRouter free chain (xếp hạng theo listing
+  live + docs, artifact `ai_review/model_ranking.json`); model đầu đã
+  **live-verify HTTP 200 strict-JSON $0**; fallback 429/quota/5xx/timeout ⇒
+  model kế, hết chain ⇒ ALL_PROVIDERS_FAILED + ABSTAIN, journal đầy đủ.
+  OpenCode không cần. AI vẫn SHADOW; machinery tested 43/43 seam.
 - Battery seam 6/6 PASS + e2e + UI evidence + A7 độc lập.
 
 Không có lệnh nào bị sửa/backfill; ledger chỉ có đúng một writer (pinned core)

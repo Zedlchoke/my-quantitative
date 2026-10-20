@@ -8,6 +8,7 @@ const os = require('os');
 const { AIReviewEngine, deadlineFor } = require('./main/ai');
 const { AIWebConnector } = require('./main/ai');
 const { buildCandidates } = require('./main/candidates');
+const { OPENROUTER_FREE_CHAIN } = require('./main/ai');
 
 const evDir = process.argv[2] || '/tmp/pd_ai_evidence';
 fs.mkdirSync(evDir, { recursive: true });
@@ -270,7 +271,101 @@ const check = (cond, name) => {
     'relabel: captured sources flagged systemCaptured + name-match-only '
     + 'caveat disclosed');
 
-    fs.writeFileSync(path.join(evDir, 'ai_seam_results.json'),
+    // ===== round-4 (owner: Z.ai stopped; OpenRouter free chain) =====
+  // 15. fallback chain: 429 -> next model; 5xx gets ONE bounded retry;
+  //     success on a later model journals the full attempt trail
+  const CHAIN = OPENROUTER_FREE_CHAIN;
+  const mkAI = () => {
+    const e = new AIReviewEngine(path.join(tmpRoot, 'or' + Math.random()));
+    e.mode = 'shadow-live';
+    e.entitlement = { present: true, fingerprint: 'test' };
+    e.keychainSecret = () => 'or-key';
+    return e;
+  };
+  const mkMatch = (id) => ({ matchId: id, home: 'A', away: 'B',
+    league: 'WSL',
+    kickoffUTC: new Date(Date.now() + 7 * 3600 * 1000)
+      .toISOString().replace(/\.\d+Z$/, 'Z'),
+    deadlineUTC: new Date(Date.now() + 60 * 60 * 1000)
+      .toISOString().replace(/\.\d+Z$/, 'Z') });
+  const sysCap = [{ kind: 'pm_gamma_page', systemCaptured: true,
+    claimed_by_model: false, ref: 'gamma E9',
+    sha256: 'b'.repeat(64), retrieved_at_utc: '2026-10-20T00:00:00Z',
+    untrusted: false }];
+
+  const ai6 = mkAI();
+  const seenModels = [];
+  ai6._chatPost = (model, messages, done) => {
+    seenModels.push(model);
+    const idx = seenModels.length;
+    if (idx === 1) return done(null, 429, '{"error":{"code":"1113"}}');
+    if (idx === 2 || idx === 3) return done(null, 500, 'upstream boom');
+    return done(null, 200, JSON.stringify({ choices: [{ message: {
+      content: JSON.stringify({ verdict: 'CHALLENGE',
+        rationale: 'evidence thin', sources: [] }) } } ],
+      model, usage: { prompt_tokens: 10, completion_tokens: 5 } }));
+  };
+  const opChain = ai6.baseOpinion(mkMatch('OR-CHAIN'), mkMatch('OR-CHAIN')
+    .deadlineUTC, 'manual');
+  opChain.sources = [...sysCap];
+  opChain.inputSnapshotSha256 = 't';
+  const opChainDone = await ai6.openrouterCall(
+    opChain, mkMatch('OR-CHAIN'), 'digest-x', sysCap);
+  check(opChainDone.status === 'COMPLETED'
+    && opChainDone.verdict === 'CHALLENGE'
+    && opChainDone.model === CHAIN[2],
+    'fallback: 429 + 5xx+retry -> success on a later chain entry');
+  check(opChainDone.attempts.length === 4
+    && opChainDone.attempts[0].fallback_reason?.includes('quota')
+    && opChainDone.attempts[1].fallback_reason?.includes('retry'),
+    'fallback: attempt journal records provider/model/fallback reasons');
+  check(opChainDone.provider === 'openrouter',
+    'fallback: provider journaled as openrouter');
+
+  // 16. ALL providers fail -> ALL_PROVIDERS_FAILED + verdict ABSTAIN
+  const ai7 = mkAI();
+  ai7._chatPost = (model, messages, done) => done(null, 429,
+    '{"error":{"code":"1113"}}');
+  const opFail = ai7.baseOpinion(mkMatch('OR-FAIL'), mkMatch('OR-FAIL')
+    .deadlineUTC, 'manual');
+  opFail.sources = [...sysCap];
+  opFail.inputSnapshotSha256 = 't';
+  const opFailDone = await ai7.openrouterCall(
+    opFail, mkMatch('OR-FAIL'), 'digest-y', sysCap);
+  check(opFailDone.status === 'ALL_PROVIDERS_FAILED'
+    && opFailDone.verdict === 'ABSTAIN'
+    && opFailDone.attempts.length === CHAIN.length
+    && String(opFailDone.error).includes('ABSTAIN'),
+    'fail law: every model 429 -> ALL_PROVIDERS_FAILED + verdict ABSTAIN');
+
+  // 17. deadline abort mid-chain -> TIMEOUT_LATE_INVALID (visible, ABSTAIN)
+  const ai8 = mkAI();
+  ai8._chatPost = (model, messages, done) => done(null, 200, JSON.stringify({
+    choices: [{ message: { content: JSON.stringify({ verdict: 'APPROVE',
+      rationale: 'late', sources: [] }) } }] }));
+  const tight = mkMatch('OR-LATE');
+  tight.deadlineUTC = new Date(Date.now() + 200)
+    .toISOString().replace(/\.\d+Z$/, 'Z');
+  const opLate = ai8.baseOpinion(tight, tight.deadlineUTC, 'manual');
+  opLate.sources = [...sysCap];
+  opLate.inputSnapshotSha256 = 't';
+  const opLateDone = await ai8.openrouterCall(opLate, tight, 'digest-z',
+    sysCap);
+  check(opLateDone.status === 'TIMEOUT_LATE_INVALID'
+    && opLateDone.verdict === 'ABSTAIN',
+    'deadline: chain aborts at the 10-minute law -> TIMEOUT_LATE_INVALID');
+
+  // 18. no key -> API_ERROR_FAIL_CLOSED (no chain walk)
+  const ai9 = mkAI();
+  ai9.keychainSecret = () => null;
+  const opNoKey = ai9.baseOpinion(mkMatch('OR-NOKEY'), mkMatch('OR-NOKEY')
+    .deadlineUTC, 'manual');
+  opNoKey.sources = [...sysCap];
+  await ai9.openrouterCall(opNoKey, mkMatch('OR-NOKEY'), 'd', sysCap);
+  check(opNoKey.status === 'API_ERROR_FAIL_CLOSED',
+    'fail-closed: missing openrouter key -> immediate API_ERROR_FAIL_CLOSED');
+
+  fs.writeFileSync(path.join(evDir, 'ai_seam_results.json'),
     JSON.stringify(results, null, 1));
   const fails = results.filter(r => !r.pass).length;
   console.log(`ai seam: ${results.length - fails}/${results.length} pass`);

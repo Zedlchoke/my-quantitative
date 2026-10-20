@@ -111,9 +111,10 @@ function boot() {
   let aiAutomation = 'Machinery TESTED (canonical candidate builder + '
     + 'rolling-window budget + anchor-law windows + idempotence, 37/37 '
     + 'seam); scheduler IDLE while mode is disabled-no-entitlement — no '
-    + 'opinions are generated. GLM live: NOT_RUN_AI_RUNTIME_ENTITLEMENT '
-    + '(key present in Keychain but General API probe returned HTTP 429 '
-    + 'errCode 1113 quota/balance on 2026-10-20)';
+    + 'opinions are generated. GLM/Z.ai live: STOPPED by owner '
+    + '(insufficient balance, HTTP 429 errCode 1113, 2026-10-20); live '
+    + 'provider is now the OpenRouter free chain (ranked, fallback on '
+    + '429/quota/5xx/timeout, ABSTAIN if all fail)';
   let ticker2 = null;
   let ticker3 = null;
 
@@ -167,7 +168,8 @@ function boot() {
         lastNote: ai.lastNote, opinions: ai.opinions.slice(0, 50),
         runtime: ai.mode === 'disabled-no-entitlement'
           ? 'NOT_RUN_AI_RUNTIME_ENTITLEMENT' : 'SHADOW · '
-            + (ai.mode === 'shadow-mock' ? 'MOCK' : 'GLM-5.3-Flash live'),
+            + (ai.mode === 'shadow-mock' ? 'MOCK'
+              : 'OpenRouter free chain'),
         automation: aiAutomation,
       },
       seal: { statement: LIVE_EXECUTION_SEAL.statement,

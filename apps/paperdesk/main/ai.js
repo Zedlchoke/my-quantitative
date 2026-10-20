@@ -1,5 +1,6 @@
 'use strict';
-// AI REVIEW — GLM-5.3-Flash, SHADOW ONLY (AMENDMENT_MACOS_APP_UI_V1 §1.5,
+// AI REVIEW — free-model SHADOW reviewer (OpenRouter chain; GLM/Z.ai
+// probes STOPPED by owner 2026-10-20). AMENDMENT_MACOS_APP_UI_V1 §1.5,
 // hardened per owner audit 2026-10-19 round 2).
 //
 // AUTOMATION (P0): every candidate fixture is scheduled automatically inside
@@ -26,8 +27,33 @@ const path = require('path');
 const https = require('https');
 const crypto = require('crypto');
 
-const ENDPOINT = 'https://api.z.ai/api/paas/v4/chat/completions';
-const MODEL = 'glm-5.3-flash';
+// Z.ai probes are STOPPED by owner order (2026-10-20): account has
+// insufficient balance (HTTP 429 errCode 1113 recorded). The live provider
+// is now OpenRouter's FREE model chain (key: Keychain
+// com.myquant.paperdesk / openrouter-api-key — never exposed).
+const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
+const OPENROUTER_DOCS = 'https://openrouter.ai/docs/models';
+// Ranked free chain — evidence-ranked from the LIVE models listing
+// (retrieved 2026-10-20, artifact: ai_review/model_ranking.json):
+//   1. minimax/minimax-m3.1-flash:free  — newest free chat model from a
+//      major lab (listed 2026-10-18), 1M ctx, flash tier fits 10-min budget
+//   2. google/gemma-4-31b-it:free       — official Google instruction-tuned
+//      chat family, best-documented JSON compliance
+//   3. nvidia/nemotron-3-ultra-550b-a55b:free — flagship open reasoner
+//   4. thinkingmachines/inkling:free    — prominent lab, 1M ctx
+//   5. openrouter/free                  — OpenRouter's own free auto-router
+//      (non-deterministic routing, LAST resort)
+// Excluded by evidence: content-safety classifier, audio (lyria), code-only
+// (poolside/north-code), tiny (<8B) tiers.
+const OPENROUTER_FREE_CHAIN = [
+  'minimax/minimax-m3.1-flash:free',
+  'google/gemma-4-31b-it:free',
+  'nvidia/nemotron-3-ultra-550b-a55b:free',
+  'thinkingmachines/inkling:free',
+  'openrouter/free',
+];
+const OPENROUTER_ATTEMPT_TIMEOUT_S = 45;  // per model attempt
 const VERDICTS = ['APPROVE', 'VETO', 'CHALLENGE', 'ALTERNATIVE', 'ABSTAIN'];
 const MAX_BUDGET_SECONDS = 600;
 const START_WINDOW_SECONDS = 15 * 60;   // opens 15 min before the deadline
@@ -188,32 +214,38 @@ class AIReviewEngine {
   }
 
   refreshEntitlement() {
+    // entitlement = an OpenRouter free-chain key is present. NOTE: key
+    // presence does NOT guarantee quota — a failed live attempt fail-closes
+    // per attempt (429/quota/5xx -> next model / ABSTAIN), and Z.ai probes
+    // are STOPPED by owner order (insufficient balance, 2026-10-20).
     const fp = this.keychainFingerprint();
-    this.entitlement = fp ? { present: true, fingerprint: fp }
-      : { present: false, reason: 'NOT_RUN_AI_RUNTIME_ENTITLEMENT' };
+    this.entitlement = fp ? { present: true, fingerprint: fp,
+                               provider: 'openrouter-free-chain' }
+      : { present: false, reason: 'NOT_RUN_AI_RUNTIME_ENTITLEMENT '
+          + '(no OpenRouter key in Keychain; Z.ai probes stopped by '
+          + 'owner — insufficient balance)' };
     if (!fp) {
       if (this.mode === 'shadow-live') this.mode = 'disabled-no-entitlement';
-      this.lastNote = 'NOT_RUN_AI_RUNTIME_ENTITLEMENT — no Z.ai General API '
-        + 'key in Keychain; mock demo only. Coding-Plan API banned as an '
-        + 'opinion backend.';
+      this.lastNote = 'NOT_RUN_AI_RUNTIME_ENTITLEMENT — no OpenRouter key '
+        + 'in Keychain; mock demo only. Z.ai probes stopped by owner.';
     } else if (this.mode === 'disabled-no-entitlement') {
       this.mode = 'shadow-mock';
-      this.lastNote = 'General API key found — SHADOW live available '
+      this.lastNote = 'OpenRouter key found — SHADOW live chain available '
         + '(MOCK stays default until enabled)';
     }
   }
 
-  keychainSecret() {
+  keychainSecret(account = 'openrouter-api-key') {
     const r = spawnSync('/usr/bin/security',
       ['find-generic-password', '-s', 'com.myquant.paperdesk',
-       '-a', 'zai-api-key', '-w'], { encoding: 'utf8', timeout: 5000 });
+       '-a', account, '-w'], { encoding: 'utf8', timeout: 5000 });
     if (r.status !== 0) return null;
     const v = String(r.stdout).trim();
     return v.length ? v : null;
   }
 
   keychainFingerprint() {
-    const s = this.keychainSecret();
+    const s = this.keychainSecret('openrouter-api-key');
     return s ? sha(s).slice(0, 16) : null;
   }
 
@@ -361,7 +393,8 @@ class AIReviewEngine {
       opinionID: crypto.randomUUID(), matchID: match.matchId,
       createdAtUTC: nowZ(), deadlineUTC: deadlineUTC || '',
       startedAtUTC: nowZ(), completedAtUTC: null,
-      model: MODEL, modelVersion: null, provider: 'mock-local',
+      model: OPENROUTER_FREE_CHAIN[0], modelVersion: null,
+      provider: 'mock-local',
       mode: 'SHADOW', status: 'SCHEDULED', verdict: null,
       rationale: null, sources: [], uncertainties: [], confidenceNote: null,
       proposedLeg: null, promptSha256: sha(SYSTEM_PROMPT),
@@ -422,8 +455,8 @@ class AIReviewEngine {
       op.completedAtUTC = nowZ();
     } else if (this.mode === 'shadow-live') {
       op.isMock = false;
-      op.provider = 'z.ai-general-api';
-      await this.zaiCall(op, match, digest, evidence);
+      op.provider = 'openrouter';
+      await this.openrouterCall(op, match, digest, evidence);
       if (op.completedAtUTC && op.deadlineUTC
           && Date.parse(op.completedAtUTC) > Date.parse(op.deadlineUTC)) {
         op.status = 'TIMEOUT_LATE_INVALID';
@@ -472,15 +505,51 @@ class AIReviewEngine {
     });
   }
 
-  zaiCall(op, match, digest, evidence) {
-    return new Promise(resolve => {
-      const key = this.keychainSecret();
+  /// ONE chat attempt against OpenRouter for a single model id.
+  _chatPost(model, messages, done) {
+    const key = this.keychainSecret('openrouter-api-key');
+    if (!key) { done('no key', 0, null); return; }
+    const body = JSON.stringify({
+      model, temperature: 0.2, max_tokens: 900, messages });
+    const u = new URL(OPENROUTER_ENDPOINT);
+    const req = https.request(
+      { hostname: u.hostname, path: u.pathname, method: 'POST',
+        timeout: OPENROUTER_ATTEMPT_TIMEOUT_S * 1000,
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+          // the ONLY place a credential is used; never logged
+          'Authorization': `Bearer ${key}`,
+          'HTTP-Referer': 'https://localhost/paperdesk',
+          'X-Title': 'PaperDesk' } },
+      res => {
+        let buf = '';
+        res.on('data', d => { buf += d; });
+        res.on('end', () => done(null, res.statusCode, buf));
+      });
+    req.on('timeout', () => { req.destroy(); done('timeout', 0, null); });
+    req.on('error', e => done(e.message, 0, null));
+    req.write(body);
+    req.end();
+  }
+
+  /// Live path: walk the evidence-ranked FREE model chain. Fallback on
+  /// 429/quota/5xx/timeout/unavailable; ONE bounded retry per model on
+  /// transient errors; deadline is enforced between attempts; when every
+  /// attempt fails the opinion records verdict ABSTAIN with status
+  /// ALL_PROVIDERS_FAILED and a full attempt journal (provider/model/
+  /// fallback reason). 10-minute deadline law unchanged.
+  openrouterCall(op, match, digest, evidence) {
+    return new Promise(async resolve => {
+      const key = this.keychainSecret('openrouter-api-key');
       if (!key) {
         op.status = 'API_ERROR_FAIL_CLOSED';
-        op.error = 'key vanished from Keychain — fail closed';
+        op.error = 'openrouter key vanished from Keychain — fail closed';
         op.completedAtUTC = nowZ();
         return resolve(op);
       }
+      op.isMock = false;
+      op.provider = 'openrouter';
       const evidenceBlock = evidence.length
         ? 'EVIDENCE (system-captured, the only citable sources):\n'
           + evidence.map(s => `- kind=${s.kind} sha256=${(s.sha256 || 'null')
@@ -494,47 +563,73 @@ class AIReviewEngine {
         + `(${match.league}), kickoff ${match.kickoffUTC || '?'}. `
         + `Input snapshot digest: ${digest}.\n${evidenceBlock}\n`
         + 'Respond with the JSON object only.';
-      const body = JSON.stringify({
-        model: MODEL, temperature: 0.2, max_tokens: 900,
-        messages: [{ role: 'system', content: SYSTEM_PROMPT },
-                   { role: 'user', content: userMsg }],
-      });
-      const u = new URL(ENDPOINT);
-      const req = https.request(
-        { hostname: u.hostname, path: u.pathname, method: 'POST',
-          timeout: MAX_BUDGET_SECONDS * 1000 + 30000,
-          headers: { 'Content-Type': 'application/json',
-                     'Content-Length': Buffer.byteLength(body),
-                     // the ONLY place a credential is used; never logged
-                     'Authorization': `Bearer ${key}` } },
-        res => {
-          let buf = '';
-          res.on('data', d => { buf += d; });
-          res.on('end', () => {
-            if (res.statusCode !== 200) {
-              op.status = 'API_ERROR_FAIL_CLOSED';
-              op.error = `HTTP ${res.statusCode} from model endpoint`;
-              op.completedAtUTC = nowZ();
-              return resolve(op);
-            }
-            this.parseZAIResponse(op, buf, resolve);
-          });
-        });
-      req.on('timeout', () => {
-        req.destroy();
-        op.status = 'API_ERROR_FAIL_CLOSED';
-        op.error = 'timeout (budget law)';
-        op.completedAtUTC = nowZ();
-        resolve(op);
-      });
-      req.on('error', e => {
-        op.status = 'API_ERROR_FAIL_CLOSED';
-        op.error = e.message;
-        op.completedAtUTC = nowZ();
-        resolve(op);
-      });
-      req.write(body);
-      req.end();
+      const messages = [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userMsg }];
+      const deadlineMs = op.deadlineUTC ? Date.parse(op.deadlineUTC) : null;
+      const attempts = [];
+      op.modelChain = [...OPENROUTER_FREE_CHAIN];
+      for (const model of OPENROUTER_FREE_CHAIN) {
+        for (let attemptNo = 1; attemptNo <= 2; attemptNo++) {
+          if (deadlineMs && Date.now() > deadlineMs - 1000) {
+            attempts.push({ provider: 'openrouter', model,
+              skipped: 'deadline reached before attempt' });
+            op.attempts = attempts;
+            op.status = 'TIMEOUT_LATE_INVALID';
+            op.verdict = 'ABSTAIN';
+            op.error = '10-minute deadline reached during the fallback '
+              + 'chain — invalid by law';
+            op.completedAtUTC = nowZ();
+            return resolve(op);
+          }
+          const t0 = Date.now();
+          const res = await new Promise(r =>
+            this._chatPost(model, messages, (e, sc, buf) =>
+              r({ err: e, status: sc, buf })));
+          const elapsedMs = Date.now() - t0;
+          let rec = { provider: 'openrouter', model, attempt: attemptNo,
+                      http: res.status, elapsed_ms: elapsedMs,
+                      error: res.err || null, fallback_reason: null };
+          if (res.err) {                       // timeout / network
+            rec.fallback_reason = attemptNo === 1
+              ? 'transient (' + res.err + ') — one bounded retry'
+              : 'persistent after retry — falling back to next model';
+            attempts.push(rec);
+            continue;
+          }
+          if (res.status === 200) {
+            attempts.push(rec);
+            op.attempts = attempts;
+            op.model = model;                  // the chain entry that answered
+            await new Promise(r2 =>
+              this.parseZAIResponse(op, res.buf, r2));
+            return resolve(op);
+          }
+          // non-200: fallback classification
+          rec.fallback_reason =
+            (res.status === 429 || res.status === 402)
+              ? 'quota/limit — falling back'
+            : res.status >= 500
+              ? 'upstream 5xx — ' + (attemptNo === 1
+                ? 'one bounded retry' : 'falling back')
+            : res.status === 404 || res.status === 400
+              ? 'model unavailable/invalid — falling back'
+            : 'HTTP ' + res.status + ' — falling back';
+          attempts.push(rec);
+          if (res.status >= 500 && attemptNo === 1) continue;  // one retry
+          break;                                // next model
+        }
+      }
+      // the WHOLE chain failed — honest, visible, advisory-no-op
+      op.attempts = attempts;
+      op.verdict = 'ABSTAIN';
+      op.status = 'ALL_PROVIDERS_FAILED';
+      op.error = 'every ranked free model failed (429/quota/5xx/timeout/'
+        + 'unavailable) — ABSTAIN per owner law';
+      op.uncertainties = (op.uncertainties || []).concat([
+        'all providers failed — no model opinion exists']);
+      op.completedAtUTC = nowZ();
+      resolve(op);
     });
   }
 
@@ -611,5 +706,6 @@ class AIReviewEngine {
   }
 }
 
-module.exports = { AIReviewEngine, AIWebConnector, VERDICTS, MODEL,
+module.exports = { AIReviewEngine, AIWebConnector, VERDICTS,
+                   OPENROUTER_FREE_CHAIN,
                    MAX_BUDGET_SECONDS, deadlineFor, ANCHOR_LEAD };

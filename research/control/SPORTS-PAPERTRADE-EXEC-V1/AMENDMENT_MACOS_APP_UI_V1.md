@@ -139,3 +139,18 @@ Sau audit độc lập của Owner ở afed4a4e:
   NOT_RUN_AI_RUNTIME_ENTITLEMENT (kèm chi tiết probe). Scheduler idle ở
   disabled mode — "AI automation" = machinery đã test offline, CHƯA có GLM
   live. Owner tự bật nếu muốn (UI toggle), mọi opinion live lỗi sẽ fail-closed.
+
+## 8. Round-4 (owner order 2026-10-20: Z.ai stopped, OpenRouter free chain)
+
+- Z.ai probes STOPPED (HTTP 429 errCode 1113 — insufficient balance, đã ghi).
+- Live provider = **OpenRouter free chain**, xếp hạng theo bằng chứng từ
+  listing live + docs (artifact `ai_review/model_ranking.json` kèm nguồn và
+  sha): minimax-m3.1-flash:free (live-verified HTTP 200, strict JSON, $0) →
+  gemma-4-31b-it:free → nemotron-3-ultra:free → inkling:free → openrouter/free.
+- Fallback law: 429/quota/5xx/timeout/unavailable ⇒ model kế tiếp; 1 bounded
+  retry mỗi model cho lỗi tạm thời; deadline kiểm giữa các attempt; HẾT chain
+  ⇒ opinion `ALL_PROVIDERS_FAILED` + verdict **ABSTAIN** + journal đầy đủ
+  provider/model/http/fallback-reason.
+- Key: Keychain `openrouter-api-key` — không bao giờ log/render. OpenCode:
+  KHÔNG cần (đã có free hosted API phù hợp).
+- AI vẫn SHADOW tuyệt đối; ledger/runner/risk/GO không đổi.
