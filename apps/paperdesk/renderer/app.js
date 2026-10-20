@@ -183,6 +183,15 @@ function viewDashboard() {
   </div>`;
 }
 
+function cadenceText(c) {
+  if (c == null) return '—';
+  if (typeof c === 'string') return c;
+  try {
+    const j = JSON.stringify(c);
+    return j.length > 120 ? j.slice(0, 117) + '…' : j;
+  } catch (e) { return String(c); }
+}
+
 function incidentsHtml() {
   const inc = (S.health.live && S.health.live.incidents_tail) || [];
   if (!S.health.live) {
@@ -440,6 +449,23 @@ function opHtml(op) {
     </div>
     ${op.rationale ? `<div style="margin-top:5px;user-select:text">${
       esc(op.rationale)}</div>` : ''}
+    ${op.recommendedAction
+      ? `<div class="src">▶<span>advisory action: </span>
+          <b>${esc(op.recommendedAction)}</b>${op.proposedLeg
+            && op.recommendedAction === 'SWITCH'
+            ? ` -> <b>${esc(op.proposedLeg)}</b>` : ''}</div>`
+      : ''}
+    ${op.policyEvaluation ? (() => {
+      const pe = op.policyEvaluation;
+      const cls = { PASS: 'green', REJECTED: 'red',
+        LAWFUL_SKIP: 'dim', LAWFUL_KEEP: 'dim',
+        LAWFUL_KEEP_NO_BET: 'dim', INVALID: 'orange' }[pe.result] || 'dim';
+      return `<div class="src">
+        <span class="${cls}">POLICY ${esc(pe.result)}</span>
+        <span>${esc(pe.policy)} · advisory only, ledger untouched</span>
+      </div>` + (pe.failures || []).map(f =>
+        `<div class="src red">✖<span>gate ${esc(f)}</span></div>`).join('');
+    })() : ''}
     ${(op.uncertainties || []).map(u =>
       `<div class="src">?<span>${esc(u)}</span></div>`).join('')}
     ${(op.sources || []).map(s =>
@@ -551,7 +577,7 @@ function viewHealth() {
     ${kv('heartbeat age', hb && hb.ageSeconds != null
       ? hb.ageSeconds.toFixed(0) + 's' : '—')}
     ${kv('tick count', esc(hb ? hb.tickCount : '—'))}
-    ${kv('last cadence', esc((hb && hb.lastCadence) || '—'))}
+    ${kv('last cadence', esc(cadenceText(hb && hb.lastCadence)))}
     ${kv('decisions paused', r.paused ? 'YES (UI flag)' : 'no')}
     ${kv('live state API', h.liveFetchError
       ? `<span class="red">✖ ${esc(h.liveFetchError)}</span>`

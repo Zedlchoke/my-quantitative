@@ -18,6 +18,8 @@ const { RunnerController } = require('./runner');
 const { HealthStore, PolymarketProvider } = require('./market');
 const { AIReviewEngine, deadlineFor } = require('./ai');
 const { buildCandidates } = require('./candidates');
+const { evaluateAIPaperAction, snapshotFromMatchView }
+  = require('./paper_policy');
 const { LIVE_EXECUTION_SEAL, PAPER_DECISION_OUTCOMES }
   = require('./seal');
 
@@ -312,7 +314,29 @@ function boot() {
   ipcMain.handle('policy:set', (_e, p) => {
     windowClosePolicy = p; writePolicy(p); });
   ipcMain.handle('ai:setMode', (_e, m) => ai.setMode(m));
-  ipcMain.handle('ai:run', async (_e, match) => ai.runReview(match));
+  // Attach the frozen-gate advisory evaluation to a finished opinion and
+  // persist it in the AI sidecar (NEVER the ledger). Reads ledger snapshot
+  // numbers only; the AI's own numbers carry no authority.
+  function evaluateAndPersist(op) {
+    try {
+      const m = (ledger.matches || [])
+        .find(x => x.matchId === op.matchID);
+      const snap = snapshotFromMatchView(m, ledger.wallet);
+      op.policyEvaluation = evaluateAIPaperAction(
+        { opinion: op, fixture: snap });
+      ai.store.save(op);
+      ai.opinions = ai.store.list();
+    } catch (e) {
+      runner.audit('POLICY_EVAL_FAILED',
+        { match: op.matchID, error: String(e).slice(0, 160) });
+    }
+  }
+  ipcMain.handle('ai:run', async (_e, match) => {
+    const op = await ai.runReview(match);
+    evaluateAndPersist(op);
+    broadcast();
+    return op;
+  });
   ipcMain.handle('ai:refreshEntitlement', () => ai.refreshEntitlement());
   ipcMain.handle('pm:probe', async () => health.probePolymarket());
   ipcMain.handle('pm:events', async () => pm.fetchEventsForDisplay());
@@ -354,7 +378,13 @@ function boot() {
     await runner.establish();
     refreshLedger();
     broadcast();
-    ticker = setInterval(() => { refreshLedger(); broadcast(); }, 2000);
+    ticker = setInterval(() => {
+      runner.pollOnce();          // re-measure runner state (heartbeat/pid),
+                                  // not just the ledger file — keeps the UI's
+                                  // heartbeat age/tick_count fresh (audit fix)
+      refreshLedger();
+      broadcast();
+    }, 2000);
     // AI auto-scheduler (P0 fix): every 30 s, gather candidate fixtures
     // (no decision row yet, kickoff in the future — from the ledger and the
     // runner's upcoming plan) and run due pre-anchor reviews. Idempotent per
@@ -380,6 +410,13 @@ function boot() {
         ai.maybeAutoReview(candidates, pm)
           .then(res => {
             if (res.ran && res.ran.length) {
+              for (const r of res.ran) {
+                const op = ai.opinions.find(
+                  o => o.matchID === r.matchId
+                    && o.opinionID === (r.opinionID || o.opinionID));
+                const latest = ai.opinions.find(o => o.matchID === r.matchId);
+                if (latest) evaluateAndPersist(latest);
+              }
               runner.audit('AI_AUTO_REVIEW', { ran: res.ran });
               broadcast();
             }
