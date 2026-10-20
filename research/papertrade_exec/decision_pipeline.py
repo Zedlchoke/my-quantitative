@@ -166,13 +166,15 @@ def evaluate_ai_gate(
 
     if ai_action == "KEEP":
         ev = ev_net_by_leg.get(chosen_leg)
-        ok = push("G_EV_KEEP", ev is not None and ev >= EV_THRESHOLD,
-                  f"frozen EV({chosen_leg})={ev}")
+        push("G_EV_KEEP", ev is not None and ev >= EV_THRESHOLD,
+             f"frozen EV({chosen_leg})={ev}")
         push("G_PIT_KEEP", snapshot_before_anchor and not anchor_passed,
              "PIT window")
+        ok = all(g["pass"] for g in gates)
         return ("PLACE" if ok else "NOT_PLACED"), gates, (
             "AI KEEP — all gates pass" if ok
-            else "AI KEEP — gates fail on re-check")
+            else "AI KEEP — gates fail: " + ", ".join(
+                g["gate"] for g in gates if not g["pass"]))
 
     if ai_action == "SWITCH":
         new_leg = ai_proposed_leg
