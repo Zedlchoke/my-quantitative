@@ -237,9 +237,11 @@ class AIReviewEngine {
       this.lastNote = 'NOT_RUN_AI_RUNTIME_ENTITLEMENT — no OpenRouter key '
         + 'in Keychain; mock demo only. Z.ai probes stopped by owner.';
     } else if (this.mode === 'disabled-no-entitlement') {
-      this.mode = 'shadow-mock';
-      this.lastNote = 'OpenRouter key found — SHADOW live chain available '
-        + '(MOCK stays default until enabled)';
+      // free chain live-verified (HTTP 200 strict-JSON, \$0): default to the
+      // REAL OpenRouter SHADOW so the mandatory gate has live opinions
+      this.mode = 'shadow-live';
+      this.lastNote = 'OpenRouter key found — SHADOW live (free chain) is '
+        + 'the default; MOCK remains selectable';
     }
   }
 
