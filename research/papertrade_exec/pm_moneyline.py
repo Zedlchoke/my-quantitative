@@ -183,6 +183,13 @@ def probe_event_moneyline(*, event_id: str, home: str, away: str,
     if not isinstance(tokens, list) or len(tokens) < 2:
         return {"event_id": event_id, "joined": True,
                 "why": "clobTokenIds missing", "market_id": ml.get("id")}
+    outcomes_raw = ml.get("outcomes")
+    if isinstance(outcomes_raw, str):
+        try: outcomes_list = json.loads(outcomes_raw)
+        except Exception: outcomes_list = ["HOME", "AWAY"]
+    else:
+        outcomes_list = ["HOME", "AWAY"]
+
     home_yes_token = tokens[0]
     walk = walk_ask(home_yes_token, stake_cents=stake_cents,
                     data_root=data_root, sandbox=sandbox)
