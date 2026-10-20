@@ -698,7 +698,7 @@ class AIReviewEngine {
 
   setMode(mode) {
     if (mode === 'shadow-live' && !this.entitlement.present) {
-      this.lastNote = 'refused: no General API entitlement';
+      this.lastNote = 'refused: no OpenRouter key in Keychain';
       return false;
     }
     this.mode = mode;

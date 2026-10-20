@@ -59,6 +59,11 @@ only), consume any GO phrase, change any pinned number.
   logged, never rendered; only an HTTP Authorization header to
   openrouter.ai. OpenCode: NOT required (a suitable free hosted API exists
   via OpenRouter).
+- Durable no-autostart: `launchctl disable gui/$(id -u)/com.myquant.sptexec.ops`
+  recorded 2026-10-20 (evidence: paperdesk_evidence_2026-10-19/
+  launchd_disabled_2026-10-20.txt) — even a re-login will NOT auto-start
+  the supervisor; paper runs only when the app (or the owner) starts it.
+  Re-enable: `launchctl enable gui/$(id -u)/com.myquant.sptexec.ops`.
 - Failure law: every model fails ⇒ opinion `ALL_PROVIDERS_FAILED` with
   verdict **ABSTAIN** and a full per-attempt journal (provider/model/http/
   fallback reason); deadline aborts chain ⇒ `TIMEOUT_LATE_INVALID`.

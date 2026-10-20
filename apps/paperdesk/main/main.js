@@ -109,7 +109,7 @@ function boot() {
   }
   let windowClosePolicy = readPolicy();
   let aiAutomation = 'Machinery TESTED (canonical candidate builder + '
-    + 'rolling-window budget + anchor-law windows + idempotence, 37/37 '
+    + 'rolling-window budget + anchor-law windows + idempotence, 43/43 '
     + 'seam); scheduler IDLE while mode is disabled-no-entitlement — no '
     + 'opinions are generated. GLM/Z.ai live: STOPPED by owner '
     + '(insufficient balance, HTTP 429 errCode 1113, 2026-10-20); live '

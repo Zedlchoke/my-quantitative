@@ -635,17 +635,20 @@ function viewAI() {
           S.ai.mode === 'shadow-mock' ? 'active' : ''}">MOCK demo</button>
         <button data-m="shadow-live" class="${
           S.ai.mode === 'shadow-live' ? 'active' : ''}"
-          ${ent.present ? '' : 'disabled'}>Z.ai SHADOW</button>
+          ${ent.present ? '' : 'disabled'}>OpenRouter SHADOW</button>
       </span></div>
     ${ent.present
-      ? `<div class="green">🔑 General API key present in Keychain
-          (fingerprint ${esc(ent.fingerprint)}…). SHADOW mode records
-          opinions only.</div>`
-      : `<div class="orange">🚫 NOT_RUN_AI_RUNTIME_ENTITLEMENT — no Z.ai
-          General API key in Keychain (service com.myquant.paperdesk /
-          account zai-api-key). Mock demo runs locally. The Coding-Plan API
-          is banned as an opinion backend; no purchase will be made by the
-          app.</div>`}
+      ? `<div class="green">🔑 OpenRouter key present in Keychain
+          (service com.myquant.paperdesk / openrouter-api-key, fingerprint
+          ${esc(ent.fingerprint)}…). SHADOW mode records opinions only;
+          free-model chain with 429/quota/5xx/timeout fallback, ABSTAIN if
+          all fail.</div>`
+      : `<div class="orange">🚫 NOT_RUN_AI_RUNTIME_ENTITLEMENT — no
+          OpenRouter key in Keychain (service com.myquant.paperdesk /
+          account openrouter-api-key). Mock demo runs locally. Z.ai probes
+          are STOPPED by owner order (insufficient balance); the Coding-Plan
+          API is banned as an opinion backend; no purchase will be made by
+          the app.</div>`}
     ${S.ai.lastNote ? `<div class="note mono">last: ${esc(S.ai.lastNote)}</div>`
       : ''}
   </div>
