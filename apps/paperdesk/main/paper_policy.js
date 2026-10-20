@@ -58,7 +58,14 @@ function evaluateAIPaperAction({ opinion, fixture }) {
       failures: ['recommended_action missing or not in KEEP/SKIP/SWITCH'] };
   }
 
-  const isOpenBet = f.decisionStatus === 'BET_PAPER' && !f.settlement;
+  // post-settlement: actions are historic only (freeze §3.4) — checked
+  // BEFORE any branch so the rule is reachable for every action
+  if (f.settlement) {
+    return { ...base, result: 'INVALID',
+      failures: ['fixture already settled — actions are historic only'] };
+  }
+
+  const isOpenBet = f.decisionStatus === 'BET_PAPER';
 
   // ---- SKIP: staying out is always a lawful advisory ---------------------
   if (action === 'SKIP') {
@@ -87,11 +94,6 @@ function evaluateAIPaperAction({ opinion, fixture }) {
   }
 
   // ---- OPEN BET from here: KEEP / SWITCH with full gate grading ----------
-  if (f.settlement) {
-    return { ...base, result: 'INVALID',
-      failures: ['fixture already settled — actions are historic only'] };
-  }
-
   if (action === 'KEEP') {
     return { ...base, result: 'LAWFUL_KEEP', gates: [
       gate('G_KEEP_CURRENT', true,

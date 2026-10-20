@@ -360,8 +360,13 @@ function matchDetail(m) {
         ${kv('settled at', esc(m.settlement.settled_at_utc || '—'))}
         ${kv('source', esc(m.settlement.source_ref || '—'))}`
         : m.isOpen
-        ? '<div class="dim">⏳ OPEN — settles only from the pinned results '
-          + 'source after kickoff+grace; never inferred.</div>'
+        ? ((m.kickoffUTC && Date.now() > Date.parse(m.kickoffUTC) + 3
+            * 3600 * 1000)
+          ? '<div class="dim">🏁 Match finished — settlement pending a '
+            + 'qualified results source (90-minute law; never inferred). '
+            + 'WSL: resolved via the tracked Polymarket markets.</div>'
+          : '<div class="dim">⏳ OPEN — settles only from the pinned results '
+            + 'source after kickoff+grace; never inferred.</div>')
         : '<div class="dim">No settlement row (not a bet).</div>'}
     </div>
   </div>

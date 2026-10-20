@@ -1593,6 +1593,10 @@ def cmd_settle(args) -> dict:
     _r = maybe_wsl(args, "settle")
     if _r is not None:
         return _r
+    return _cmd_settle_standard(args)
+
+
+def _cmd_settle_standard(args) -> dict:
     require_gate(args)
     verify_pins(roots=_roots_from_args(args))
     core, led = open_ledger(args, create=False)

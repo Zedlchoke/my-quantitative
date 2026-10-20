@@ -320,10 +320,14 @@ class OpsService:
     def _fetch_results(self, league, date, rows, all_rows):
         mids = [r["match_id"] for r in rows]
         if league == "WSL":
-            # CAPITAL-V3: no WSL results source is pinned in this cycle;
-            # bets stay OPEN (fail-closed; never a guessed settlement).
-            return {}, [{"match_id": m, "why": "WSL results source not "
-                         "pinned; bet kept OPEN (fail-closed)"} for m in mids]
+            # WSL RESULTS SOURCE V1 (owner order 2026-10-20): the bet's OWN
+            # tracked Polymarket 3-YES markets, resolved by UMA under the
+            # pinned 90-minute rules — identity by construction. Ambiguous /
+            # pending / postponed resolutions stay OPEN (never guessed).
+            from research.papertrade_exec import wsl_results
+            return wsl_results.fetch_wsl_settleable(
+                rows=rows, ledger_rows=all_rows, data_root=self.data_root,
+                sandbox=self.sandbox)
         if league in ("NBA", "WNBA"):
             return RF.fetch_espn_results(
                 league=league, date=date, match_ids=mids,

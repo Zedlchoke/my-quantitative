@@ -919,9 +919,30 @@ def cmd_decide(args) -> dict:
 
 
 def cmd_settle(args) -> dict:
-    """No WSL results source is pinned in this cycle: settle REFUSES loudly
-    and every WSL bet stays OPEN (fail-closed; ops_service journals
-    SETTLE_KEEP_OPEN before ever calling here)."""
-    raise LaneBlock("BLOCKED_NO_RESULTS_SOURCE",
-                    "WSL results source not pinned (CAPITAL-V3); WSL bets "
-                    "stay OPEN — never a guessed settlement", 9)
+    """WSL RESULTS SOURCE V1 (owner order 2026-10-20): settlement is lawful
+    ONLY from the pinned UMA-resolution source — every entry of the staged
+    results file must carry source_ref "polymarket_uma event=..." (produced
+    exclusively by wsl_results.fetch_wsl_settleable from the bet's OWN
+    tracked 3-YES markets). Anything else — hand-built files, guessed
+    scores, other sources — REFUSES loudly (BLOCKED_NO_RESULTS_SOURCE) and
+    every WSL bet stays OPEN. The money math + ledger append remain with
+    the PINNED core (execute._cmd_settle_standard -> risk.settle)."""
+    results_path = Path(getattr(args, "results", ""))
+    entries = {}
+    if results_path.exists():
+        entries = json.loads(results_path.read_text())
+    if not isinstance(entries, dict) or not entries:
+        raise LaneBlock("BLOCKED_NO_RESULTS_SOURCE",
+                        "WSL settle requires staged results from the pinned "
+                        "polymarket_uma source — file missing/empty", 9)
+    for mid, v in entries.items():
+        src = v.get("source_ref", "") if isinstance(v, dict) else ""
+        res = v.get("result") if isinstance(v, dict) else None
+        if not str(src).startswith("polymarket_uma event=") or res not in (
+                "HOME", "DRAW", "AWAY"):
+            raise LaneBlock("BLOCKED_NO_RESULTS_SOURCE",
+                            f"entry {mid} is not from the pinned "
+                            f"polymarket_uma source — refusing (stays "
+                            f"OPEN, never a guessed settlement)", 9)
+    from research.papertrade_exec import execute as _exec
+    return _exec._cmd_settle_standard(args)

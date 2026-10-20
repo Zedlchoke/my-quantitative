@@ -160,6 +160,20 @@ const opinion = { recommended_action: 'SWITCH', proposed_leg: 'AWAY',
     && !JSON.stringify(r.gates).includes('0.90'),
     'authority: fabricated AI EV ignored — frozen ledger EV governs');
 
+  // 15b. post-settlement: INVALID for EVERY action (reachable branch —
+  //      A7 delta-5 F-1)
+  for (const action of ['SWITCH', 'KEEP', 'SKIP']) {
+    r = evaluateAIPaperAction({
+      opinion: action === 'SWITCH'
+        ? { recommended_action: 'SWITCH', proposed_leg: 'AWAY' }
+        : { recommended_action: action },
+      fixture: validFixture({ settlement: { pnl_cents: 300 },
+        outcomeForLeg: 'WIN' }) });
+    check(r.result === 'INVALID'
+      && r.failures[0]?.includes('already settled'),
+      `law post-settlement: ${action} on a settled fixture -> INVALID`);
+  }
+
   // 16. invalid action enum
   r = evaluateAIPaperAction({ opinion:
     { recommended_action: 'DOUBLE_DOWN' }, fixture: validFixture() });
