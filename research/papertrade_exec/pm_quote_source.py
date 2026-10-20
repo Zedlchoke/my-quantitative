@@ -48,22 +48,22 @@ class PMQuoteAdapter:
             return None
         if not result.get("joined"):
             return None
-        walk = result.get("book_walk_at_stake")
-        if not walk:
-            return None
-        # For 2-way moneyline the HOME token is tokens[0] (the probed leg).
-        # The AWAY leg's 1 - VWAP is the implied AWAY ask (approximation for
-        # display only; the executable AWAY walk would use tokens[1]).
-        best = walk.get("best_ask", 0)
-        vwap = walk.get("vwap_ask", 0)
+        # BOTH legs walked separately via their own CLOB tokens
+        # (P0 fix: no AWAY=1−HOME approximation, no hardcoded depth_ok)
+        legs_result = result.get("legs") or {}
+        if not legs_result.get("HOME", {}).get("best_ask") or            not legs_result.get("AWAY", {}).get("best_ask"):
+            return None   # either leg's walk failed — insufficient depth
         return {
             "legs": {
-                "HOME": {"best_ask": best, "vwap_ask": vwap,
-                         "depth_ok": True, "levels": walk.get("levels", 0)},
-                "AWAY": {"best_ask": round(1.0 - best, 4),
-                         "vwap_ask": round(1.0 - vwap, 4),
-                         "depth_ok": True, "levels": walk.get("levels", 0),
-                         "note": "approx from HOME ask (2-outcome complement)"},
+                leg: {
+                    "best_ask": legs_result[leg].get("best_ask"),
+                    "vwap_ask": legs_result[leg].get("vwap_ask"),
+                    "filled_shares": legs_result[leg].get("filled_shares"),
+                    "fee_total": legs_result[leg].get("fee_total"),
+                    "levels": legs_result[leg].get("levels"),
+                    "depth_ok": True,  # walk succeeded (spend covered)
+                }
+                for leg in ("HOME", "AWAY")
             },
             "all_present": True,
             "event_id": event_id,
