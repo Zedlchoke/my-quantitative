@@ -143,8 +143,18 @@ function boot() {
       ledger: {
         chain: ledger.chain, rowsCount: ledger.rows.length,
         parseError: ledger.parseError, isSandbox: ledger.isSandbox,
-        wallet: ledger.wallet, equity: ledger.equity,
-        matches: ledger.matches,
+        wallet: ledger.wallet,
+        equity: (function(pts) {
+          if (!pts || pts.length <= 500) return pts || [];
+          const step = Math.ceil(pts.length / 500);
+          const out = [];
+          for (let i = 0; i < pts.length; i += step) out.push(pts[i]);
+          const last = pts[pts.length - 1];
+          if (out[out.length - 1] !== last) out.push(last);
+          return out;
+        })(ledger.equity),
+        matches: ledger.matches.slice(0, 200),
+        matchesTotal: ledger.matches.length,
         path: ledgerPath(),
       },
       runner: {
