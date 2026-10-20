@@ -190,9 +190,20 @@ def probe_event_moneyline(*, event_id: str, home: str, away: str,
     else:
         outcomes_list = ["HOME", "AWAY"]
 
-    home_yes_token = tokens[0]
-    walk = walk_ask(home_yes_token, stake_cents=stake_cents,
-                    data_root=data_root, sandbox=sandbox)
+    # P0 fix: walk BOTH legs separately via their own CLOB tokens
+    legs_result = {}
+    all_ok = True
+    for i, leg_name in enumerate(outcomes_list[:2]):
+        leg = "HOME" if i == 0 else "AWAY"
+        token = tokens[i]
+        walk = walk_ask(token, stake_cents=stake_cents,
+                        data_root=data_root, sandbox=sandbox)
+        if walk is None:
+            legs_result[leg] = {"error": "walk failed",
+                                "token": str(token)[:16] + "…"}
+            all_ok = False
+        else:
+            legs_result[leg] = walk
     prices = ml.get("outcomePrices")
     if isinstance(prices, str):
         try: prices = json.loads(prices)
@@ -202,7 +213,7 @@ def probe_event_moneyline(*, event_id: str, home: str, away: str,
             "question": (ml.get("question") or "")[:90],
             "outcomes": ml.get("outcomes"),
             "indicative_prices": prices,   # NEVER used as a quote
-            "home_yes_token": str(home_yes_token)[:16] + "…",
-            "book_walk_at_stake": walk,
+            "legs": legs_result,
+            "all_legs_walked": all_ok,
             "closed": ml.get("closed"),
             "uma": ml.get("umaResolutionStatus")}
