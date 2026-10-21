@@ -2307,7 +2307,7 @@ def apply_ai_gate_v2(args, led, f, dec: dict, fc_row, quote_row,
     anchor = (fc_row or {}).get("anchor_utc") or ""
     op, why = G.load_opinion_for(data_root, f.match_id, chash)
     if op is not None:
-        if op["verdict"] == "VETO":
+        if str(op["verdict"]).strip().upper() == "VETO":   # L1 canonical
             G.clear_pending(data_root, f.match_id, "AI_VETO")
             row = {"type": "DECISION", "league": f.league,
                    "match_id": f.match_id, "competition": f.competition,

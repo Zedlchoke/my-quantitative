@@ -35,6 +35,11 @@ from tests.papertrade_exec import test_fixall_w1 as W1           # noqa: E402
 from research.papertrade_exec import ai_gate_v2 as G             # noqa: E402
 from research.papertrade_exec import ai_scorecard                # noqa: E402
 from research.papertrade_exec import execute                     # noqa: E402
+from research.papertrade_exec.ai_producer import registered_prompt_sha  # noqa: E402
+
+
+def _reg_sha():
+    return registered_prompt_sha(REPO)[0]
 
 env = _ops.env
 incidents = _ops.incidents
@@ -121,7 +126,7 @@ def _write_opinion(env, led, dec, verdict, *, sources=("https://x",),
                        "excerpt": "headline"} for u in sources],
           "model_id": "test-model", "provider": "test",
           "prompt_version": "AI_PROMPT_V2",
-          "prompt_sha256": "a" * 64,
+          "prompt_sha256": _reg_sha(),
           "created_at_utc": "2026-10-08T09:00:00Z"}
     G.record_opinion(env["data"], op)
     return chash
@@ -132,8 +137,9 @@ def _write_opinion(env, led, dec, verdict, *, sources=("https://x",),
 def test_v2_schema_two_verdicts_only(env):
     base = {"match_id": "m1", "candidate_hash": "h" * 64,
             "reason_codes": ["R"], "summary": "s", "sources": [
-                {"url": "https://x", "fetched_at_utc": "t"}],
-            "prompt_sha256": "a" * 64}
+                {"url": "https://x", "fetched_at_utc": "t",
+                 "excerpt": "e"}],
+            "prompt_sha256": _reg_sha()}
     ok, why = G.validate_opinion({**base, "verdict": "ALLOW"})
     assert ok, why
     ok, why = G.validate_opinion({**base, "verdict": "VETO"})
@@ -215,7 +221,7 @@ def test_decide_silence_is_pending_then_no_verdict(env):
     (bad_dir / f"m1_{chash}.json").write_text(json.dumps(
         {"match_id": "m1", "candidate_hash": chash, "verdict": "SWITCH",
          "reason_codes": ["R"], "summary": "s", "sources": [],
-         "prompt_sha256": "a" * 64}))
+         "prompt_sha256": "b" * 64}))
     out = _run_decide(env, led, lambda *a, **k: dict(_bet_dec(env)))
     assert out["journaled"][0]["status"] == "PENDING_AI"
     assert not [r for r in led.rows if r.get("type") == "DECISION"]
@@ -471,3 +477,86 @@ def test_a7_m3_weekly_scorecard_job(env):
     svc._maybe_weekly_scorecard()
     kinds = [i["kind"] for i in incidents(env)]
     assert kinds.count("AI_SCORECARD_COMPUTED") == 1
+
+
+# --------------------------------------------------- U0 battery additions ----
+
+def test_u0_citation_filter_and_excerpt_law(env, tmp_path):
+    from research.papertrade_exec import ai_producer
+    # parse_v2 keeps model citations verbatim; the PRODUCER filters. The
+    # excerpt law lives in validate_opinion (no excerpt => invalid).
+    base = {"match_id": "m1", "candidate_hash": "h" * 64,
+            "reason_codes": ["R"], "summary": "s",
+            "prompt_sha256": _reg_sha()}
+    # U0: a source without an excerpt is not a citation
+    ok, why = G.validate_opinion({**base, "verdict": "ALLOW", "sources": [
+        {"url": "https://x", "fetched_at_utc": "t", "excerpt": ""}]})
+    assert not ok and "excerpt" in why
+    ok, _ = G.validate_opinion({**base, "verdict": "VETO", "sources": [
+        {"url": "https://x", "fetched_at_utc": "t", "excerpt": "e"}]})
+    assert ok
+
+
+def test_u0_prompt_sha_gate_voids_stale_or_reforged(env, monkeypatch):
+    """An opinion bound to a prompt sha != the REGISTERED (digest-blanked)
+    sha is void — and reforging the registered value into the file keeps
+    the formula self-consistent (the battery measures, not hardcodes)."""
+    led = W1._sandbox_ledger(env)
+    W1._seed_chain(led, "m1")
+    dec = _bet_dec(env)
+    # an opinion bound to a WRONG prompt sha is VOID (U0/M1 consumption
+    # gate) — craft one explicitly with a bogus sha
+    fc, qt = _ledger_fc_qt(led)
+    chash = G.candidate_hash_for(dec, fc, qt)
+    G.record_opinion(env["data"], {
+        "match_id": "m1", "candidate_hash": chash, "verdict": "ALLOW",
+        "reason_codes": ["R"], "summary": "s",
+        "sources": [{"url": "https://x", "fetched_at_utc": "t",
+                     "excerpt": "e"}],
+        "model_id": "t", "provider": "t", "prompt_version": "AI_PROMPT_V2",
+        "prompt_sha256": "f" * 64, "created_at_utc": "2026-10-08T09:00:00Z"})
+    op, why = G.load_opinion_for(env["data"], "m1", chash)
+    assert op is None and "prompt_sha" in why
+    # rebind with the REGISTERED sha measured from the real prompt file
+    from research.papertrade_exec.ai_producer import registered_prompt_sha
+    reg_sha, _, _ = registered_prompt_sha(REPO)
+    op_rec = {"match_id": "m1", "candidate_hash": chash, "verdict": "ALLOW",
+              "reason_codes": ["R"], "summary": "s",
+              "sources": [{"url": "https://x", "fetched_at_utc": "t",
+                           "excerpt": "e"}],
+              "model_id": "t", "provider": "t",
+              "prompt_version": "AI_PROMPT_V2", "prompt_sha256": reg_sha,
+              "created_at_utc": "2026-10-21T00:00:00Z"}
+    G.record_opinion(env["data"], op_rec)
+    op2, why2 = G.load_opinion_for(env["data"], "m1", chash)
+    assert op2 is not None, why2
+    # the registered sha is REPRODUCIBLE (measure twice)
+    reg2, _, _ = registered_prompt_sha(REPO)
+    assert reg2 == reg_sha
+    # and the OLD 4365381d… prefix is NOT reproducible from the file
+    import hashlib
+    raw = (REPO / "research" / "papertrade_exec" / "AI_PROMPT_V2.md")\
+        .read_bytes()
+    assert not hashlib.sha256(raw).hexdigest().startswith("4365381d")
+
+
+def test_u0_l1_mixed_case_verdict_never_flips_to_allow(env):
+    """'Veto' (mixed case) must consume as VETO — the L1 gap would have
+    treated the un-canonical string as the ALLOW branch."""
+    led = W1._sandbox_ledger(env)
+    W1._seed_chain(led, "m1")
+    dec = _bet_dec(env)
+    chash = G.candidate_hash_for(dec, *_ledger_fc_qt(led))
+    from research.papertrade_exec.ai_producer import registered_prompt_sha
+    reg_sha, _, _ = registered_prompt_sha(REPO)
+    G.record_opinion(env["data"], {
+        "match_id": "m1", "candidate_hash": chash, "verdict": "Veto",
+        "reason_codes": ["R"], "summary": "s",
+        "sources": [{"url": "https://x", "fetched_at_utc": "t",
+                     "excerpt": "e"}],
+        "model_id": "t", "provider": "t", "prompt_version": "AI_PROMPT_V2",
+        "prompt_sha256": reg_sha, "created_at_utc": "2026-10-21T00:00:00Z"})
+    op, _ = G.load_opinion_for(env["data"], "m1", chash)
+    assert op["verdict"] == "VETO"      # canonicalized at load
+    out = _run_decide(env, led, lambda *a, **k: dict(dec))
+    assert out["journaled"][0]["status"] == "NOT_PLACED_AI_VETO"

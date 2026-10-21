@@ -2,7 +2,7 @@
 
 prompt_version: AI_PROMPT_V2
 frozen_at_utc: 2026-10-21T00:00:00Z
-sha256 (measured over the file WITHOUT this line's digest value, per freeze law below): 4365381d8d6eb7d5…
+sha256 (measured over the file WITHOUT this line's digest value, per freeze law below): 7a1b30cb9c13ef22eb093c4889fc128729efd46dcaaf87ac11c676f66e967414
 
 ## System prompt (verbatim; the model sees exactly this)
 

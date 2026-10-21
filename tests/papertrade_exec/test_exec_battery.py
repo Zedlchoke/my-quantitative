@@ -1442,6 +1442,9 @@ def _v2_opinion_from_pending(env, verdict, reason=None):
     (the runner owns the candidate hash); the producer binds the opinion
     to EXACTLY that hash; decide pass 2 consumes it."""
     from research.papertrade_exec import ai_gate_v2 as G
+    from research.papertrade_exec.ai_producer import registered_prompt_sha
+    reg = registered_prompt_sha(
+        Path(__file__).resolve().parents[2])[0]
     pending = G._load_pending(env["data"])
     assert pending, "decide pass 1 must record the PENDING queue"
     written = []
@@ -1457,7 +1460,7 @@ def _v2_opinion_from_pending(env, verdict, reason=None):
                          "excerpt": "headline"}],
             "model_id": "battery-model", "provider": "battery",
             "prompt_version": "AI_PROMPT_V2",
-            "prompt_sha256": "a" * 64,
+            "prompt_sha256": reg,
             "created_at_utc": "2026-10-08T09:00:00Z"})
         written.append(mid)
     return written

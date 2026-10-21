@@ -109,14 +109,34 @@ def _post_chat(endpoint: str, key: str, model: str, system: str,
     return content
 
 
-def _frozen_prompt(worktree_root: Path) -> dict:
+PROMPT_SHA_LINE = "sha256 (measured"
+
+
+def registered_prompt_sha(worktree_root: Path) -> tuple[str, str, str]:
+    """U0/M1: the registered sha is sha256 over the prompt file with the
+    digest VALUE on the 'sha256 (measured...' line replaced by EMPTY —
+    the freeze formula documented in the file itself. Returns
+    (sha, system_text, erratum_note)."""
     p = Path(worktree_root) / "research" / "papertrade_exec" / \
         "AI_PROMPT_V2.md"
     text = p.read_text()
+    lines = text.splitlines()
+    sha_line = next((l for l in lines if l.startswith(PROMPT_SHA_LINE)), None)
+    blanked = text.replace(sha_line, sha_line.split(": ")[0] + ": ") \
+        if sha_line else text
+    return (hashlib.sha256(blanked.encode()).hexdigest(),
+            text,
+            "erratum U0/M1: the previously registered 4365381d… was NOT "
+            "reproducible from the delivered file; re-measured and "
+            "re-registered with the documented digest-blanked formula")
+
+
+def _frozen_prompt(worktree_root: Path) -> dict:
     import re
+    sha, text, _err = registered_prompt_sha(worktree_root)
     m = re.search(r"```\n([\s\S]*?)\n```", text)
     return {"version": "AI_PROMPT_V2",
-            "sha256": hashlib.sha256(text.encode()).hexdigest(),
+            "sha256": sha,
             "system": m.group(1) if m else text}
 
 
@@ -232,16 +252,32 @@ def produce_for_pending(data_root: Path, *, worktree_root: Path,
             G.gate_event(data_root, "OPINION_INVALID", match_id=mid,
                          why=parsed["why"][:200])
             continue
-        # merge model-cited urls with the captured evidence citations
-        captured = {s["url"]: s for s in
-                    (research.get("sources") or [])}
-        sources = []
-        for s in parsed["sources"]:
-            src = captured.get(s["url"]) or s
-            sources.append({"url": s["url"],
-                            "excerpt": src.get("excerpt") or s["excerpt"],
-                            "fetched_at_utc": src.get("fetched_at_utc")
-                            or s["fetched_at_utc"]})
+        # U0/H1 citation law: ONLY sources whose URL is in the actually
+        # captured set survive — a model-invented URL is dropped ENTIRELY
+        # (never re-stamped, never salvaged). ALLOW with zero surviving
+        # sources is INVALID (insufficient evidence).
+        captured = {s["url"]: s for s in (research.get("sources") or [])}
+        sources = [captured[s["url"]] for s in parsed["sources"]
+                   if s["url"] in captured]
+        if parsed["verdict"] == "ALLOW" and not sources:
+            bad = out_dir / ".invalid"
+            bad.mkdir(exist_ok=True)
+            (bad / f"{mid}_{entry.get('candidate_hash')}.json").write_text(
+                json.dumps({"match_id": mid,
+                            "candidate_hash": entry.get("candidate_hash"),
+                            "invalid_why": ("ALLOW with zero CAPTURED "
+                                "sources after the citation filter — all "
+                                "model citations were fabricated "
+                                "(U0/H1)"),
+                            "raw": str(raw)[:2000], "model_id": model,
+                            "prompt_version": prompt["version"],
+                            "prompt_sha256": prompt["sha256"],
+                            "created_at_utc": _now()}, indent=1,
+                           sort_keys=True))
+            summary["invalid"] += 1
+            G.gate_event(data_root, "OPINION_INVALID", match_id=mid,
+                         why="citation filter emptied an ALLOW (U0/H1)")
+            continue
         opinion = {"match_id": mid,
                    "candidate_hash": entry.get("candidate_hash"),
                    "verdict": parsed["verdict"],

@@ -100,6 +100,9 @@ def validate_opinion(op: dict) -> tuple[bool, str]:
                 not s.get("fetched_at_utc"):
             return False, ("a source lacks url/fetched_at_utc (citations "
                            "law)")
+        if not str(s.get("excerpt") or "").strip():
+            return False, ("a source lacks an excerpt (citations law — "
+                           "url+time alone is not a citation, U0)")
     if verdict == "ALLOW" and not sources:
         return False, ("ALLOW with ZERO captured sources — insufficient "
                        "evidence is a refusal reason, not an approval")
@@ -126,6 +129,22 @@ def load_opinion_for(data_root: Path, match_id: str,
     ok, why = validate_opinion(op)
     if not ok:
         return None, why
+    op = dict(op)
+    op["verdict"] = str(op["verdict"]).strip().upper()   # L1: canonical
+    # U0/M1 prompt-hash consumption gate: the opinion's prompt sha must
+    # equal the REGISTERED sha (digest-blanked formula) — a stale/re-hashed
+    # prompt voids the opinion.
+    try:
+        from research.papertrade_exec.ai_producer import \
+            registered_prompt_sha
+        reg_sha, _, _ = registered_prompt_sha(
+            Path(__file__).resolve().parents[1].parent)
+    except Exception:
+        return None, "registered prompt sha unmeasurable — fail-closed"
+    if str(op.get("prompt_sha256") or "") != reg_sha:
+        return None, (f"opinion prompt_sha {str(op.get('prompt_sha256'))[:12]}"
+                      f"… != registered {reg_sha[:12]}… — prompt era "
+                      "mismatch, opinion void (U0/M1)")
     return op, "valid"
 
 
