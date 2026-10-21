@@ -2300,15 +2300,19 @@ def apply_ai_gate_v2(args, led, f, dec: dict, fc_row, quote_row,
                                silence of the AI layer never kills a bet
                                inside the window (owner QĐ2).
     The AI NEVER supplies numbers; opinions are hash-locked to the exact
-    candidate (price/EV/model change => new hash => stale review void)."""
+    candidate (price/EV/model change => new hash => stale review void).
+    M6 (U4): the whole ai_review plane follows the args.sandbox flag — a
+    sandbox decide reads/writes <data-root>/sandbox/ai_review and never
+    touches a byte of the real plane."""
     from research.papertrade_exec import ai_gate_v2 as G
     data_root = Path(args.data_root)
+    sb = bool(getattr(args, "sandbox", False))
     chash = G.candidate_hash_for(dec, fc_row, quote_row)
     anchor = (fc_row or {}).get("anchor_utc") or ""
-    op, why = G.load_opinion_for(data_root, f.match_id, chash)
+    op, why = G.load_opinion_for(data_root, f.match_id, chash, sandbox=sb)
     if op is not None:
         if str(op["verdict"]).strip().upper() == "VETO":   # L1 canonical
-            G.clear_pending(data_root, f.match_id, "AI_VETO")
+            G.clear_pending(data_root, f.match_id, "AI_VETO", sandbox=sb)
             row = {"type": "DECISION", "league": f.league,
                    "match_id": f.match_id, "competition": f.competition,
                    "home": f.home, "away": f.away,
@@ -2328,11 +2332,12 @@ def apply_ai_gate_v2(args, led, f, dec: dict, fc_row, quote_row,
                    "stake_cents": 0, "chosen_leg": None}
             return row
         dec["ai_gate"] = G.ai_gate_block(op, why, "PLACE", chash)
-        G.clear_pending(data_root, f.match_id, "AI_ALLOW")
+        G.clear_pending(data_root, f.match_id, "AI_ALLOW", sandbox=sb)
         return None
     # no valid opinion:
     if anchor and not G.review_deadline_passed(anchor, now):
         G.pending_marker(data_root, f.match_id, chash, anchor, why,
+                         sandbox=sb,
                          context={"league": f.league, "match_id": f.match_id,
                                   "home": f.home, "away": f.away,
                                   "kickoff_utc": f.kickoff_utc,
@@ -2343,7 +2348,7 @@ def apply_ai_gate_v2(args, led, f, dec: dict, fc_row, quote_row,
                                   "ev_net_by_leg": dec.get("ev_net_by_leg"),
                                   "stake_cents": dec.get("stake_cents")})
         return "PENDING"
-    G.clear_pending(data_root, f.match_id, "AI_NO_VERDICT")
+    G.clear_pending(data_root, f.match_id, "AI_NO_VERDICT", sandbox=sb)
     row = {"type": "DECISION", "league": f.league,
            "match_id": f.match_id, "competition": f.competition,
            "home": f.home, "away": f.away, "kickoff_utc": f.kickoff_utc,
@@ -2385,12 +2390,19 @@ def cmd_decide(args) -> dict:
         return {"league": league, "date": args.date, "fixtures": 0}
     fc, qt = forecast_index(led), quote_index(led)
     decided = led.decided_match_ids()
-    # W1.5: a QUARANTINED_EV_OUTLIER row is deliberately NON-terminal — the
-    # match may re-enter decide against a FRESH quote; every other decided
-    # status stays terminal (one-selection law unchanged).
+    # W1.5 + U4-M4: a QUARANTINED_EV_OUTLIER row is deliberately
+    # NON-terminal — the match may re-enter decide against a FRESH quote —
+    # but a match with a FINAL NOT_PLACED_EV_OUTLIER row is TERMINAL: it
+    # stays in `decided` and never re-enters the quarantine pool, no
+    # matter how many QUARANTINED rows precede the final one. Every other
+    # decided status stays terminal (one-selection law unchanged).
+    terminal_outlier = {r["match_id"] for r in led.rows
+                        if r.get("type") == "DECISION"
+                        and r.get("status") == "NOT_PLACED_EV_OUTLIER"}
     quarantined = {r["match_id"] for r in led.rows
                    if r.get("type") == "DECISION"
-                   and r.get("status") == "QUARANTINED_EV_OUTLIER"}
+                   and r.get("status") == "QUARANTINED_EV_OUTLIER"
+                   and r["match_id"] not in terminal_outlier}
     effective_decided = decided - quarantined
     # W1.3: a constant forecast batch can never ground a bet.
     constant_forecast_block([fc[f.match_id] for f in fixtures
@@ -2444,20 +2456,28 @@ def cmd_decide(args) -> dict:
             if not fresh_quote_available(
                     led, f.match_id,
                     (q_old or {}).get("decided_at_utc", "")):
-                row = {"type": "DECISION", "league": f.league,
-                       "match_id": f.match_id,
-                       "competition": f.competition, "home": f.home,
-                       "away": f.away, "kickoff_utc": f.kickoff_utc,
-                       "decided_at_utc": now,
-                       "status": "QUARANTINED_EV_OUTLIER",
-                       "reason": ("quarantine re-entry: no quote captured "
-                                  "after the quarantine yet — still "
-                                  "quarantined, no placement (W1.5)"),
-                       "stake_cents": 0, "chosen_leg": None}
-                led.append_decision(row)
+                # U4-M4 no-churn law: a quarantined match with NO fresh
+                # quote yet must NEVER append another QUARANTINED ledger
+                # row on every decide pass — the ops plane only (the
+                # journaled report + one ai_review gate event) learns the
+                # match is still quarantined; the ledger stays untouched
+                # until a FRESH independent re-quote exists.
                 journaled.append({"match_id": f.match_id,
-                                  "status": row["status"],
-                                  "reason": row["reason"][:120]})
+                                  "status": "QUARANTINED_EV_OUTLIER",
+                                  "reason": ("quarantine re-entry: no quote "
+                                             "captured after the quarantine "
+                                             "yet — still quarantined, no "
+                                             "placement; no new ledger row "
+                                             "(M4 no-churn)")})
+                try:
+                    from research.papertrade_exec import ai_gate_v2 as _G4
+                    _G4.gate_event(
+                        Path(args.data_root),
+                        "EV_OUTLIER_STILL_QUARANTINED",
+                        sandbox=bool(getattr(args, "sandbox", False)),
+                        match_id=f.match_id)
+                except Exception:
+                    pass
                 continue
             qt = {**qt, f.match_id: q_row_fresh}
         # W1.4: one odds snapshot must never serve two fixtures.
@@ -2896,6 +2916,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--match-id", required=True)
     p.add_argument("--home", required=True)
     p.add_argument("--away", required=True)
+    # U5 wiring (optional): kickoff-date board + explicit ESPN team ids
+    p.add_argument("--kickoff-utc", dest="kickoff_utc", default=None)
+    p.add_argument("--team-ids", dest="team_ids", default=None,
+                   help='JSON {"home": id, "away": id} (optional)')
     p.set_defaults(fn=lambda a: _emit(cmd_ai_evidence(a)))
     return ap
 
@@ -2980,12 +3004,26 @@ def cmd_ai_evidence(args) -> dict:
     """W4.3: the ONE research collector (read-only public GETs, allow-
     listed) — the JS producer shells out to THIS so both sides share one
     evidence implementation. Citations (url + fetched_at + excerpt) are
-    journaled under <data-root>/ai_review/evidence/ and returned."""
+    journaled under <data-root>/ai_review/evidence/ and returned.
+    U5 wiring (optional): --kickoff-utc fetches the MATCH-date board;
+    --team-ids ('{"home": id, "away": id}' JSON) enables the roster-name
+    news filter + per-team injuries source; ids absent from the CLI are
+    looked up on the kickoff board by the collector itself."""
     from research.papertrade_exec import ai_research
     journal = Path(args.data_root) / "ai_review" / "evidence"
+    team_ids = getattr(args, "team_ids", None)
+    if isinstance(team_ids, str) and team_ids.strip():
+        try:
+            team_ids = json.loads(team_ids)
+        except json.JSONDecodeError:
+            team_ids = None                       # malformed: dormant, not guessed
+    elif not isinstance(team_ids, dict):
+        team_ids = None
     return ai_research.collect_evidence(
         league=args.league, match_id=args.match_id, home=args.home,
-        away=args.away, journal_dir=journal)
+        away=args.away, journal_dir=journal,
+        kickoff_utc=getattr(args, "kickoff_utc", None) or None,
+        team_ids=team_ids)
 
 
 def _emit(obj: dict) -> int:
@@ -3004,6 +3042,18 @@ def main(argv=None) -> int:
             args.sandbox_registry = str(
                 Path(args.data_root) / "sandbox" / "control" / "CYCLE_REGISTRY.json")
     try:
+        # U4-L2 plane hygiene: the sandbox control/registry hooks are
+        # REHEARSAL plumbing. Explicitly provided on the REAL plane
+        # (compare against the None default) they are refused — a test
+        # hook must never redirect the real gate/control plane.
+        if not getattr(args, "sandbox", False) and (
+                getattr(args, "sandbox_control_dir", None) is not None or
+                getattr(args, "sandbox_registry", None) is not None):
+            raise BlockError(
+                "BLOCKED_TEST_HOOK_IN_REAL_MODE",
+                "--sandbox-control-dir/--sandbox-registry are sandbox "
+                "hooks and are refused in real mode (L2)",
+                EXIT_BLOCKED_OTHER)
         return args.fn(args)
     except BlockError as be:
         print(json.dumps({"blocked": be.code, "detail": be.detail}, indent=1))

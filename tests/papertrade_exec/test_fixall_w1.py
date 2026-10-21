@@ -343,6 +343,14 @@ def test_decide_quarantine_reentry_requires_fresh_quote(env):
     out = _run_decide(env, led, evaluate=evaluate)
     assert out["journaled"][0]["status"] == "QUARANTINED_EV_OUTLIER"
     assert seen["evaluate"] == 0
+    # U4-M4 no-churn law: a second pass WITHOUT a fresh quote learns the
+    # state on the OPS plane only — it must NOT append another
+    # QUARANTINED ledger row (churn law).
+    out = _run_decide(env, led, evaluate=evaluate)
+    assert out["journaled"][0]["status"] == "QUARANTINED_EV_OUTLIER"
+    assert len([r for r in led.rows
+                if r.get("status") == "QUARANTINED_EV_OUTLIER"]) == 1
+    assert seen["evaluate"] == 0
     # a FRESH quote (after the quarantine stamp) unlocks re-evaluation
     led.append({"type": "MARKET_QUOTE", "league": "NBA", "match_id": "m1",
                 "home": FX.home, "away": FX.away, "competition": "NBA",

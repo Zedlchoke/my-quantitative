@@ -1256,7 +1256,8 @@ class OpsService:
         raise AI_PROVIDER_DOWN (once per entry per day; the pending queue
         itself stays on the dashboard)."""
         from research.papertrade_exec import ai_gate_v2 as G
-        for e in G.pending_alarm_owners(self.data_root):
+        for e in G.pending_alarm_owners(self.data_root,
+                                        sandbox=self.sandbox):
             st = self._load_json(self.state_dir / "ai_alarms.json", {})
             key = e["match_id"]
             last = st.get(key)
@@ -1312,7 +1313,8 @@ class OpsService:
         try:
             summary = ai_producer.produce_for_pending(
                 self.data_root,
-                worktree_root=Path(__file__).resolve().parents[2])
+                worktree_root=Path(__file__).resolve().parents[2],
+                sandbox=self.sandbox)
             if summary["written"] or summary["invalid"] or \
                     summary["provider_failed"]:
                 self.incident("AI_PRODUCER_PASS",
@@ -1324,7 +1326,7 @@ class OpsService:
     def _ai_pending_view(self) -> list[dict]:
         from research.papertrade_exec import ai_gate_v2 as G
         try:
-            pending = G._load_pending(self.data_root)
+            pending = G._load_pending(self.data_root, sandbox=self.sandbox)
         except Exception:
             pending = {}
         return [{"match_id": k, **v} for k, v in sorted(pending.items())]

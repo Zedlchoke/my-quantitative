@@ -28,8 +28,10 @@ This module NEVER writes the ledger; the decide path appends.
 """
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -49,8 +51,35 @@ def _parse(ts: str) -> datetime:
         tzinfo=timezone.utc)
 
 
-def ai_review_dir(data_root: Path) -> Path:
-    return Path(data_root) / "ai_review"
+def ai_review_dir(data_root: Path, sandbox: bool = False) -> Path:
+    """M6 (U4): the ai_review plane honors the SANDBOX separation — a
+    sandbox decide/producer/ops NEVER touches a byte of the real plane.
+    sandbox=True  -> <data-root>/sandbox/ai_review
+    sandbox=False -> <data-root>/ai_review  (the REAL plane; default)."""
+    base = Path(data_root)
+    if sandbox:
+        return base / "sandbox" / "ai_review"
+    return base / "ai_review"
+
+
+def atomic_write_json(path: Path, obj) -> None:
+    """M8 (U4): the durable-writer law for plane state files (pending.json,
+    cascade_state.json): write tmp + os.replace (atomic on POSIX) while
+    holding an fcntl.flock on a companion <name>.lock file, so concurrent
+    writers (decide pass, producer pass, ops tick) serialize instead of
+    interleaving partial files. A crash mid-write leaves the previous
+    bytes intact."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_suffix(path.suffix + ".lock")
+    with open(lock_path, "a+") as lf:
+        fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
+        try:
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            tmp.write_text(json.dumps(obj, indent=1, sort_keys=True,
+                                      default=str))
+            os.replace(tmp, path)
+        finally:
+            fcntl.flock(lf.fileno(), fcntl.LOCK_UN)
 
 
 def candidate_hash_for(dec: dict, fc_row: dict | None,
@@ -114,9 +143,10 @@ def validate_opinion(op: dict) -> tuple[bool, str]:
 
 
 def load_opinion_for(data_root: Path, match_id: str,
-                     candidate_hash: str) -> tuple[dict | None, str]:
+                     candidate_hash: str,
+                     sandbox: bool = False) -> tuple[dict | None, str]:
     """The hash-locked opinion, validated. Returns (opinion|None, why)."""
-    d = ai_review_dir(data_root) / "opinions_v2"
+    d = ai_review_dir(data_root, sandbox) / "opinions_v2"
     f = d / f"{match_id}_{candidate_hash}.json"
     if not f.exists():
         return None, f"no opinion bound to candidate hash {candidate_hash[:12]}"
@@ -148,12 +178,13 @@ def load_opinion_for(data_root: Path, match_id: str,
     return op, "valid"
 
 
-def record_opinion(data_root: Path, op: dict) -> Path:
+def record_opinion(data_root: Path, op: dict,
+                   sandbox: bool = False) -> Path:
     """Write (or overwrite) the hash-locked opinion file. The JS sidecar
     produces the opinion; this is the sanctioned writer (schema-checked
     before persist — an invalid opinion is stored under .invalid/ for the
     scorecard, never consumed by the gate)."""
-    d = ai_review_dir(data_root) / "opinions_v2"
+    d = ai_review_dir(data_root, sandbox) / "opinions_v2"
     d.mkdir(parents=True, exist_ok=True)
     ok, why = validate_opinion(op)
     if not ok:
@@ -170,25 +201,26 @@ def record_opinion(data_root: Path, op: dict) -> Path:
 
 # ------------------------------------------------------------- pending law --
 
-def _pending_path(data_root: Path) -> Path:
-    return ai_review_dir(data_root) / "pending.json"
+def _pending_path(data_root: Path, sandbox: bool = False) -> Path:
+    return ai_review_dir(data_root, sandbox) / "pending.json"
 
 
-def _load_pending(data_root: Path) -> dict:
+def _load_pending(data_root: Path, sandbox: bool = False) -> dict:
     try:
-        return json.loads(_pending_path(data_root).read_text())
+        return json.loads(_pending_path(data_root, sandbox).read_text())
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
 
-def _save_pending(data_root: Path, pending: dict) -> None:
-    p = _pending_path(data_root)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(pending, indent=1, sort_keys=True, default=str))
+def _save_pending(data_root: Path, pending: dict,
+                  sandbox: bool = False) -> None:
+    # M8: atomic tmp+os.replace under the companion .lock flock.
+    atomic_write_json(_pending_path(data_root, sandbox), pending)
 
 
-def gate_event(data_root: Path, kind: str, **fields) -> None:
-    p = ai_review_dir(data_root) / "gate_events.jsonl"
+def gate_event(data_root: Path, kind: str, sandbox: bool = False,
+               **fields) -> None:
+    p = ai_review_dir(data_root, sandbox) / "gate_events.jsonl"
     p.parent.mkdir(parents=True, exist_ok=True)
     with open(p, "a") as f:
         f.write(json.dumps({"ts_utc": _now(), "kind": kind, **fields},
@@ -197,14 +229,15 @@ def gate_event(data_root: Path, kind: str, **fields) -> None:
 
 def pending_marker(data_root: Path, match_id: str, candidate_hash: str,
                    anchor_utc: str, detail: str,
-                   context: dict | None = None) -> None:
+                   context: dict | None = None,
+                   sandbox: bool = False) -> None:
     """Record/refresh the PENDING_AI entry (the dashboard 'chờ AI' block
     reads this). The bet stays UNDECIDED — retried on the next cadence
     pass (the 15-min cadence throttle is the re-review rhythm). The
     candidate CONTEXT travels in the entry so the headless producer can
     review without re-deriving anything; the producer's own pacing stamp
     survives decide's re-marks."""
-    pending = _load_pending(data_root)
+    pending = _load_pending(data_root, sandbox)
     prev = pending.get(match_id) or {}
     pending[match_id] = {
         "candidate_hash": candidate_hash,
@@ -216,24 +249,26 @@ def pending_marker(data_root: Path, match_id: str, candidate_hash: str,
         "context": context or prev.get("context") or {},
         "last_detail": detail[:240],
     }
-    _save_pending(data_root, pending)
-    gate_event(data_root, "PENDING_AI", match_id=match_id,
+    _save_pending(data_root, pending, sandbox)
+    gate_event(data_root, "PENDING_AI", sandbox=sandbox, match_id=match_id,
                candidate_hash=candidate_hash, detail=detail[:200])
 
 
-def clear_pending(data_root: Path, match_id: str, outcome: str) -> None:
-    pending = _load_pending(data_root)
+def clear_pending(data_root: Path, match_id: str, outcome: str,
+                  sandbox: bool = False) -> None:
+    pending = _load_pending(data_root, sandbox)
     if match_id in pending:
         del pending[match_id]
-        _save_pending(data_root, pending)
-    gate_event(data_root, outcome, match_id=match_id)
+        _save_pending(data_root, pending, sandbox)
+    gate_event(data_root, outcome, sandbox=sandbox, match_id=match_id)
 
 
-def pending_alarm_owners(data_root: Path) -> list[dict]:
+def pending_alarm_owners(data_root: Path,
+                         sandbox: bool = False) -> list[dict]:
     """PENDING entries older than PROVIDER_DOWN_ALARM_MIN — the ops layer
     turns these into AI_PROVIDER_DOWN alarms (the whole AI layer failing
     is a W4.4 owner alarm, never a silent bet-killer)."""
-    pending = _load_pending(data_root)
+    pending = _load_pending(data_root, sandbox)
     now = _now()
     out = []
     for mid, e in pending.items():

@@ -1445,7 +1445,7 @@ def _v2_opinion_from_pending(env, verdict, reason=None):
     from research.papertrade_exec.ai_producer import registered_prompt_sha
     reg = registered_prompt_sha(
         Path(__file__).resolve().parents[2])[0]
-    pending = G._load_pending(env["data"])
+    pending = G._load_pending(env["data"], sandbox=True)
     assert pending, "decide pass 1 must record the PENDING queue"
     written = []
     for mid, entry in pending.items():
@@ -1461,7 +1461,8 @@ def _v2_opinion_from_pending(env, verdict, reason=None):
             "model_id": "battery-model", "provider": "battery",
             "prompt_version": "AI_PROMPT_V2",
             "prompt_sha256": reg,
-            "created_at_utc": "2026-10-08T09:00:00Z"})
+            "created_at_utc": "2026-10-08T09:00:00Z"},
+            sandbox=True)   # U4-M6: decide consumed the sandbox plane
         written.append(mid)
     return written
 
@@ -1508,7 +1509,7 @@ def test_pm_cutover_ai_gate_sandbox_chain(env, capcli, monkeypatch):
     assert code == EXIT_OK and len(d["journaled"]) == 1
     assert d["journaled"][0]["status"] == "PENDING_AI"
     from research.papertrade_exec import ai_gate_v2 as G
-    pending = G._load_pending(env["data"])
+    pending = G._load_pending(env["data"], sandbox=True)
     assert "401918299" in pending and pending["401918299"]["candidate_hash"]
     assert rows_of(env, "DECISION", "BET_PAPER") == []
 
