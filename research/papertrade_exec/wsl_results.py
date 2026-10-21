@@ -247,3 +247,49 @@ def fetch_wsl_settleable(*, rows: list[dict], ledger_rows: list[dict],
 
 
 YES_LEGS = LEGS
+
+
+def classify_open_bets(*, rows: list[dict], ledger_rows: list[dict],
+                       now_utc: str | None = None) -> list[dict]:
+    """WSL settlement HEALTH per open bet (owner DoD 2026-10-21): a
+    past-kickoff bet with no clean one-of-three YES resolution is surfaced
+    as STALE_CORPUS — the final score is UNAVAILABLE — and is NEVER
+    inferred from UMA W/D/L partials, indicative prices, or standings.
+    Read-only; feeds ops state + dashboard. statuses:
+      AWAITING_KICKOFF  kickoff in the future
+      PENDING_UMA       kickoff passed, market not yet cleanly resolved
+      STALE_CORPUS      kickoff passed + grace, still no clean resolution
+      IDENTITY_UNRESOLVED  the bet's own quote row lacks the PM ids
+    """
+    now = now_utc or _now_utc()
+    out = []
+    from datetime import datetime, timedelta, timezone as _tz
+    now_dt = datetime.strptime(now, "%Y-%m-%dT%H:%M:%SZ").replace(
+        tzinfo=_tz.utc)
+    for r in rows:
+        mid = r["match_id"]
+        qref = _quote_ref(ledger_rows, mid)
+        if qref is None or not qref.get("event_id") or \
+                not (qref.get("pm_outcomes") or {}):
+            out.append({"match_id": mid, "status": "IDENTITY_UNRESOLVED",
+                        "kickoff_utc": r.get("kickoff_utc")})
+            continue
+        ko = r.get("kickoff_utc") or ""
+        try:
+            ko_dt = datetime.strptime(ko, "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=_tz.utc)
+        except ValueError:
+            out.append({"match_id": mid, "status": "IDENTITY_UNRESOLVED",
+                        "kickoff_utc": ko})
+            continue
+        if now_dt < ko_dt:
+            out.append({"match_id": mid, "status": "AWAITING_KICKOFF",
+                        "kickoff_utc": ko})
+        else:
+            # grace of 2h beyond kickoff before the corpus is called stale
+            stale_after = ko_dt + timedelta(hours=2)
+            out.append({"match_id": mid,
+                        "status": ("STALE_CORPUS" if now_dt >= stale_after
+                                   else "PENDING_UMA"),
+                        "kickoff_utc": ko})
+    return out

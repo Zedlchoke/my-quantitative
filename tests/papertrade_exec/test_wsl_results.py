@@ -336,3 +336,29 @@ def test_e2e_sandbox_settle_through_pinned_core(env, monkeypatch):
     assert out2["settled"] == 0
     assert len([r for r in _ops.ledger_rows(env)
                 if r.get("type") == "SETTLEMENT"]) == 1
+
+
+def test_classify_open_bets_stale_corpus_law():
+    """Owner DoD 2026-10-21: past-kickoff WSL bets without a clean UMA
+    resolution surface STALE_CORPUS — never fabricated from W/D/L."""
+    from research.papertrade_exec import wsl_results as WR
+    led_rows = [{"type": "MARKET_QUOTE", "league": "WSL",
+                 "match_id": "M1", "event_id": "1172249",
+                 "pm_outcomes": {"HOME": {"market_id": 1},
+                                 "DRAW": {"market_id": 2},
+                                 "AWAY": {"market_id": 3}}},
+                {"type": "MARKET_QUOTE", "league": "WSL",
+                 "match_id": "M2", "event_id": "1172253",
+                 "pm_outcomes": {"HOME": {"market_id": 4},
+                                 "DRAW": {"market_id": 5},
+                                 "AWAY": {"market_id": 6}}}]
+    rows = [
+        {"match_id": "M1", "kickoff_utc": "2026-10-17T14:00:00Z"},   # past+grace
+        {"match_id": "M2", "kickoff_utc": "2099-01-01T14:00:00Z"},   # future
+        {"match_id": "M3", "kickoff_utc": "2026-10-17T14:00:00Z"},   # no quote row
+    ]
+    got = {h["match_id"]: h["status"] for h in WR.classify_open_bets(
+        rows=rows, ledger_rows=led_rows, now_utc="2026-10-21T00:00:00Z")}
+    assert got["M1"] == "STALE_CORPUS"
+    assert got["M2"] == "AWAITING_KICKOFF"
+    assert got["M3"] == "IDENTITY_UNRESOLVED"

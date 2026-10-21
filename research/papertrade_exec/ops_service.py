@@ -288,11 +288,25 @@ class OpsService:
                 self.state_dir / "settle_last_why.json", {})
             for inc in inconclusive:
                 if last_why.get(inc["match_id"]) != inc["why"]:
-                    self.incident("SETTLE_KEEP_OPEN",
+                    kind = "STALE_CORPUS" if league == "WSL" \
+                        else "SETTLE_KEEP_OPEN"
+                    # WSL health law (owner DoD 2026-10-21): a past-kickoff
+                    # bet with no clean UMA resolution is surfaced as
+                    # STALE_CORPUS — the final score is unavailable and is
+                    # NEVER inferred from UMA W/D/L partials.
+                    self.incident(kind,
                                   f"{inc['match_id']}: {inc['why']}",
                                   match_id=inc["match_id"], league=league)
                     last_why[inc["match_id"]] = inc["why"]
             _atomic_write(self.state_dir / "settle_last_why.json", last_why)
+            if league == "WSL":
+                from research.papertrade_exec import wsl_results
+                wsl_open = [r for r in open_bets if r["league"] == "WSL"]
+                health = wsl_results.classify_open_bets(
+                    rows=wsl_open, ledger_rows=led.rows)
+                _atomic_write(self.state_dir / "wsl_settle_health.json",
+                              {"generated_at_utc": now_utc(),
+                               "bets": health})
             if not settleable:
                 continue
             rpath = self.results_dir / f"{league.lower()}_{date}.json"
