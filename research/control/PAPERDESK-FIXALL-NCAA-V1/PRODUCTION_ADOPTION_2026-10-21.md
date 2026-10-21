@@ -70,3 +70,28 @@ khi owner gõ GO riêng. Battery 207/207 ×2 (3 test NBA "frozen-era" cập
 nhật thành age-independent theo luật refresh-manifest — corpus GIỮA được
 lớp hóa là hành vi đúng của W1.3; law-pause test chuyển sang synthetic
 config).
+
+## OWNER GOs CONSUMED — 2026-10-21 ~12:53Z
+
+Owner gõ trực tiếp 2 câu GO (verbatim): `GO SPORTS PAPERTRADE EXEC V1
+POLYMARKET CUTOVER` + `GO SPORTS PAPERTRADE EXEC V1 AI AUTHORITY`. Agent
+CHÉP (transcribe) — không tự đặt câu — vào `GO_TOKEN_CUTOVER.json` /
+`GO_TOKEN_AI_AUTHORITY.json` (provenance đầy đủ), registry phase ghi
+`EXEC_CUTOVER_GO_CONSUMED` + `EXEC_AI_AUTHORITY_GO_CONSUMED` (worktree +
+root master). Commit `52973f17`:
+
+- **Cổng 2 chìa (real mode):** cờ config + token verbatim + registry
+  marker — thiếu 1 trong 3 là OFF, fail-closed. SANDBOX mặc định pre-GO,
+  chỉ lật bằng control copy riêng → battery vẫn tập luyện đúng đường.
+- **2 cờ config → true.** Runner restart lên code GO (pid mới) — verify
+  `papertrade_flags(sandbox=False)` = ON cả hai qua token plane.
+- **Headless AI producer** (`ai_producer.py`) vào tick của runner: quy
+  trình quyền AI vận hành KHÔNG cần app Electron — pending → evidence →
+  provider (model theo config, key Keychain đọc tại chỗ) → schema cứng
+  ALLOW|VETO → opinion khóa-hash. Provider lỗi = sự kiện trung thực (lệnh
+  chờ, không ai bị giết). Keychain key xác nhận đọc được headless.
+- Kỳ vọng vận hành từ nay: quote PM là nguồn quyết định (fail-closed
+  NOT_RUN_PM_QUOTE khi PM chưa niêm yết — soccer quốc tế vẫn(case-by-case));
+  lệnh BET mới phải có opinion AI khóa-hash trước khi vào sổ; 48h đầu theo
+  dõi theo kế hoạch trong CUTOVER_READINESS_NOTE (quote thành công %,
+  NOT_RUN_PM_QUOTE, EV hai nguồn, CLV).
