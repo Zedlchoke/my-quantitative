@@ -10,6 +10,10 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 cd "$HERE"
 
 PY=/Users/hoangminhlong/my-quantitative/.venv/bin/python
+NODE_BIN=/opt/homebrew/opt/node@24/bin/node
+if [ ! -x "$NODE_BIN" ]; then
+  NODE_BIN="$(command -v node)"
+fi
 
 # 1. deps (idempotent)
 if [ ! -d node_modules/electron ]; then
@@ -32,15 +36,19 @@ if [ ! -f Resources/PaperDeskIcon.icns ]; then
 fi
 
 # 3. package (.app with its own Electron runtime, ad-hoc signed by packager)
-npx electron-packager . PaperDesk --platform=darwin --arch=arm64 \
+"$NODE_BIN" node_modules/@electron/packager/bin/electron-packager.js \
+  . PaperDesk --platform=darwin --arch=arm64 \
   --icon=Resources/PaperDeskIcon.icns --app-bundle-id=com.myquant.paperdesk \
   --app-version=1.0.0 --overwrite --out=build \
   --app-copyright="SPORTS-PAPERTRADE-EXEC-V1 / AMENDMENT_MACOS_APP_UI_V1 / paper money only"
 
 APP="build/PaperDesk-darwin-arm64/PaperDesk.app"
-# extra ad-hoc re-sign (packager already signs; keep explicit + verify)
-codesign --force --deep -s - "$APP" >/dev/null 2>&1 || true
-codesign --verify "$APP" && echo "codesign OK"
+# Some Node versions have returned success before the packager wrote an app.
+# Verify the output before signing or reporting a successful build.
+test -x "$APP/Contents/MacOS/PaperDesk"
+codesign --force --deep -s - "$APP" >/dev/null
+codesign --verify "$APP"
+echo "codesign OK"
 
 echo
 echo "built: $HERE/$APP"

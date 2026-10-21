@@ -3,10 +3,17 @@
 // range selector (ALL/30D/7D), settle dots colored by P&L. Fully live from
 // ledger points — never a static image.
 (function () {
-  const NS = 'http://www.w3.org/2000/svg';
   window.EquityChart = { render };
+  // The dashboard can redraw every two seconds. A resize listener closes over
+  // its canvas, so retaining one from each render also retains every old
+  // canvas backing store. Keep exactly one listener for the active chart.
+  let activeResize = null;
 
   function render(container, points, opts) {
+    if (activeResize) {
+      window.removeEventListener('resize', activeResize);
+      activeResize = null;
+    }
     container.innerHTML = '';
     const head = document.createElement('div');
     head.className = 'sec-title';
@@ -186,5 +193,6 @@
 
     draw();
     window.addEventListener('resize', draw);
+    activeResize = draw;
   }
 })();

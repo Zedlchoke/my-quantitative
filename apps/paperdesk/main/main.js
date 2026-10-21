@@ -400,7 +400,7 @@ function boot() {
     // runner's upcoming plan) and run due pre-anchor reviews. Idempotent per
     // (match, deadline); disabled mode records nothing.
     let aiSchedBusy = false;
-    setInterval(() => {
+    setInterval(async () => {
       if (aiSchedBusy || ai.mode === 'disabled-no-entitlement') return;
       aiSchedBusy = true;
       try {
@@ -417,22 +417,18 @@ function boot() {
           runner.audit('AI_SCHED_SKIPPED', { skipped: built.skipped });
         }
         const candidates = built.candidates;
-        ai.maybeAutoReview(candidates, pm)
-          .then(res => {
-            if (res.ran && res.ran.length) {
-              for (const r of res.ran) {
-                const op = ai.opinions.find(
-                  o => o.matchID === r.matchId
-                    && o.opinionID === (r.opinionID || o.opinionID));
-                const latest = ai.opinions.find(o => o.matchID === r.matchId);
-                if (latest) evaluateAndPersist(latest);
-              }
-              runner.audit('AI_AUTO_REVIEW', { ran: res.ran });
-              broadcast();
-            }
-          })
-          .catch(e => runner.audit('AI_AUTO_REVIEW_FAILED',
-                                   { error: String(e).slice(0, 200) }));
+        const res = await ai.maybeAutoReview(candidates, pm);
+        if (res.ran && res.ran.length) {
+          for (const r of res.ran) {
+            const latest = ai.opinions.find(o => o.matchID === r.matchId);
+            if (latest) evaluateAndPersist(latest);
+          }
+          runner.audit('AI_AUTO_REVIEW', { ran: res.ran });
+          broadcast();
+        }
+      } catch (e) {
+        runner.audit('AI_AUTO_REVIEW_FAILED',
+                     { error: String(e).slice(0, 200) });
       } finally { aiSchedBusy = false; }
     }, 30000);
     ticker2 = setInterval(() => {
