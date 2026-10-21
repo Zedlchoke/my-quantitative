@@ -1184,41 +1184,141 @@ def papertrade_flags(args) -> dict:
             "ai_authority_active": bool(fg.get("ai_authority_active", False))}
 
 
-def pm_quote_rows_for_fixtures(args, fixtures, league, now) -> list:
+def _pm_probe_seam(args):
+    """Sandbox-only rehearsal seam: PAPERTRADE_PM_PROBE_JSON points at a
+    {match_id: quote} table the sandbox PM chain walks through the SAME
+    wiring as production. Any seam (attribute or env file) is REFUSED in
+    real mode — BLOCKED_TEST_HOOK_IN_REAL_MODE, nothing written."""
+    seam = getattr(args, "pm_probe", None)
+    env_path = os.environ.get("PAPERTRADE_PM_PROBE_JSON")
+    if (seam is not None or env_path) and not getattr(args, "sandbox", False):
+        raise BlockError("BLOCKED_TEST_HOOK_IN_REAL_MODE",
+                         "pm_probe rehearsal hooks are refused in real mode",
+                         EXIT_BLOCKED_OTHER)
+    if getattr(args, "sandbox", False) and env_path:
+        table = json.loads(Path(env_path).read_text())
+
+        def seam(fx, stake):
+            mid = fx.get("match_id") if isinstance(fx, dict) else \
+                getattr(fx, "match_id", None)
+            return table.get(str(mid))
+    return seam
+
+
+def pm_quote_rows_for_fixtures(args, fixtures, league, now, led=None,
+                               core=None) -> list:
     """PM-CUTOVER path (feature gate ON only): the Polymarket book-walk is
     the SINGLE decision quote source. Any PM failure/missing leg => NOT_RUN
-    refusal (no Odds API fallback, no inference)."""
+    refusal (no Odds API fallback, no inference).
+
+    Identity law (owner 2026-10-21): the PM event is NEVER assumed from the
+    fixture id — NBA/WNBA join by BOTH pinned team names (2-outcome
+    moneyline market), SOCCER joins the three YES/NO markets of ONE event;
+    the fixture<->PM crosswalk (event/market/token ids) is journaled with
+    every quote. Both/all legs walk the CLOB book at the REAL current stake
+    (v3 1% equity) — never a hardcoded probe stake, never AWAY = 1 - HOME."""
     from .pm_quote_source import QuoteSourceRouter
+    from . import pm_moneyline as PMM
+    sandbox = bool(getattr(args, "sandbox", False))
+    seam = _pm_probe_seam(args)
+    if seam is not None and not sandbox:
+        raise BlockError("BLOCKED_TEST_HOOK_IN_REAL_MODE",
+                         "pm_probe is a rehearsal hook; refused in real mode",
+                         EXIT_BLOCKED_OTHER)
+    stake = core.stake_for_decision(led.equity_cents())
+    if stake <= 0:
+        raise BlockError("NOT_RUN_PM_QUOTE",
+                         f"stake law yields {stake}c on equity "
+                         f"{led.equity_cents()}c", EXIT_BLOCKED_OTHER)
     router = QuoteSourceRouter(cutover_active=True,
-                               data_root=Path(args.data_root),
-                               sandbox=bool(getattr(args, "sandbox", False)))
+                               data_root=Path(args.data_root), sandbox=sandbox)
     rows = []
     for f in fixtures:
+        crosswalk = {"fixture_id": f.match_id, "league": league,
+                     "home": f.home, "away": f.away}
         if league in ("NBA", "WNBA"):
-            q = router.quote(league=league, event_id=str(f.match_id),
-                             home=f.home, away=f.away,
-                             stake_cents=10000)
+            if seam is not None:
+                q = seam({"match_id": f.match_id, "home": f.home,
+                          "away": f.away}, stake)
+            else:
+                ev, ml = PMM.discover_and_join(
+                    home=f.home, away=f.away, kickoff_utc=f.kickoff_utc,
+                    data_root=Path(args.data_root), sandbox=sandbox)
+                if ev is None:
+                    raise BlockError("NOT_RUN_PM_QUOTE",
+                                     f"PM event join failed for "
+                                     f"{f.match_id}: {ml}", EXIT_BLOCKED_OTHER)
+                crosswalk.update({"pm_event_id": str(ev.get("id")),
+                                  "pm_event_title": str(ev.get("title"))[:120]})
+                q = router.quote(league=league,
+                                 event_id=str(ev.get("id")),
+                                 home=f.home, away=f.away,
+                                 stake_cents=stake)
             if not q or not q.get("all_present"):
                 raise BlockError("NOT_RUN_PM_QUOTE",
                                  f"PM book-walk failed for {f.match_id}",
                                  EXIT_BLOCKED_OTHER)
-            odds = {leg: l["best_ask"] for leg, l in q["legs"].items()}
+            # A YES ask is a $-price in [0,1]; the EV law consumes DECIMAL
+            # odds — the executable conversion is 1 / VWAP (the walk's
+            # average fill across levels at the real stake). best_ask stays
+            # in the evidence and NEVER enters the gate math. AWAY is never
+            # inferred as 1 - HOME; each leg walked on its own token.
+            odds = {leg: round(1.0 / l["vwap_ask"], 6)
+                    for leg, l in q["legs"].items()}
             src = "PM_CLOB_WALK_2WAY"
+        elif league == "SOCCER":
+            if seam is not None:
+                q = seam({"match_id": f.match_id, "home": f.home,
+                          "away": f.away}, stake)
+            else:
+                ev, legs_m = PMM.discover_and_join_3yes(
+                    home=f.home, away=f.away,
+                    data_root=Path(args.data_root), sandbox=sandbox)
+                if ev is None:
+                    raise BlockError("NOT_RUN_PM_QUOTE",
+                                     f"PM 3-YES join failed for "
+                                     f"{f.match_id}: {legs_m}",
+                                     EXIT_BLOCKED_OTHER)
+                crosswalk.update({"pm_event_id": str(ev.get("id")),
+                                  "pm_event_title": str(ev.get("title"))[:120]})
+                q = router.quote(league=league,
+                                 event_id=str(ev.get("id")),
+                                 home=f.home, away=f.away,
+                                 market_ids={leg: str(m.get("id"))
+                                             for leg, m in legs_m.items()},
+                                 stake_cents=stake)
+            if not q or not q.get("all_present"):
+                raise BlockError("NOT_RUN_PM_QUOTE",
+                                 f"PM 3-YES walk incomplete for "
+                                 f"{f.match_id}", EXIT_BLOCKED_OTHER)
+            # same ask->decimal-odds law as the 2-way leg (executable VWAP)
+            odds = {leg: round(1.0 / l["vwap_ask"], 6)
+                    for leg, l in q["legs"].items()
+                    if l.get("best_ask") is not None}
+            if set(odds) != {"HOME", "DRAW", "AWAY"}:
+                raise BlockError("NOT_RUN_PM_QUOTE",
+                                 f"PM 3-YES odds incomplete for "
+                                 f"{f.match_id}: {sorted(odds)}",
+                                 EXIT_BLOCKED_OTHER)
+            src = "PM_CLOB_WALK_3YES"
         else:
             raise BlockError("NOT_RUN_PM_QUOTE",
-                             f"3-YES PM quote needs pinned market_ids for "
-                             f"{f.match_id} (crosswalk)", EXIT_BLOCKED_OTHER)
+                             f"no PM quote law for league {league}",
+                             EXIT_BLOCKED_OTHER)
         payload = json.dumps({"match_id": f.match_id, "odds": odds,
                               "pm": q.get("event_id")}, sort_keys=True)
         rows.append({
             "type": "MARKET_QUOTE", "league": league,
             "match_id": f.match_id, "home": f.home, "away": f.away,
             "kickoff_utc": f.kickoff_utc, "bookmaker": "POLYMARKET_CLOB",
-            "market": "moneyline_2way", "odds": odds,
+            "market": ("moneyline_2way" if league in ("NBA", "WNBA")
+                       else "three_yes_1x2"), "odds": odds,
             "fetch_ts_utc": now, "source_last_update_utc": now,
             "commence_time_utc": f.kickoff_utc,
             "payload_sha256": hashlib.sha256(payload.encode()).hexdigest(),
             "mode": "PM_CUTOVER", "source_ref": src,
+            "stake_walk_cents": stake,
+            "pm_crosswalk": crosswalk,
             "pm_walk": q})
     return rows
 
@@ -1239,7 +1339,26 @@ def cmd_quote(args) -> dict:
     core, led = open_ledger(args, create=True)
     existing = quote_index(led)
     written, skipped = [], []
+    flags = papertrade_flags(args)
     if args.sandbox:
+        # Sandbox rehearsal of the cutover chain: with the flag ON and the
+        # pm_probe seam injected the sandbox walks the SAME PM wiring (join
+        # -> crosswalk -> per-leg walk at the real stake -> append). Without
+        # the seam the rehearsal keeps the labeled SYNTHETIC book (never a
+        # silent live network call from a rehearsal).
+        if flags["pm_cutover_active"] and \
+                _pm_probe_seam(args) is not None:
+            fresh = [f for f in fixtures
+                     if f.match_id not in existing and
+                     f.match_id not in led.decided_match_ids()]
+            rows = pm_quote_rows_for_fixtures(args, fresh, league, now,
+                                              led=led, core=core)
+            for r in rows:
+                led.append(r)
+            return {"league": league, "date": args.date, "now_utc": now,
+                    "written": [r["match_id"] for r in rows],
+                    "mode": "PM_CUTOVER_SANDBOX_SEAM", "rows": len(rows),
+                    "sandbox": True}
         for f in fixtures:
             if f.match_id in existing:
                 skipped.append(f.match_id)
@@ -1267,13 +1386,23 @@ def cmd_quote(args) -> dict:
         return {"league": league, "date": args.date, "now_utc": now,
                 "written": written, "skipped_existing": skipped,
                 "mode": "SYNTHETIC", "sandbox": True}
-    flags = papertrade_flags(args)
     if flags["pm_cutover_active"]:
         # Cutover law: PM is the ONLY decision source; failures => NOT_RUN,
-        # never an Odds API fallback.
-        rows = pm_quote_rows_for_fixtures(args, fixtures, league, now)
+        # never an Odds API fallback. Quote rows are APPENDED (rerun-safe:
+        # never-quoted fixtures only) so decide consumes the in-ledger
+        # evidence, exactly like the pre-cutover capture path.
+        decided = led.decided_match_ids()
+        existing = quote_index(led)
+        fresh = [f for f in fixtures
+                 if f.match_id not in existing and f.match_id not in decided]
+        rows = pm_quote_rows_for_fixtures(args, fresh, league, now,
+                                          led=led, core=core)
+        for r in rows:
+            led.append(r)
         return {"league": league, "date": args.date, "now_utc": now,
                 "written": [r["match_id"] for r in rows],
+                "skipped_existing": sorted(existing & {f.match_id for f in
+                                                       fixtures}),
                 "mode": "PM_CUTOVER", "rows": len(rows)}
     # ---- real capture: core quota-guarded client, registered sport keys ----
     odds_mod = core.odds_client
@@ -1558,6 +1687,110 @@ def ai_boundary_review(candidate: dict, gates_ctx: dict,
             "gates": gates, "reason": reason}
 
 
+def _map_ai_opinion(op: dict) -> dict:
+    """Normalize one ai_review opinion record to the runner gate vocabulary
+    KEEP | VETO | SWITCH | ABSTAIN. Fail-closed: anything that is not an
+    unambiguous, COMPLETED, pre-deadline actionable opinion is ABSTAIN (owner
+    law: ABSTAIN / error / missing evidence / post-deadline => NOT placed).
+    The AI NEVER supplies numbers — only the action + proposed leg travel;
+    probabilities/prices/EV come exclusively from the frozen snapshot."""
+    a = (lambda k, d=None: (op.get(k) if op.get(k) not in
+                            (None, "", "None", "nil") else d))
+    status = str(op.get("status") or "")
+    if status != "COMPLETED":
+        return {"action": "ABSTAIN", "proposed_leg": None,
+                "why": f"opinion status {status!r} != COMPLETED"}
+    completed, deadline = a("completedAtUTC"), a("deadlineUTC")
+    if completed and deadline and str(completed) > str(deadline):
+        return {"action": "ABSTAIN", "proposed_leg": None,
+                "why": "opinion completed after its deadline"}
+    verdict = str(a("verdict") or "").strip().upper()
+    rec = str(a("recommendedAction") or "").strip().upper()
+    leg = a("proposedLeg")
+    leg = leg if leg in ("HOME", "DRAW", "AWAY") else None
+    if verdict == "VETO" or rec == "VETO":
+        return {"action": "VETO", "proposed_leg": None,
+                "why": f"verdict={verdict or rec}"}
+    if verdict in ("CHALLENGE", "ALTERNATIVE") and leg:
+        return {"action": "SWITCH", "proposed_leg": leg,
+                "why": f"verdict={verdict}"}
+    if rec == "SWITCH" and leg:
+        return {"action": "SWITCH", "proposed_leg": leg,
+                "why": "recommended_action=SWITCH"}
+    if rec == "KEEP":
+        return {"action": "KEEP", "proposed_leg": None,
+                "why": "recommended_action=KEEP"}
+    return {"action": "ABSTAIN", "proposed_leg": None,
+            "why": (f"verdict={verdict!r} recommendedAction={rec!r}"
+                    " not actionable")}
+
+
+def load_ai_opinion(args, match_id: str) -> dict:
+    """Latest ai_review opinion for the match (opinions dir), normalized.
+    Sandbox seam `args.ai_opinion` (dict) or PAPERTRADE_AI_OPINION_JSON
+    ({match_id: record}) is rehearsal-only and refused in real mode.
+    Missing/unreadable opinion => ABSTAIN (never an order)."""
+    seam = getattr(args, "ai_opinion", None)
+    env_path = os.environ.get("PAPERTRADE_AI_OPINION_JSON")
+    if seam is None and getattr(args, "sandbox", False) and env_path:
+        seam = json.loads(Path(env_path).read_text()).get(str(match_id))
+    if seam is not None:
+        if not getattr(args, "sandbox", False):
+            raise BlockError("BLOCKED_TEST_HOOK_IN_REAL_MODE",
+                             "ai_opinion is a rehearsal hook; refused in "
+                             "real mode", EXIT_BLOCKED_OTHER)
+        return _map_ai_opinion(seam)
+    op_dir = Path(args.data_root) / "ai_review" / "opinions"
+    try:
+        files = sorted(op_dir.glob(f"{match_id}_*.json"))
+        if not files:
+            return {"action": "ABSTAIN", "proposed_leg": None,
+                    "why": "no ai_review opinion on file"}
+        latest = files[-1]          # timestamped names sort chronologically
+        op = json.loads(latest.read_text())
+        mapped = _map_ai_opinion(op)
+        mapped["opinion_file"] = latest.name
+        mapped["opinion_sha256"] = hashlib.sha256(
+            latest.read_bytes()).hexdigest()
+        return mapped
+    except Exception as e:
+        return {"action": "ABSTAIN", "proposed_leg": None,
+                "why": f"opinion read failed: {type(e).__name__}: {e}"}
+
+
+def ai_gate_context(dec: dict, quote_row: dict, *, led, core,
+                    capital_law: int) -> dict:
+    """Frozen-snapshot context for the AI boundary — ledger numbers ONLY.
+    depth_walked: PM-cutover quotes carry per-leg book walks; pre-cutover
+    pinned-source quotes stand in (the frozen fee/odds law)."""
+    odds = quote_row.get("odds") or {}
+    pm_walk = ((quote_row.get("pm_walk") or {}).get("legs")) or {}
+    legs = sorted(dec.get("ev_net_by_leg") or {})
+    dd = led.drawdown_frac()
+    return {
+        "chosen_leg": dec.get("chosen_leg"),
+        "p_frozen": dec.get("p_frozen"),
+        "odds_frozen": dec.get("odds_frozen"),
+        "ev_net_by_leg": dec.get("ev_net_by_leg"),
+        "stake_cents": dec.get("stake_cents"),
+        "equity_cents": dec.get("equity_at_decision_cents"),
+        "open_exposure_cents": led.open_exposure_cents(),
+        "open_cap_cents": (core.OPEN_EXPOSURE_CAP_V3_CENTS
+                           if capital_law == 3
+                           else core.OPEN_EXPOSURE_CAP_CENTS),
+        "drawdown_frac": dd,
+        "drawdown_paused": dd >= core.DRAWDOWN_PAUSE_FRAC,
+        # the deterministic engine only emits BET_PAPER pre-anchor (PIT law
+        # already enforced by risk.evaluate_match on THIS frozen candidate)
+        "snapshot_before_anchor": True,
+        "anchor_passed": False,
+        "quote_present": {leg: leg in odds for leg in legs},
+        "depth_walked": ({leg: pm_walk.get(leg, {}).get("best_ask")
+                          is not None for leg in legs} if pm_walk else
+                         {leg: leg in odds for leg in legs}),
+    }
+
+
 def cmd_decide(args) -> dict:
     _r = maybe_wsl(args, "decide")
     if _r is not None:
@@ -1623,6 +1856,37 @@ def cmd_decide(args) -> dict:
             dec["decision_forecast_row_sha256"] = fc_row["row_sha256"]
             dec["map_sha256"] = fc_row.get("map_sha256")
             dec["control_ref_row_sha256"] = fc_row.get("control_ref_row_sha256")
+        # THE single AI execution boundary (owner law): AFTER the
+        # deterministic gates, BEFORE the append. Flag OFF => DISABLED and
+        # live behavior byte-identical to the pre-AI runner. Flag ON: an
+        # opinion that is not a fully-gated KEEP/SWITCH demotes the
+        # candidate to a terminal NOT_PLACED_AI_GATE journal — the AI never
+        # supplies numbers, only the graded action travels.
+        flags = papertrade_flags(args)
+        if flags["ai_authority_active"] and dec.get("status") == "BET_PAPER":
+            op = load_ai_opinion(args, f.match_id)
+            ai = ai_boundary_review(
+                candidate={"ai_action": op["action"],
+                           "ai_proposed_leg": op.get("proposed_leg")},
+                gates_ctx=ai_gate_context(dec, qt.get(f.match_id) or {},
+                                          led=led, core=core,
+                                          capital_law=capital_law),
+                flags=flags)
+            dec["ai_gate"] = {
+                "action": op["action"], "proposed_leg": op.get("proposed_leg"),
+                "opinion_why": op.get("why", ""),
+                "opinion_file": op.get("opinion_file"),
+                "opinion_sha256": op.get("opinion_sha256"),
+                "decision": ai.get("decision"),
+                "reason": str(ai.get("reason", ""))[:240],
+                "gates_failed": [g["gate"] for g in (ai.get("gates") or [])
+                                 if not g.get("pass")],
+            }
+            if ai.get("decision") != "PLACE":
+                dec["candidate_chosen_leg"] = dec.get("chosen_leg")
+                dec["status"] = "NOT_PLACED_AI_GATE"
+                dec["stake_cents"] = 0
+                dec["chosen_leg"] = None
         led.append_decision(
             dec, recheck=risk.in_lock_recheck(led, now, go_ok,
                                               capital_law=capital_law),
@@ -1636,6 +1900,7 @@ def cmd_decide(args) -> dict:
 # ------------------------------------------------------------------ run-day --
 
 def cmd_run_day(args) -> dict:
+    from .wsl_lane import LaneBlock as _LaneBlock
     report = {"date": args.date, "leagues": {}}
     hard = None
     # CAPITAL-V3 §4: WSL joins the run-day chain ONLY when the committed
@@ -1653,6 +1918,17 @@ def cmd_run_day(args) -> dict:
             if be.exit_code in (EXIT_BLOCKED_NO_GO, EXIT_BLOCKED_KEY,
                                 EXIT_BLOCKED_TAMPER, 7):
                 hard = be
+                break
+        except _LaneBlock as lb:
+            # WSL lane refusal (LaneBlock is not a BlockError): report
+            # per-league and apply the SAME hard-break law — a lane block
+            # must never crash the whole desk run, and a tamper/no-go/pin
+            # refusal must never be swallowed into a green report.
+            report["leagues"][league] = {"status": lb.code,
+                                         "detail": lb.detail}
+            if lb.exit_code in (EXIT_BLOCKED_NO_GO, EXIT_BLOCKED_KEY,
+                                EXIT_BLOCKED_TAMPER, 7):
+                hard = lb
                 break
     write_run_report(args, report)
     if hard:

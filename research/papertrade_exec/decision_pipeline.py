@@ -164,6 +164,15 @@ def evaluate_ai_gate(
         push("G_VETO", True, "AI VETO — advisory until authority; NOT placed")
         return "NOT_PLACED", gates, "AI VETO"
 
+    if ai_action in (None, "", "ABSTAIN"):
+        # Owner law (2026-10-20 §D): ABSTAIN — or any model-side failure
+        # (timeout, provider error, malformed opinion, missing evidence,
+        # post-deadline) surfaced upstream as a missing action — NEVER
+        # places. A lawful no-order, not a gate failure.
+        push("G_ABSTAIN", True,
+             f"AI ABSTAIN ({ai_action!r}) — no opinion, nothing placed")
+        return "NOT_PLACED", gates, "AI ABSTAIN — no order"
+
     if ai_action == "KEEP":
         ev = ev_net_by_leg.get(chosen_leg)
         push("G_EV_KEEP", ev is not None and ev >= EV_THRESHOLD,

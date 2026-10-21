@@ -163,7 +163,12 @@ def test_run_day_chains_three_leagues_sandbox(env, capcli):
     code, out = capcli(env, "run-day", "--date", WNBA_DAY)
     assert code == EXIT_OK, out
     lg = out["leagues"]
-    assert set(lg) == {"NBA", "WNBA", "SOCCER"}
+    # CAPITAL-V3 §4: WSL is the fourth chain league (config registers
+    # sport_keys.WSL); the fixture-free day still exercises its lane. The
+    # sandbox WSL quote seam is battery-injected only — unwired it is a
+    # per-league BLOCKED_NO_QUOTE_PLUMBING report, never a crashed batch.
+    assert set(lg) == {"NBA", "WNBA", "SOCCER", "WSL"}
+    assert lg["WSL"]["status"] == "BLOCKED_NO_QUOTE_PLUMBING"
     assert lg["WNBA"]["status"] == "OK" and len(lg["WNBA"]["decide"]["journaled"]) == 1
     assert lg["NBA"]["status"] == "OK" and lg["NBA"]["forecast"].get("fixtures") == 0
     assert lg["SOCCER"]["status"] == "OK" and len(lg["SOCCER"]["decide"]["journaled"]) == 3
@@ -210,7 +215,12 @@ def test_plan_is_readonly_with_real_tips(env, capcli):
     assert len(fx) == 1 and fx[0]["match_id"] == "401918299"
     assert fx[0]["tip_utc"] == "2026-10-09T23:30:00Z"          # REAL tip
     assert fx[0]["anchor_utc"] == "2026-10-09T17:20:00Z"       # T0-6h10m
-    assert fx[0]["eligible_now"] is True
+    # eligibility obeys the PIT law against the REAL clock (the fixture day
+    # ages past the anchor as wall time advances; the law, not a constant):
+    from datetime import datetime, timezone as _tz
+    now_dt = datetime.now(_tz.utc)
+    anchor_dt = A.parse_tip(fx[0]["anchor_utc"])
+    assert fx[0]["eligible_now"] is bool(now_dt < anchor_dt)
     code, out = capcli(env, "plan", "--date", NBA_DAY)
     nba = out["leagues"]["NBA"]["fixtures"]
     assert len(nba) >= 10                                       # opening slate
@@ -273,7 +283,11 @@ def test_success_path_end_to_end_sandbox(env, capcli):
     noedge = rows_of(env, "DECISION", "NO_EDGE")
     assert bets and noedge, "deterministic book must exercise both paths"
     for b in bets:
-        assert b["stake_cents"] == 500
+        # CAPITAL-V3 stake law (owner GO consumed 2026-10-10T12:43:51Z):
+        # stake = 1% of equity cent-rounded half-up; the fixed 500c v2 law
+        # is dead (the sandbox genesis 100000c -> 1000c first stake).
+        assert b["stake_law"] == "v3-1pct"
+        assert b["stake_cents"] == (b["equity_at_decision_cents"] + 50) // 100
         assert b["ev_net_by_leg"][b["chosen_leg"]] >= 0.05
     assert rows_of(env, "DECISION", "BLOCKED_NO_GO") == []
     gen = ledger_rows(env)[0]
@@ -1024,7 +1038,10 @@ def test_soccer_real_fixtures_fake_client_day_filter_snapshot(env):
     args = argparse.Namespace(data_root=str(env["data"]))
     fx = execute.real_soccer_fixtures(args, SOC_EVENT_DAY,
                                       client=client, odds_mod=odds_mod)
-    assert calls == [("events", "soccer_uefa_nations_league")]
+    # the union runs across EVERY registered sport key (config law: the list
+    # grows only by an explicit config commit — it grew to 5 on 2026-10-07)
+    expected_keys = execute.load_config()["sport_keys"]["SOCCER"]
+    assert calls == [("events", k) for k in expected_keys]
     assert [f.match_id for f in fx] == ["engcro"], "day filter is kickoff-UTC"
     snap = env["data"] / "data" / "events_soccer_uefa_nations_league.json"
     meta = json.loads((env["data"] / "data" /
@@ -1395,3 +1412,126 @@ def test_soccer_dashboard_counts_crosswalk_miss(env, capcli):
     summary = json.loads((outdir / "summary.json").read_text())
     assert summary["status_counts"].get("CROSSWALK_MISS", 0) == 1
     assert summary["not_run_by_cause"].get("identity_crosswalk", 0) == 1
+
+
+def test_pm_cutover_ai_gate_sandbox_chain(env, capcli, monkeypatch):
+    """Round-17 DoD rehearsal: the production CLI chain with BOTH gates ON
+    (sandbox-only flip; the committed config stays OFF) — PM seam quote ->
+    crosswalk + converted odds in the ledger -> AI ABSTAIN demotes the
+    candidate -> AI KEEP (fully-gated) places -> AI VETO refuses. The Odds
+    API capture path is never touched (no fallback seam exists)."""
+    monkeypatch.setattr(execute, "papertrade_flags",
+                        lambda args: {"pm_cutover_active": True,
+                                      "ai_authority_active": True})
+    probe = {
+        "401918299": {
+            "legs": {
+                "HOME": {"best_ask": 0.40, "vwap_ask": 0.40,
+                         "filled_shares": 25.0, "fee_total": 0.3,
+                         "levels": 1, "depth_ok": True},
+                "AWAY": {"best_ask": 0.62, "vwap_ask": 0.62,
+                         "filled_shares": 25.0, "fee_total": 0.4,
+                         "levels": 1, "depth_ok": True}},
+            "all_present": True, "event_id": "PM-EV-W1",
+            "market_id": "PM-MK-W1"}}
+    probe_file = env["data"] / "pm_probe.json"
+    probe_file.write_text(json.dumps(probe))
+    monkeypatch.setenv("PAPERTRADE_PM_PROBE_JSON", str(probe_file))
+
+    assert capcli(env, "forecast", "--league", "WNBA",
+                  "--date", WNBA_DAY)[0] == EXIT_OK
+    code, q = capcli(env, "quote", "--league", "WNBA", "--date", WNBA_DAY)
+    assert code == EXIT_OK and q["mode"] == "PM_CUTOVER_SANDBOX_SEAM"
+    assert q["written"] == ["401918299"]
+    qt = rows_of(env, "MARKET_QUOTE")[0]
+    assert qt["bookmaker"] == "POLYMARKET_CLOB" and \
+        qt["market"] == "moneyline_2way"
+    assert qt["pm_crosswalk"]["fixture_id"] == "401918299"
+    assert qt["stake_walk_cents"] == 1000       # 1% of the 100000c genesis
+    assert qt["odds"]["HOME"] == round(1 / 0.40, 6)   # executable VWAP law
+
+    # --- AI ABSTAIN (no opinion on file) => candidate demoted, never placed
+    code, d = capcli(env, "decide", "--league", "WNBA", "--date", WNBA_DAY)
+    assert code == EXIT_OK and len(d["journaled"]) == 1
+    assert d["journaled"][0]["status"] == "NOT_PLACED_AI_GATE"
+    dec = rows_of(env, "DECISION")[0]
+    assert dec["ai_gate"]["action"] == "ABSTAIN"
+    assert dec["stake_cents"] == 0 and dec["chosen_leg"] is None
+    assert dec["candidate_chosen_leg"] == "HOME"    # evidence kept
+    assert rows_of(env, "DECISION", "BET_PAPER") == []
+
+
+def test_pm_cutover_ai_keep_veto_scenarios(env, capcli, monkeypatch):
+    monkeypatch.setattr(execute, "papertrade_flags",
+                        lambda args: {"pm_cutover_active": True,
+                                      "ai_authority_active": True})
+    probe = {
+        "401918299": {
+            "legs": {
+                "HOME": {"best_ask": 0.40, "vwap_ask": 0.40,
+                         "filled_shares": 25.0, "fee_total": 0.3,
+                         "levels": 1, "depth_ok": True},
+                "AWAY": {"best_ask": 0.62, "vwap_ask": 0.62,
+                         "filled_shares": 25.0, "fee_total": 0.4,
+                         "levels": 1, "depth_ok": True}},
+            "all_present": True, "event_id": "PM-EV-W1",
+            "market_id": "PM-MK-W1"}}
+    probe_file = env["data"] / "pm_probe.json"
+    probe_file.write_text(json.dumps(probe))
+    monkeypatch.setenv("PAPERTRADE_PM_PROBE_JSON", str(probe_file))
+    opinion = env["data"] / "ai_opinion.json"
+    opinion.write_text(json.dumps({"401918299": {
+        "status": "COMPLETED", "verdict": "nil",
+        "recommendedAction": "KEEP", "proposedLeg": "None",
+        "deadlineUTC": "2026-10-09T17:00:00Z",
+        "completedAtUTC": "2026-10-09T16:00:00Z"}}))
+    monkeypatch.setenv("PAPERTRADE_AI_OPINION_JSON", str(opinion))
+    capcli(env, "forecast", "--league", "WNBA", "--date", WNBA_DAY)
+    capcli(env, "quote", "--league", "WNBA", "--date", WNBA_DAY)
+    code, d = capcli(env, "decide", "--league", "WNBA", "--date", WNBA_DAY)
+    assert code == EXIT_OK
+    assert d["journaled"][0]["status"] == "BET_PAPER"
+    dec = rows_of(env, "DECISION", "BET_PAPER")[0]
+    assert dec["ai_gate"]["decision"] == "PLACE"
+    assert dec["ai_gate"]["gates_failed"] == []
+    # frozen numbers untouched by the AI (it supplied NO numbers)
+    assert dec["p_frozen"]["HOME"] == 0.707
+    assert dec["odds_frozen"]["HOME"] == round(1 / 0.40, 6)
+    # in-law append: stake = 1% of genesis equity
+    assert dec["stake_cents"] == 1000 and dec["stake_law"] == "v3-1pct"
+
+
+
+def test_pm_cutover_ai_veto_refusal(env, capcli, monkeypatch):
+    """A PASSING deterministic candidate + AI VETO => terminal
+    NOT_PLACED_AI_GATE (the AI can stop a bet; it can never start one)."""
+    monkeypatch.setattr(execute, "papertrade_flags",
+                        lambda args: {"pm_cutover_active": True,
+                                      "ai_authority_active": True})
+    probe_file = env["data"] / "pm_probe.json"
+    probe_file.write_text(json.dumps({"401918299": {
+        "legs": {"HOME": {"best_ask": 0.40, "vwap_ask": 0.40,
+                          "filled_shares": 25.0, "fee_total": 0.3,
+                          "levels": 1, "depth_ok": True},
+                 "AWAY": {"best_ask": 0.62, "vwap_ask": 0.62,
+                          "filled_shares": 25.0, "fee_total": 0.4,
+                          "levels": 1, "depth_ok": True}},
+        "all_present": True, "event_id": "PM-EV-W1",
+        "market_id": "PM-MK-W1"}}))
+    monkeypatch.setenv("PAPERTRADE_PM_PROBE_JSON", str(probe_file))
+    opinion = env["data"] / "ai_opinion.json"
+    opinion.write_text(json.dumps({"401918299": {
+        "status": "COMPLETED", "verdict": "VETO",
+        "recommendedAction": "None", "proposedLeg": "None",
+        "deadlineUTC": "2026-10-09T17:00:00Z",
+        "completedAtUTC": "2026-10-09T16:00:00Z"}}))
+    monkeypatch.setenv("PAPERTRADE_AI_OPINION_JSON", str(opinion))
+    capcli(env, "forecast", "--league", "WNBA", "--date", WNBA_DAY)
+    capcli(env, "quote", "--league", "WNBA", "--date", WNBA_DAY)
+    code, d = capcli(env, "decide", "--league", "WNBA", "--date", WNBA_DAY)
+    assert code == EXIT_OK
+    assert d["journaled"][0]["status"] == "NOT_PLACED_AI_GATE"
+    dec = rows_of(env, "DECISION", "NOT_PLACED_AI_GATE")[0]
+    assert dec["ai_gate"]["action"] == "VETO"
+    assert dec["stake_cents"] == 0 and dec["chosen_leg"] is None
+    assert rows_of(env, "DECISION", "BET_PAPER") == []

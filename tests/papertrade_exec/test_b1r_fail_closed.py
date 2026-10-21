@@ -522,6 +522,9 @@ def test_run_day_sandbox_soccer_journals_no_b1r(env, capcli,
     assert code == 0, out
     soc = out["leagues"]["SOCCER"]
     assert soc["status"] == "OK"
+    # WSL lane refuses at its sandbox quote seam and is contained per-league
+    # (never a crashed batch, never a swallowed safety code)
+    assert out["leagues"]["WSL"]["status"] == "BLOCKED_NO_QUOTE_PLUMBING"
     assert len(soc["decide"]["journaled"]) == 3
     decs = rows_of(env, "DECISION", "NOT_RUN_NO_B1R_FORECAST")
     assert len(decs) == 3
