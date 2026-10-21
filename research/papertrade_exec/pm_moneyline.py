@@ -35,8 +35,11 @@ def _now_utc() -> str:
 
 
 def _norm(name: str) -> str:
-    import re
-    return re.sub(r"[^a-z0-9]+", "", str(name).casefold())
+    # W0.1 (PAPERDESK-FIXALL-NCAA-V1): ONE normalization for the whole
+    # runner — byte-identical algorithm to the previous local implementation
+    # (casefold + strip non-alnum), now sourced from team_names.norm.
+    from research.papertrade_exec import team_names
+    return team_names.norm(name)
 
 
 def _get_json(url: str) -> dict | list:

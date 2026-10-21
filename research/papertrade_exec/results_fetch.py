@@ -2,14 +2,29 @@
 
 Law: a settle attempt may only be PROPOSED for a match whose source record is
 FINAL (completed=true), carries both scores, and matches the ledger identity
-1:1 (event id equality BY CONSTRUCTION + team abbreviation cross-check).
-Anything less returns an inconclusive record and the bet stays OPEN —
-no inference, no backfill. Postponed/cancelled is recognized ONLY from an
-explicit source status string and maps to the frozen VOID refund results.
+1:1 (event id equality BY CONSTRUCTION + team identity through the PINNED
+team-name crosswalk). Anything less returns an inconclusive record and the bet
+stays OPEN — no inference, no backfill. Postponed/cancelled is recognized from
+the structured ESPN status fields (`status.type.name` / `state`) — never from
+a free-text guess alone — and maps to the frozen VOID refund results.
 
 ESPN (NBA/WNBA) is free and keyless; The Odds API /scores (SOCCER) costs one
 credit and reuses the pinned client's quota/key hygiene via a thin subclass.
 Key bytes never leave the pinned client (only its fingerprint may surface).
+
+PAPERDESK-FIXALL-NCAA-V1 (owner 2026-10-21):
+  * W0.1 — team identity goes through research/papertrade_exec/team_names.py
+    (one normalization + one sha-pinned crosswalk). The old abbreviation ==
+    full-name string compare is the root cause that kept every NBA bet OPEN.
+  * W0.6 — scoreboard scan window widened to [D-1, D+2] around the ledger
+    kickoff date D: D-1 absorbs ESPN US-Eastern date slippage vs UTC,
+    D+1/D+2 catch postponements/reschedules up to +48h (beyond that the bet
+    ages into the stuck-alarm/dead-letter plane of ops_service W0.3).
+    Postponed/cancelled recognition reads the STRUCTURED status fields
+    (`status.type.name` e.g. STATUS_POSTPONED / STATUS_CANCELED /
+    STATUS_SUSPENDED, `state`, `completed`) in addition to the legacy
+    description/detail substrings; a FINAL event found on a different date is
+    reported as rescheduled (inconclusive, kept OPEN with the new date).
 """
 from __future__ import annotations
 
@@ -19,11 +34,21 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from research.papertrade_exec import team_names
+
 ESPN_BASE = ("https://site.api.espn.com/apis/site/v2/sports/basketball/"
              "{league}/scoreboard?dates={date}")
 ESPN_LEAGUE_PATH = {"WNBA": "wnba", "NBA": "nba"}
+# W0.6 scan window: ledger kickoff date D plus offsets D-1 (ET slippage),
+# D+1, D+2 (reschedules up to +48h).
+ESPN_DATE_OFFSETS = (0, 1, -1, -2)
 SETTLE_GRACE_HOURS = 3          # never propose a settle before kickoff+3h
 SOCCER_RETRY_MIN_SECONDS = 6 * 3600
+
+# Structured ESPN status names that are terminal non-FINAL outcomes
+# (recognize-by-field, not by free text alone — W0.6).
+ESPN_POSTPONED_STATUS = {"STATUS_POSTPONED", "STATUS_SUSPENDED"}
+ESPN_CANCELLED_STATUS = {"STATUS_CANCELED", "STATUS_CANCELLED"}
 
 
 def utc_now() -> str:
@@ -98,9 +123,10 @@ def fetch_espn_results(*, league: str, date: str, match_ids: list[str],
                          f"match ids {unknown} (identity bounds)")
     fetched_at = now_utc or utc_now()
     events: dict[str, dict] = {}
+    event_dates: dict[str, str] = {}
     for d in sorted({r["kickoff_utc"][:10] for r in target.values()}):
         dt = _parse_ts(d + "T00:00:00Z")
-        for offset in (0, 1):          # ESPN boards: UTC date + prior-day
+        for offset in ESPN_DATE_OFFSETS:   # W0.6: D-1 .. D+2 scan window
             compact = (dt - timedelta(days=offset)).strftime("%Y%m%d")
             payload, body, status = _espn_get(path, compact)
             persist_evidence(
@@ -113,6 +139,7 @@ def fetch_espn_results(*, league: str, date: str, match_ids: list[str],
                 ev = _espn_find_event(payload, m)
                 if ev is not None:
                     events.setdefault(m, ev)
+                    event_dates.setdefault(m, compact)
     settleable, inconclusive = {}, []
     for m, row in target.items():
         ev = events.get(m)
@@ -125,19 +152,36 @@ def fetch_espn_results(*, league: str, date: str, match_ids: list[str],
         st = comp["status"]["type"]
         detail = str(st.get("detail", ""))
         state = str(st.get("state", ""))
+        status_name = str(st.get("name", "")).upper()
         desc = str(st.get("description", "")).upper()
         abbr = {c["homeAway"]: c.get("team", {}).get("abbreviation")
                 for c in comp["competitors"]}
         scores = {c["homeAway"]: c.get("score") for c in comp["competitors"]}
-        # identity cross-check: id equality (by construction above) + team
-        # abbreviation vs the ledger row; mismatch is fail-closed.
-        if abbr.get("home") != row["home"] or abbr.get("away") != row["away"]:
+        # W0.1 identity cross-check: id equality (by construction above) +
+        # BOTH team names resolved through the pinned crosswalk; any
+        # unresolved name is fail-closed (kept OPEN + incident, no guessing).
+        ok_h, why_h = team_names.same_team(abbr.get("home") or "",
+                                           row["home"], league)
+        ok_a, why_a = team_names.same_team(abbr.get("away") or "",
+                                           row["away"], league)
+        if not (ok_h and ok_a):
             inconclusive.append({"match_id": m,
                                  "why": f"identity mismatch: source "
                                         f"{abbr} != ledger {row['home']}/"
-                                        f"{row['away']} (kept OPEN)"})
+                                        f"{row['away']} ({why_h}; {why_a}) "
+                                        "(kept OPEN)"})
             continue
+        board_day = event_dates.get(m, "")
+        ledger_day = row["kickoff_utc"][:10].replace("-", "")
+        rescheduled = bool(board_day) and board_day != ledger_day
         if st.get("completed") is True:
+            if rescheduled:
+                inconclusive.append({"match_id": m,
+                                     "why": f"event found FINAL on board day "
+                                            f"{board_day} != ledger kickoff "
+                                            f"day {ledger_day} (rescheduled; "
+                                            "kept OPEN for explicit review)"})
+                continue
             try:
                 hs, as_ = int(scores["home"]), int(scores["away"])
             except (TypeError, ValueError, KeyError):
@@ -158,20 +202,30 @@ def fetch_espn_results(*, league: str, date: str, match_ids: list[str],
                                f"home={row['home']}:{hs} away={row['away']}:"
                                f"{as_} fetched_at={fetched_at}"),
             }
-        elif "POSTPON" in desc or "POSTPON" in detail.upper() or \
-                state == "postponed":
+        elif (status_name in ESPN_POSTPONED_STATUS
+              or "POSTPON" in desc or "POSTPON" in detail.upper()
+              or state == "postponed"):
             settleable[m] = {
                 "result": "POSTPONED_NO_RESCHEDULE",
-                "source_ref": (f"espn_scoreboard event={m} status=postponed "
+                "source_ref": (f"espn_scoreboard event={m} "
+                               f"status={status_name or 'postponed'} "
                                f"detail={detail!r} fetched_at={fetched_at}"),
             }
-        elif "CANCEL" in desc or "CANCEL" in detail.upper() or \
-                state == "cancelled":
+        elif (status_name in ESPN_CANCELLED_STATUS
+              or "CANCEL" in desc or "CANCEL" in detail.upper()
+              or state == "cancelled"):
             settleable[m] = {
                 "result": "CANCELLED",
-                "source_ref": (f"espn_scoreboard event={m} status=cancelled "
+                "source_ref": (f"espn_scoreboard event={m} "
+                               f"status={status_name or 'cancelled'} "
                                f"detail={detail!r} fetched_at={fetched_at}"),
             }
+        elif rescheduled:
+            inconclusive.append({"match_id": m,
+                                 "why": f"event found on board day {board_day} "
+                                        f"!= ledger kickoff day {ledger_day} "
+                                        f"(state={state!r}; rescheduled; "
+                                        "kept OPEN)"})
         else:
             inconclusive.append({"match_id": m,
                                  "why": f"source not FINAL (state={state!r}, "

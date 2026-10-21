@@ -54,6 +54,21 @@ DEFAULT_LOOKAHEAD_H = {"NBA": 24, "WNBA": 24, "SOCCER": 48,
                        # CAPITAL-V3 §4: WSL cadence lookahead (mirrors SOCCER)
                        "WSL": 48}
 SERVICE_PORT = 8791
+# --- PAPERDESK-FIXALL-NCAA-V1 W0.2/W0.3 (owner work package 2026-10-21) -----
+# W0.2 measured goal: a finished NBA/WNBA bet settles <= 3h after the match
+# ends. SETTLE_GRACE_HOURS stays 3 (grace bounds premature-FINAL risk; first
+# lawful attempt is kickoff+3h ~= end+0.5h, throttle 30min => worst ~1h after
+# end). The due queue is REBUILT every tick — a failed attempt never removes
+# a bet from the row (each attempt journaled to settle_attempts.jsonl).
+# W0.3: a bet still OPEN past (estimated end + STUCK_ALARM_H) alarms high
+# (SETTLE_STUCK_ALARM, re-alarmed every STUCK_REALARM_H); past
+# (estimated end + DEAD_LETTER_H) it enters the dead-letter state (still
+# OPEN in the ledger, labeled + aged on the dashboard; ONLY the owner can
+# resolve it, via the audited `resolve-stuck` path — never a hand edit).
+STUCK_ALARM_H = 6.0
+DEAD_LETTER_H = 48.0
+STUCK_REALARM_H = 24.0
+END_ESTIMATE_H = {"NBA": 2.5, "WNBA": 2.5, "SOCCER": 2.0, "WSL": 2.0}
 
 
 def _cadence_leagues() -> tuple:
@@ -118,6 +133,7 @@ class OpsService:
         self.last_cadence = None          # (ts, summary)
         self.last_settle = None
         self.last_rebuild = None
+        self._stuck_cache: list[dict] = []   # W0.3 dashboard feed
 
     # ------------------------------------------------------------- plumbing --
     def reconcile_missed_windows(self) -> int:
@@ -246,6 +262,164 @@ class OpsService:
         return core, led, execute.ledger_path_for(ns)
 
     # ----------------------------------------------------------------- settle --
+    def _journal_attempt(self, league: str, date: str, outcome: dict) -> None:
+        """W0.2 metrics plane: EVERY settle attempt is recorded (even silent
+        throttled-invisible repeats) so a bet can never fall out of the row
+        without evidence. Append-only JSONL, not an incident stream."""
+        rec = {"ts_utc": now_utc(), "league": league, "date": date,
+               **outcome}
+        with open(self.state_dir / "settle_attempts.jsonl", "a") as f:
+            f.write(json.dumps(rec, sort_keys=True, default=str) + "\n")
+
+    def _prune_settle_why(self, settled_ids: list[str]) -> None:
+        """W0.3: a settled bet's keep-open reason is a GHOST — delete it the
+        moment the bet settles (the runtime audit found 6/8 entries were
+        ghosts of bets settled the previous day, the #1 source of wrong
+        'stuck' readings). Same for the stuck/dead-letter plane."""
+        ids = set(settled_ids)
+        p = self.state_dir / "settle_last_why.json"
+        last_why = self._load_json(p, {})
+        if last_why:
+            kept = {k: v for k, v in last_why.items() if k not in ids}
+            if len(kept) != len(last_why):
+                _atomic_write(p, kept)
+        sp = self.state_dir / "stuck_state.json"
+        st = self._load_json(sp, {})
+        if st:
+            kept = {k: v for k, v in st.items() if k not in ids}
+            if len(kept) != len(st):
+                _atomic_write(sp, kept)
+                self._stuck_cache = [e for e in self._stuck_cache
+                                     if e.get("match_id") in kept]
+
+    def _stuck_scan(self, led, open_bets: list[dict], now_dt: datetime) -> None:
+        """W0.3: stuck-alarm + dead-letter plane. A bet is STUCK when it is
+        still OPEN past (estimated end + 6h) — high incident, re-alarm every
+        24h — and DEAD-LETTER past (estimated end + 48h) — still OPEN in the
+        ledger, but labeled + aged for the dashboard; only the owner can
+        resolve it through the audited resolve-stuck path."""
+        st = self._load_json(self.state_dir / "stuck_state.json", {})
+        changed = False
+        for r in open_bets:
+            mid = r["match_id"]
+            league = r["league"]
+            try:
+                ko = _parse_ts(r["kickoff_utc"])
+            except (KeyError, ValueError):
+                continue
+            end_est = ko + timedelta(hours=END_ESTIMATE_H.get(league, 2.5))
+            age_h = (now_dt - end_est).total_seconds() / 3600.0
+            entry = st.get(mid) or {}
+            if age_h < STUCK_ALARM_H:
+                continue
+            if not entry:
+                entry = {"league": league,
+                         "home": r.get("home"), "away": r.get("away"),
+                         "kickoff_utc": r["kickoff_utc"],
+                         "first_stuck_utc": now_utc(),
+                         "stuck_age_h_at_first": round(age_h, 2),
+                         "last_alarm_utc": now_utc(),
+                         "dead_letter": False}
+                st[mid] = entry
+                changed = True
+                self.incident("SETTLE_STUCK_ALARM",
+                              f"{mid} ({league} {r.get('home')} v "
+                              f"{r.get('away')}) OPEN {age_h:.1f}h past "
+                              "estimated end — high alarm (W0.3)",
+                              match_id=mid, league=league)
+            else:
+                last = entry.get("last_alarm_utc")
+                due_realarm = True
+                if last:
+                    try:
+                        due_realarm = (now_dt - _parse_ts(last)).total_seconds() \
+                            >= STUCK_REALARM_H * 3600
+                    except ValueError:
+                        due_realarm = True
+                if due_realarm:
+                    entry["last_alarm_utc"] = now_utc()
+                    entry["stuck_age_h_latest"] = round(age_h, 2)
+                    changed = True
+                    self.incident("SETTLE_STUCK_ALARM",
+                                  f"{mid} still OPEN {age_h:.1f}h past "
+                                  "estimated end (re-alarm)",
+                                  match_id=mid, league=league)
+            if age_h >= DEAD_LETTER_H and not entry.get("dead_letter"):
+                entry["dead_letter"] = True
+                entry["dead_letter_utc"] = now_utc()
+                entry["dead_letter_age_h"] = round(age_h, 2)
+                changed = True
+                self.incident("SETTLE_DEAD_LETTER",
+                              f"{mid} OPEN {age_h:.1f}h past estimated end — "
+                              "dead-letter (owner resolution only, audited "
+                              "resolve-stuck path)",
+                              match_id=mid, league=league)
+        # drop entries for bets that settled
+        settled_refs = led.settled_decision_refs()
+        live_ids = {r["match_id"] for r in open_bets}
+        for mid in [k for k in st if k not in live_ids]:
+            st.pop(mid)
+            changed = True
+        if changed or not st:
+            _atomic_write(self.state_dir / "stuck_state.json", st)
+        self._stuck_cache = sorted(
+            ({"match_id": k, **v,
+              "why": (self._load_json(self.state_dir /
+                                      "settle_last_why.json", {})
+                      .get(k, ""))}
+             for k, v in st.items()),
+            key=lambda e: (not e.get("dead_letter"),
+                           -(e.get("stuck_age_h_latest")
+                             or e.get("stuck_age_h_at_first") or 0)))
+
+    def resolve_stuck(self, match_id: str, results_path: str,
+                      token: dict) -> dict:
+        """W0.3 owner-only audited resolution for a dead-lettered bet: the
+        owner places ops/control/owner_resolution_token.json ({by, at_utc,
+        note}) and supplies a results FILE; the settlement itself runs the
+        NORMAL pinned cmd_settle path (append-only, chain-verified) — this
+        method NEVER writes the ledger directly."""
+        resolved = []
+        for (league, date), rows in self._open_by_group().items():
+            if not any(r["match_id"] == match_id for r in rows):
+                continue
+            self.incident("RESOLUTION_OWNER",
+                          f"{match_id} owner resolution via resolve-stuck "
+                          f"(token by={token.get('by')} "
+                          f"at={token.get('at_utc')} "
+                          f"note={str(token.get('note', ''))[:120]})",
+                          match_id=match_id, league=league)
+            ns = self._runner_args("settle", league=league, date=date,
+                                   results=results_path)
+            report = execute.cmd_settle(ns)
+            resolved.append(report)
+            self._prune_settle_why([s["match_id"] for s in
+                                    report.get("settled", [])])
+            for s in report.get("settled", []):
+                self.incident("SETTLE_DONE",
+                              f"{s['match_id']} result={s['result']} "
+                              f"pnl_cents={s['pnl_cents']} "
+                              f"outcome={s['outcome_for_leg']}",
+                              match_id=s["match_id"], league=league)
+            return {"league": league, "report": report}
+        raise SystemExit(f"no open bet {match_id} in the due groups")
+
+    def _open_by_group(self) -> dict:
+        core, led, _lpath = self._ledger_state()
+        settled_refs = led.settled_decision_refs()
+        open_bets = [r for r in led.rows
+                     if r.get("type") == "DECISION"
+                     and r.get("status") == "BET_PAPER"
+                     and r["row_sha256"] not in settled_refs]
+        now = datetime.now(timezone.utc)
+        due: dict[tuple[str, str], list[dict]] = {}
+        for r in open_bets:
+            ko = _parse_ts(r["kickoff_utc"])
+            if now >= ko + timedelta(hours=self.grace_hours):
+                due.setdefault((r["league"], r["kickoff_utc"][:10]),
+                               []).append(r)
+        return due
+
     def settle_pass(self) -> dict:
         out = {"attempted": 0, "settled": 0, "kept_open": 0}
         try:
@@ -259,6 +433,13 @@ class OpsService:
                      and r.get("status") == "BET_PAPER"
                      and r["row_sha256"] not in settled_refs]
         now = datetime.now(timezone.utc)
+        # W0.3 stuck/dead-letter plane runs EVERY tick on the full open row
+        # (independent of any throttle).
+        self._stuck_scan(led, open_bets, now)
+        # W0.2: the due queue is REBUILT from the ledger every tick — every
+        # OPEN bet past kickoff+grace is considered again each pass; a failed
+        # attempt never removes a bet from the row (only the per-source
+        # throttle paces the network calls).
         due: dict[tuple[str, str], list[dict]] = {}
         for r in open_bets:
             ko = _parse_ts(r["kickoff_utc"])
@@ -276,13 +457,24 @@ class OpsService:
                 settleable, inconclusive = self._fetch_results(
                     league, date, rows, led.rows)
             except BlockError as be:            # quota/key laws propagate
+                self._journal_attempt(league, date,
+                                      {"outcome": "BLOCKED",
+                                       "code": be.code, "detail": be.detail[:200]})
                 self.incident("SETTLE_BLOCKED", f"{league} {date}: "
                               f"{be.code}: {be.detail}", league=league)
                 continue
             except Exception as e:              # network etc — keep OPEN
+                self._journal_attempt(league, date,
+                                      {"outcome": "FETCH_ERROR",
+                                       "error": f"{type(e).__name__}: {e}"[:200]})
                 self.incident("SETTLE_FETCH_ERROR", f"{league} {date}: "
                               f"{type(e).__name__}: {e}", league=league)
                 continue
+            self._journal_attempt(league, date,
+                                  {"outcome": "FETCHED",
+                                   "settleable": sorted(settleable),
+                                   "inconclusive": [i["match_id"] for i in
+                                                    inconclusive]})
             out["kept_open"] += len(inconclusive)
             last_why = self._load_json(
                 self.state_dir / "settle_last_why.json", {})
@@ -321,6 +513,11 @@ class OpsService:
                 self.incident("SETTLE_BLOCKED", f"{league} {date}: "
                               f"{be.code}: {be.detail}", league=league)
                 continue
+            settled_ids = [s["match_id"] for s in report.get("settled", [])]
+            if settled_ids:
+                # W0.3: the settled bets' ghost keep-open reasons are gone
+                # the moment the settle lands.
+                self._prune_settle_why(settled_ids)
             for s in report.get("settled", []):
                 out["settled"] += 1
                 self.incident("SETTLE_DONE",
@@ -349,27 +546,50 @@ class OpsService:
                 sandbox=self.sandbox)
         # SOCCER: stage law FIRST (fail-closed for knockout/unknown), then the
         # 1-credit quota-guarded /scores capture.
+        # W0.5 (PAPERDESK-FIXALL-NCAA-V1): a match that KICKED OFF and aged
+        # past the settle grace while standing OUTSIDE the stage law can
+        # never produce a lawful bet result — but an open bet on it must not
+        # stay open forever either. Past kickoff+grace such a match settles
+        # VOID (refund per config settlement_refund_results) with the stage
+        # refusal as the source_ref — the normal pinned settle path records
+        # it; never a hand edit. Matches not yet past grace stay plain
+        # inconclusive (their window may still resolve).
+        now_dt = datetime.now(timezone.utc)
         ineligible = []
+        void_settleable: dict = {}
         eligible_rows = []
         for r in rows:
             stage = execute.soccer_stage_law(r["competition"],
                                              r["kickoff_utc"][:10])
             if stage.get("bet_eligible"):
                 eligible_rows.append(r)
+                continue
+            ko = _parse_ts(r["kickoff_utc"])
+            if now_dt >= ko + timedelta(hours=self.grace_hours):
+                void_settleable[r["match_id"]] = {
+                    "result": "VOID",
+                    "source_ref": (
+                        f"stage_law_ineligible_after_kickoff stage="
+                        f"{stage.get('stage')} reason={stage.get('reason')}"
+                        f" kickoff={r['kickoff_utc']} voided_at={now_utc()}"),
+                }
             else:
                 ineligible.append({"match_id": r["match_id"],
                                    "why": f"stage law fail-closed: "
                                           f"{stage}"})
-        if not eligible_rows:
-            return {}, ineligible
-        odds_mod, quota, client = execute._odds_for(
-            self._runner_args("dashboard"))   # args carriers only (data_root)
-        scores_client = RF.make_scores_client(odds_mod, quota)
-        settleable, inconclusive = RF.fetch_soccer_scores(
-            odds_mod=odds_mod, quota=quota, client=scores_client,
-            sport_keys=execute._soccer_sport_keys(), match_ids=mids,
-            ledger_rows=all_rows, data_root=self.data_root,
-            sandbox=self.sandbox)
+        settleable: dict = {}
+        inconclusive: list = []
+        if eligible_rows:
+            odds_mod, quota, client = execute._odds_for(
+                self._runner_args("dashboard"))   # args carriers (data_root)
+            scores_client = RF.make_scores_client(odds_mod, quota)
+            settleable, inconclusive = RF.fetch_soccer_scores(
+                odds_mod=odds_mod, quota=quota, client=scores_client,
+                sport_keys=execute._soccer_sport_keys(), match_ids=mids,
+                ledger_rows=all_rows, data_root=self.data_root,
+                sandbox=self.sandbox)
+        for mid, v in void_settleable.items():
+            settleable.setdefault(mid, v)
         return settleable, inconclusive + ineligible
 
     # ---------------------------------------------------------------- cadence --
@@ -698,7 +918,39 @@ def main(argv=None) -> int:
     ap.add_argument("--lookahead-soccer-hours", type=int, default=48)
     ap.add_argument("--settle-grace-hours", type=int,
                     default=RF.SETTLE_GRACE_HOURS)
+    # W0.3 audited owner resolution (dead-letter plane): the owner places
+    # ops/control/owner_resolution_token.json ({by, at_utc, note}) and runs
+    # resolve-stuck with a results FILE — settlement goes through the NORMAL
+    # pinned cmd_settle path; no direct ledger write exists anywhere.
+    ap.add_argument("--resolve-stuck", dest="resolve_stuck", default=None,
+                    metavar="MATCH_ID",
+                    help="resolve one dead-lettered OPEN bet (owner only)")
+    ap.add_argument("--resolution-results", dest="resolution_results",
+                    default=None,
+                    help="results JSON file for --resolve-stuck "
+                         "{match_id: {result, source_ref}}")
     args = ap.parse_args(argv)
+    if args.resolve_stuck:
+        if not args.resolution_results:
+            ap.error("--resolve-stuck requires --resolution-results FILE")
+        svc = OpsService(
+            data_root=Path(args.data_root), sandbox=args.sandbox,
+            settle_grace_hours=args.settle_grace_hours, serve=False)
+        token_path = svc.control_dir / "owner_resolution_token.json"
+        if not token_path.exists():
+            print(json.dumps({"blocked": "RESOLUTION_TOKEN_ABSENT",
+                              "detail": f"owner must place {token_path} "
+                                        "({by, at_utc, note}) first"}))
+            return 4
+        try:
+            token = json.loads(token_path.read_text())
+        except json.JSONDecodeError:
+            print(json.dumps({"blocked": "RESOLUTION_TOKEN_MALFORMED"}))
+            return 4
+        report = svc.resolve_stuck(args.resolve_stuck,
+                                   args.resolution_results, token)
+        print(json.dumps(report, indent=1, sort_keys=True, default=str))
+        return 0
     svc = OpsService(
         data_root=Path(args.data_root), sandbox=args.sandbox,
         tick_seconds=args.tick_seconds,

@@ -109,3 +109,46 @@ PaperDesk.app/Contents/MacOS/PaperDesk --self-check-ledger <ledger.jsonl>
   raises the stale alarm in the UI.
 - Chain FAILED banner: DO NOT ignore — someone/something touched
   `paper_ledger.jsonl`; the app withholds all financials by design.
+
+## 8. PAPERDESK-FIXALL-NCAA-V1 — settlement plane laws (W0, 2026-10-21)
+
+- **Team identity (W0.1):** every settle identity check goes through
+  `research/papertrade_exec/team_names.py` — ONE normalization
+  (casefold + strip non-alnum) + the sha-pinned `TEAM_NAME_CROSSWALK.csv`
+  (30 NBA + 15 WNBA teams measured from real journaled ESPN payloads and the
+  pinned WNBA schedule; pin `data.team_name_crosswalk_csv` in pins.json).
+  Unknown names are fail-closed: the bet stays OPEN + incident, never a
+  guess. The old `abbreviation != full name` compare (root cause of the two
+  live-stuck NBA bets) is gone; the three old normalizers now delegate to
+  `team_names.norm`.
+- **Settle retry cadence (W0.2):** the due queue is rebuilt from the ledger
+  EVERY tick — a failed attempt never removes a bet from the row; only the
+  per-source throttle paces network (ESPN 30 min, soccer /scores 6 h).
+  Every attempt is journaled to `ops/state/settle_attempts.jsonl`.
+  Measured goal: an NBA/WNBA bet settles ≤ 3 h after the match ends
+  (SETTLE_GRACE_HOURS stays 3: first lawful attempt ≈ end+0.5 h).
+- **Stuck alarm / dead-letter (W0.3):** OPEN past (estimated end + 6 h)
+  → `SETTLE_STUCK_ALARM` incident + dashboard stuck queue; past
+  (estimated end + 48 h) → `SETTLE_DEAD_LETTER` (still OPEN in the ledger,
+  labeled + aged). Only the owner resolves a dead-lettered bet, via
+  `python -m research.papertrade_exec.ops_service --resolve-stuck <ID>
+  --resolution-results FILE` AFTER placing
+  `ops/control/owner_resolution_token.json` ({by, at_utc, note}); settlement
+  runs the NORMAL pinned settle path — no direct ledger write exists.
+  Settled bets' ghost keep-open reasons are pruned from
+  `settle_last_why.json` immediately.
+- **WSL DRAW identity (W0.4):** the DRAW leg is identity-ok when the EVENT
+  pairs both team names and the market id comes from the bet's own quote
+  row (PM phrases DRAW markets without a date). One-of-three UMA + ambiguity
+  refusals unchanged.
+- **Soccer void path (W0.5):** a match past kickoff+grace standing OUTSIDE
+  the stage law settles VOID (refund per `settlement_refund_results`)
+  through the normal settle path with the stage refusal as source_ref.
+- **ESPN scan window (W0.6):** scoreboard scan covers [D−1, D+2] around the
+  ledger kickoff date; postpone/cancel recognition reads the structured
+  `status.type.name`/`state` fields in addition to description text; a FINAL
+  event on a different board day is reported as rescheduled (kept OPEN).
+- W0 acceptance evidence:
+  `research/control/PAPERDESK-FIXALL-NCAA-V1/evidence/W0_ACCEPTANCE_REPLAY_2026-10-21.json`
+  (both live-stuck NBA bets settle via the normal path on a byte-copy
+  ledger, chain OK, production untouched).

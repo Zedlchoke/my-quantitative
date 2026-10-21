@@ -46,12 +46,10 @@ _norm_cache: dict = {}
 
 def _norm(name: str) -> str:
     """IDENTICAL to the pinned polymarket_source.norm_name (casefold +
-    collapse non-alphanumerics); cached."""
-    import re
-    if name not in _norm_cache:
-        _norm_cache[name] = re.sub(r"[^a-z0-9]+", "",
-                                   str(name).casefold())
-    return _norm_cache[name]
+    collapse non-alphanumerics); cached. W0.1: delegated to team_names.norm —
+    the ONE normalization for the whole runner."""
+    from research.papertrade_exec import team_names
+    return team_names.norm(name)
 
 
 _pm_to_fd_cache: dict | None = None
@@ -200,9 +198,23 @@ def fetch_wsl_settleable(*, rows: list[dict], ledger_rows: list[dict],
             yp = _yes_price(m)
             qtext_norm = __import__("re").sub(
                 r"[^a-z0-9]+", "", str(m.get("question") or "").casefold())
-            leg_ok = _team_in_title(home_name, qtext_norm) or _team_in_title(
-                away_name, qtext_norm) or (
-                ko_date and ko_date in str(m.get("question") or ""))
+            if leg == "DRAW":
+                # W0.4 (PAPERDESK-FIXALL-NCAA-V1): Polymarket phrases DRAW
+                # markets without a kickoff date and often without either
+                # team name — demanding the same leg-level date/name hit
+                # that HOME/AWAY need kept whole FIXTURES unsettled
+                # (runtime evidence FD-2026-M36..M42, DRAW leg id_ok=False
+                # while HOME/AWAY resolved clean). The DRAW market id comes
+                # from the bet's OWN MARKET_QUOTE row (identity by
+                # construction), so DRAW identity = the EVENT pairing (both
+                # team names in the event title) + the tracked market id.
+                # Date stays a secondary signal only. Fail-closed laws are
+                # unchanged: UMA must still resolve one-of-three cleanly.
+                leg_ok = event_ok
+            else:
+                leg_ok = _team_in_title(home_name, qtext_norm) or \
+                    _team_in_title(away_name, qtext_norm) or (
+                    ko_date and ko_date in str(m.get("question") or ""))
             ok_id = event_ok and leg_ok
             details.append(f"{leg}:{mid_id} closed={closed} uma={uma} "
                            f"yes={yp} id_ok={ok_id}")

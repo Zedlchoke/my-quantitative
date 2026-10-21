@@ -71,7 +71,7 @@ def sandbox_ledger_path(env) -> Path:
 
 
 def seed_open_bet(env, *, league="WNBA", match_id="401918297T",
-                  home="AAA", away="BBB", kickoff="2026-10-07T23:30:00Z",
+                  home="ATL", away="NY", kickoff="2026-10-07T23:30:00Z",
                   competition="SEMI", chosen="HOME",
                   odds=None) -> dict:
     """Fabricate a labeled SANDBOX chain: GENESIS + FORECAST + QUOTE +
@@ -127,12 +127,12 @@ def incidents(env) -> list[dict]:
     return [json.loads(l) for l in p.read_text().splitlines() if l.strip()]
 
 
-def espn_payload(match_id, *, completed, home_abbr="AAA", away_abbr="BBB",
+def espn_payload(match_id, *, completed, home_abbr="ATL", away_abbr="NY",
                  home_score="100", away_score="98", state="post",
                  detail="Final") -> dict:
     st = {"state": state, "completed": completed, "detail": detail}
     return {"events": [{
-        "id": match_id, "date": "2026-10-07T23:30Z", "name": "BBB at AAA",
+        "id": match_id, "date": "2026-10-07T23:30Z", "name": "NY at ATL",
         "competitions": [{"status": {"type": st},
                           "competitors": [
                               {"homeAway": "home",

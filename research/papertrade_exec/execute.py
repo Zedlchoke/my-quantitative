@@ -1635,7 +1635,12 @@ def journal_quota_skip(led, fixtures, now: str, why: str, existing: dict,
 # ------------------------------------------------------------------- decide --
 
 def norm_team(s: str) -> str:
-    return " ".join(s.split()).strip().casefold()
+    # W0.1 (PAPERDESK-FIXALL-NCAA-V1): ONE normalization runner-wide
+    # (casefold + strip non-alnum). The previous casefold+space-collapse
+    # variant was a second algorithm of the same concept — identity now has
+    # exactly one normalization (crosswalk resolution lives in team_names).
+    from research.papertrade_exec import team_names
+    return team_names.norm(s)
 
 
 def crosswalk_ok(fixture, forecast_row, quote_row) -> tuple[bool, str]:
