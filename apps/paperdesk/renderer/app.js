@@ -216,6 +216,23 @@ function deskBlocksHtml() {
     : '<div class="dim">No CLV captured yet (recorded at settle time '
       + 'against the pre-tip quote nearest kickoff)</div>';
 
+  const ncaa = desk.ncaa || {};
+  const ncaaLabelHtml = ncaa.label
+    ? `<div class="card" style="margin-bottom:12px"><div class="sec-title">
+       NCAA LANES (W5.5 truth label — mandatory)</div>
+       <div class="dim" style="margin-bottom:6px">${esc(ncaa.label)}</div>
+       ${Object.keys(ncaa.metrics || {}).length
+        ? Object.keys(ncaa.metrics).sort().map(l => {
+          const m = ncaa.metrics[l];
+          return `<div class="kv"><span class="kk">${esc(l)}
+            (n=${m.settled || 0})</span><span class="vv">log-loss
+            ${m.logloss != null ? Number(m.logloss).toFixed(4) : '—'}
+            · Brier ${m.brier != null ? Number(m.brier).toFixed(4) : '—'}
+            · PM log-loss ${m.pm_logloss != null
+              ? Number(m.pm_logloss).toFixed(4) : '—'}</span></div>`;
+        }).join('') : '<div class="dim">No settled NCAA games yet</div>'}
+       </div>`
+    : '';
   const table = desk.league_table || {};
   const tableHtml = Object.keys(table).length
     ? `<table style="width:100%"><thead><tr>
@@ -266,7 +283,7 @@ function deskBlocksHtml() {
        <span class="vv">${esc(quota.credits_day)}/4 · month
        ${esc(quota.credits_month ?? '—')}/120</span></div>` : '';
 
-  return `<div class="grid2" style="margin-bottom:12px">
+  return `${ncaaLabelHtml}<div class="grid2" style="margin-bottom:12px">
     <div class="card"><div class="sec-title">STUCK / DEAD-LETTER QUEUE
       (W2.4)</div>${stuckHtml}</div>
     <div class="card"><div class="sec-title">CLOSING LINE VALUE (CLV)

@@ -202,6 +202,7 @@ def build_state(*, core, ledger_path: str | Path, data_root: Path,
         "clv": (desk or {}).get("clv") or {"by_league": {}, "tail": []},
         "health": (desk or {}).get("health") or {"leagues": {}},
         "ai_pending": (desk or {}).get("ai_pending") or [],
+        "ncaa": (desk or {}).get("ncaa") or {},
         "league_table": table,
     }
     qpath = Path(data_root) / "data" / "quota_state.json"

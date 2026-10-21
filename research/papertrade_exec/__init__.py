@@ -27,6 +27,11 @@ WORKTREE_ROOT = Path(__file__).resolve().parents[2]
 CONTROL_DIR = WORKTREE_ROOT / "research" / "control" / CONTROL_DIR_NAME
 REGISTRY_PATH = WORKTREE_ROOT / "plans" / "CYCLE_REGISTRY.json"
 LEAGUES = ("NBA", "WNBA", "SOCCER")
+# W5.1 (PAPERDESK-FIXALL-NCAA-V1): the NCAA prediction-paper lanes are TWO
+# lanes (men/women — model, schedule and money verdict differ). They join
+# the cadence ONLY when config registers their sport_keys (the WSL
+# pattern); the constant lives here at the frozen touchpoint.
+NCAA_LEAGUES = ("NCAA-M", "NCAA-W")
 
 # Anchor laws (plan §1.4): NBA/WNBA tip-relative T0-6h10m (batch = the run-day's
 # fixtures of that league; T0 = earliest tip in the batch, exclusive deadline —

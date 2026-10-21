@@ -64,6 +64,7 @@ const LAWS = require('./laws_generated');   // W1.6: ONE constant source
 const ANCHOR_LEAD = {
   SOCCER: LAWS.SOCCER_LEAD_SECONDS, WSL: LAWS.SOCCER_LEAD_SECONDS,
   NBA: LAWS.BATCH_LEAD_SECONDS, WNBA: LAWS.BATCH_LEAD_SECONDS,
+  'NCAA-M': LAWS.BATCH_LEAD_SECONDS, 'NCAA-W': LAWS.BATCH_LEAD_SECONDS,
 };
 function deadlineFor(league, kickoffUTC) {
   const ko = Date.parse(kickoffUTC || '');

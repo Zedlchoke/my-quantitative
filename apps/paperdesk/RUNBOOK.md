@@ -272,3 +272,56 @@ PaperDesk.app/Contents/MacOS/PaperDesk --self-check-ledger <ledger.jsonl>
   provider-down ⇒ pending ⇒ no-verdict at deadline, WSL through the gate,
   hash change ⇒ re-review — all in `test_fixall_w4.py` + the rewritten
   CLI chain tests).
+
+## 12. PAPERDESK-FIXALL-NCAA-V1 — the two NCAA prediction lanes (W5, 2026-10-21)
+
+- **Two lanes, never one (W5.1):** `NCAA-M` / `NCAA-W` join ONLY when
+  config registers their sport_keys (the WSL activation pattern); the
+  constant lives at `__init__.NCAA_LEAGUES`; LEAGUE_CHOICES / plan /
+  cadence / lookahead / anchor law / `deadlineFor` (JS) / renderer are
+  wired. The lane law registers the frozen model metadata in-memory
+  (`register_ncaa_league_law`, the WSL adapter pattern — pinned bytes are
+  NEVER touched).
+- **Frozen model laws (W5.3):** `ncaa_state_store.py` transcribes the
+  audited intake laws byte-semantically (Elo K=20 / HFA +65 / 0 neutral /
+  new teams 1500 / between-season regression 25%; efficiency layer
+  L0=70, H_PTS 3.2, step 0.06, same regression; rest default 10 cap 30;
+  the 8 frozen features). Battery: an INDEPENDENT transcription of the
+  intake walk-forward is the oracle — per-game features + final ratings
+  must match to 1e-9; two replays must produce the SAME state digest
+  (anti-leakage law); save/load round-trip preserves the digest.
+- **GBM layer:** refit per season (regular-season rows, seasons < Y,
+  HistGradientBoostingClassifier(random_state=0) — sklearn in the runner
+  venv), artifact sha-pinned + verified at load; WITHOUT sklearn the lane
+  degrades HONESTLY to the frozen Elo layer (mode
+  `NCAA_ELO_FALLBACK_NO_SKLEARN` in every FORECAST row). The refit job:
+  `execute ncaa-refresh-state --league NCAA-M --from-date D --to-date D`
+  (harvests journaled scoreboard bytes, replays, refits).
+- **Adapter + settle (W5.2):** ESPN college-basketball scoreboard is
+  fixture AND results source; identity = `displayName` run through the
+  ONE normalization (`team_names.norm`) from day one; settle through the
+  standard scoreboard law (incl. W0.6 window + structured
+  postpone/cancel). Conference signal: the feed's
+  `conferenceCompetition` flag, else `conference_unknown: true` recorded
+  (feature 0.0 — never guessed).
+- **Quote law (W5.4):** the NCAA lanes quote Polymarket ALWAYS (the 2-way
+  joiner + real-stake walk; fail-closed `NOT_RUN_PM_QUOTE`; no Odds API
+  legacy exists for these lanes). Anchor: regular season = the NBA batch
+  law (T0-6h10m); tournament games = per-match kickoff-6h with the
+  neutral flag traveling in the fixture note. AI gate applies as for
+  every league (W4).
+- **Truth label (W5.5, MANDATORY — never removable):** every dashboard
+  render of the NCAA lanes carries the owner label ("Dự đoán — mô hình
+  thắng bài kiểm tra dự đoán (đã kiểm toán), CHƯA có bằng chứng thắng thị
+  trường: bản nam đã thua giá đóng cửa trong bài kiểm tra tiền; bản nữ
+  chưa kiểm tra được."). The lanes' CORRECT metric is running
+  log-loss/Brier vs the actual results AND vs the PM-implied probability
+  (state `ncaa_metrics.json`, refreshed at settle) — NOT PnL. NCAA PnL
+  stays separate from the money-edge leagues' summary.
+- **W5.6 deviation tracker: default OFF.** Any forward book for the
+  >10% price-gap hypothesis requires its OWN registered spec (pre-registered
+  laws, fresh season, pre-close prices) before a single row exists.
+- Bootstrap disclosure: the state store replays the CURRENT season
+  (SEASON_ONLY_BOOTSTRAP — teams start at the regressed-1500 law);
+  a full-history corpus replay is the documented future upgrade (the
+  replay path already exists and is digest-checked).

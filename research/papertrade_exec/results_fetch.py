@@ -38,7 +38,11 @@ from research.papertrade_exec import team_names
 
 ESPN_BASE = ("https://site.api.espn.com/apis/site/v2/sports/basketball/"
              "{league}/scoreboard?dates={date}")
-ESPN_LEAGUE_PATH = {"WNBA": "wnba", "NBA": "nba"}
+ESPN_LEAGUE_PATH = {"WNBA": "wnba", "NBA": "nba",
+                    # W5.2: the NCAA lanes settle through the SAME
+                    # scoreboard source + team-name normalization law.
+                    "NCAA-M": "mens-college-basketball",
+                    "NCAA-W": "womens-college-basketball"}
 # W0.6 scan window: ledger kickoff date D plus offsets D-1 (ET slippage),
 # D+1, D+2 (reschedules up to +48h).
 ESPN_DATE_OFFSETS = (0, 1, -1, -2)
@@ -154,7 +158,12 @@ def fetch_espn_results(*, league: str, date: str, match_ids: list[str],
         state = str(st.get("state", ""))
         status_name = str(st.get("name", "")).upper()
         desc = str(st.get("description", "")).upper()
-        abbr = {c["homeAway"]: c.get("team", {}).get("abbreviation")
+        # identity token: the RICHEST name the source offers (displayName
+        # when present — the NCAA scoreboards carry full display names;
+        # abbreviation as the fallback). The crosswalk resolves either;
+        # table-less leagues compare via the one normalization.
+        abbr = {c["homeAway"]: (c.get("team", {}).get("displayName")
+                                or c.get("team", {}).get("abbreviation"))
                 for c in comp["competitors"]}
         scores = {c["homeAway"]: c.get("score") for c in comp["competitors"]}
         # W0.1 identity cross-check: id equality (by construction above) +

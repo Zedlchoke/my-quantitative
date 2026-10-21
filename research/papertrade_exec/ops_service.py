@@ -52,7 +52,9 @@ SOCCER_SETTLE_THROTTLE_S = RF.SOCCER_RETRY_MIN_SECONDS
 DASHBOARD_MAX_AGE_S = 300
 DEFAULT_LOOKAHEAD_H = {"NBA": 24, "WNBA": 24, "SOCCER": 48,
                        # CAPITAL-V3 §4: WSL cadence lookahead (mirrors SOCCER)
-                       "WSL": 48}
+                       "WSL": 48,
+                       # W5.1: the NCAA lanes mirror the NBA lookahead
+                       "NCAA-M": 24, "NCAA-W": 24}
 SERVICE_PORT = 8791
 # --- PAPERDESK-FIXALL-NCAA-V1 W1.7 ------------------------------------------
 # Identical repeated failures collapse into ONE incident row + a counter +
@@ -78,7 +80,15 @@ STORM_CLOSEOUT_IDLE_S = 600      # storm quiet this long -> close-out row
 STUCK_ALARM_H = 6.0
 DEAD_LETTER_H = 48.0
 STUCK_REALARM_H = 24.0
-END_ESTIMATE_H = {"NBA": 2.5, "WNBA": 2.5, "SOCCER": 2.0, "WSL": 2.0}
+END_ESTIMATE_H = {"NBA": 2.5, "WNBA": 2.5, "SOCCER": 2.0, "WSL": 2.0,
+                  "NCAA-M": 2.5, "NCAA-W": 2.5}
+# W5.5: the MANDATORY truth label (owner law — never removable; no text
+# anywhere may claim NCAA has a money edge: the men's model LOST to the
+# closing line in the audited money test; the women's has no price data).
+NCAA_TRUTH_LABEL = ("Dự đoán — mô hình thắng bài kiểm tra dự đoán (đã "
+                    "kiểm toán), CHƯA có bằng chứng thắng thị trường: "
+                    "bản nam đã thua giá đóng cửa trong bài kiểm tra tiền; "
+                    "bản nữ chưa kiểm tra được.")
 
 
 def _cadence_leagues() -> tuple:
@@ -88,6 +98,10 @@ def _cadence_leagues() -> tuple:
     try:
         if "WSL" in (execute.load_config().get("sport_keys") or {}):
             leagues.append("WSL")
+    except Exception:
+        pass
+    try:
+        leagues.extend(execute.ncaa_leagues_configured())   # W5.1
     except Exception:
         pass
     return tuple(leagues)
@@ -726,6 +740,8 @@ class OpsService:
                 self._prune_settle_why(settled_ids)
                 # W2.4 block 2: CLV capture at settle time.
                 self._record_clv(led, settled_ids)
+                # W5.5: refresh the NCAA prediction-quality metrics.
+                self._refresh_ncaa_metrics(led)
             for s in report.get("settled", []):
                 out["settled"] += 1
                 self.incident("SETTLE_DONE",
@@ -747,7 +763,10 @@ class OpsService:
             return wsl_results.fetch_wsl_settleable(
                 rows=rows, ledger_rows=all_rows, data_root=self.data_root,
                 sandbox=self.sandbox)
-        if league in ("NBA", "WNBA"):
+        if league in ("NBA", "WNBA") or league.startswith("NCAA-"):
+            # W5.2: the NCAA lanes settle through the SAME scoreboard
+            # source + team-name normalization law (norm equality on the
+            # full display names — the W0.1 lesson, applied from day one).
             return RF.fetch_espn_results(
                 league=league, date=date, match_ids=mids,
                 ledger_rows=all_rows, data_root=self.data_root,
@@ -870,6 +889,59 @@ class OpsService:
                                "(+ = beat the close)"})
             with open(rec_path, "a") as f:
                 f.write(json.dumps(rec, sort_keys=True, default=str) + "\n")
+
+    def _refresh_ncaa_metrics(self, led) -> None:
+        """W5.5: the CORRECT measure for the NCAA prediction lanes —
+        running log-loss/Brier of the lane forecast vs the actual result,
+        and vs the PM-implied probability from the lane's own quote rows
+        (a forecast that beats PM price is the only honest benchmark).
+        Read-only math over the chain-verified rows; a state artifact."""
+        import math
+        from research.papertrade_exec import NCAA_LEAGUES
+        rows = led.rows
+        fc = {}
+        qt = {}
+        for r in rows:
+            if r.get("type") == "FORECAST" and                     r.get("league") in NCAA_LEAGUES:
+                fc.setdefault(r["match_id"], r)
+            elif r.get("type") == "MARKET_QUOTE" and                     r.get("league") in NCAA_LEAGUES:
+                qt.setdefault(r["match_id"], r)
+        out = {}
+        for mid, f in fc.items():
+            stl = next((r for r in rows if r.get("type") == "SETTLEMENT"
+                        and r.get("match_id") == mid), None)
+            if not stl:
+                continue
+            p_home = float((f.get("p") or {}).get("HOME") or 0.0)
+            result = stl.get("result")
+            if result not in ("HOME", "AWAY"):
+                continue
+            y = 1.0 if result == "HOME" else 0.0
+            p = min(max(p_home, 1e-6), 1 - 1e-6)
+            slot = out.setdefault(f["league"], {"n": 0, "ll": 0.0,
+                                                "brier": 0.0,
+                                                "pm_ll": 0.0, "pm_n": 0})
+            slot["n"] += 1
+            slot["ll"] += -(y * math.log(p) + (1 - y) * math.log(1 - p))
+            slot["brier"] += (p - y) ** 2
+            q = qt.get(mid)
+            if q:
+                dec_home = float(((q.get("odds") or {}).get("HOME")) or 0)
+                if dec_home > 1:
+                    pm = min(max(1.0 / dec_home, 1e-6), 1 - 1e-6)
+                    slot["pm_ll"] += -(y * math.log(pm)
+                                       + (1 - y) * math.log(1 - pm))
+                    slot["pm_n"] += 1
+        for slot in out.values():
+            n, pn = slot.pop("n"), slot.pop("pm_n")
+            slot["logloss"] = slot.pop("ll") / n if n else None
+            slot["brier"] = slot.pop("brier") / n if n else None
+            slot["pm_logloss"] = slot.pop("pm_ll") / pn if pn else None
+            slot["settled"] = n
+        _atomic_write(self.state_dir / "ncaa_metrics.json",
+                      {"generated_at_utc": now_utc(),
+                       "truth_label": NCAA_TRUTH_LABEL,
+                       "leagues": out})
 
     def _clv_summary(self) -> dict:
         """Per-league CLV aggregates + record tail for the dashboard."""
@@ -1347,7 +1419,11 @@ class OpsService:
             desk={"stuck": self._stuck_cache,
                   "clv": self._clv_summary(),
                   "health": self._league_health(),
-                  "ai_pending": self._ai_pending_view()},
+                  "ai_pending": self._ai_pending_view(),
+                  "ncaa": {"label": NCAA_TRUTH_LABEL,
+                           "metrics": self._load_json(
+                               self.state_dir / "ncaa_metrics.json", {})
+                           .get("leagues", {})}},
             serve_latency_ms=int((time.time() - t0) * 1000))
 
 

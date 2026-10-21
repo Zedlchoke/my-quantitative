@@ -111,7 +111,8 @@ def resolve(name: str, league: str) -> str | None:
 def same_team(a: str, b: str, league: str) -> tuple[bool, str]:
     """Identity comparison for the settle path. Returns (ok, reason). Both
     sides MUST resolve (None on either side => not same, with the specific
-    reason — fail-closed)."""
+    reason — fail-closed). Leagues WITHOUT a crosswalk table compare via
+    the one normalization (norm equality) — full-name spellings."""
     ra, rb = resolve(a, league), resolve(b, league)
     if ra is None:
         return False, f"team name unresolved in pinned crosswalk: {a!r} " \
@@ -119,8 +120,16 @@ def same_team(a: str, b: str, league: str) -> tuple[bool, str]:
     if rb is None:
         return False, f"team name unresolved in pinned crosswalk: {b!r} " \
                       f"(league {league})"
-    return ra == rb, (f"{a!r} == {b!r} via {ra}" if ra == rb
-                      else f"{a!r} ({ra}) != {b!r} ({rb})")
+    table = load_crosswalk().get(str(league).upper())
+    if table:
+        same = ra == rb
+        how = f"via {ra}" if same else f"{ra!r} != {rb!r}"
+    else:
+        same = norm(ra) == norm(rb)
+        how = "norm equality (no crosswalk table)" if same else \
+            f"{ra!r} != {rb!r}"
+    return same, (f"{a!r} == {b!r} {how}" if same else
+                  f"{a!r} != {b!r} {how}")
 
 
 def team_count(league: str) -> int:

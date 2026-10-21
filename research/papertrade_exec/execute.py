@@ -112,6 +112,20 @@ def capital_law_for(args, core, config: dict | None = None) -> int:
     return core.capital_law_version(cfg, row)
 
 
+def ncaa_configured(league: str) -> bool:
+    """W5.1: an NCAA lane joins the runner ONLY when config registers its
+    sport_keys entry (NCAA-M / NCAA-W — the WSL activation pattern)."""
+    try:
+        return league in (load_config().get("sport_keys") or {})
+    except Exception:
+        return False
+
+
+def ncaa_leagues_configured() -> list[str]:
+    from research.papertrade_exec import NCAA_LEAGUES
+    return [lg for lg in NCAA_LEAGUES if ncaa_configured(lg)]
+
+
 def wsl_configured() -> bool:
     """CAPITAL-V3 §4 gating: WSL joins the runner ONLY when config.json
     registers sport_keys.WSL (the config template is never auto-applied; the
@@ -222,7 +236,8 @@ def load_config() -> dict:
 # per-league cadence invokes these subcommands, and argparse choices=LEAGUES
 # (core 3-tuple) exited 2 on WSL and crash-looped the supervisor (12:47Z).
 # Fail-closed: without wsl_configured() the choices are the core 3-tuple.
-LEAGUE_CHOICES = tuple(LEAGUES) + (("WSL",) if wsl_configured() else ())
+LEAGUE_CHOICES = tuple(LEAGUES) + (("WSL",) if wsl_configured() else ()) \
+    + tuple(ncaa_leagues_configured())
 
 
 def _soccer_sport_keys() -> list[str]:
@@ -476,6 +491,13 @@ def fixtures_for(args, league: str, day: str) -> list:
         if getattr(args, "sandbox", False):
             return synthetic_soccer_fixtures(day)
         return real_soccer_fixtures(args, day)
+    if league.startswith("NCAA-"):
+        from research.papertrade_exec import adapters_ncaa as AN
+        if getattr(args, "sandbox", False):
+            return synthetic_ncaa_fixtures(day, league)
+        payload, body = AN.fetch_scoreboard(league, day)
+        games = AN.games_from_payload(league, payload, body)
+        return AN.upcoming_fixtures(games, day)
     raise BlockError("BLOCKED_LEAGUE", f"unknown league {league}")
 
 NOW_FMT = "%Y-%m-%dT%H:%M:%SZ"
@@ -626,6 +648,27 @@ def synthetic_soccer_fixtures(day: str) -> list:
     return out
 
 
+def synthetic_ncaa_fixtures(day: str, league: str) -> list:
+    """Deterministic SYNTHETIC NCAA fixtures for the rehearsal (clearly
+    labeled; never a real fixture list)."""
+    out = []
+    for i in range(2):
+        mid = f"SYN-{league}-{day}-{i+1}"
+        ko = datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=timezone.utc) \
+            + timedelta(hours=17 + 3 * i)
+        out.append(A.Fixture(
+            league=league, match_id=mid,
+            home=f"SynNcaa{league}H{i+1}", away=f"SynNcaa{league}A{i+1}",
+            kickoff_utc=ko.strftime(NOW_FMT),
+            competition="NCAA_REGULAR",
+            et_local_date=A.et_local_date(ko),
+            source_ref=f"SYNTHETIC_NCAA_REHEARSAL#{mid}",
+            note=json.dumps({"neutral": i == 1, "conf_game_flag": i == 0,
+                             "conference_unknown": False,
+                             "season": 2026, "season_type": 2})))
+    return out
+
+
 def batch_anchor(fixtures: list, league: str) -> tuple[str, dict]:
     """Anchor deadline(s): NBA/WNBA T0-6h10m with T0 = earliest tip of the
     league's run-day batch (exclusive); SOCCER kickoff-6h strict per match."""
@@ -633,6 +676,19 @@ def batch_anchor(fixtures: list, league: str) -> tuple[str, dict]:
         t0 = min(f.kickoff_dt for f in fixtures)
         anchor = t0 - timedelta(seconds=BATCH_LEAD_SECONDS)
         return A.iso_z(anchor), {f.match_id: A.iso_z(anchor) for f in fixtures}
+    if league.startswith("NCAA-"):
+        # W5.4 anchor law: regular season = the NBA batch law (T0-6h10m);
+        # tournament games = kickoff-6h PER MATCH (soccer law) with the
+        # neutral flag mandatory in the note (the frozen feature reads it).
+        if any((f.competition or "") == "NCAA_TOURNAMENT" for f in fixtures):
+            per = {f.match_id: A.iso_z(f.kickoff_dt -
+                                       timedelta(seconds=SOCCER_LEAD_SECONDS))
+                   for f in fixtures}
+            return "", per
+        t0 = min(f.kickoff_dt for f in fixtures)
+        anchor = t0 - timedelta(seconds=BATCH_LEAD_SECONDS)
+        return A.iso_z(anchor), {f.match_id: A.iso_z(anchor)
+                                 for f in fixtures}
     return "", {f.match_id: A.iso_z(f.kickoff_dt - timedelta(seconds=SOCCER_LEAD_SECONDS))
                 for f in fixtures}
 
@@ -837,6 +893,60 @@ def compute_forecasts(args, league: str, fixtures: list) -> tuple[list[dict], di
                             "competition": f.competition,
                             "reason": why, "status": "CROSSWALK_MISS"}
                            for f, why in missed]})
+        return drafts, wiring
+    if league.startswith("NCAA-"):
+        # W5.3/W5.4: the frozen state store is the PIT source; the GBM
+        # layer runs ONLY on a sha-pinned artifact, else the lane degrades
+        # HONESTLY to the frozen Elo layer (audited) with the mode
+        # journaled. Feature gaps (unknown conference flags) travel in the
+        # row — never guessed.
+        from research.papertrade_exec import ncaa_state_store as NSS
+        from research.papertrade_exec import ncaa_model as NM
+        store_path = Path(args.data_root) / "ncaa" / league / "state.json"
+        st = NSS.NcaaState.load(store_path)
+        if st is None or st.games_processed == 0:
+            raise BlockError(
+                "BLOCKED_NCAA_STATE_ABSENT",
+                f"no replayed state store at {store_path} — run the "
+                "ncaa-refresh-state job first (fail-closed, never "
+                "guessed)", EXIT_BLOCKED_OTHER)
+        artifacts_dir = Path(args.data_root) / "ncaa" / league / "artifacts"
+        season = datetime.now(timezone.utc).year
+        model, manifest = NM.load_pinned(artifacts_dir, league, season)
+        drafts = []
+        for f in fixtures:
+            note = json.loads(f.note or "{}")
+            game = {"season": note.get("season") or season,
+                    "home_id": note.get("home_id"),
+                    "away_id": note.get("away_id"),
+                    "home_conference_id": note.get("home_conference_id"),
+                    "away_conference_id": note.get("away_conference_id"),
+                    "neutral_site": bool(note.get("neutral")),
+                    "date": note.get("date") or f.kickoff_utc[:10]}
+            feat = NSS.pregame_features(st, game)
+            if model is not None:
+                p_home = NM.predict_home_p(model, [NSS.feature_vector(feat)])[0]
+                mode, src = "NCAA_GBM_PINNED", \
+                    f"gbm@{manifest['sha256'][:12]} season={manifest['season']}"
+            else:
+                p_home = feat["p_elo"]
+                mode = "NCAA_ELO_FALLBACK_NO_SKLEARN"
+                src = "frozen Elo layer (audited); refit job not run"
+            gaps = {k: note.get(k) for k in ("conference_unknown",
+                                             "conf_game_flag") }
+            drafts.append({"match_id": f.match_id,
+                           "p": {"HOME": round(p_home, 6),
+                                 "AWAY": round(1.0 - p_home, 6)},
+                           "model_version_sha":
+                               (manifest["sha256"][:12] if model else mode),
+                           "source_ref": f"ncaa_{league} {src} "
+                                         f"state={st.digest()[:16]} "
+                                         f"feature_gaps={gaps}",
+                           "mode": mode})
+        wiring.update({"engine_mode": "ENGINE" if model is not None
+                       else "ELO_FALLBACK_NO_SKLEARN",
+                       "state_sha256": st.digest()[:16],
+                       "games_processed": st.games_processed})
         return drafts, wiring
     # NBA real mode (EXEC-NBA-REWIRE): the lawful PROSPECTIVE PIT path landed
     # by NBA-WINPROB-PROSPECTIVE-PREP-V1 (byte-pinned `nba26` package). The
@@ -1289,7 +1399,7 @@ def pm_quote_rows_for_fixtures(args, fixtures, league, now, led=None,
     for f in fixtures:
         crosswalk = {"fixture_id": f.match_id, "league": league,
                      "home": f.home, "away": f.away}
-        if league in ("NBA", "WNBA"):
+        if league in ("NBA", "WNBA") or league.startswith("NCAA-"):
             if seam is not None:
                 q = seam({"match_id": f.match_id, "home": f.home,
                           "away": f.away}, stake)
@@ -1439,11 +1549,12 @@ def cmd_quote(args) -> dict:
         return {"league": league, "date": args.date, "now_utc": now,
                 "written": written, "skipped_existing": skipped,
                 "mode": "SYNTHETIC", "sandbox": True}
-    if flags["pm_cutover_active"]:
+    if flags["pm_cutover_active"] or league.startswith("NCAA-"):
         # Cutover law: PM is the ONLY decision source; failures => NOT_RUN,
-        # never an Odds API fallback. Quote rows are APPENDED (rerun-safe:
-        # never-quoted fixtures only) so decide consumes the in-ledger
-        # evidence, exactly like the pre-cutover capture path.
+        # never an Odds API fallback. The NCAA lanes (W5.4) are BORN on this
+        # law — they quote PM even pre-GO (no Odds API legacy exists for
+        # them); both-cuts quote rows are APPENDED (rerun-safe) so decide
+        # consumes the in-ledger evidence.
         decided = led.decided_match_ids()
         existing = quote_index(led)
         fresh = [f for f in fixtures
@@ -2145,6 +2256,9 @@ def cmd_decide(args) -> dict:
     now = now_of(args)
     capital_law = capital_law_for(args, core)   # 2|3; absent pair => 2 (v3 §5)
     league = args.league
+    if league.startswith("NCAA-"):
+        from research.papertrade_exec import adapters_ncaa as AN
+        AN.register_ncaa_league_law(risk, league)   # W5.1 lane law
     fixtures = fixtures_for(args, league, args.date)
     if not fixtures:
         return {"league": league, "date": args.date, "fixtures": 0}
@@ -2440,7 +2554,8 @@ def cmd_plan(args) -> dict:
     report = {"date": args.date, "generated_at_utc": now_utc_real(),
               "leagues": {}}
     leagues = [args.league] if args.league else \
-        list(LEAGUES) + (["WSL"] if wsl_configured() else [])
+        list(LEAGUES) + (["WSL"] if wsl_configured() else []) \
+        + ncaa_leagues_configured()
     for league in leagues:
         entry = {"fixtures": []}
         try:
@@ -2506,6 +2621,10 @@ def cmd_plan(args) -> dict:
                            "(live, 0-credit, quota-journaled; snapshot bytes "
                            "+ .meta persisted under <data-root>/data); "
                            "sandbox: labeled synthetic events"),
+                "NCAA-M": ("ESPN college-basketball scoreboard (live, free; "
+                           "sandbox: labeled synthetic fixtures)"),
+                "NCAA-W": ("ESPN college-basketball scoreboard (live, free; "
+                           "sandbox: labeled synthetic fixtures)"),
             }[league]
         except BlockError as be:
             entry = {"status": be.code, "detail": be.detail}
@@ -2645,6 +2764,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--key-path", default=None)
     p.set_defaults(fn=lambda a: _emit(cmd_key_check(a)))
 
+    p = sub.add_parser("ncaa-refresh-state")
+    p.add_argument("--league", required=True)
+    p.add_argument("--from-date", dest="from_date", required=True)
+    p.add_argument("--to-date", dest="to_date", required=True)
+    p.set_defaults(fn=lambda a: _emit(cmd_ncaa_refresh_state(a)))
+
     p = sub.add_parser("ai-evidence")
     p.add_argument("--league", required=True)
     p.add_argument("--match-id", required=True)
@@ -2652,6 +2777,72 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--away", required=True)
     p.set_defaults(fn=lambda a: _emit(cmd_ai_evidence(a)))
     return ap
+
+
+def cmd_ncaa_refresh_state(args) -> dict:
+    """W5.3: the state-store bootstrap/refit job for one NCAA lane. Walks
+    the day window [from, to] harvesting COMPLETED games through the SAME
+    journaled ESPN scoreboard GETs, replays the FROZEN laws chronologically
+    and saves the versioned store (state_sha256). The GBM refit for the
+    eval season runs separately over the same harvested rows (artifact
+    sha-pinned). Sandbox/test may inject the transport via the seam attr
+    `ncaa_scoreboard` (refused in real mode)."""
+    from research.papertrade_exec import adapters_ncaa as AN
+    from research.papertrade_exec import ncaa_state_store as NSS
+    from research.papertrade_exec import ncaa_model as NM
+    league = args.league
+    if league not in AN.ESPN_LEAGUE_PATH:
+        raise BlockError("BLOCKED_LEAGUE", f"unknown NCAA lane {league}",
+                         EXIT_BLOCKED_OTHER)
+    seam = getattr(args, "ncaa_scoreboard", None)
+    if seam is not None and not getattr(args, "sandbox", False):
+        raise BlockError("BLOCKED_TEST_HOOK_IN_REAL_MODE",
+                         "ncaa_scoreboard rehearsal hook refused in real "
+                         "mode", EXIT_BLOCKED_OTHER)
+
+    def fetch(day):
+        if seam is not None:
+            return seam(league, day)
+        return AN.fetch_scoreboard(league, day)
+
+    d0 = datetime.strptime(args.from_date, "%Y-%m-%d").date()
+    d1 = datetime.strptime(args.to_date, "%Y-%m-%d").date()
+    games = []
+    d = d0
+    while d <= d1:
+        payload, body = fetch(d.isoformat())
+        games.extend(AN.completed_games(AN.games_from_payload(
+            league, payload, body)))
+        d += timedelta(days=1)
+    st = NSS.replay(games)
+    store_path = Path(args.data_root) / "ncaa" / league / "state.json"
+    rec = st.save(store_path, league=league)
+    # GBM refit (regular-season rows only, seasons < eval season)
+    refit_note = "sklearn absent — lane stays on the frozen Elo layer"
+    try:
+        season = datetime.now(timezone.utc).year
+        train_rows = [{"features": NSS.pregame_features(st, g), "y": 1}
+                      for g in []]  # placeholder; real rows built below
+        train_rows = []
+        st2 = NSS.NcaaState()
+        for g in sorted(games, key=lambda g: (g["date"], g["home_id"],
+                                              g["away_id"])):
+            if str(g.get("season_type")) == "2" and \
+                    int(g.get("season") or 0) < season:
+                feat = NSS.pregame_features(st2, g)
+                y = 1 if g["home_score"] > g["away_score"] else 0
+                train_rows.append({"features": feat, "y": y})
+            NSS.apply_result(st2, g)
+        if train_rows:
+            manifest = NM.refit(Path(args.data_root) / "ncaa" / league /
+                                "artifacts", league, season, train_rows)
+            refit_note = f"refit ok n={manifest['n_train']} " \
+                         f"sha={manifest['sha256'][:12]}"
+    except RuntimeError as e:
+        refit_note = str(e)
+    return {"league": league, "games_harvested": len(games),
+            "state_sha256": rec["state_sha256"],
+            "store": str(store_path), "refit": refit_note}
 
 
 def cmd_ai_evidence(args) -> dict:
