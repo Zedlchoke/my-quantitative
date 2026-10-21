@@ -14,8 +14,11 @@ the numbers come from, not HOW they are graded.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import urllib.request
+
+from .pm_moneyline import walk_ask
 from typing import Any, Dict, Optional, Tuple
 
 from research.papertrade_exec.pm_moneyline import (
@@ -75,15 +78,21 @@ class PMQuoteAdapter:
         self, *, event_id: str, market_ids: Dict[str, str],
         stake_cents: int,
     ) -> Optional[Dict[str, Any]]:
-        """SOCCER/WSL: 3-YES H/D/A from the same event. Returns legs or None.
-        market_ids: {"HOME": "...", "DRAW": "...", "AWAY": "..."}"""
+        """SOCCER/WSL: 3-YES H/D/A from the same event. For EACH leg the
+        market's YES token (by outcome NAME, never by position) is walked
+        on the CLOB book at the REAL stake. outcomePrices is carried as
+        indicative only and NEVER enters EV or decisions.
+        Returns {"legs": {leg: walk...}, "all_present": bool, ...} or None
+        (None = cannot join / hard refusal — caller maps to NOT_RUN)."""
         try:
             req = urllib.request.Request(
                 f"https://gamma-api.polymarket.com/events?id={event_id}",
                 headers={"Accept": "application/json", "User-Agent":
                          "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=30) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
+                raw = resp.read()
+            raw_sha = hashlib.sha256(raw).hexdigest()
+            payload = json.loads(raw.decode("utf-8"))
         except Exception:
             return None
         events = payload if isinstance(payload, list) else []
@@ -91,30 +100,56 @@ class PMQuoteAdapter:
         if not event:
             return None
         markets_by_id = {str(m.get("id")): m for m in event.get("markets") or []}
-        legs = {}
+        legs, indicative = {}, {}
         for leg, mid in market_ids.items():
             m = markets_by_id.get(str(mid))
             if not m:
+                legs[leg] = {"error": "MARKET_NOT_IN_EVENT", "market_id": mid}
                 continue
-            closed = m.get("closed") is True
-            prices = m.get("outcomePrices")
-            if isinstance(prices, str):
-                try: prices = json.loads(prices)
-                except Exception: prices = []
+            if m.get("closed") is True:
+                legs[leg] = {"error": "MARKET_CLOSED", "market_id": mid}
+                continue
             outs = m.get("outcomes")
             if isinstance(outs, str):
                 try: outs = json.loads(outs)
                 except Exception: outs = []
-            if outs and str(outs[0]).lower() == "yes" and prices:
-                legs[leg] = {
-                    "best_ask": float(prices[0]) if prices else None,
-                    "market_id": mid,
-                    "closed": closed,
-                }
-        if len(legs) < 2:
-            return None
-        return {"legs": legs, "all_present": len(legs) == 3,
-                "event_id": event_id}
+            # YES token by NAME (owner law): find the literal "Yes" outcome
+            yes_idx = [i for i, o in enumerate(outs or [])
+                       if str(o).strip().lower() == "yes"]
+            if len(outs or []) != 2 or len(yes_idx) != 1:
+                legs[leg] = {"error": "NOT_2WAY_YES_NO", "market_id": mid}
+                continue
+            tokens = m.get("clobTokenIds")
+            if isinstance(tokens, str):
+                try: tokens = json.loads(tokens)
+                except Exception: tokens = []
+            if not isinstance(tokens, list) or len(tokens) != 2:
+                legs[leg] = {"error": "TOKENS_MISSING", "market_id": mid}
+                continue
+            walk = walk_ask(tokens[yes_idx[0]],
+                            stake_cents=stake_cents,
+                            data_root=self.data_root,
+                            sandbox=self.sandbox)
+            prices = m.get("outcomePrices")
+            if isinstance(prices, str):
+                try: prices = json.loads(prices)
+                except Exception: prices = None
+            indicative[leg] = prices        # display-only, never a quote
+            if walk is None:
+                legs[leg] = {"error": "DEPTH_SHORT_OR_NO_BOOK",
+                             "market_id": mid,
+                             "yes_token": str(tokens[yes_idx[0]])}
+                continue
+            walk["market_id"] = mid
+            legs[leg] = walk
+        walked = [leg for leg, v in legs.items()
+                  if isinstance(v, dict) and v.get("best_ask") is not None]
+        if len(walked) < 2:
+            return None    # fail-closed: not enough walked legs to quote
+        return {"legs": legs, "walked_legs": walked,
+                "all_present": len(walked) == 3,
+                "event_id": event_id, "event_sha256": raw_sha,
+                "indicative_outcome_prices": indicative}
 
 
 class QuoteSourceRouter:

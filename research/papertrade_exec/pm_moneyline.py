@@ -128,7 +128,8 @@ def walk_ask(token_id: str, *, stake_cents: int, data_root: Path,
                       "AppleWebKit/537.36"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         raw = resp.read()
-    _journal(data_root, sandbox, "clob_book", url, raw)
+    raw_sha = _journal(data_root, sandbox, "clob_book", url, raw)
+    snapshot_utc = _now_utc()
     book = json.loads(raw.decode("utf-8"))
     asks = sorted(({ "price": float(l["price"]), "size": float(l["size"]) }
                    for l in (book.get("asks") or [])),
@@ -151,7 +152,9 @@ def walk_ask(token_id: str, *, stake_cents: int, data_root: Path,
     return {"best_ask": asks[0]["price"], "vwap_ask": vwap,
             "filled_shares": round(filled, 2), "spend_cents":
                 round(spend * 100), "fee_cents": round(fee * 100),
-            "levels": levels}
+            "levels": levels, "snapshot_utc": snapshot_utc,
+            "book_sha256": raw_sha, "token_id": str(token_id),
+            "depth_short_cents": 0}
 
 
 def probe_event_moneyline(*, event_id: str, home: str, away: str,
@@ -186,15 +189,24 @@ def probe_event_moneyline(*, event_id: str, home: str, away: str,
     outcomes_raw = ml.get("outcomes")
     if isinstance(outcomes_raw, str):
         try: outcomes_list = json.loads(outcomes_raw)
-        except Exception: outcomes_list = ["HOME", "AWAY"]
+        except Exception: outcomes_list = []
     else:
-        outcomes_list = ["HOME", "AWAY"]
+        outcomes_list = outcomes_raw or []
 
-    # P0 fix: walk BOTH legs separately via their own CLOB tokens
+    # Mapping law (owner 2026-10-20): token->leg by the market's OWN outcome
+    # NAME matched against the pinned crosswalk team names; position is
+    # NEVER trusted. Any mismatch/reversal/ambiguity => NOT_RUN_MARKET_MISMATCH.
+    mapping = map_outcomes_to_legs(outcomes_list, home=home, away=away)
+    if mapping.get("error"):
+        return {"event_id": event_id, "joined": True,
+                "market_id": ml.get("id"),
+                "why": "NOT_RUN_MARKET_MISMATCH: " + mapping["error"],
+                "outcomes": ml.get("outcomes"),
+                "indicative_prices": prices if False else None}
     legs_result = {}
     all_ok = True
     for i, leg_name in enumerate(outcomes_list[:2]):
-        leg = "HOME" if i == 0 else "AWAY"
+        leg = mapping["legs"][i]
         token = tokens[i]
         walk = walk_ask(token, stake_cents=stake_cents,
                         data_root=data_root, sandbox=sandbox)
@@ -212,8 +224,35 @@ def probe_event_moneyline(*, event_id: str, home: str, away: str,
             "market_id": ml.get("id"),
             "question": (ml.get("question") or "")[:90],
             "outcomes": ml.get("outcomes"),
+            "token_map": mapping.get("map"),
             "indicative_prices": prices,   # NEVER used as a quote
             "legs": legs_result,
             "all_legs_walked": all_ok,
             "closed": ml.get("closed"),
             "uma": ml.get("umaResolutionStatus")}
+
+
+def map_outcomes_to_legs(outcomes_list, *, home: str, away: str) -> dict:
+    """Owner mapping law: each outcome NAME must resolve to exactly one of
+    {HOME, AWAY} by normalized containment against the pinned team names;
+    both legs must be present, distinct tokens implied by distinct names.
+    Returns {"legs": [leg0, leg1], "map": {outcome: leg}} or {"error": ...}."""
+    if not isinstance(outcomes_list, list) or len(outcomes_list) != 2:
+        return {"error": f"expected 2 outcomes, got {outcomes_list!r}"}
+    h, a = _norm(home), _norm(away)
+    if not h or not a or h == a:
+        return {"error": "crosswalk home/away unresolved or identical"}
+    legs, mp = [], {}
+    for o in outcomes_list:
+        on = _norm(o)
+        in_home = (h in on) or (on in h and len(on) >= 4)
+        in_away = (a in on) or (on in a and len(on) >= 4)
+        if in_home and not in_away:
+            legs.append("HOME"); mp[str(o)] = "HOME"
+        elif in_away and not in_home:
+            legs.append("AWAY"); mp[str(o)] = "AWAY"
+        else:
+            return {"error": f"outcome {o!r} ambiguous vs ({home!r}, {away!r})"}
+    if sorted(legs) != ["AWAY", "HOME"]:
+        return {"error": f"legs not exactly one HOME + one AWAY: {legs!r}"}
+    return {"legs": legs, "map": mp}

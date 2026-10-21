@@ -1170,6 +1170,59 @@ def now_of(args) -> str:
 
 # -------------------------------------------------------------------- quote --
 
+def papertrade_flags(args) -> dict:
+    """Feature-gate law (owner 2026-10-20): production gates stay OFF until
+    the owner types the cutover/AI GO. Absent key or False => OFF. The flags
+    NEVER flip behavior of the pre-cutover pinned path."""
+    cfg_path = Path(__file__).resolve().parent / "config.json"
+    try:
+        cfg = json.loads(cfg_path.read_text())
+    except Exception:
+        cfg = {}
+    fg = cfg.get("feature_gates") or {}
+    return {"pm_cutover_active": bool(fg.get("pm_cutover_active", False)),
+            "ai_authority_active": bool(fg.get("ai_authority_active", False))}
+
+
+def pm_quote_rows_for_fixtures(args, fixtures, league, now) -> list:
+    """PM-CUTOVER path (feature gate ON only): the Polymarket book-walk is
+    the SINGLE decision quote source. Any PM failure/missing leg => NOT_RUN
+    refusal (no Odds API fallback, no inference)."""
+    from .pm_quote_source import QuoteSourceRouter
+    router = QuoteSourceRouter(cutover_active=True,
+                               data_root=Path(args.data_root),
+                               sandbox=bool(getattr(args, "sandbox", False)))
+    rows = []
+    for f in fixtures:
+        if league in ("NBA", "WNBA"):
+            q = router.quote(league=league, event_id=str(f.match_id),
+                             home=f.home, away=f.away,
+                             stake_cents=10000)
+            if not q or not q.get("all_present"):
+                raise BlockError("NOT_RUN_PM_QUOTE",
+                                 f"PM book-walk failed for {f.match_id}",
+                                 EXIT_BLOCKED_OTHER)
+            odds = {leg: l["best_ask"] for leg, l in q["legs"].items()}
+            src = "PM_CLOB_WALK_2WAY"
+        else:
+            raise BlockError("NOT_RUN_PM_QUOTE",
+                             f"3-YES PM quote needs pinned market_ids for "
+                             f"{f.match_id} (crosswalk)", EXIT_BLOCKED_OTHER)
+        payload = json.dumps({"match_id": f.match_id, "odds": odds,
+                              "pm": q.get("event_id")}, sort_keys=True)
+        rows.append({
+            "type": "MARKET_QUOTE", "league": league,
+            "match_id": f.match_id, "home": f.home, "away": f.away,
+            "kickoff_utc": f.kickoff_utc, "bookmaker": "POLYMARKET_CLOB",
+            "market": "moneyline_2way", "odds": odds,
+            "fetch_ts_utc": now, "source_last_update_utc": now,
+            "commence_time_utc": f.kickoff_utc,
+            "payload_sha256": hashlib.sha256(payload.encode()).hexdigest(),
+            "mode": "PM_CUTOVER", "source_ref": src,
+            "pm_walk": q})
+    return rows
+
+
 def cmd_quote(args) -> dict:
     _r = maybe_wsl(args, "quote")
     if _r is not None:
@@ -1214,6 +1267,14 @@ def cmd_quote(args) -> dict:
         return {"league": league, "date": args.date, "now_utc": now,
                 "written": written, "skipped_existing": skipped,
                 "mode": "SYNTHETIC", "sandbox": True}
+    flags = papertrade_flags(args)
+    if flags["pm_cutover_active"]:
+        # Cutover law: PM is the ONLY decision source; failures => NOT_RUN,
+        # never an Odds API fallback.
+        rows = pm_quote_rows_for_fixtures(args, fixtures, league, now)
+        return {"league": league, "date": args.date, "now_utc": now,
+                "written": [r["match_id"] for r in rows],
+                "mode": "PM_CUTOVER", "rows": len(rows)}
     # ---- real capture: core quota-guarded client, registered sport keys ----
     odds_mod = core.odds_client
     quota = odds_mod.QuotaLedger(
@@ -1466,6 +1527,35 @@ def crosswalk_ok(fixture, forecast_row, quote_row) -> tuple[bool, str]:
             quote_row["kickoff_utc"] != fixture.kickoff_utc:
         return False, "fixture/quote kickoff mismatch"
     return True, "1:1"
+
+
+def ai_boundary_review(candidate: dict, gates_ctx: dict,
+                       flags: dict) -> dict:
+    """THE single AI execution boundary (owner law): runs ONLY when
+    ai_authority_active; the AI opinion NEVER supplies prices/probabilities —
+    it grades the frozen candidate via decision_pipeline.evaluate_ai_gate.
+    Flag OFF => {'action': 'DISABLED'} and live behavior is unchanged."""
+    if not flags.get("ai_authority_active"):
+        return {"action": "DISABLED", "why": "ai_authority OFF (pre-GO)"}
+    from .decision_pipeline import evaluate_ai_gate
+    decision, gates, reason = evaluate_ai_gate(
+        ai_action=candidate.get("ai_action", "ABSTAIN"),
+        ai_proposed_leg=candidate.get("ai_proposed_leg"),
+        chosen_leg=gates_ctx["chosen_leg"],
+        p_frozen=gates_ctx["p_frozen"], odds_frozen=gates_ctx["odds_frozen"],
+        ev_net_by_leg=gates_ctx["ev_net_by_leg"],
+        stake_cents=gates_ctx["stake_cents"],
+        equity_cents=gates_ctx["equity_cents"],
+        open_exposure_cents=gates_ctx["open_exposure_cents"],
+        open_cap_cents=gates_ctx["open_cap_cents"],
+        drawdown_frac=gates_ctx["drawdown_frac"],
+        drawdown_paused=gates_ctx["drawdown_paused"],
+        snapshot_before_anchor=gates_ctx["snapshot_before_anchor"],
+        anchor_passed=gates_ctx["anchor_passed"],
+        quote_present=gates_ctx["quote_present"],
+        depth_walked=gates_ctx["depth_walked"], fees_once=True)
+    return {"action": candidate.get("ai_action"), "decision": decision,
+            "gates": gates, "reason": reason}
 
 
 def cmd_decide(args) -> dict:
