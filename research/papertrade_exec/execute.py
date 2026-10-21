@@ -1732,13 +1732,14 @@ def load_ai_opinion(args, match_id: str) -> dict:
     Missing/unreadable opinion => ABSTAIN (never an order)."""
     seam = getattr(args, "ai_opinion", None)
     env_path = os.environ.get("PAPERTRADE_AI_OPINION_JSON")
+    if (seam is not None or env_path) and \
+            not getattr(args, "sandbox", False):
+        raise BlockError("BLOCKED_TEST_HOOK_IN_REAL_MODE",
+                         "ai_opinion rehearsal hooks are refused in real "
+                         "mode", EXIT_BLOCKED_OTHER)
     if seam is None and getattr(args, "sandbox", False) and env_path:
         seam = json.loads(Path(env_path).read_text()).get(str(match_id))
     if seam is not None:
-        if not getattr(args, "sandbox", False):
-            raise BlockError("BLOCKED_TEST_HOOK_IN_REAL_MODE",
-                             "ai_opinion is a rehearsal hook; refused in "
-                             "real mode", EXIT_BLOCKED_OTHER)
         return _map_ai_opinion(seam)
     op_dir = Path(args.data_root) / "ai_review" / "opinions"
     try:

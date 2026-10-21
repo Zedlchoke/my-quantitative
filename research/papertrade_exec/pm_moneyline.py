@@ -162,14 +162,18 @@ def discover_and_join_3yes(*, home: str, away: str, data_root: Path,
         _journal(data_root, sandbox, "gamma_search", url, raw_bytes)
         data = json.loads(raw_bytes.decode("utf-8"))
         joined = _join_3yes_in_event(data, home, away)
-        if joined is not None:
+        if joined[0] is not None:
             return joined
-    return None, "no 3-YES event joined for " + f"{home} vs {away}"
+        last_reason = joined[1]
+    return None, last_reason or ("no 3-YES event joined for "
+                                 f"{home} vs {away}")
 
 
 def _join_3yes_in_event(data: dict, home: str, away: str):
     """Scan one search response for the FIRST event carrying exactly the
-    three YES/NO legs. Returns (event, legs) or None."""
+    three YES/NO legs. Returns (event, legs) on success, else
+    (None, best partial-join reason)."""
+    last_reason = None
     for ev in data.get("events") or []:
         title = _norm(ev.get("title"))
         if not (_team_name_hit(home, title) and
@@ -199,7 +203,9 @@ def _join_3yes_in_event(data: dict, home: str, away: str):
                 legs["DRAW"], _ = m, used.add("DRAW")
         if set(legs) == {"HOME", "DRAW", "AWAY"}:
             return ev, legs
-    return None
+        last_reason = (f"3-YES join incomplete on event {ev.get('id')}: "
+                       f"legs={sorted(legs)} (need HOME/DRAW/AWAY)")
+    return None, last_reason
 
 
 def walk_ask(token_id: str, *, stake_cents: int, data_root: Path,

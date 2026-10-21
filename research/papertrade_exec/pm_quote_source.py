@@ -62,7 +62,8 @@ class PMQuoteAdapter:
                     "best_ask": legs_result[leg].get("best_ask"),
                     "vwap_ask": legs_result[leg].get("vwap_ask"),
                     "filled_shares": legs_result[leg].get("filled_shares"),
-                    "fee_total": legs_result[leg].get("fee_total"),
+                    "fee_total": legs_result[leg].get("fee_cents"),
+                    "fee_cents": legs_result[leg].get("fee_cents"),
                     "levels": legs_result[leg].get("levels"),
                     "depth_ok": True,  # walk succeeded (spend covered)
                 }
