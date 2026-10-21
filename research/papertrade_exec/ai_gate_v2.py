@@ -177,10 +177,14 @@ def gate_event(data_root: Path, kind: str, **fields) -> None:
 
 
 def pending_marker(data_root: Path, match_id: str, candidate_hash: str,
-                   anchor_utc: str, detail: str) -> None:
+                   anchor_utc: str, detail: str,
+                   context: dict | None = None) -> None:
     """Record/refresh the PENDING_AI entry (the dashboard 'chờ AI' block
     reads this). The bet stays UNDECIDED — retried on the next cadence
-    pass (the 15-min cadence throttle is the re-review rhythm)."""
+    pass (the 15-min cadence throttle is the re-review rhythm). The
+    candidate CONTEXT travels in the entry so the headless producer can
+    review without re-deriving anything; the producer's own pacing stamp
+    survives decide's re-marks."""
     pending = _load_pending(data_root)
     prev = pending.get(match_id) or {}
     pending[match_id] = {
@@ -189,6 +193,8 @@ def pending_marker(data_root: Path, match_id: str, candidate_hash: str,
         "first_pending_utc": prev.get("first_pending_utc") or _now(),
         "last_attempt_utc": _now(),
         "attempts": int(prev.get("attempts") or 0) + 1,
+        "producer_attempt_utc": prev.get("producer_attempt_utc"),
+        "context": context or prev.get("context") or {},
         "last_detail": detail[:240],
     }
     _save_pending(data_root, pending)

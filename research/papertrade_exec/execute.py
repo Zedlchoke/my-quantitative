@@ -1363,18 +1363,92 @@ def now_of(args) -> str:
 
 # -------------------------------------------------------------------- quote --
 
+CUTOVER_GO_PHRASE = "GO SPORTS PAPERTRADE EXEC V1 POLYMARKET CUTOVER"
+AI_AUTHORITY_GO_PHRASE = "GO SPORTS PAPERTRADE EXEC V1 AI AUTHORITY"
+GO_TOKEN_FILES = {"pm_cutover_active": "GO_TOKEN_CUTOVER.json",
+                  "ai_authority_active": "GO_TOKEN_AI_AUTHORITY.json"}
+GO_REGISTRY_MARKERS = {"pm_cutover_active": "EXEC_CUTOVER_GO_CONSUMED",
+                       "ai_authority_active":
+                           "EXEC_AI_AUTHORITY_GO_CONSUMED"}
+
+
+def _owner_go_state(key: str, *, sandbox: bool,
+                    sandbox_control_dir=None, sandbox_registry=None) -> tuple[bool, str]:
+    """The GO plane for one feature gate: the transcribed token file (with
+    the registered phrase VERBATIM + provenance fields) AND this cycle's
+    registry row phase carrying the GO_CONSUMED marker. SANDBOX is exempt
+    (the rehearsal flips config flags via its own control copies; battery
+    hooks stay sandbox-only). Fail-closed: any absence/mismatch => OFF."""
+    from research.papertrade_exec import CONTROL_DIR, REGISTRY_PATH
+    if sandbox:
+        return True, "sandbox rehearsal plane (config flag governs)"
+    ctrl = Path(sandbox_control_dir) if sandbox_control_dir else CONTROL_DIR
+    reg_path = Path(sandbox_registry) if sandbox_registry else REGISTRY_PATH
+    token_path = Path(ctrl) / GO_TOKEN_FILES[key]
+    try:
+        tok = json.loads(token_path.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return False, f"GO token absent/malformed: {token_path.name}"
+    phrase = {"pm_cutover_active": CUTOVER_GO_PHRASE,
+              "ai_authority_active": AI_AUTHORITY_GO_PHRASE}[key]
+    for f in ("go_phrase_typed_by_owner", "typed_at_utc", "transcribed_by",
+              "registry_consumption_note"):
+        if not tok.get(f):
+            return False, f"GO token missing field {f}"
+    if str(tok["go_phrase_typed_by_owner"]).strip() != phrase:
+        return False, "GO token phrase does not equal the registered phrase verbatim"
+    try:
+        reg = json.loads(reg_path.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return False, "registry unreadable"
+    cycles = reg.get("cycles", reg)
+    row = cycles.get("SPORTS-PAPERTRADE-EXEC-V1") if isinstance(cycles, dict) \
+        else next((c for c in cycles
+                   if c.get("cycle_id") == "SPORTS-PAPERTRADE-EXEC-V1"), {})
+    if GO_REGISTRY_MARKERS[key] not in str(row.get("phase", "")):
+        return False, (f"registry phase does not record "
+                       f"{GO_REGISTRY_MARKERS[key]}")
+    return True, "owner GO token + registry consumption both present"
+
+
 def papertrade_flags(args) -> dict:
-    """Feature-gate law (owner 2026-10-20): production gates stay OFF until
-    the owner types the cutover/AI GO. Absent key or False => OFF. The flags
-    NEVER flip behavior of the pre-cutover pinned path."""
+    """Feature-gate law (owner 2026-10-20; GOs typed + consumed
+    2026-10-21):
+      * REAL mode: a gate is ON only when BOTH keys hold — config
+        feature_gates true AND the owner's transcribed GO token +
+        registry GO_CONSUMED marker. Fail-closed either way.
+      * SANDBOX mode: DEFAULTS to the PRE-GO state (OFF) so the pinned
+        rehearsal always exercises the pre-GO path; a rehearsal may flip
+        gates by placing sandbox_feature_gates.json in its OWN control
+        copy (never the committed config)."""
     cfg_path = Path(__file__).resolve().parent / "config.json"
     try:
         cfg = json.loads(cfg_path.read_text())
     except Exception:
         cfg = {}
     fg = cfg.get("feature_gates") or {}
-    return {"pm_cutover_active": bool(fg.get("pm_cutover_active", False)),
-            "ai_authority_active": bool(fg.get("ai_authority_active", False))}
+    sandbox = bool(getattr(args, "sandbox", False))
+    out = {}
+    if sandbox:
+        fg = {"pm_cutover_active": False, "ai_authority_active": False}
+        ctrl = getattr(args, "sandbox_control_dir", None)
+        if ctrl:
+            try:
+                sf = json.loads((Path(ctrl) /
+                                 "sandbox_feature_gates.json").read_text())
+                fg.update({k: bool(sf.get(k)) for k in fg})
+            except (FileNotFoundError, json.JSONDecodeError):
+                pass                      # default pre-GO rehearsal state
+    for key in ("pm_cutover_active", "ai_authority_active"):
+        cfg_on = bool(fg.get(key, False))
+        go_on, why = _owner_go_state(
+            key, sandbox=sandbox,
+            sandbox_control_dir=getattr(args, "sandbox_control_dir", None),
+            sandbox_registry=getattr(args, "sandbox_registry", None))
+        out[key] = bool(cfg_on and go_on)
+        if key == "ai_authority_active":
+            out["ai_gate_why"] = why
+    return out
 
 
 def _pm_probe_seam(args):
@@ -2258,7 +2332,16 @@ def apply_ai_gate_v2(args, led, f, dec: dict, fc_row, quote_row,
         return None
     # no valid opinion:
     if anchor and not G.review_deadline_passed(anchor, now):
-        G.pending_marker(data_root, f.match_id, chash, anchor, why)
+        G.pending_marker(data_root, f.match_id, chash, anchor, why,
+                         context={"league": f.league, "match_id": f.match_id,
+                                  "home": f.home, "away": f.away,
+                                  "kickoff_utc": f.kickoff_utc,
+                                  "competition": f.competition,
+                                  "chosen_leg": dec.get("chosen_leg"),
+                                  "p_frozen": dec.get("p_frozen"),
+                                  "odds_frozen": dec.get("odds_frozen"),
+                                  "ev_net_by_leg": dec.get("ev_net_by_leg"),
+                                  "stake_cents": dec.get("stake_cents")})
         return "PENDING"
     G.clear_pending(data_root, f.match_id, "AI_NO_VERDICT")
     row = {"type": "DECISION", "league": f.league,

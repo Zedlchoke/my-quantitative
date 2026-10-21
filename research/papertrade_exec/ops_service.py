@@ -1298,6 +1298,29 @@ class OpsService:
             self.incident("AI_SCORECARD_ERROR",
                           f"{type(e).__name__}: {e}")
 
+    def _ai_produce_for_pending(self) -> None:
+        """Owner AI-authority GO (consumed 2026-10-21): the headless v2
+        producer reviews every PENDING_AI candidate — evidence -> provider
+        -> STRICT ALLOW|VETO opinion — so the authority gate functions
+        without the Electron app. Never blocks the tick; provider failures
+        are honest events (bets wait; none killed)."""
+        from research.papertrade_exec import ai_producer
+        flags = execute.papertrade_flags(
+            argparse.Namespace(sandbox=self.sandbox))
+        if not flags.get("ai_authority_active"):
+            return
+        try:
+            summary = ai_producer.produce_for_pending(
+                self.data_root,
+                worktree_root=Path(__file__).resolve().parents[2])
+            if summary["written"] or summary["invalid"] or \
+                    summary["provider_failed"]:
+                self.incident("AI_PRODUCER_PASS",
+                              json.dumps(summary, sort_keys=True))
+        except Exception as e:
+            self.incident("AI_PRODUCER_ERROR",
+                          f"{type(e).__name__}: {e}")
+
     def _ai_pending_view(self) -> list[dict]:
         from research.papertrade_exec import ai_gate_v2 as G
         try:
@@ -1324,6 +1347,7 @@ class OpsService:
         self.maybe_rebuild_dashboard()
         self._close_storms()
         self._ai_pending_watch()
+        self._ai_produce_for_pending()
         self._maybe_weekly_scorecard()
         self.last_tick_ms = int((time.time() - t0) * 1000)
         self._write_heartbeat(t0, results)

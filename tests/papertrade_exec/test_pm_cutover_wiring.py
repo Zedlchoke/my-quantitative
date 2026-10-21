@@ -66,10 +66,29 @@ def test_router_dispatches_3yes_only_with_market_ids():
         assert m.called
 
 
-def test_feature_gates_default_off():
-    class A: data_root = "/tmp"
-    f = execute.papertrade_flags(A())
-    assert f == {"pm_cutover_active": False, "ai_authority_active": False}
+def test_feature_gates_post_go_two_key():
+    """Owner GOs consumed 2026-10-21: the REAL plane is ON via BOTH keys
+    (config + transcribed token + registry marker); the SANDBOX plane
+    defaults to the pre-GO state unless its own control copy flips it."""
+    import argparse, tempfile
+    from pathlib import Path
+    from research.papertrade_exec import execute as E
+    real = E.papertrade_flags(argparse.Namespace(sandbox=False))
+    assert real["pm_cutover_active"] is True and \
+        real["ai_authority_active"] is True
+    with tempfile.TemporaryDirectory() as td:
+        sb = E.papertrade_flags(argparse.Namespace(
+            sandbox=True, sandbox_control_dir=td, sandbox_registry="x"))
+        assert sb["pm_cutover_active"] is False and \
+            sb["ai_authority_active"] is False   # pre-GO rehearsal default
+        (Path(td) / "sandbox_feature_gates.json").write_text(
+            json.dumps({"pm_cutover_active": True,
+                        "ai_authority_active": True}))
+        sb2 = E.papertrade_flags(argparse.Namespace(
+            sandbox=True, sandbox_control_dir=td, sandbox_registry="x"))
+        assert sb2["pm_cutover_active"] is True and \
+            sb2["ai_authority_active"] is True
+
 
 
 def test_pm_cutover_path_no_fallback():
