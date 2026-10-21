@@ -277,13 +277,33 @@ function deskBlocksHtml() {
           : ''}</span></div>`;
     }).join('')
     : '<div class="dim">No lane health yet</div>';
+  const sc = desk.ai_scorecard || {};
+  const scorecardHtml = sc.computed_at_utc
+    ? `<div class="card" style="margin-bottom:12px"><div class="sec-title">
+       AI SCORECARD (W4.5 — weekly)</div>
+       <div class="kv"><span class="kk">scored reviews</span>
+        <span class="vv">${esc(sc.reviews_scored ?? '—')}</span></div>
+       <div class="kv"><span class="kk">net value of the AI layer</span>
+        <span class="vv ${(sc.net_value_of_ai_layer_cents || 0) >= 0
+          ? 'green' : 'red'}">${money(sc.net_value_of_ai_layer_cents || 0)}
+        </span></div>
+       <div class="kv"><span class="kk">downgrade proposal</span>
+        <span class="vv">${sc.downgrade_proposal
+          && sc.downgrade_proposal.eligible
+          ? (sc.downgrade_proposal.suggest_demote_to_shadow
+            ? 'SUGGEST DEMOTE TO SHADOW (owner decides)'
+            : 'keep authority (evidence insufficient to propose)') : '—'}
+        </span></div>
+       <div class="dim">computed ${esc(sc.computed_at_utc)}</div></div>`
+    : '';
   const quota = (desk.health || {}).quota_provider || {};
   const provLine = quota.credits_day != null
     ? `<div class="kv"><span class="kk">provider credits today</span>
        <span class="vv">${esc(quota.credits_day)}/4 · month
        ${esc(quota.credits_month ?? '—')}/120</span></div>` : '';
 
-  return `${ncaaLabelHtml}<div class="grid2" style="margin-bottom:12px">
+  return `${ncaaLabelHtml}${scorecardHtml}<div class="grid2"
+    style="margin-bottom:12px">
     <div class="card"><div class="sec-title">STUCK / DEAD-LETTER QUEUE
       (W2.4)</div>${stuckHtml}</div>
     <div class="card"><div class="sec-title">CLOSING LINE VALUE (CLV)

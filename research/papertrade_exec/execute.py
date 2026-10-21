@@ -112,6 +112,17 @@ def capital_law_for(args, core, config: dict | None = None) -> int:
     return core.capital_law_version(cfg, row)
 
 
+def league_paused(league: str) -> dict | None:
+    """QD1 (A7-M2): a league under an owner pause refuses NEW decisions —
+    settle and dashboard keep running. Returns the pause record or None."""
+    try:
+        return ((load_config().get("league_pauses") or {}).get(league)
+                or {}).get("active") and \
+            (load_config().get("league_pauses") or {}).get(league) or None
+    except Exception:
+        return None
+
+
 def ncaa_configured(league: str) -> bool:
     """W5.1: an NCAA lane joins the runner ONLY when config registers its
     sport_keys entry (NCAA-M / NCAA-W — the WSL activation pattern)."""
@@ -902,7 +913,7 @@ def compute_forecasts(args, league: str, fixtures: list) -> tuple[list[dict], di
         # row — never guessed.
         from research.papertrade_exec import ncaa_state_store as NSS
         from research.papertrade_exec import ncaa_model as NM
-        store_path = Path(args.data_root) / "ncaa" / league / "state.json"
+        store_path = _ncaa_plane_dir(args) / league / "state.json"
         st = NSS.NcaaState.load(store_path)
         if st is None or st.games_processed == 0:
             raise BlockError(
@@ -910,7 +921,7 @@ def compute_forecasts(args, league: str, fixtures: list) -> tuple[list[dict], di
                 f"no replayed state store at {store_path} — run the "
                 "ncaa-refresh-state job first (fail-closed, never "
                 "guessed)", EXIT_BLOCKED_OTHER)
-        artifacts_dir = Path(args.data_root) / "ncaa" / league / "artifacts"
+        artifacts_dir = _ncaa_plane_dir(args) / league / "artifacts"
         season = datetime.now(timezone.utc).year
         model, manifest = NM.load_pinned(artifacts_dir, league, season)
         drafts = []
@@ -2250,6 +2261,17 @@ def cmd_decide(args) -> dict:
         return _r
     require_gate(args)
     verify_pins(roots=_roots_from_args(args))
+    # QD1 (A7-M2): a league under an owner pause refuses NEW decisions on
+    # the REAL plane — loudly (the cadence journals CADENCE_DECIDE_BLOCKED);
+    # settle and the dashboard continue. SANDBOX rehearsals are unaffected
+    # (the pause is a production-plane law; the battery still exercises the
+    # full chain).
+    pause = league_paused(args.league)
+    if pause and not getattr(args, "sandbox", False):
+        raise BlockError("BLOCKED_LEAGUE_PAUSED",
+                         f"{args.league} is under an owner pause: "
+                         f"{pause.get('reason', '')[:200]}",
+                         EXIT_BLOCKED_OTHER)
     core, led = open_ledger(args, create=True)
     risk = core.risk
     go_ok = True   # gate passed above; evaluate_match still re-checks PIT laws
@@ -2779,6 +2801,16 @@ def build_parser() -> argparse.ArgumentParser:
     return ap
 
 
+def _ncaa_plane_dir(args) -> Path:
+    """A7-M1: the NCAA state/GBM artifacts honor the SANDBOX plane — a
+    rehearsal never writes the real ncaa/ subtree (same plane law as the
+    ops state)."""
+    base = Path(args.data_root)
+    if getattr(args, "sandbox", False):
+        return base / "sandbox" / "ncaa"
+    return base / "ncaa"
+
+
 def cmd_ncaa_refresh_state(args) -> dict:
     """W5.3: the state-store bootstrap/refit job for one NCAA lane. Walks
     the day window [from, to] harvesting COMPLETED games through the SAME
@@ -2815,7 +2847,7 @@ def cmd_ncaa_refresh_state(args) -> dict:
             league, payload, body)))
         d += timedelta(days=1)
     st = NSS.replay(games)
-    store_path = Path(args.data_root) / "ncaa" / league / "state.json"
+    store_path = _ncaa_plane_dir(args) / league / "state.json"
     rec = st.save(store_path, league=league)
     # GBM refit (regular-season rows only, seasons < eval season)
     refit_note = "sklearn absent — lane stays on the frozen Elo layer"
@@ -2834,7 +2866,7 @@ def cmd_ncaa_refresh_state(args) -> dict:
                 train_rows.append({"features": feat, "y": y})
             NSS.apply_result(st2, g)
         if train_rows:
-            manifest = NM.refit(Path(args.data_root) / "ncaa" / league /
+            manifest = NM.refit(_ncaa_plane_dir(args) / league /
                                 "artifacts", league, season, train_rows)
             refit_note = f"refit ok n={manifest['n_train']} " \
                          f"sha={manifest['sha256'][:12]}"

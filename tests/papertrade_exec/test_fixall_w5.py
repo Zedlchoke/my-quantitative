@@ -290,7 +290,8 @@ def test_refresh_state_job_replays_and_pins(env, monkeypatch):
     out = execute.cmd_ncaa_refresh_state(ns)   # direct call (the parser
     # lambda only prints); the record fields are asserted directly
     assert out["games_harvested"] > 0
-    st = NSS.NcaaState.load(env["data"] / "ncaa" / "NCAA-M" / "state.json")
+    st = NSS.NcaaState.load(env["data"] / "sandbox" / "ncaa" / "NCAA-M" /
+                            "state.json")   # A7-M1: sandbox plane
     assert st is not None and st.games_processed == out["games_harvested"]
     # the refit note is honest about the sklearn state
     assert out["refit"].startswith("refit ok") or "sklearn" in out["refit"]

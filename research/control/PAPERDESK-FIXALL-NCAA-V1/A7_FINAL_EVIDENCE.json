@@ -1,0 +1,78 @@
+{
+ "schema": "a7_final_verdict_fixall@1",
+ "audited_at_utc": "2026-10-21",
+ "head": "e071c0da3633a6e097b16f8e3b9d7fe24958226a",
+ "branch": "orca/paperdesk-fixall-ncaa-v1-integration",
+ "base": "11da8071",
+ "commits": ["193f14b9 W0", "76b8e9d9 W1", "0d697b5e W2", "f78314ec W3", "38c8f49e W4", "4fd0df31 W5", "e071c0da W6"],
+ "worktree_clean": true,
+ "battery_run1": {"cmd": "cd <worktree> && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/papertrade_exec/ -q", "result": "204 passed in 42.88s", "exit": 0},
+ "battery_run2": {"cmd": "same as run1, immediate consecutive rerun", "result": "204 passed in 43.16s", "exit": 0},
+ "js_batteries": {"test_ai_gate.js": "17/17 pass", "test_ai_seam.js": "43/43 pass", "test_paper_policy.js": "27/27 pass"},
+ "gates": {
+  "pm_cutover_active": false,
+  "ai_authority_active": false,
+  "evidence": "research/papertrade_exec/config.json:138-142 feature_gates block, both false, law comment present"
+ },
+ "seal_throws": {
+  "verified": true,
+  "evidence": "apps/paperdesk/main/seal.js:38 throw new Error('SEALED: LiveExecution has no implementation in ...'); frozen statement block at seal.js:24"
+ },
+ "ledger_rows": {
+  "count": 82,
+  "path": "/Users/hoangminhlong/.my-quantitative-data/sports-papertrade-exec-v1/ledger/paper_ledger.jsonl",
+  "method": "wc -l == 82 and python jsonl parse == 82 rows; 13 BET_PAPER total, 3 still open (401909088, 401909090, 401909836 — the fix package wrote nothing to production)"
+ },
+ "branch_upstream": {
+  "has_upstream": false,
+  "remote_branch_exists": false,
+  "ahead_of_origin_main": 84,
+  "evidence": "git branch -vv: no upstream on orca/paperdesk-fixall-ncaa-v1-integration; git branch -r | grep paperdesk -> exit 1; git log origin/main..HEAD = 84 commits"
+ },
+ "spot_verifications": [
+  {"id": "W0.1", "claim": "settle identity via team_names + pinned crosswalk", "status": "VERIFIED",
+   "evidence": "team_names.py (norm + sha-pinned crosswalk + same_team fail-closed); pins.json:23-27 team_name_crosswalk_csv sha256 8bea7252... == measured shasum of CSV; crosswalk = 30 NBA + 15 WNBA distinct teams (16 WNBA rows, one alt-abbr row); results_fetch.py:172-177 settles via team_names.same_team with displayName-or-abbreviation source names; legacy 3 normalizers delegate (commit 193f14b9)"},
+  {"id": "W1.3", "claim": "constant-forecast block + NBA refresh lookback fix", "status": "VERIFIED",
+   "evidence": "execute.py:1848-1872 constant_forecast_block raises BLOCKED_CONSTANT_FORECAST on zero-variance batch, wired at execute.py:2275 (standard) and wsl_lane.py:872 (WSL); root cause fix execute.py:966-981 nba_incremental_refresh with lookback_days=int(config nba_refresh_lookback_days, default 14); config.json:144-145 documents the law"},
+  {"id": "W1.4", "claim": "quote-collision block on both decide paths", "status": "VERIFIED",
+   "evidence": "execute.py:1877-1906 quote_collision (arm a: identical real payload_sha256 any bookmaker; arm b: PM-family only, exact float vector equality); wired standard execute.py:2343-2359 -> NOT_RUN_QUOTE_COLLISION terminal and WSL wsl_lane.py:909-918; test_quote_collision_unit proves coarse 1.85/2.05 repeats are NOT a collision"},
+  {"id": "W1.5", "claim": "EV outlier quarantine >100%", "status": "VERIFIED",
+   "evidence": "laws.EV_OUTLIER_THRESHOLD; wired standard execute.py:2374-2390 and WSL wsl_lane.py:929-945; ev_outlier_disposition execute.py:1981-2058: second source ALSO >100% -> NOT_PLACED_EV_OUTLIER terminal; disagree/unavailable -> QUARANTINED_EV_OUTLIER with fresh-quote-only re-entry (execute.py:2313-2341) and 3-quarantine terminal"},
+  {"id": "W4", "claim": "hash-locked ALLOW|VETO gate in BOTH decide paths + pending/no-verdict law", "status": "VERIFIED",
+   "evidence": "apply_ai_gate_v2 execute.py:2186-2245; standard path gate at execute.py:2395-2410 (flag AND BET_PAPER only); WSL path wsl_lane.py:950-972 (no early-return escape; legacy ai_boundary_review marked LEGACY-UNWIRED, battery guard test_legacy_evaluators_unwired_from_decide); candidate hash via decision_pipeline.build_candidate_hash (ai_gate_v2.py:56-74); schema hard ALLOW|VETO, ALLOW zero-sources invalid, SWITCH/CHALLENGE/ALTERNATIVE/ABSTAIN invalid (ai_gate_v2.py:77-110); silence -> PENDING_AI until anchor-30m (pending_marker, review_deadline_passed ai_gate_v2.py:226-232) -> NOT_PLACED_AI_NO_VERDICT terminal; >30min pending -> AI_PROVIDER_DOWN alarm (pending_alarm_owners, ops_service._ai_pending_watch)"},
+  {"id": "W5.5", "claim": "NCAA_TRUTH_LABEL owner text verbatim", "status": "VERIFIED",
+   "evidence": "ops_service.py:88-92 NCAA_TRUTH_LABEL; compared character-by-character against plans/PLAN_paperdesk_fixall_ncaa_v1.md W5.5 quoted text: EXACT 178/178 chars (the plan's outer markdown quote marks are the only byte difference, dash punctuation identical)"}
+ ],
+ "adversarial_checks": [
+  {"id": "a", "q": "can any decide path append BET_PAPER without the AI gate when ai_authority_active=true?", "a": "NO. All append_decision sites enumerated: execute.py 1054/1626/1805/2289/2327-2341/2389/2402 are terminal or quarantine rows; the only BET_PAPER append is execute.py:2412 AFTER the gate block, and wsl_lane.py:978 AFTER the gate at 950-957. Gate condition is exactly flags.ai_authority_active AND status==BET_PAPER."},
+  {"id": "b", "q": "does the W1.4 collision guard false-positive on legitimate coarse Pinnacle prices?", "a": "NO. Arm (b) is gated on _pm_family (bookmaker contains 'polymarket' or source_ref PM_CLOB) — coarse bookmaker rows skip it; arm (a) requires byte-identical payload_sha256. test_quote_collision_unit (tests/papertrade_exec/test_fixall_w1.py:230) covers 1.85/2.05 repeats across fixtures -> None."},
+  {"id": "c", "q": "does VerifiedLedgerView handle a truncated/partially-written last line?", "a": "Incremental path: YES — JSONDecodeError -> full re-verify (ops_service.py:186-188); shrink -> full; link/hash mismatch -> BLOCKED_TAMPER. The full-reverify fallback itself delegates to the PINNED PaperLedger.load() whose truncated-line behavior is outside this repo (LOW A7-L4)."},
+  {"id": "d", "q": "does the incremental JS ledger refuse to cache a FAILED chain?", "a": "YES — cache written only inside if (chain.ok) (apps/paperdesk/main/ledger.js:124-128); incremental parse/hash failure falls through to full parse (lines 86-88); failure returns chain.ok=false and projectRows withholds all financials (line 138)."},
+  {"id": "e", "q": "is settle_last_why actually pruned at settle time?", "a": "YES — _prune_settle_why (ops_service.py:494-514) removes settled ids from settle_last_why.json AND stuck_state.json; called after settlements at ops_service.py:616 and :740."},
+  {"id": "f", "q": "does the NCAA sandbox day write anything to the real plane?", "a": "The sandbox DAY (forecast/quote/decide) writes only the sandbox ledger (execute.py:572-575) and reads state/artifacts — verified by test_sandbox_day_forecast_quote_decide_both_lanes with tmp data_root. BUT the ncaa-refresh-state JOB writes data_root/ncaa/<league>/state.json and GBM artifacts with NO sandbox suffix (execute.py:2818, 2836-2837) — finding A7-M1. Real plane measured: no ncaa/ dir exists yet."}
+ ],
+ "findings": [
+  {"severity": "MED", "id": "A7-M1", "claim": "NCAA model-state/GBM-artifact writes are not sandbox-plane separated: a --sandbox rehearsal against the production data_root writes real-plane model state",
+   "evidence": "execute.py:2818 store_path = Path(args.data_root)/'ncaa'/league/'state.json'; execute.py:2836-2837 NM.refit(Path(args.data_root)/'ncaa'/league/'artifacts',...) — no sandbox suffix, unlike ledger_path_for (execute.py:572-575) which routes the ledger to data_root/sandbox/; ai-evidence journal likewise shared (execute.py:2806). Mitigations measured: no ncaa/ dir in the real plane yet; forecasts only READ state; state_sha256 + artifact sha make drift detectable."},
+  {"severity": "MED", "id": "A7-M2", "claim": "Owner decision QĐ1 (NBA entry paused with journaled law) has NO enforcing code: no league-scoped pause law exists; only the global external pause flag (ops_service.py:399-413) and the W1.3 constant-forecast block; no journaled un-pause operation as QĐ1 demanded",
+   "evidence": "grep over ops_service.py/execute.py/config.json finds no NBA-scoped pause; handover W1 discloses the un-pause as an owner action after adoption. Residual risk is bounded by BLOCKED_CONSTANT_FORECAST (execute.py:1858) which catches the known cold-start mode."},
+  {"severity": "MED", "id": "A7-M3", "claim": "W4.5 AI scorecard is a callable library only: no weekly scoring job is scheduled anywhere and no scorecard block is rendered on the dashboard — plan W4 acceptance 'dashboard thấy hàng chờ AI + bảng điểm AI' is half-met",
+   "evidence": "ai_scorecard.compute_scorecard exists but grep finds zero call sites in ops_service.py/live_dashboard.py/renderer; only mention is a comment in apps/paperdesk/main/ai_v2_producer.js:229. The ai_pending queue IS exposed (ops_service.py:1422, live_dashboard.py:204). Dormant while ai_authority_active=false; becomes blocking before any AI-authority GO."},
+  {"severity": "LOW", "id": "A7-L1", "claim": "ai_gate_v2 pending law collapses to instant terminal NOT_PLACED_AI_NO_VERDICT when the forecast row lacks anchor_utc (empty anchor skips the pending branch) — a latent silent-kill side door for future lanes",
+   "evidence": "execute.py:2203 anchor = (fc_row or {}).get('anchor_utc') or ''; execute.py:2217 'if anchor and not G.review_deadline_passed(anchor, now)'. Both current lanes write the field (execute.py:1041, wsl_lane.py:754) so latent; direction is fail-closed (never a wrongful placement)."},
+  {"severity": "LOW", "id": "A7-L2", "claim": "quarantine re-entry appends a fresh QUARANTINED_EV_OUTLIER DECISION row on EVERY decide pass while no fresh quote exists — unbounded ledger churn until a fresh quote or anchor passes",
+   "evidence": "execute.py:2313-2341 appends a row each pass (no dedup/throttle beyond cadence); these rows also count toward the 3-quarantine terminal inside ev_outlier_disposition, which accelerates terminalization across mixed origins."},
+  {"severity": "LOW", "id": "A7-L3", "claim": "constant-forecast block requires >=2 forecast rows, so a single-fixture batch carrying a constant cold-start p passes the block",
+   "evidence": "execute.py:1862 'if len(rows) >= 2:'; WNBA/SOCCER/NCAA can have 1-fixture days."},
+  {"severity": "LOW", "id": "A7-L4", "claim": "truncated-tail robustness of the full re-verify path depends on the pinned core PaperLedger.load(), unverifiable from this repo (same scope limit as prior audit A1)",
+   "evidence": "ops_service.py:199-205 _full_reverify -> core.ledger.PaperLedger(path).load(); the repo-side incremental path handles JSONDecodeError correctly (ops_service.py:186-188). If load() raises on a permanently truncated line the tick errors are journaled (TICK_ERROR) until repair — wedge-with-alarm, not data loss."}
+ ],
+ "not_fully_done": [
+  "Production-runner adoption pending (structural, disclosed): the 2 live-stuck NBA bets (401909088/401909090) remain OPEN in the production ledger (82 rows, 3 open — measured). W0 acceptance proven on a byte-copy ledger (evidence/W0_ACCEPTANCE_REPLAY_2026-10-21.json: settled 2, kept_open 0, chain ok, production untouched). Production settlement can only occur after the owner adopts this HEAD onto the runner.",
+  "QĐ1 NBA pause is operational, not journaled-in-code (A7-M2).",
+  "W4.5 scorecard: no weekly job, no dashboard block (A7-M3). AI authority readiness note is slated for the final summary report.",
+  "W5 disclosed limitations: SEASON_ONLY bootstrap (full-history corpus 2016-2025 declared future upgrade, config.json ncaa_lanes_note); conf_game feature = 0.0 + conference_unknown when the feed lacks conference ids; NCAA 2026-27 season starts 11/11 — lanes proven in sandbox only, never on a real fixture day (inherent, season not started).",
+  "W3.3 48h post-GO monitoring plan documented but not executed — correctly, it is post-GO work gated on the owner's GO.",
+  "Final package summary report PAPERDESK_FIXALL_NCAA_FINAL_2026-10-21.md does not exist yet — plan §THỰC THI sequences it together with this A7 audit."
+ ]
+}

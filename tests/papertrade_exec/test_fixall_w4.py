@@ -400,3 +400,53 @@ def test_js_parse_v2_rejects_switch_and_empty_allow():
     payload = json.loads(out.stdout.strip().splitlines()[-1])
     assert payload == {"bad": False, "emptyAllow": False, "ok": True,
                        "okVerdict": "ALLOW"}
+
+
+# ------------------------------------------------- A7 remediation checks ----
+
+def test_a7_m2_league_pause_law(env):
+    """QD1: a paused league refuses NEW decisions on the REAL plane,
+    loudly, BEFORE any ledger touch; sandbox rehearsals are unaffected
+    (the pause is a production-plane owner law)."""
+    from research.papertrade_exec import execute as E
+    pause = E.league_paused("NBA")
+    assert pause and pause.get("active") is True
+    assert E.league_paused("WNBA") is None
+    # REAL plane: refuses before open_ledger is even called
+    touched = {"ledger": False}
+
+    def _forbidden(*a, **k):
+        touched["ledger"] = True
+        raise AssertionError("open_ledger must not be reached")
+
+    args = argparse.Namespace(**dict(W1.DEC_ARGS, data_root=str(env["data"])))
+    args.sandbox = False
+    with mock.patch.object(E, "require_gate", return_value=(True, "", None)), \
+            mock.patch.object(E, "verify_pins", return_value={}), \
+            mock.patch.object(E, "open_ledger", _forbidden):
+        with pytest.raises(E.BlockError) as ei:
+            E.cmd_decide(args)
+    assert ei.value.code == "BLOCKED_LEAGUE_PAUSED"
+    assert touched["ledger"] is False
+    # SANDBOX plane: unaffected (the battery still rehearses the chain)
+    led = W1._sandbox_ledger(env)
+    W1._seed_chain(led, "m1")
+    out = _run_decide(env, led, lambda *a, **k: dict(_bet_dec(env)),
+                      flag=False)
+    assert out["journaled"][0]["status"] == "BET_PAPER"
+
+
+def test_a7_m3_weekly_scorecard_job(env):
+    svc = make_svc(env)
+    (env["data"] / "ai_review" / "opinions_v2").mkdir(parents=True,
+                                                      exist_ok=True)
+    svc._maybe_weekly_scorecard()
+    p = env["data"] / "sandbox" / "ops" / "state" / "ai_scorecard.json"
+    data = json.loads(p.read_text())
+    assert data["reviews_scored"] == 0          # empty opinions: honest 0
+    kinds = [i["kind"] for i in incidents(env)]
+    assert "AI_SCORECARD_COMPUTED" in kinds
+    # the 7-day pacing holds (second call inside the window is a no-op)
+    svc._maybe_weekly_scorecard()
+    kinds = [i["kind"] for i in incidents(env)]
+    assert kinds.count("AI_SCORECARD_COMPUTED") == 1

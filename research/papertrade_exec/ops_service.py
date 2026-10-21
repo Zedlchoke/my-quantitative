@@ -1271,6 +1271,33 @@ class OpsService:
                           "owner alarm (bets wait, none killed)",
                           match_id=key)
 
+    def _maybe_weekly_scorecard(self) -> None:
+        """A7-M3 (W4.5): the AI scorecard computes WEEKLY (or on first
+        boot) — ALLOW realized vs VETO hypothetical, net value, and the
+        suggest-only downgrade proposal; surfaced on the dashboard via the
+        desk payload. Read-only over the verified ledger + opinions."""
+        import time as _t
+        from research.papertrade_exec import ai_scorecard
+        p = self.state_dir / "ai_scorecard.json"
+        last = self._load_json(p, {}).get("computed_at_epoch", 0)
+        if _t.time() - last < 7 * 86400:
+            return
+        try:
+            core, led, _lp = self._ledger_state()
+            sc = ai_scorecard.compute_scorecard(
+                ledger_rows=led.rows,
+                opinions_dir=self.data_root / "ai_review" / "opinions_v2")
+            sc["computed_at_epoch"] = _t.time()
+            sc["computed_at_utc"] = now_utc()
+            _atomic_write(p, sc)
+            self.incident("AI_SCORECARD_COMPUTED",
+                          f"scored={sc.get('reviews_scored')} "
+                          f"net_value_cents="
+                          f"{sc.get('net_value_of_ai_layer_cents')}")
+        except Exception as e:            # never block the tick
+            self.incident("AI_SCORECARD_ERROR",
+                          f"{type(e).__name__}: {e}")
+
     def _ai_pending_view(self) -> list[dict]:
         from research.papertrade_exec import ai_gate_v2 as G
         try:
@@ -1297,6 +1324,7 @@ class OpsService:
         self.maybe_rebuild_dashboard()
         self._close_storms()
         self._ai_pending_watch()
+        self._maybe_weekly_scorecard()
         self.last_tick_ms = int((time.time() - t0) * 1000)
         self._write_heartbeat(t0, results)
         return results
@@ -1423,7 +1451,9 @@ class OpsService:
                   "ncaa": {"label": NCAA_TRUTH_LABEL,
                            "metrics": self._load_json(
                                self.state_dir / "ncaa_metrics.json", {})
-                           .get("leagues", {})}},
+                           .get("leagues", {})},
+                  "ai_scorecard": self._load_json(
+                      self.state_dir / "ai_scorecard.json", {})},
             serve_latency_ms=int((time.time() - t0) * 1000))
 
 
