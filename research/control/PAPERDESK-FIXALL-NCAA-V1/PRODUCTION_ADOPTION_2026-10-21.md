@@ -56,3 +56,17 @@ thấy 0 FINAL — bây giờ engine thấy trận final). Điều kiện gỡ p
 - Forecast/quote slate 22/10 sẽ do cadence tự hoàn tất vào cửa sổ
   (từ ~16:50Z hôm nay); decide sẽ hiện BLOCKED_LEAGUE_PAUSED cho tới khi
   owner gỡ pause.
+
+## QĐ1 LIFT — 2026-10-21 (owner order)
+
+`league_pauses.NBA.active → false` (commit này). Điều kiện gỡ đã ghi lúc
+đặt pause ("một mẻ NBA forecast variance > 0 trên production runner") ĐÃ
+ĐẠT: ledger rows 85–86 — 401909093 PHI–CLE 0.6415029/0.3584971 vs
+401909094 OKC–DEN 0.6286384/0.3713616 (2 distinct vectors; hằng số cũ
+0.640065/0.359935). Runner pid 85142 đọc config từ đĩa mỗi lần decide —
+lift có hiệu lực NGAY, không cần restart. NBA decide quay lại dưới toàn
+bộ cổng deterministic không đổi (EV≥5%, PIT, stake, cap) + cổng AI v2
+khi owner gõ GO riêng. Battery 207/207 ×2 (3 test NBA "frozen-era" cập
+nhật thành age-independent theo luật refresh-manifest — corpus GIỮA được
+lớp hóa là hành vi đúng của W1.3; law-pause test chuyển sang synthetic
+config).

@@ -409,9 +409,12 @@ def test_a7_m2_league_pause_law(env):
     loudly, BEFORE any ledger touch; sandbox rehearsals are unaffected
     (the pause is a production-plane owner law)."""
     from research.papertrade_exec import execute as E
-    pause = E.league_paused("NBA")
-    assert pause and pause.get("active") is True
+    # QD1 pause was LIFTED by owner order 2026-10-21 (lift condition met:
+    # ledger rows 85-86 carry two distinct NBA forecast p vectors), so the
+    # production config must resolve NBA as NOT paused...
+    assert E.league_paused("NBA") is None
     assert E.league_paused("WNBA") is None
+    # ...while the LAW itself is still verified on synthetic shapes:
     # A7-R1: a malformed league_pauses table fails CLOSED
     with mock.patch.object(E, "load_config",
                            return_value={"league_pauses": ["bad-shape"]}):
@@ -423,7 +426,8 @@ def test_a7_m2_league_pause_law(env):
                            return_value={"league_pauses":
                                          {"X": {"active": False}}}):
         assert E.league_paused("X") is None         # explicit False = open
-    # REAL plane: refuses before open_ledger is even called
+    # REAL plane refusal, verified on a SYNTHETIC paused config (the
+    # production config now has the pause lifted — owner order 2026-10-21):
     touched = {"ledger": False}
 
     def _forbidden(*a, **k):
@@ -432,7 +436,13 @@ def test_a7_m2_league_pause_law(env):
 
     args = argparse.Namespace(**dict(W1.DEC_ARGS, data_root=str(env["data"])))
     args.sandbox = False
-    with mock.patch.object(E, "require_gate", return_value=(True, "", None)), \
+    paused_cfg = {"league_pauses": {"NBA": {
+        "active": True, "reason": "synthetic QD1 pause for the battery"}}}
+    with mock.patch.object(E, "load_config",
+                           return_value={"league_pauses": paused_cfg[
+                               "league_pauses"], "sport_keys":
+                               E.load_config().get("sport_keys", {})}), \
+            mock.patch.object(E, "require_gate", return_value=(True, "", None)), \
             mock.patch.object(E, "verify_pins", return_value={}), \
             mock.patch.object(E, "open_ledger", _forbidden):
         with pytest.raises(E.BlockError) as ei:

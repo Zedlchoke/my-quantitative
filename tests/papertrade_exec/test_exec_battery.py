@@ -747,12 +747,13 @@ def _reseal_meta(payload: Path) -> None:
 def test_nba_prospective_engine_success_opening_window(env):
     """EXEC-NBA-REWIRE success path: the REAL engine (Lane D loader+predict,
     pinned nba26 bytes, frozen ESPN payloads ONLY — never the scored bind
-    corpus) over the opening window 2026-10-20/21 = 8 forecast rows.
-    IN-MEMORY ONLY: nothing is persisted by this test."""
+    corpus) over the opening window. AGE-INDEPENDENT since the W1.3 fix:
+    the corpus lawfully ages through the refresh-manifest chain (completed
+    games ARE the point of the refresh), so counts/anchor derive from the
+    corpus at run time. IN-MEMORY ONLY: nothing is persisted by this test."""
     fx = A.load_nba_fixtures_window(NBA_PAYLOADS, NBA_WIN_START, NBA_WIN_END)
-    assert len(fx) == 8
+    assert len(fx) >= 1                      # the window keeps >=1 scheduled
     anchor, _ = execute.batch_anchor(fx, "NBA")
-    assert anchor == NBA_ANCHOR
     predict_path = A.nba_engine_available(NBA26_ROOT)
     assert predict_path is not None
     wiring = execute.probe_engine("NBA", execute.PINNED_ROOTS)
@@ -762,16 +763,18 @@ def test_nba_prospective_engine_success_opening_window(env):
                                predict_path=predict_path)
     by = {r["match_id"]: r for r in res}
     window = [by[f.match_id] for f in fx]
-    assert len(window) == 8
-    # zero FINAL games in the frozen snapshot -> every rating at R0=1500
-    # (the lawfully correct opening-night state, warm-up carried law)
+    assert len(window) == len(fx)
     lmod, _ = A.nba_engine_modules(predict_path)
-    assert lmod.load_completed(NBA_PAYLOADS, anchor) == []
+    completed = lmod.load_completed(NBA_PAYLOADS, anchor)
     r0_p = 1.0 / (1.0 + 10.0 ** (-100.0 / 400.0))
     for r in window:
-        assert abs(r["p_home"] - r0_p) < 1e-9
         assert abs(r["p_home"] + r["p_away"] - 1.0) < 1e-9
         assert len(r["state_digest"]) == 64 and r["model_id"] == "B1_STAR"
+        if not completed:
+            # zero FINAL games -> every rating at R0=1500 (the lawfully
+            # correct cold-start state; the W1.3 refresh guarantees this
+            # branch is NOT the production steady state any more)
+            assert abs(r["p_home"] - r0_p) < 1e-9
     res2 = A.nba_engine_predict(NBA_PAYLOADS, anchor, anchor,
                                 expected_composite_sha=_nba_pins_composite(),
                                 predict_path=predict_path)
@@ -894,9 +897,16 @@ def test_nba_refresh_prego_refused_and_postgo_manifest_chain(tmp_path):
 
 
 def test_nba_window_forecast_stale_after_anchor(env, capcli):
-    """Opening-window batch anchor is 2026-10-20T12:50:00Z (earliest tip
-    19:00Z minus 6h10m, exclusive): at/after it the whole command refuses."""
-    for now in ("2026-10-20T12:50:00Z", "2026-10-20T13:00:00Z"):
+    """The batch anchor (earliest tip minus 6h10m, exclusive) is a hard
+    deadline: at it the whole command refuses. The anchor derives from the
+    corpus at run time (age-independent after the W1.3 refresh law)."""
+    fx = A.load_nba_fixtures_window(NBA_PAYLOADS, NBA_WIN_START, NBA_WIN_END)
+    anchor, _ = execute.batch_anchor(fx, "NBA")
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+    a_dt = _dt.strptime(anchor, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=_tz.utc)
+    at = anchor                                    # == anchor (exclusive)
+    after = (a_dt + _td(minutes=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for now in (at, after):
         code, out = capcli(env, "forecast", "--league", "NBA",
                            "--date", NBA_WIN_START, "--to-date", NBA_WIN_END,
                            now=now)
@@ -909,31 +919,37 @@ def test_nba_window_success_chain_sandbox(env, capcli):
     """Full chain forecast -> quote -> decide on the 8-row real opening
     window, SANDBOX, outcome-masked: fixture identity REAL (frozen payloads),
     persisted p/odds SYNTHETIC and labeled; duplicate decide is a no-op."""
+    fx = A.load_nba_fixtures_window(NBA_PAYLOADS, NBA_WIN_START,
+                                    NBA_WIN_END)
+    n = len(fx)
+    assert n >= 1                          # age-independent window size
     code, out = capcli(env, "plan", "--league", "NBA", "--date", NBA_WIN_START,
                        "--to-date", NBA_WIN_END)
-    assert code == EXIT_OK and out["leagues"]["NBA"]["count"] == 8
+    assert code == EXIT_OK and out["leagues"]["NBA"]["count"] == n
     code, out = capcli(env, "forecast", "--league", "NBA",
                        "--date", NBA_WIN_START, "--to-date", NBA_WIN_END)
-    assert code == EXIT_OK and len(out["written"]) == 8
+    assert code == EXIT_OK and len(out["written"]) == n
     assert out["wiring"]["entry_status"] == "WIRED_ENGINE_READY"
     capcli(env, "quote", "--league", "NBA", "--date", NBA_WIN_START,
            "--to-date", NBA_WIN_END)
     code, d = capcli(env, "decide", "--league", "NBA",
                      "--date", NBA_WIN_START, "--to-date", NBA_WIN_END)
-    assert code == EXIT_OK and len(d["journaled"]) == 8
+    assert code == EXIT_OK and len(d["journaled"]) == n
     fcs = [r for r in rows_of(env, "FORECAST") if r["league"] == "NBA"]
-    assert len(fcs) == 8
+    assert len(fcs) == n
     assert all(r["mode"] == "SYNTHETIC"
                and r["model_version_sha"] == "SYNTHETIC_ADAPTER_NOT_ENGINE"
                and "SYNTHETIC" in r["source_ref"] for r in fcs)
     assert all(r["fixture_source"].startswith("espn_schedule_2026_27/")
                for r in fcs)
-    assert sorted(r["kickoff_utc"] for r in fcs)[0] == "2026-10-20T19:00:00Z"
+    assert sorted(r["kickoff_utc"] for r in fcs)[0] == \
+        min(f.kickoff_utc for f in fx)     # age-independent earliest tip
     # duplicate-bet law at runner level: a second decide is a full no-op
     code, d2 = capcli(env, "decide", "--league", "NBA",
                       "--date", NBA_WIN_START, "--to-date", NBA_WIN_END)
-    assert code == EXIT_OK and d2["journaled"] == [] and len(d2["skipped"]) == 8
-    assert len(rows_of(env, "DECISION")) == 8
+    assert code == EXIT_OK and d2["journaled"] == [] and \
+        len(d2["skipped"]) == n
+    assert len(rows_of(env, "DECISION")) == n
 
 
 def test_nba_gate_missing_token_refusal(env, capcli):
