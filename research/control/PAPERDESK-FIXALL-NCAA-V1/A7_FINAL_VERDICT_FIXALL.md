@@ -5,6 +5,106 @@
 > `orca/paperdesk-fixall-ncaa-v1-integration`, base `11da8071`, working tree
 > sạch. Vi phạm = dừng việc: audit này KHÔNG tự gõ/tiêu thụ GO nào.
 
+---
+
+# DELTA RE-AUDIT (2026-10-21) — remediation commit `af40456f`
+
+## FINAL VERDICT (delta, áp dụng cho HEAD `af40456f`): **PASS_WITH_FINDINGS — 0 CRITICAL · 0 HIGH · 0 MED · 6 LOW**
+
+Cả 3 MED của vòng A7 gốc (tại `e071c0da`) đã được sửa và verify lại trên
+code; 4 LOW gốc vẫn còn nguyên giá trị; remediation thêm 2 LOW mới
+(A7-R1, A7-R2). Điều kiện nghiệm thu của gói ("PASS_WITH_FINDINGS không
+còn CRITICAL/HIGH/MED") **ĐÃ ĐẠT**.
+
+## Delta battery (2 lượt liên tiếp tại `af40456f`)
+
+| Battery | Kết quả |
+|---|---|
+| Python run 1: `pytest tests/papertrade_exec/ -q` | **206 passed** in 51.19s, exit 0 |
+| Python run 2 (chạy liền) | **206 passed** in 50.11s, exit 0 |
+
+(204 cũ + 2 test remediation mới: `test_a7_m2_league_pause_law`,
+`test_a7_m3_weekly_scorecard_job` — test_fixall_w4.py:407-449.)
+
+## Hard laws re-verified tại `af40456f`
+
+Cả hai cờ vẫn `false` (config.json:139,141) · seal vẫn ném
+(`apps/paperdesk/main/seal.js:38`) · sổ production vẫn đúng **82 dòng** ·
+không có remote branch `paperdesk` (grep -c = 0), 86 commit local-only.
+
+## Remediation verification per MED
+
+**A7-M1 (NCAA artifacts sandbox-plane) — FIXED.**
+`_ncaa_plane_dir(args)` (`execute.py:2804-2812`): sandbox ⇒
+`<data-root>/sandbox/ncaa`, real ⇒ `<data-root>/ncaa`. Được dùng ở cả 4
+điểm ghi/đọc: state load `execute.py:916`, artifacts load `execute.py:924`
+(compute_forecasts NCAA), state save `execute.py:2850`, GBM refit
+`execute.py:2869` (cmd_ncaa_refresh_state). Grep còn lại: không còn đường
+`data_root/"ncaa"` trực tiếp nào ngoài helper. Adversarial (a): sandbox
+invocation không thể ghi real plane (helper tách theo `args.sandbox`);
+ngược lại real job không thể nhiễm sandbox; seam `ncaa_scoreboard` vẫn bị
+chặn `BLOCKED_TEST_HOOK_IN_REAL_MODE` ở real mode. Test W5 refresh đã cập
+nhưng đọc đúng `sandbox/ncaa/NCAA-M/state.json`.
+
+**A7-M2 (QĐ1 NBA pause) — FIXED.**
+Config `league_pauses.NBA.active=true` kèm `lift_requires` + reason
+(`config.json:143-149` — lift chỉ bằng config commit có journal sau khi 1
+mẻ NBA production forecast variance > 0). `league_paused(league)`
+(`execute.py:115-125`); `cmd_decide` TỪ CHỐI NEW decisions trên REAL plane
+TRƯỚC `open_ledger` — `BLOCKED_LEAGUE_PAUSED` (`execute.py:2264-2273`);
+sandbox không bị ảnh hưởng. Adversarial (b): pause league-scoped (WNBA/
+SOCCER không dính — test khẳng định `league_paused("WNBA") is None`);
+settle KHÔNG có pause check (cmd_settle không đụng) — settle tiếp tục đúng
+spec; cadence journal `CADENCE_DECIDE_BLOCKED` và các league khác chạy
+tiếp (`ops_service.py:1184-1192` — chỉ `BLOCKED_ANCHOR_PASSED` mới break,
+`BLOCKED_LEAGUE_PAUSED` không hard-break). Test chứng minh refuse xảy ra
+trước khi `open_ledger` được gọi (mock cấm + assert untouched).
+
+**A7-M3 (scorecard) — FIXED.**
+`_maybe_weekly_scorecard` (`ops_service.py:1274-1300`): pacing 7 ngày qua
+`<state_dir>/ai_scorecard.json`, tính từ verified ledger + opinions_v2,
+incident `AI_SCORECARD_COMPUTED` / `AI_SCORECARD_ERROR`, honest 0 khi
+chưa có opinion; nối vào tick tại `ops_service.py:1327` (sau
+`_ai_pending_watch`, trước heartbeat). Dashboard:
+`desk.ai_scorecard` (`ops_service.py:1454-1455`), surface qua
+`live_dashboard.py:206`, renderer card có net value + downgrade proposal
+(`apps/paperdesk/renderer/app.js:280-303`, guard `|| {}` khi thiếu
+payload). `compute_scorecard` read-only (grep: 0 write). Adversarial (c):
+không bao giờ chặn tick (try/except toàn hàm; pacing early-return),
+ghi ĐÚNG 1 file trong state_dir qua `_atomic_write`.
+
+## Adversarial (d) — slip-up scan trên các hàm bị đụng
+
+Không tìm thấy lỗi kiểu UnboundLocalError: `_ledger_state` trả 3-tuple và
+cả 3 caller unpack 3 (`ops_service.py` return + :628/:646/:1286 —
+docstring "(core, led)" stale, cosmetic); kwargs khớp chữ ký
+`compute_scorecard(*, ledger_rows, opinions_dir)` (`ai_scorecard.py:39`);
+renderer guard payload thiếu. **2 residual LOW mới:**
+
+- **A7-R1 (LOW)** — `league_paused` fail-OPEN khi config
+  `league_pauses` lỗi shape (`except Exception: return None`,
+  `execute.py:124-125`): config hỏng cục bộ → NBA pause tự nhấc im lặng
+  trong khi phần còn lại của config vẫn hợp lệ. Nên fail-closed (lỗi đọc
+  config ⇒ coi như paused, hoặc raise).
+- **A7-R2 (LOW)** — `maybe_wsl` trả về TRƯỚC pause check
+  (`cmd_decide`, `execute.py:2258-2261`): nếu ngày nào config pause WSL,
+  lane WSL sẽ không tôn trọng (hiện chỉ có NBA trong `league_pauses`,
+  không ảnh hưởng hiện tại).
+
+## Tồn tại từ vòng trước (không đổi)
+
+4 LOW gốc A7-L1..A7-L4 giữ nguyên (latent anchor-missing window, quarantine
+row churn, constant-block ≥2 rows, pinned-core truncation dependency).
+Các mục pending cấu trúc cũng không đổi: production-runner adoption
+(2 lệnh NBA kẹt vẫn OPEN trên sổ thật, 82 dòng), W3.3 hậu-GO, NCAA chờ
+mùa 11/11 (SEASON_ONLY bootstrap + conf_game gap đã khai), báo cáo tổng
+kết `PAPERDESK_FIXALL_NCAA_FINAL_2026-10-21.md` giờ có thể viết trên nền
+verdict này.
+
+---
+
+# BASE A7 (tại `e071c0da` — giữ nguyên làm lịch sử)
+
 ## VERDICT: **PASS_WITH_FINDINGS**
 
 Counts: **0 CRITICAL · 0 HIGH · 3 MED · 4 LOW.**

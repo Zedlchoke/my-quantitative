@@ -412,6 +412,17 @@ def test_a7_m2_league_pause_law(env):
     pause = E.league_paused("NBA")
     assert pause and pause.get("active") is True
     assert E.league_paused("WNBA") is None
+    # A7-R1: a malformed league_pauses table fails CLOSED
+    with mock.patch.object(E, "load_config",
+                           return_value={"league_pauses": ["bad-shape"]}):
+        assert E.league_paused("WNBA") is not None
+    with mock.patch.object(E, "load_config",
+                           return_value={"league_pauses": {"X": {}}}):
+        assert E.league_paused("X") is not None     # missing 'active'
+    with mock.patch.object(E, "load_config",
+                           return_value={"league_pauses":
+                                         {"X": {"active": False}}}):
+        assert E.league_paused("X") is None         # explicit False = open
     # REAL plane: refuses before open_ledger is even called
     touched = {"ledger": False}
 

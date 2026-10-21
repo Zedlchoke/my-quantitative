@@ -114,13 +114,32 @@ def capital_law_for(args, core, config: dict | None = None) -> int:
 
 def league_paused(league: str) -> dict | None:
     """QD1 (A7-M2): a league under an owner pause refuses NEW decisions —
-    settle and dashboard keep running. Returns the pause record or None."""
+    settle and dashboard keep running. Returns the pause record or None.
+    A MALFORMED league_pauses table fails CLOSED (treated as paused with
+    an explicit reason) — an unreadable owner law never silently re-opens
+    betting (A7-R1)."""
     try:
-        return ((load_config().get("league_pauses") or {}).get(league)
-                or {}).get("active") and \
-            (load_config().get("league_pauses") or {}).get(league) or None
-    except Exception:
+        table = load_config().get("league_pauses")
+        if table is None:
+            return None
+        if not isinstance(table, dict):
+            return {"active": True,
+                    "reason": "league_pauses config MALFORMED (not an "
+                              "object) — fail-closed pause (A7-R1)"}
+        entry = table.get(league)
+        if not isinstance(entry, dict):
+            return None
+        if entry.get("active") is True:
+            return entry
+        if "active" not in entry:
+            return {"active": True,
+                    "reason": f"league_pauses[{league}] missing 'active' "
+                              "— fail-closed pause (A7-R1)"}
         return None
+    except Exception:
+        return {"active": True,
+                "reason": "league_pauses config unreadable — fail-closed "
+                          "pause (A7-R1)"}
 
 
 def ncaa_configured(league: str) -> bool:
@@ -2256,22 +2275,19 @@ def apply_ai_gate_v2(args, led, f, dec: dict, fc_row, quote_row,
 
 
 def cmd_decide(args) -> dict:
-    _r = maybe_wsl(args, "decide")
-    if _r is not None:
-        return _r
-    require_gate(args)
-    verify_pins(roots=_roots_from_args(args))
-    # QD1 (A7-M2): a league under an owner pause refuses NEW decisions on
-    # the REAL plane — loudly (the cadence journals CADENCE_DECIDE_BLOCKED);
-    # settle and the dashboard continue. SANDBOX rehearsals are unaffected
-    # (the pause is a production-plane law; the battery still exercises the
-    # full chain).
+    # QD1/A7-R2: the pause check precedes EVERY lane dispatch (WSL
+    # included) on the REAL plane — no lane is above an owner pause.
     pause = league_paused(args.league)
     if pause and not getattr(args, "sandbox", False):
         raise BlockError("BLOCKED_LEAGUE_PAUSED",
                          f"{args.league} is under an owner pause: "
                          f"{pause.get('reason', '')[:200]}",
                          EXIT_BLOCKED_OTHER)
+    _r = maybe_wsl(args, "decide")
+    if _r is not None:
+        return _r
+    require_gate(args)
+    verify_pins(roots=_roots_from_args(args))
     core, led = open_ledger(args, create=True)
     risk = core.risk
     go_ok = True   # gate passed above; evaluate_match still re-checks PIT laws
