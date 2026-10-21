@@ -253,7 +253,7 @@ def test_discover_join_3yes_laws():
                     "urllib.request.urlopen", return_value=fake):
         none_ev, why = discover_and_join_3yes(
             home="France", away="Poland", data_root=Path("/tmp"))
-    assert none_ev is None and "DRAW" in why
+    assert none_ev is None and "3-YES" in why
 
 
 def test_soccer_3yes_rows_via_seam():

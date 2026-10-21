@@ -84,6 +84,31 @@ def _is_moneyline(market: dict, home: str, away: str) -> bool:
     return paired and not derivative
 
 
+
+def _team_name_hit(name: str, title_norm: str) -> bool:
+    """Candidate retrieval only (identity is the market-outcome law):
+    the pinned full name OR its single-word short form ("Orlando Magic" ->
+    "magic") must appear in the normalized title."""
+    n = _norm(name)
+    if n and (n in title_norm or (title_norm in n and len(title_norm) >= 4)):
+        return True
+    words = str(name).split()
+    short = _norm(words[-1]) if len(words) > 1 else n
+    return len(short) >= 4 and short in title_norm
+
+
+def _search_variants(home: str, away: str) -> list[str]:
+    """Query variants tried in order: full names, then the single-word
+    short forms Polymarket titles actually use ("Magic vs Hawks" -> event
+    'Hawks vs. Magic', observed live 2026-10-21)."""
+    out = [f"{home} vs {away}"]
+    hs = home.split()[-1] if " " in home else home
+    as_ = away.split()[-1] if " " in away else away
+    if [hs, as_] != [home, away]:
+        out.append(f"{hs} vs {as_}")
+    return out
+
+
 def discover_and_join(*, home: str, away: str, kickoff_utc: str,
                       data_root: Path, sandbox: bool = False):
     """Public-search + event fetch; returns (event, moneyline_market) or
@@ -91,30 +116,28 @@ def discover_and_join(*, home: str, away: str, kickoff_utc: str,
     title must reference BOTH pinned team names (normalized, bidirectional
     short-form); the moneyline market's own outcomes must be exactly the two
     team names (_is_moneyline). Position is never trusted downstream."""
-    q = f"{home} vs {away}"
     import urllib.parse
-    url = (f"https://gamma-api.polymarket.com/public-search?q="
-           + urllib.parse.quote(q)
-           + "&events_status=active&limit_per_type=20")
-    req = urllib.request.Request(url, headers={"Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        raw_bytes = resp.read()
-    _journal(data_root, sandbox, "gamma_search", url, raw_bytes)
-    data = json.loads(raw_bytes.decode("utf-8"))
-    h, a = _norm(home), _norm(away)
-
-    def _name_in(needle: str, hay: str) -> bool:
-        return bool(needle) and (needle in hay or
-                                 (hay in needle and len(hay) >= 4))
-
-    for ev in data.get("events") or []:
-        title = _norm(ev.get("title"))
-        if not (_name_in(h, title) and _name_in(a, title)):
-            continue          # BOTH pinned names must appear — never one side
-        for m in ev.get("markets") or []:
-            if _is_moneyline(m, home, away):
-                return ev, m
-    return None, "no 2-outcome moneyline market joined for " + q
+    for q in _search_variants(home, away):
+        url = (f"https://gamma-api.polymarket.com/public-search?q="
+               + urllib.parse.quote(q)
+               + "&events_status=active&limit_per_type=20")
+        req = urllib.request.Request(url, headers={
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                          "AppleWebKit/537.36"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw_bytes = resp.read()
+        _journal(data_root, sandbox, "gamma_search", url, raw_bytes)
+        data = json.loads(raw_bytes.decode("utf-8"))
+        for ev in data.get("events") or []:
+            title = _norm(ev.get("title"))
+            if not (_team_name_hit(home, title) and
+                    _team_name_hit(away, title)):
+                continue   # BOTH teams must appear — order never trusted
+            for m in ev.get("markets") or []:
+                if _is_moneyline(m, home, away):
+                    return ev, m
+    return None, "no 2-outcome moneyline market joined for " +         f"{home} vs {away}"
 
 
 def discover_and_join_3yes(*, home: str, away: str, data_root: Path,
@@ -125,25 +148,32 @@ def discover_and_join_3yes(*, home: str, away: str, data_root: Path,
     its question text referencing that leg uniquely (pinned name / 'draw');
     ambiguous or missing legs fail the whole join (fail-closed, never
     guessed)."""
-    q = f"{home} vs {away}"
     import urllib.parse
-    url = (f"https://gamma-api.polymarket.com/public-search?q="
-           + urllib.parse.quote(q)
-           + "&events_status=active&limit_per_type=20")
-    req = urllib.request.Request(url, headers={"Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        raw_bytes = resp.read()
-    _journal(data_root, sandbox, "gamma_search", url, raw_bytes)
-    data = json.loads(raw_bytes.decode("utf-8"))
-    h, a = _norm(home), _norm(away)
+    for q in _search_variants(home, away):
+        url = (f"https://gamma-api.polymarket.com/public-search?q="
+               + urllib.parse.quote(q)
+               + "&events_status=active&limit_per_type=20")
+        req = urllib.request.Request(url, headers={
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                          "AppleWebKit/537.36"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw_bytes = resp.read()
+        _journal(data_root, sandbox, "gamma_search", url, raw_bytes)
+        data = json.loads(raw_bytes.decode("utf-8"))
+        joined = _join_3yes_in_event(data, home, away)
+        if joined is not None:
+            return joined
+    return None, "no 3-YES event joined for " + f"{home} vs {away}"
 
-    def _name_in(needle: str, hay: str) -> bool:
-        return bool(needle) and (needle in hay or
-                                 (hay in needle and len(hay) >= 4))
 
+def _join_3yes_in_event(data: dict, home: str, away: str):
+    """Scan one search response for the FIRST event carrying exactly the
+    three YES/NO legs. Returns (event, legs) or None."""
     for ev in data.get("events") or []:
         title = _norm(ev.get("title"))
-        if not (_name_in(h, title) and _name_in(a, title)):
+        if not (_team_name_hit(home, title) and
+                _team_name_hit(away, title)):
             continue
         legs, used = {}, set()
         for m in ev.get("markets") or []:
@@ -159,7 +189,8 @@ def discover_and_join_3yes(*, home: str, away: str, data_root: Path,
                     {str(o).strip().lower() for o in outs} == {"yes", "no"}):
                 continue                      # only 2-way YES/NO markets
             question = _norm(m.get("question"))
-            in_home, in_away = _name_in(h, question), _name_in(a, question)
+            in_home, in_away = (_team_name_hit(home, question),
+                                _team_name_hit(away, question))
             if in_home and not in_away and "HOME" not in used:
                 legs["HOME"], _ = m, used.add("HOME")
             elif in_away and not in_home and "AWAY" not in used:
@@ -168,9 +199,7 @@ def discover_and_join_3yes(*, home: str, away: str, data_root: Path,
                 legs["DRAW"], _ = m, used.add("DRAW")
         if set(legs) == {"HOME", "DRAW", "AWAY"}:
             return ev, legs
-        return None, (f"3-YES join incomplete: legs={sorted(legs)} "
-                      f"(need HOME/DRAW/AWAY from ONE event)")
-    return None, "no event joined for " + q
+    return None
 
 
 def walk_ask(token_id: str, *, stake_cents: int, data_root: Path,
