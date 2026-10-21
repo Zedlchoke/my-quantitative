@@ -509,7 +509,7 @@ def test_soccer_missing_draw_leg_refused(env, capcli):
     assert len(emitted) == 3, emitted
     led3 = _core().ledger.PaperLedger(env["data"] / "sandbox" / "sandbox_ledger.jsonl")
     led3.load()
-    for f in execute.synthetic_soccer_fixtures(SOC_DAY):
+    for i, f in enumerate(execute.synthetic_soccer_fixtures(SOC_DAY)):
         p = A.synthetic_three_way_p(f.match_id)
         odds = {k: v for k, v in A.synthetic_odds(f.match_id, p).items()
                 if k != "DRAW"}
@@ -520,7 +520,9 @@ def test_soccer_missing_draw_leg_refused(env, capcli):
                      "odds": odds, "fetch_ts_utc": NOW,
                      "source_last_update_utc": NOW,
                      "commence_time_utc": f.kickoff_utc,
-                     "payload_sha256": "1" * 64,
+                     # W1.4: distinct snapshots — one payload sha must never
+                     # price two fixtures (the collision guard is law now)
+                     "payload_sha256": ("1" * 63 + str(i)),
                      "key_fingerprint": "sandbox-synthetic-00", "mode": "SYNTHETIC"})
     code, out = capcli(env, "decide", "--league", "SOCCER", "--date", SOC_DAY)
     assert code == EXIT_OK
@@ -1279,6 +1281,10 @@ def test_cross_key_slot_collision_refused(env, monkeypatch):
 
     monkeypatch.setattr(execute, "_soccer_sport_keys",
                         lambda: ["key_a", "key_b"])
+    # W1.1 poll gate: these synthetic keys are ACTIVE for this test (the
+    # slot-collision law, not the poll gate, is the subject here).
+    monkeypatch.setattr(execute, "_key_window_active",
+                        lambda key, day: True)
     with pytest.raises(BlockError) as ei:
         execute.real_soccer_fixtures(
             argparse.Namespace(data_root=str(env["data"])), SOC_EVENT_DAY,

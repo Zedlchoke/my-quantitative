@@ -865,6 +865,11 @@ def cmd_decide(args) -> dict:
                     or REGISTRY_PATH)
     journaled = []
     view = _NonTerminalView(led)
+    # W1.3 parity: a zero-variance WSL forecast batch is unbettable too.
+    from research.papertrade_exec import execute as _exec
+    batch_fc = [r for r in led.rows if r.get("type") == "FORECAST"
+                and r.get("league") == LEAGUE]
+    _exec.constant_forecast_block(batch_fc)
     for fx in fixtures_for_day(args, args.date):
         if fx["match_id"] in view.decided_match_ids():
             continue                     # one-decision law (idempotent)
@@ -900,6 +905,19 @@ def cmd_decide(args) -> dict:
             stake = core.stake_for_decision(led.equity_cents())
             recheck = make_in_lock_recheck(view, core, registry, go_ok=True,
                                            walked_stake_cents=stake)
+            # W1.4 parity: one odds snapshot must never price two fixtures.
+            collide = _exec.quote_collision(led, fx["match_id"], qrow)
+            if collide is not None:
+                row = terminal_journal(
+                    fx, "NOT_RUN_QUOTE_COLLISION",
+                    f"quote odds signature identical to {collide} — one "
+                    "snapshot cannot price two fixtures (W1.4); fail-closed",
+                    now)
+                row = led.append_decision(row)
+                journaled.append({"match_id": fx["match_id"],
+                                  "status": row.get("status"),
+                                  "reason": (row.get("reason") or "")[:160]})
+                continue
             dec = core.risk.evaluate_match(
                 view, league=LEAGUE, match_id=fx["match_id"],
                 competition=fx.get("competition") or "WSL_LEAGUE",
@@ -907,6 +925,24 @@ def cmd_decide(args) -> dict:
                 kickoff_utc=fx["kickoff_utc"], now_utc=now,
                 forecast=forecast, quote=quote, crosswalk_ok=True,
                 go_ok=True, capital_law=3)
+            # W1.5 parity: EV outlier quarantine (the live M39 loss came
+            # from this lane at EV +196.68%).
+            if dec.get("status") == "BET_PAPER" and max(
+                    (dec.get("ev_net_by_leg") or {}).values() or [0.0]) > \
+                    _exec.laws.EV_OUTLIER_THRESHOLD:
+                class _Fx:  # minimal fixture view for the shared law
+                    league, match_id = LEAGUE, fx["match_id"]
+                    competition = fx.get("competition") or "WSL_LEAGUE"
+                    home, away = fx["home"], fx["away"]
+                    kickoff_utc = fx["kickoff_utc"]
+                row, _kind = _exec.ev_outlier_disposition(
+                    args, led, _Fx(), dec, qrow, now)
+                row = led.append_decision(row, recheck=recheck,
+                                          capital_law=3)
+                journaled.append({"match_id": fx["match_id"],
+                                  "status": row.get("status"),
+                                  "reason": (row.get("reason") or "")[:160]})
+                continue
             if dec.get("status") == "BET_PAPER":
                 dec["forecast_row_sha256"] = fc_rows[-1]["row_sha256"]
                 dec["quote_row_sha256"] = qrow["row_sha256"]

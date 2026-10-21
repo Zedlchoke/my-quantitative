@@ -48,7 +48,8 @@ from research.papertrade_exec import (  # noqa: E402
     EXIT_BLOCKED_TAMPER, EXIT_HEAD_DRIFT, EXIT_OK, EXIT_PIN_DRIFT, GO_PHRASE,
     LEAGUES, REGISTRY_PATH, SOCCER_LEAD_SECONDS,
     BlockError, load_pins, nba_payload_composite, sha256_file, verify_pins)
-from research.papertrade_exec import adapters as A  # noqa: E402
+from research.papertrade_exec import laws                            # noqa: E402
+from research.papertrade_exec import adapters as A                    # noqa: E402
 
 PINNED_ROOTS = {
     "paper_core_root": Path("/Users/hoangminhlong/my-quantitative/.worktrees/"
@@ -236,6 +237,12 @@ def _soccer_sport_keys() -> list[str]:
     return keys
 
 
+def _provider_quota_guard_for(args):
+    """W1.2: the exec-owned provider-credit guard bound to this data root."""
+    from research.papertrade_exec.quota_guard import ProviderQuotaGuard
+    return ProviderQuotaGuard(Path(args.data_root))
+
+
 def _odds_for(args):
     """The pinned core quota-guarded client (shared by the soccer events
     fetch and the odds capture). Key hygiene failure is BLOCKED_KEY."""
@@ -358,6 +365,39 @@ def write_soccer_competition_report(led, out_dir: Path) -> dict:
     return out
 
 
+def _key_window_active(sport_key: str, day: str) -> bool:
+    """W1.1: a registered soccer sport key is ACTIVE for `day` only when its
+    committed competition_law has a window covering that date. Inactive keys
+    (e.g. soccer_fifa_world_cup_group — a 2030 window; the provider 404s the
+    key today) may NOT be polled on the cadence: at most ONE events poll per
+    UTC day (the 'max 1/day' note the runtime audit caught being violated
+    ~230-280x/day)."""
+    law = load_config().get("competition_law", {}).get(sport_key) or []
+    for w in law:
+        win = w.get("window", {})
+        if str(win.get("from", "")) <= day <= str(win.get("to", "")):
+            return True
+    return False
+
+
+def _inactive_key_poll_ok(args, sport_key: str) -> bool:
+    """1/day pacing state for INACTIVE keys (W1.1). State lives under
+    <data-root>/data/soccer_key_poll.json {key: last_poll_utc_date}."""
+    state_path = Path(args.data_root) / "data" / "soccer_key_poll.json"
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    state: dict = {}
+    try:
+        state = json.loads(state_path.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        state = {}
+    if state.get(sport_key) == today:
+        return False
+    state[sport_key] = today
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(json.dumps(state, indent=1, sort_keys=True))
+    return True
+
+
 def real_soccer_fixtures(args, day: str, client=None, odds_mod=None) -> list:
     """REAL soccer fixtures from The Odds API /events via the core
     quota-guarded client (0-credit endpoint, journaled like every call).
@@ -373,6 +413,12 @@ def real_soccer_fixtures(args, day: str, client=None, odds_mod=None) -> list:
     seen: dict[str, object] = {}
     slots: dict[tuple, tuple] = {}        # slot -> (sport_key, match_id)
     for key in _soccer_sport_keys():
+        # W1.1: inactive keys (no committed law window covering `day`) are
+        # polled at most once per UTC day — the provider 404s them and the
+        # runtime audit measured 232-282 wasted calls/day against one key.
+        if not _key_window_active(key, day) and \
+                not _inactive_key_poll_ok(args, key):
+            continue
         try:
             body, hdrs = client.get_events(key)
         except odds_mod.QuotaSkip as qs:      # 0-cost still honours the guard
@@ -811,9 +857,16 @@ def compute_forecasts(args, league: str, fixtures: list) -> tuple[list[dict], di
     # BEFORE forecasting (post-GO only; the rehearsal never reaches this
     # branch). Entry checks above must stay FIRST so a drifted/absent entry
     # can never touch the corpus.
+    # W1.3 ROOT CAUSE (runtime audit 2026-10-21): the refresh window used to
+    # equal the FORECAST window (lookback 0), so the corpus never gained a
+    # FINAL row — every team stayed at R0=1500 and the engine returned the
+    # pure-HCA constant p=0.640065 for all 14 live forecasts. The refresh now
+    # walks back `nba_refresh_lookback_days` (config; default 14) so
+    # completed game-days feed the engine before any forecast.
     A.nba_incremental_refresh(
         PINNED_DATA["nba_payloads"], fixtures[0].kickoff_utc[:10],
-        fixtures[-1].kickoff_utc[:10], go_ok=True)
+        fixtures[-1].kickoff_utc[:10], go_ok=True,
+        lookback_days=int(load_config().get("nba_refresh_lookback_days", 14)))
     composite_pin = load_pins()["data"]["nba_espn_schedule_2026_27"]["composite_sha256"]
     res = A.nba_engine_predict(
         PINNED_DATA["nba_payloads"], anchor_utc, anchor_utc,
@@ -1415,6 +1468,14 @@ def cmd_quote(args) -> dict:
         raise BlockError("BLOCKED_KEY",
                          f"key hygiene failure: {type(e).__name__}: {e}",
                          EXIT_BLOCKED_KEY)
+    # W1.2: credit calls additionally obey the PROVIDER-credit meter (the
+    # provider debits 2 credits per basketball odds call; the pinned
+    # internal counter books 1 — the guard caps and reconciles in the
+    # provider's own unit, pinned bytes untouched).
+    from research.papertrade_exec.quota_guard import (GuardedClient,
+                                                      ProviderQuotaSkip)
+    guard = _provider_quota_guard_for(args)
+    client = GuardedClient(client, guard)
     keys = _soccer_sport_keys() if league == "SOCCER" \
         else [DEFAULT_SPORT_KEYS[league]]
     decided = led.decided_match_ids()
@@ -1423,6 +1484,9 @@ def cmd_quote(args) -> dict:
         try:
             body, hdrs = client.get_odds(key)
         except odds_mod.QuotaSkip as qs:
+            quota_skip = qs
+            break
+        except ProviderQuotaSkip as qs:
             quota_skip = qs
             break
         except odds_mod.KeyHalted as kh:
@@ -1663,6 +1727,210 @@ def crosswalk_ok(fixture, forecast_row, quote_row) -> tuple[bool, str]:
     return True, "1:1"
 
 
+# --- W1.3 / W1.4 / W1.5 decision-path blocks (PAPERDESK-FIXALL-NCAA-V1,
+#     owner work package 2026-10-21; laws sourced from laws.py) -------------
+
+def constant_forecast_block(fc_rows: list[dict]) -> None:
+    """W1.3: when EVERY forecast of one league batch carries the identical
+    p dict (batch variance 0), the model carries no per-match information —
+    the runtime audit measured 14/14 NBA forecasts at p=0.640065 (the pure
+    HCA cold-start: corpus refresh lookback=0 => zero FINAL rows => every
+    team at R0=1500). Root cause fixed at the caller (refresh now fetches
+    completed game-days); THIS is the permanent decide-path block: the whole
+    batch refuses (high incident via CADENCE_DECIDE_BLOCKED), no bet is
+    placed on a constant."""
+    rows = [r for r in fc_rows if r.get("p")]
+    if len(rows) >= 2:
+        first = json.dumps(rows[0]["p"], sort_keys=True)
+        if all(json.dumps(r["p"], sort_keys=True) == first for r in rows):
+            raise BlockError(
+                "BLOCKED_CONSTANT_FORECAST",
+                f"all {len(rows)} forecasts of this batch carry the "
+                f"identical p ({first[:80]}…) — batch variance 0; the "
+                "model carries no per-match information and NOTHING may "
+                "be placed (W1.3)", EXIT_BLOCKED_OTHER)
+
+
+def quote_odds_signature(quote_row: dict | None) -> str | None:
+    """Stable signature of the DECISION-relevant odds payload (W1.4)."""
+    odds = (quote_row or {}).get("odds") or {}
+    if not odds:
+        return None
+    norm = {k: round(float(v), 6) for k, v in sorted(odds.items())}
+    return hashlib.sha256(json.dumps(norm, sort_keys=True)
+                          .encode()).hexdigest()
+
+
+def _pm_family(quote_row: dict | None) -> bool:
+    row = quote_row or {}
+    return ("polymarket" in str(row.get("bookmaker", "")).casefold()
+            or str(row.get("source_ref", "")).startswith("PM_CLOB"))
+
+
+def quote_collision(led, match_id: str, quote_row: dict | None) -> str | None:
+    """W1.4: the SAME quote snapshot must never serve two fixtures (runtime
+    evidence: WSL M39 DRAW odds == M42 DRAW odds and M38 == M41 identical to
+    15 decimal places — one PM snapshot reused across matches). Two arms:
+      (a) identical non-trivial payload_sha256 (the snapshot bytes reused
+          verbatim — precise for every bookmaker);
+      (b) for PM book-walk rows only, EXACT float equality of the full odds
+          vector (long VWAP floats that match to the last digit are one
+          snapshot; coarse bookmaker prices like 1.85/2.05 legitimately
+          repeat across fixtures and are NEVER a collision).
+    Returns the earlier colliding match_id, or None."""
+    if not quote_row:
+        return None
+    league = quote_row.get("league")
+    sig_sha = str(quote_row.get("payload_sha256") or "")
+    sig_sha_real = bool(sig_sha) and sig_sha != "0" * 64
+    pm = _pm_family(quote_row)
+    odds_exact = {k: float(v)
+                  for k, v in (quote_row.get("odds") or {}).items()}
+    for r in led.rows:
+        if r.get("type") != "MARKET_QUOTE" or \
+                r.get("match_id") == match_id or r.get("league") != league:
+            continue
+        r_sha = str(r.get("payload_sha256") or "")
+        if sig_sha_real and r_sha == sig_sha:
+            return r.get("match_id")
+        if pm and _pm_family(r) and odds_exact and \
+                {k: float(v) for k, v in (r.get("odds") or {}).items()} == \
+                odds_exact:
+            return r.get("match_id")
+    return None
+
+
+def pm_ev_crosscheck(args, fixture, p_frozen: dict, chosen_leg: str) -> dict:
+    """W1.5 second-source cross-check: an INDEPENDENT quote for the same
+    fixture from Polymarket (read-only public GET, free) — EV recomputed
+    under the PM fee law 0.05·p·(1−p). Sandbox seam `args.pm_crosscheck`
+    (fixture -> {'ok', 'odds': {leg: decimal}}) is rehearsal-only and
+    refused in real mode. Returns {'ok', 'ev_net', 'odds'|'why'}."""
+    seam = getattr(args, "pm_crosscheck", None)
+    if seam is not None:
+        if not getattr(args, "sandbox", False):
+            raise BlockError("BLOCKED_TEST_HOOK_IN_REAL_MODE",
+                             "pm_crosscheck rehearsal hook refused in real "
+                             "mode", EXIT_BLOCKED_OTHER)
+        return seam({"match_id": fixture.match_id, "home": fixture.home,
+                     "away": fixture.away})
+    from . import pm_moneyline as PMM
+    try:
+        ev, ml = PMM.discover_and_join(
+            home=fixture.home, away=fixture.away,
+            kickoff_utc=fixture.kickoff_utc,
+            data_root=Path(args.data_root),
+            sandbox=bool(getattr(args, "sandbox", False)))
+    except Exception as e:                 # network etc — cross-check
+        return {"ok": False, "why": f"PM cross-check failed: "
+                                    f"{type(e).__name__}: {e}"}
+    if ev is None:
+        return {"ok": False, "why": f"PM cross-check no join: {ml}"}
+    mapped = PMM.map_outcomes_to_legs(
+        [str(o) for o in (json.loads(ml["outcomes"])
+                          if isinstance(ml.get("outcomes"), str)
+                          else ml.get("outcomes") or [])],
+        home=fixture.home, away=fixture.away)
+    if "error" in mapped:
+        return {"ok": False, "why": f"PM cross-check map: {mapped['error']}"}
+    prices = ml.get("outcomePrices")
+    if isinstance(prices, str):
+        prices = json.loads(prices)
+    if not isinstance(prices, list):
+        return {"ok": False, "why": "PM cross-check outcomePrices unreadable"}
+    odds = {}
+    for pos, leg in enumerate(mapped["legs"]):
+        try:
+            ask = float(prices[pos])
+        except (TypeError, ValueError, IndexError):
+            return {"ok": False, "why": "PM cross-check price unreadable"}
+        if ask <= 0:
+            return {"ok": False, "why": f"PM cross-check ask {ask} for "
+                                        f"{leg}"}
+        odds[leg] = round(1.0 / ask, 6)
+    d = odds.get(chosen_leg)
+    p_leg = (p_frozen or {}).get(chosen_leg)
+    if not d or not p_leg:
+        return {"ok": False, "why": f"PM cross-check missing {chosen_leg}"}
+    fee = laws.PM_TAKER_FEE_RATE * p_leg * (1.0 - p_leg)
+    return {"ok": True, "odds": odds,
+            "ev_net": p_leg * d - 1.0 - fee,
+            "source_ref": f"PM_GAMMA event={ev.get('id')} "
+                          "(indicative outcomePrices; W1.5 cross-check)"}
+
+
+def ev_outlier_disposition(args, led, fixture, dec: dict,
+                           quote_row: dict | None, now: str) -> dict:
+    """W1.5 quarantine law for EV_net > 100% (a live desk already placed
+    and LOST one: WSL M39 at EV +196.68%). Returns a terminal-or-not
+    decision row + the incident kind:
+      * second source ALSO > 100%  -> NOT_PLACED_EV_OUTLIER (terminal:
+        both sources agree the candidate is an outlier — never placed);
+      * second source disagrees or unavailable -> QUARANTINED_EV_OUTLIER
+        (non-terminal: the match may re-enter decide ONLY against a FRESH
+        quote captured after the quarantine and with a PM cross-check on
+        file; after 3 quarantines -> NOT_PLACED_EV_OUTLIER terminal).
+    The 5% gate is untouched; this is an additional outlier law."""
+    from research.papertrade_exec import laws
+    best_leg, best_ev = max(
+        ((leg, ev) for leg, ev in (dec.get("ev_net_by_leg") or {}).items()),
+        key=lambda kv: kv[1], default=(None, None))
+    cross = pm_ev_crosscheck(args, fixture, dec.get("p_frozen") or {},
+                             best_leg or dec.get("chosen_leg") or "HOME")
+    quarantines = [r for r in led.rows if r.get("type") == "DECISION"
+                   and r.get("match_id") == fixture.match_id
+                   and r.get("status") == "QUARANTINED_EV_OUTLIER"]
+    base = {"type": "DECISION", "league": fixture.league,
+            "match_id": fixture.match_id,
+            "competition": fixture.competition,
+            "home": fixture.home, "away": fixture.away,
+            "kickoff_utc": fixture.kickoff_utc, "decided_at_utc": now,
+            "ev_outlier_evidence": {
+                "best_leg": best_leg, "best_ev_net": best_ev,
+                "threshold": laws.EV_OUTLIER_THRESHOLD,
+                "pm_crosscheck": cross}, "stake_cents": 0,
+            "chosen_leg": None}
+    if cross.get("ok") and cross.get("ev_net") is not None and \
+            cross["ev_net"] > laws.EV_OUTLIER_THRESHOLD:
+        base.update({"status": "NOT_PLACED_EV_OUTLIER",
+                     "reason": (f"EV_outlier {best_ev:.4f} on {best_leg}; "
+                                f"second source AGGREGATES the outlier "
+                                f"(PM EV {cross['ev_net']:.4f}) — never "
+                                "placed (W1.5)")})
+        return base, "EV_OUTLIER_QUARANTINED"
+    if len(quarantines) >= 3:
+        base.update({"status": "NOT_PLACED_EV_OUTLIER",
+                     "reason": (f"EV_outlier {best_ev:.4f} on {best_leg}; "
+                                f"{len(quarantines)} prior quarantines "
+                                "without a clean second-source "
+                                "resolution — terminal (W1.5)")})
+        return base, "EV_OUTLIER_QUARANTINED"
+    why = (f"PM second-source EV {cross.get('ev_net'):.4f} disagrees"
+           if cross.get("ok") else
+           f"PM second-source unavailable: {cross.get('why')}")
+    base.update({"status": "QUARANTINED_EV_OUTLIER",
+                 "reason": (f"EV_outlier {best_ev:.4f} on {best_leg} > "
+                            f"{laws.EV_OUTLIER_THRESHOLD}; {why} — "
+                            "quarantined: fresh independent re-quote "
+                            "required before any placement (W1.5)")})
+    return base, "EV_OUTLIER_QUARANTINED"
+
+
+def latest_quote_for(led, match_id: str) -> dict | None:
+    """The most recent MARKET_QUOTE row for a match (quarantine re-entry
+    consumes the FRESH quote, never the pre-quarantine snapshot)."""
+    rows = [r for r in led.rows if r.get("type") == "MARKET_QUOTE"
+            and r.get("match_id") == match_id]
+    if not rows:
+        return None
+    return rows[-1]
+
+
+def fresh_quote_available(led, match_id: str, after_utc: str) -> bool:
+    q = latest_quote_for(led, match_id)
+    return bool(q and str(q.get("fetch_ts_utc", "")) > str(after_utc))
+
+
 def ai_boundary_review(candidate: dict, gates_ctx: dict,
                        flags: dict) -> dict:
     """THE single AI execution boundary (owner law): runs ONLY when
@@ -1814,9 +2082,19 @@ def cmd_decide(args) -> dict:
         return {"league": league, "date": args.date, "fixtures": 0}
     fc, qt = forecast_index(led), quote_index(led)
     decided = led.decided_match_ids()
+    # W1.5: a QUARANTINED_EV_OUTLIER row is deliberately NON-terminal — the
+    # match may re-enter decide against a FRESH quote; every other decided
+    # status stays terminal (one-selection law unchanged).
+    quarantined = {r["match_id"] for r in led.rows
+                   if r.get("type") == "DECISION"
+                   and r.get("status") == "QUARANTINED_EV_OUTLIER"}
+    effective_decided = decided - quarantined
+    # W1.3: a constant forecast batch can never ground a bet.
+    constant_forecast_block([fc[f.match_id] for f in fixtures
+                             if f.match_id in fc])
     journaled, skipped = [], []
     for f in fixtures:
-        if f.match_id in decided:
+        if f.match_id in effective_decided:
             skipped.append({"match_id": f.match_id, "why": "already decided"})
             continue
         if league == "SOCCER" and not getattr(args, "sandbox", False):
@@ -1851,6 +2129,51 @@ def cmd_decide(args) -> dict:
                                   "reason": row["reason"][:120]})
                 continue
         ok, why = crosswalk_ok(f, fc_row, qt.get(f.match_id))
+        # W1.5 quarantine re-entry: the fresh-quote law. A quarantined match
+        # decides against the LATEST quote and only when a quote captured
+        # AFTER the quarantine exists (the stale snapshot that tripped the
+        # outlier is never reused).
+        if f.match_id in quarantined:
+            q_old = next((r for r in led.rows if r.get("type") == "DECISION"
+                          and r.get("match_id") == f.match_id
+                          and r.get("status") == "QUARANTINED_EV_OUTLIER"), {})
+            q_row_fresh = latest_quote_for(led, f.match_id)
+            if not fresh_quote_available(
+                    led, f.match_id,
+                    (q_old or {}).get("decided_at_utc", "")):
+                row = {"type": "DECISION", "league": f.league,
+                       "match_id": f.match_id,
+                       "competition": f.competition, "home": f.home,
+                       "away": f.away, "kickoff_utc": f.kickoff_utc,
+                       "decided_at_utc": now,
+                       "status": "QUARANTINED_EV_OUTLIER",
+                       "reason": ("quarantine re-entry: no quote captured "
+                                  "after the quarantine yet — still "
+                                  "quarantined, no placement (W1.5)"),
+                       "stake_cents": 0, "chosen_leg": None}
+                led.append_decision(row)
+                journaled.append({"match_id": f.match_id,
+                                  "status": row["status"],
+                                  "reason": row["reason"][:120]})
+                continue
+            qt = {**qt, f.match_id: q_row_fresh}
+        # W1.4: one odds snapshot must never serve two fixtures.
+        collide = quote_collision(led, f.match_id, qt.get(f.match_id))
+        if collide is not None:
+            row = {"type": "DECISION", "league": f.league,
+                   "match_id": f.match_id, "competition": f.competition,
+                   "home": f.home, "away": f.away,
+                   "kickoff_utc": f.kickoff_utc, "decided_at_utc": now,
+                   "status": "NOT_RUN_QUOTE_COLLISION",
+                   "reason": (f"quote odds signature identical to {collide} "
+                              "— one snapshot cannot price two fixtures "
+                              "(W1.4); fail-closed"),
+                   "stake_cents": 0, "chosen_leg": None}
+            led.append_decision(row)
+            journaled.append({"match_id": f.match_id,
+                              "status": row["status"],
+                              "reason": row["reason"][:120]})
+            continue
         dec = risk.evaluate_match(
             led, league=league, match_id=f.match_id, competition=f.competition,
             home=f.home, away=f.away, kickoff_utc=f.kickoff_utc, now_utc=now,
@@ -1862,6 +2185,24 @@ def cmd_decide(args) -> dict:
             dec["decision_forecast_row_sha256"] = fc_row["row_sha256"]
             dec["map_sha256"] = fc_row.get("map_sha256")
             dec["control_ref_row_sha256"] = fc_row.get("control_ref_row_sha256")
+        # W1.5: EV outlier quarantine — EV_net above 100% is prima facie a
+        # mispriced/mislabeled snapshot (the desk already placed and LOST
+        # one: WSL M39 EV +196.68%). Mandatory independent re-quote +
+        # second-source cross-check BEFORE anything is placed; still
+        # abnormal => never placed. The 5% gate is untouched.
+        if dec.get("status") == "BET_PAPER" and max(
+                (dec.get("ev_net_by_leg") or {}).values() or [0.0]) > \
+                laws.EV_OUTLIER_THRESHOLD:
+            row, kind = ev_outlier_disposition(
+                args, led, f, dec, qt.get(f.match_id), now)
+            led.append_decision(
+                row, recheck=risk.in_lock_recheck(led, now, go_ok,
+                                                  capital_law=capital_law),
+                capital_law=capital_law)
+            journaled.append({"match_id": f.match_id,
+                              "status": row["status"],
+                              "reason": row["reason"][:120]})
+            continue
         # THE single AI execution boundary (owner law): AFTER the
         # deterministic gates, BEFORE the append. Flag OFF => DISABLED and
         # live behavior byte-identical to the pre-AI runner. Flag ON: an

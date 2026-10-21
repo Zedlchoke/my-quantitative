@@ -20,7 +20,8 @@
 //  * blocked / no-quote / not-run fixtures: every action => NOT placed
 //    (G_NO_BET_CREATION carried from POLICY_FREEZE_AI_ACTIONS_V1).
 
-const EV_THRESHOLD = 0.05;
+const LAWS = require('./laws_generated');   // W1.6: ONE constant source
+const EV_THRESHOLD = LAWS.EV_THRESHOLD;
 
 function gate(name, pass, detail) {
   return { gate: name, pass: !!pass, detail: detail || '' };

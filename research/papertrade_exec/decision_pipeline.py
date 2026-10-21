@@ -29,8 +29,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-EV_THRESHOLD = 0.05
-DRAWDOWN_PAUSE = 0.10
+from research.papertrade_exec.laws import (  # noqa: F401  W1.6: ONE source
+    DRAWDOWN_PAUSE,
+    EV_THRESHOLD,
+    FLAT_FEE_PRE_CUTOVER,
+)
 LEGS = ("HOME", "DRAW", "AWAY")
 LEGS_2 = ("HOME", "AWAY")
 
@@ -87,7 +90,7 @@ def check_deterministic_gates(
     gates = []
     d = (odds or {}).get(chosen_leg)
     p_leg = (p or {}).get(chosen_leg)
-    ev = (p_leg * d - 1.0 - 0.02) if (p_leg and d) else None
+    ev = (p_leg * d - 1.0 - FLAT_FEE_PRE_CUTOVER) if (p_leg and d) else None
     gates.append(_gate("G_QUOTE", quote_present,
                        f"quote for {chosen_leg}"))
     gates.append(_gate("G_DEPTH", depth_walked,

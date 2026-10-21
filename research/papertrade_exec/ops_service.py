@@ -54,6 +54,16 @@ DEFAULT_LOOKAHEAD_H = {"NBA": 24, "WNBA": 24, "SOCCER": 48,
                        # CAPITAL-V3 §4: WSL cadence lookahead (mirrors SOCCER)
                        "WSL": 48}
 SERVICE_PORT = 8791
+# --- PAPERDESK-FIXALL-NCAA-V1 W1.7 ------------------------------------------
+# Identical repeated failures collapse into ONE incident row + a counter +
+# first/last stamps (the runtime audit found 446 identical TICK_ERROR rows =
+# 12.2% of the incident file, and DASHBOARD_REBUILT at 61.4%).
+COLLAPSING_KINDS = {"TICK_ERROR", "CADENCE_FORECAST_BLOCKED",
+                    "CADENCE_QUOTE_BLOCKED", "CADENCE_PLAN_BLOCKED",
+                    "CADENCE_DECIDE_BLOCKED", "SETTLE_FETCH_ERROR",
+                    "SETTLE_BLOCKED", "SETTLE_SKIP", "RECONCILE_ERROR"}
+STORM_REPORT_EVERY = 25          # re-journal the storm every N occurrences
+STORM_CLOSEOUT_IDLE_S = 600      # storm quiet this long -> close-out row
 # --- PAPERDESK-FIXALL-NCAA-V1 W0.2/W0.3 (owner work package 2026-10-21) -----
 # W0.2 measured goal: a finished NBA/WNBA bet settles <= 3h after the match
 # ends. SETTLE_GRACE_HOURS stays 3 (grace bounds premature-FINAL risk; first
@@ -195,10 +205,77 @@ class OpsService:
         return default
 
     def incident(self, kind: str, detail: str, **extra) -> None:
-        row = {"ts_utc": now_utc(), "kind": kind, "detail": detail, **extra}
+        now = now_utc()
+        # W1.7 storm collapse: an identical repeating failure is ONE row
+        # with a counter + first/last stamps (plus a close-out when the
+        # storm goes quiet) — never a per-tick flood.
+        if kind in COLLAPSING_KINDS:
+            key = f"{kind}:{detail[:160]}"
+            st = self._load_json(self.state_dir / "incident_storms.json", {})
+            e = st.get(key) or {"count": 0, "first_utc": now, "kind": kind,
+                                "journaled_count": 0}
+            e["count"] += 1
+            e["last_utc"] = now
+            e["last_detail"] = detail[:200]
+            row = None
+            if e["count"] == 1 or \
+                    e["count"] - e["journaled_count"] >= STORM_REPORT_EVERY:
+                e["journaled_count"] = e["count"]
+                row = {"ts_utc": now, "kind": kind, "detail": detail,
+                       "storm_count": e["count"],
+                       "storm_first_utc": e["first_utc"],
+                       "storm_last_utc": e["last_utc"], **extra}
+            st = {k: v for k, v in st.items() if k != key}
+            st[key] = e
+            st = dict(sorted(st.items())[-200:])
+            _atomic_write(self.state_dir / "incident_storms.json", st)
+            if row is not None:
+                self._incidents.append(row)
+                self._incidents = self._incidents[-500:]
+                with open(self.state_dir / "incidents.jsonl", "a") as f:
+                    f.write(json.dumps(row, sort_keys=True, default=str)
+                            + "\n")
+            return
+        row = {"ts_utc": now, "kind": kind, "detail": detail, **extra}
         self._incidents.append(row)
         self._incidents = self._incidents[-500:]
         with open(self.state_dir / "incidents.jsonl", "a") as f:
+            f.write(json.dumps(row, sort_keys=True, default=str) + "\n")
+
+    def _close_storms(self) -> None:
+        """Journal a close-out (count/first/last) for storms that went
+        quiet — the counter becomes a complete history, not a dangling
+        number."""
+        p = self.state_dir / "incident_storms.json"
+        st = self._load_json(p, {})
+        if not st:
+            return
+        now = datetime.now(timezone.utc)
+        changed = False
+        for key, e in list(st.items()):
+            if e.get("count", 0) <= e.get("journaled_count", 0):
+                continue
+            try:
+                idle = (now - _parse_ts(e["last_utc"])).total_seconds()
+            except (KeyError, ValueError):
+                continue
+            if idle >= STORM_CLOSEOUT_IDLE_S:
+                self.incident(
+                    f"{e['kind']}_STORM_CLOSED",
+                    f"{e['kind']} storm closed: {e['count']} occurrences "
+                    f"between {e['first_utc']} and {e['last_utc']}; last: "
+                    f"{e.get('last_detail', '')[:140]}")
+                e["journaled_count"] = e["count"]
+                changed = True
+        if changed:
+            _atomic_write(p, st)
+
+    def _metric(self, kind: str, fields: dict) -> None:
+        """W1.7 metrics plane: high-frequency operational beats (dashboard
+        rebuilds) are METRICS, not incidents — 61.4% of the incident file
+        was DASHBOARD_REBUILT noise."""
+        row = {"ts_utc": now_utc(), "kind": kind, **fields}
+        with open(self.state_dir / "metrics.jsonl", "a") as f:
             f.write(json.dumps(row, sort_keys=True, default=str) + "\n")
 
     # ------------------------------------------------------------ ui control --
@@ -219,16 +296,40 @@ class OpsService:
         return self.pause_flag_payload() is not None
 
     def _pause_watch(self) -> None:
-        """Journal every observed paused<->running transition (audit trail)."""
+        """Journal every observed paused<->running transition (audit trail).
+        W1.7: the FIRST observation after a (re)start records the state
+        WITHOUT journaling a transition — the runtime audit measured 30
+        RESUMED vs 4 PAUSED because every process start emitted one spurious
+        RESUMED row (init None -> not-paused). Resume rows carry the last
+        pause payload for attribution."""
         payload = self.pause_flag_payload()
         paused = payload is not None
+        if self._last_pause_state is None:
+            # W1.7: startup baseline. A service starting ALREADY paused
+            # journals one informative PAUSED row; a service starting
+            # unpaused journals NOTHING (the runtime audit measured 30
+            # RESUMED vs 4 PAUSED — one spurious RESUMED per process
+            # start).
+            self._last_pause_state = paused
+            if paused:
+                (self.state_dir / "last_pause_payload.json").write_text(
+                    json.dumps(payload or {}, sort_keys=True))
+                self.incident("DECISIONS_PAUSED_BY_UI",
+                              json.dumps(payload or {}, sort_keys=True))
+            return
         if paused != self._last_pause_state:
             if paused:
+                (self.state_dir / "last_pause_payload.json").write_text(
+                    json.dumps(payload or {}, sort_keys=True))
                 self.incident("DECISIONS_PAUSED_BY_UI",
                               json.dumps(payload or {}, sort_keys=True))
             else:
+                last = self._load_json(
+                    self.state_dir / "last_pause_payload.json", {})
                 self.incident("DECISIONS_RESUMED_BY_UI",
-                              "pause_decisions.flag removed")
+                              "pause_decisions.flag removed; last pause "
+                              f"payload: {json.dumps(last, sort_keys=True)}"
+                              [:240])
             self._last_pause_state = paused
 
     def _runner_args(self, sub: str, **kw):
@@ -583,11 +684,22 @@ class OpsService:
             odds_mod, quota, client = execute._odds_for(
                 self._runner_args("dashboard"))   # args carriers (data_root)
             scores_client = RF.make_scores_client(odds_mod, quota)
-            settleable, inconclusive = RF.fetch_soccer_scores(
-                odds_mod=odds_mod, quota=quota, client=scores_client,
-                sport_keys=execute._soccer_sport_keys(), match_ids=mids,
-                ledger_rows=all_rows, data_root=self.data_root,
-                sandbox=self.sandbox)
+            # W1.2: credit calls obey the PROVIDER-credit meter as well.
+            from research.papertrade_exec.quota_guard import (
+                GuardedClient, ProviderQuotaSkip)
+            scores_client = GuardedClient(
+                scores_client, execute._provider_quota_guard_for(
+                    self._runner_args("dashboard")))
+            try:
+                settleable, inconclusive = RF.fetch_soccer_scores(
+                    odds_mod=odds_mod, quota=quota, client=scores_client,
+                    sport_keys=execute._soccer_sport_keys(), match_ids=mids,
+                    ledger_rows=all_rows, data_root=self.data_root,
+                    sandbox=self.sandbox)
+            except ProviderQuotaSkip as qs:    # provider-cap law, W1.2
+                raise BlockError("BLOCKED_ODDS_API",
+                                 f"scores refused by the provider-credit "
+                                 f"guard: {qs}", execute.EXIT_BLOCKED_OTHER)
         for mid, v in void_settleable.items():
             settleable.setdefault(mid, v)
         return settleable, inconclusive + ineligible
@@ -750,9 +862,11 @@ class OpsService:
             report = execute.cmd_dashboard(ns)
             self.last_rebuild = (now_utc(), report.get("matches"))
             _atomic_write(marker, {"ts": time.time(), "mtime": mtime})
-            self.incident("DASHBOARD_REBUILT",
-                          f"{report.get('matches')} matches, "
-                          f"equity_cents={report.get('equity_cents')}")
+            # W1.7: rebuild beats are METRICS (61.4% of the old incident
+            # file was this row), not incidents.
+            self._metric("DASHBOARD_REBUILT",
+                         {"matches": report.get("matches"),
+                          "equity_cents": report.get("equity_cents")})
         except BlockError as be:
             self.incident("DASHBOARD_BLOCKED", f"{be.code}: {be.detail}")
 
@@ -809,6 +923,7 @@ class OpsService:
         else:
             results["cadence"] = self.cadence_pass()
         self.maybe_rebuild_dashboard()
+        self._close_storms()
         self.last_tick_ms = int((time.time() - t0) * 1000)
         self._write_heartbeat(t0, results)
         return results
@@ -829,6 +944,28 @@ class OpsService:
             self._stop = True
         signal.signal(signal.SIGTERM, _sigterm)
         signal.signal(signal.SIGINT, _sigterm)
+        # W1.7 fail-fast law: the 2026-10-09 storm (446 identical
+        # TICK_ERROR FileNotFoundError on pins.json across 9.2 h) happened
+        # because the service kept ticking with a missing pinned file.
+        # Startup now verifies the required pin PATHS exist; a missing one
+        # is ONE loud incident + a slow-restart exit (never a per-tick
+        # storm).
+        missing = []
+        try:
+            pins = execute.load_pins()
+            for name, meta in (pins.get("data") or {}).items():
+                p = meta.get("path")
+                if meta.get("required") and p and \
+                        not Path(p).expanduser().exists():
+                    missing.append(f"{name}: {p}")
+        except Exception as e:
+            missing.append(f"pins unreadable: {type(e).__name__}: {e}")
+        if missing:
+            self.incident("PIN_FILE_MISSING",
+                          "required pinned source(s) absent at startup: "
+                          + "; ".join(missing))
+            time.sleep(300)            # slow the restart loop, stay loud
+            raise SystemExit(3)
         # A (re)start means "re-measure now": drop only the CADENCE pacing
         # (plans are free/0-credit); SETTLE throttles survive restarts so a
         # crash loop can never accelerate the 1-credit soccer /scores spend.

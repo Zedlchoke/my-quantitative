@@ -25,8 +25,9 @@
 //  * no gate may be waived by anything the model says, by mode, or by a
 //    higher verdict confidence note.
 
-const EV_THRESHOLD = 0.05;           // frozen EV gate (mirror, display-law)
-const DRAWDOWN_PAUSE_FRAC = 0.10;    // frozen drawdown pause
+const LAWS = require('./laws_generated');   // W1.6: ONE constant source
+const EV_THRESHOLD = LAWS.EV_THRESHOLD;      // frozen EV gate (display-law)
+const DRAWDOWN_PAUSE_FRAC = LAWS.DRAWDOWN_PAUSE;  // frozen drawdown pause
 
 const ACTIONS = ['KEEP', 'SKIP', 'SWITCH'];
 const LEGS = ['HOME', 'DRAW', 'AWAY'];
