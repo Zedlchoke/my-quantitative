@@ -90,6 +90,19 @@ NCAA_TRUTH_LABEL = ("Dự đoán — mô hình thắng bài kiểm tra dự đo�
                     "bản nam đã thua giá đóng cửa trong bài kiểm tra tiền; "
                     "bản nữ chưa kiểm tra được.")
 
+# --- PAPERDESK UPGRADE V2 — U6 CLV tick + U7 SHADOW tick (integrator) -------
+# U6: once per HOUR max, sample the Pinnacle close + PM near-close for every
+# match with a FORECAST row whose kickoff is within the next 2h (30-min
+# just-kicked grace) — the plane writes ONE sidecar record per match per day,
+# so the last hourly sample before kickoff stands as the close. MEASURE ONLY.
+CLV_SAMPLE_INTERVAL_S = 3600
+CLV_SAMPLE_WINDOW_H = 2.0
+CLV_KICKED_GRACE_MIN = 30
+CLV_PM_STAKE_CENTS = 100            # nominal CLOB walk stake for the sidecar
+# U7: the SHADOW new-law evaluator journals what the FROZEN NEW_LAW_SPEC
+# would do — LOG ONLY, changes no production decision.
+SHADOW_TICK_INTERVAL_S = 3600
+
 
 def _cadence_leagues() -> tuple:
     """CAPITAL-V3 §4: WSL joins the cadence ONLY when the committed config
@@ -1299,6 +1312,185 @@ class OpsService:
             self.incident("AI_SCORECARD_ERROR",
                           f"{type(e).__name__}: {e}")
 
+    # ------------------------------------------------- U6/U7 measure ticks --
+    @staticmethod
+    def _clv_sport_keys() -> dict:
+        """U6: league -> REAL The-Odds-API sport key for the closing-quote
+        sample. Config-registered keys are honored verbatim when they are
+        strings; a soccer LIST collapses to its first (pinned) key;
+        Polymarket pseudo-keys (e.g. WSL's wsl_polymarket_gamma — that lane
+        is Polymarket-only by law and has NO Pinnacle sport key) are
+        EXCLUDED: those matches are honestly unsampled, never mis-sourced."""
+        keys = dict(execute.DEFAULT_SPORT_KEYS)
+        try:
+            cfg = execute.load_config().get("sport_keys") or {}
+        except Exception:
+            cfg = {}
+        for league, v in cfg.items():
+            if isinstance(v, str) and "polymarket" not in v:
+                keys[league] = v
+            elif isinstance(v, list) and v and isinstance(v[0], str) \
+                    and "polymarket" not in v[0]:
+                keys[league] = v[0]
+        return keys
+
+    def _clv_odds_fetch(self, sport_key: str, match_ids):
+        """U6 seam: ONE quota-guarded Odds API GET per league call (built on
+        execute._odds_for + the provider-credit guard, same laws as the
+        quote lane). Returns the RAW events payload — clv_plane does the
+        strict pinnacle-h2h parse by full team names itself; anything it
+        cannot map becomes an honest NO_RUN_PINNACLE record. Every failure
+        (key hygiene BLOCKED_KEY, quota skip, network) propagates into the
+        plane's own fail-safe path — never retried here, never invented."""
+        ns = self._runner_args("dashboard")
+        odds_mod, _quota, client = execute._odds_for(ns)
+        from research.papertrade_exec.quota_guard import GuardedClient
+        client = GuardedClient(client,
+                               execute._provider_quota_guard_for(ns))
+        body, _hdrs = client.get_odds(sport_key)
+        return json.loads(body)
+
+    def _clv_pm_fetch(self, home: str, away: str):
+        """U6 seam: PM near-close price per leg — pm_moneyline joiner + the
+        read-only CLOB book walk (best ASK per YES token; the market's own
+        outcome names are the ONLY leg mapping). 3-YES soccer events join
+        through the 3-YES law. None/{} -> NO_RUN_PM upstream — honest."""
+        from research.papertrade_exec import pm_moneyline as PM
+        ko = (getattr(self, "_clv_pm_kickoff_by_pair", {}) or {}).get(
+            (home, away), "")
+        if {"HOME", "DRAW", "AWAY"} <= set(
+                getattr(self, "_clv_pm_legs_by_pair", {}).get((home, away),
+                                                              set())):
+            ev, legs = PM.discover_and_join_3yes(
+                home=home, away=away, data_root=self.data_root,
+                sandbox=self.sandbox)
+            if ev is None:
+                return None
+            prices = {}
+            for leg, m in legs.items():
+                tokens = m.get("clobTokenIds")
+                if isinstance(tokens, str):
+                    try:
+                        tokens = json.loads(tokens)
+                    except json.JSONDecodeError:
+                        tokens = []
+                if not isinstance(tokens, list) or not tokens:
+                    return None
+                walk = PM.walk_ask(tokens[0],
+                                   stake_cents=CLV_PM_STAKE_CENTS,
+                                   data_root=self.data_root,
+                                   sandbox=self.sandbox)
+                if walk is None:
+                    return None
+                prices[leg] = float(walk["best_ask"])
+            return prices
+        ev, _why = PM.discover_and_join(
+            home=home, away=away, kickoff_utc=ko,
+            data_root=self.data_root, sandbox=self.sandbox)
+        if ev is None:
+            return None
+        for m in ev.get("markets") or []:
+            if not PM._is_moneyline(m, home, away):
+                continue
+            tokens = m.get("clobTokenIds")
+            if isinstance(tokens, str):
+                try:
+                    tokens = json.loads(tokens)
+                except json.JSONDecodeError:
+                    tokens = []
+            outcomes = m.get("outcomes")
+            if isinstance(outcomes, str):
+                try:
+                    outcomes = json.loads(outcomes)
+                except json.JSONDecodeError:
+                    outcomes = []
+            mapping = PM.map_outcomes_to_legs(outcomes or [],
+                                              home=home, away=away)
+            if mapping.get("error") or \
+                    not isinstance(tokens, list) or len(tokens) < 2:
+                return None
+            prices = {}
+            for i, leg in enumerate(mapping["legs"]):
+                walk = PM.walk_ask(tokens[i],
+                                   stake_cents=CLV_PM_STAKE_CENTS,
+                                   data_root=self.data_root,
+                                   sandbox=self.sandbox)
+                if walk is None:
+                    return None
+                prices[leg] = float(walk["best_ask"])
+            return prices
+        return None
+
+    def _clv_closing_quotes(self) -> None:
+        """PAPERDESK UPGRADE V2 U6 wiring: the hourly near-kickoff CLV
+        sample over the VERIFIED ledger rows. MEASURE ONLY — writes the U6
+        sidecar records and a metrics beat; NEVER a ledger row, NEVER a
+        gate. The whole call is try/except-wrapped: any failure is ONE
+        CLV_SAMPLE_ERROR incident and the tick continues."""
+        try:
+            _core, led, _lp = self._ledger_state()
+            now = datetime.now(timezone.utc)
+            lo = now - timedelta(minutes=CLV_KICKED_GRACE_MIN)
+            hi = now + timedelta(hours=CLV_SAMPLE_WINDOW_H)
+            keys = self._clv_sport_keys()
+            mids: set = set()
+            self._clv_pm_kickoff_by_pair = {}
+            self._clv_pm_legs_by_pair = {}
+            for r in led.rows:
+                if r.get("type") != "FORECAST":
+                    continue
+                if r.get("league") not in keys:
+                    continue          # no Pinnacle sport key: unsampled, honestly
+                try:
+                    ko = _parse_ts(str(r.get("kickoff_utc") or ""))
+                except (KeyError, ValueError):
+                    continue
+                if not (lo <= ko <= hi):
+                    continue          # sample once NEAR kickoff only
+                mids.add(str(r.get("match_id")))
+                pair = (str(r.get("home") or ""), str(r.get("away") or ""))
+                self._clv_pm_kickoff_by_pair[pair] = \
+                    str(r.get("kickoff_utc") or "")
+                self._clv_pm_legs_by_pair[pair] = \
+                    set((r.get("p") or {}).keys())
+            if not mids:
+                return
+            if not self._throttle_ok("clv_close", CLV_SAMPLE_INTERVAL_S):
+                return
+            from research.papertrade_exec import clv_plane
+            rows = [r for r in led.rows
+                    if str(r.get("match_id") or "") in mids]
+            summary = clv_plane.record_closing_quotes(
+                ledger_rows=rows, data_root=self.data_root,
+                sandbox=self.sandbox,
+                odds_fetch=self._clv_odds_fetch,
+                pm_fetch=self._clv_pm_fetch,
+                now_utc=now, sport_keys=keys)
+            self._metric("CLV_SAMPLED", summary)
+        except Exception as e:            # never block the tick
+            self.incident("CLV_SAMPLE_ERROR",
+                          f"{type(e).__name__}: {e}")
+
+    def _shadow_new_law(self) -> None:
+        """PAPERDESK UPGRADE V2 U7 wiring: the SHADOW new-law evaluator,
+        hourly. Journals what the FROZEN NEW_LAW_SPEC_FROZEN_V1 would do
+        for the ledger's recent candidates — LOG ONLY, changes NO
+        production decision. try/except-wrapped: any failure is ONE
+        SHADOW_NEW_LAW_ERROR incident and the tick continues."""
+        try:
+            if not self._throttle_ok("shadow_new_law",
+                                     SHADOW_TICK_INTERVAL_S):
+                return
+            from research.papertrade_exec import new_law_shadow as S
+            _core, led, _lp = self._ledger_state()
+            summary = S.shadow_recent_decisions(
+                ledger_rows=led.rows, data_root=self.data_root,
+                sandbox=self.sandbox)
+            self._metric("SHADOW_NEW_LAW", summary)
+        except Exception as e:            # never block the tick
+            self.incident("SHADOW_NEW_LAW_ERROR",
+                          f"{type(e).__name__}: {e}")
+
     def _ai_produce_for_pending(self) -> None:
         """Owner AI-authority GO (consumed 2026-10-21): the headless v2
         producer reviews every PENDING_AI candidate — evidence -> provider
@@ -1351,6 +1543,8 @@ class OpsService:
         self._ai_pending_watch()
         self._ai_produce_for_pending()
         self._maybe_weekly_scorecard()
+        self._clv_closing_quotes()     # U6 MEASURE ONLY (never blocks)
+        self._shadow_new_law()         # U7 LOG ONLY (never blocks)
         self.last_tick_ms = int((time.time() - t0) * 1000)
         self._write_heartbeat(t0, results)
         return results
