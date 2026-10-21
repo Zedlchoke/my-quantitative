@@ -128,6 +128,7 @@ def fetch_espn_results(*, league: str, date: str, match_ids: list[str],
     fetched_at = now_utc or utc_now()
     events: dict[str, dict] = {}
     event_dates: dict[str, str] = {}
+    event_offsets: dict[str, int] = {}
     for d in sorted({r["kickoff_utc"][:10] for r in target.values()}):
         dt = _parse_ts(d + "T00:00:00Z")
         for offset in ESPN_DATE_OFFSETS:   # W0.6: D-1 .. D+2 scan window
@@ -144,6 +145,7 @@ def fetch_espn_results(*, league: str, date: str, match_ids: list[str],
                 if ev is not None:
                     events.setdefault(m, ev)
                     event_dates.setdefault(m, compact)
+                    event_offsets.setdefault(m, offset)
     settleable, inconclusive = {}, []
     for m, row in target.items():
         ev = events.get(m)
@@ -181,8 +183,15 @@ def fetch_espn_results(*, league: str, date: str, match_ids: list[str],
                                         "(kept OPEN)"})
             continue
         board_day = event_dates.get(m, "")
+        board_offset = event_offsets.get(m, 0)
         ledger_day = row["kickoff_utc"][:10].replace("-", "")
-        rescheduled = bool(board_day) and board_day != ledger_day
+        # rescheduled ONLY when the event is found on a FORWARD board
+        # (D+1/D+2 — the scan days added purely for postponements).
+        # Board day D-1 is the NORMAL US-Eastern slippage for late-UTC
+        # tips (a 01:30Z D game boards on D-1) — NEVER a reschedule
+        # (production evidence: 401909090 SA-OKC tip 2026-10-21T01:30Z
+        # boards on 20261020).
+        rescheduled = bool(board_day) and board_offset < 0
         if st.get("completed") is True:
             if rescheduled:
                 inconclusive.append({"match_id": m,

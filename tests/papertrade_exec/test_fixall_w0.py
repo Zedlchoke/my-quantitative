@@ -169,6 +169,31 @@ def test_espn_rescheduled_event_kept_open(env, monkeypatch):
     assert "20261006" in calls and "20261009" in calls
 
 
+def test_et_date_slippage_is_not_a_reschedule(env, monkeypatch):
+    """A late-UTC tip (01:30Z on D) boards on D-1 (US-Eastern date) with a
+    FINAL score — that is NORMAL slippage and the bet must SETTLE, never
+    be flagged rescheduled (production evidence: 401909090 SA-OKC)."""
+    seed_open_bet(env, match_id="SLIP-T1",
+                  kickoff="2026-10-08T01:30:00Z")   # D = 20261008
+    payload = _ops.espn_payload("SLIP-T1", completed=True,
+                                home_score="104", away_score="116")
+    calls = []
+
+    def fake_get(league, date):
+        calls.append(date)
+        if date == "20261007":                 # D-1 board
+            return payload, b"{}", 200
+        return {"events": []}, b"{}", 200
+
+    monkeypatch.setattr(RF, "_espn_get", fake_get)
+    out = make_svc(env).settle_pass()
+    assert out["settled"] == 1
+    stl = [r for r in ledger_rows(env) if r["type"] == "SETTLEMENT"]
+    # HOME bet vs AWAY winning 104-116 => LOSE (mirrors SA-OKC)
+    assert stl[0]["outcome_for_leg"] == "LOSE"
+    assert "20261007" in calls
+
+
 # ------------------------------------------------------------------ W0.2 ----
 
 def test_due_queue_reconsiders_each_pass(env, monkeypatch):
