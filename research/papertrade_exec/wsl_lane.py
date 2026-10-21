@@ -943,6 +943,34 @@ def cmd_decide(args) -> dict:
                                   "status": row.get("status"),
                                   "reason": (row.get("reason") or "")[:160]})
                 continue
+            # W4.1 (PAPERDESK-FIXALL-NCAA-V1): THE single AI authority
+            # boundary — the WSL lane goes through the SAME hash-locked
+            # ALLOW|VETO gate as every other league (no early-return
+            # escape). Flag OFF => DISABLED, byte-identical behavior.
+            _flags = _exec.papertrade_flags(args)
+            if _flags["ai_authority_active"] and \
+                    dec.get("status") == "BET_PAPER":
+                class _Fxg:
+                    league, match_id = LEAGUE, fx["match_id"]
+                    competition = fx.get("competition") or "WSL_LEAGUE"
+                    home, away = fx["home"], fx["away"]
+                    kickoff_utc = fx["kickoff_utc"]
+                outcome = _exec.apply_ai_gate_v2(
+                    args, led, _Fxg(), dec, fc_rows[-1], qrow, now)
+                if outcome == "PENDING":
+                    journaled.append({"match_id": fx["match_id"],
+                                      "status": "PENDING_AI",
+                                      "reason": "no valid hash-locked "
+                                                "opinion yet; window open"})
+                    continue
+                if outcome is not None:
+                    row = led.append_decision(outcome, recheck=recheck,
+                                              capital_law=3)
+                    journaled.append({"match_id": fx["match_id"],
+                                      "status": row.get("status"),
+                                      "reason": (row.get("reason")
+                                                 or "")[:160]})
+                    continue
             if dec.get("status") == "BET_PAPER":
                 dec["forecast_row_sha256"] = fc_rows[-1]["row_sha256"]
                 dec["quote_row_sha256"] = qrow["row_sha256"]

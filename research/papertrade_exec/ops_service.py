@@ -1178,6 +1178,35 @@ class OpsService:
         }
         _atomic_write(self.state_dir / "heartbeat.json", hb)
 
+    def _ai_pending_watch(self) -> None:
+        """W4.4: the whole AI layer being down/silent is an OWNER ALARM,
+        never a silent bet-killer. PENDING_AI entries older than 30 minutes
+        raise AI_PROVIDER_DOWN (once per entry per day; the pending queue
+        itself stays on the dashboard)."""
+        from research.papertrade_exec import ai_gate_v2 as G
+        for e in G.pending_alarm_owners(self.data_root):
+            st = self._load_json(self.state_dir / "ai_alarms.json", {})
+            key = e["match_id"]
+            last = st.get(key)
+            today = now_utc()[:10]
+            if last == today:
+                continue
+            st[key] = today
+            _atomic_write(self.state_dir / "ai_alarms.json", st)
+            self.incident("AI_PROVIDER_DOWN",
+                          f"{key} PENDING_AI for {e.get('age_min')}min "
+                          f"(>30min) with no valid hash-locked verdict — "
+                          "owner alarm (bets wait, none killed)",
+                          match_id=key)
+
+    def _ai_pending_view(self) -> list[dict]:
+        from research.papertrade_exec import ai_gate_v2 as G
+        try:
+            pending = G._load_pending(self.data_root)
+        except Exception:
+            pending = {}
+        return [{"match_id": k, **v} for k, v in sorted(pending.items())]
+
     def tick(self) -> dict:
         t0 = time.time()
         self.tick_count += 1
@@ -1195,6 +1224,7 @@ class OpsService:
             results["cadence"] = self.cadence_pass()
         self.maybe_rebuild_dashboard()
         self._close_storms()
+        self._ai_pending_watch()
         self.last_tick_ms = int((time.time() - t0) * 1000)
         self._write_heartbeat(t0, results)
         return results
@@ -1316,7 +1346,8 @@ class OpsService:
             upcoming=upcoming, capital_law=capital_law,
             desk={"stuck": self._stuck_cache,
                   "clv": self._clv_summary(),
-                  "health": self._league_health()},
+                  "health": self._league_health(),
+                  "ai_pending": self._ai_pending_view()},
             serve_latency_ms=int((time.time() - t0) * 1000))
 
 

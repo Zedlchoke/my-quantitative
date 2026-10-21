@@ -1,8 +1,156 @@
 {
+ "ai_provider": {
+  "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+  "fallback_models": [
+   "google/gemma-4-31b-it:free",
+   "nvidia/nemotron-3-ultra-550b-a55b:free",
+   "thinkingmachines/inkling:free",
+   "openrouter/free"
+  ],
+  "key_ref": "com.myquant.paperdesk / openrouter-api-key (Keychain)",
+  "max_budget_seconds": 600,
+  "model_id": "minimax/minimax-m3.1-flash:free",
+  "note": "W4.6 (PAPERDESK-FIXALL-NCAA-V1): the AI model is CONFIG, never hard-wired. Free OpenRouter chain stays the SANDBOX default; a paid model is a config + Keychain-key change with NO code change. Activation still needs the owner's separate AI-authority GO.",
+  "prompt_file": "research/papertrade_exec/AI_PROMPT_V2.md",
+  "prompt_sha256_measured_at_freeze": "4365381d8d6eb7d5fe4088926a98758a66f4b86d033a9ab18e03c437d7a9dec7",
+  "prompt_version": "AI_PROMPT_V2",
+  "provider": "openrouter"
+ },
+ "anchor_law": {
+  "NBA": "T0-6h10m exclusive (T0 = earliest tip of the league's run-day batch)",
+  "SOCCER": "kickoff-6h strict per match",
+  "WNBA": "T0-6h10m exclusive (same batch law)"
+ },
+ "bookmaker": "pinnacle",
+ "capital_law": {
+  "availability_bound": "open_exposure_after <= 50000 AND open_exposure_after <= equity_cents, checked in evaluate_match AND in-lock (flock, tail reload)",
+  "effective_utc": "2026-10-10T12:43:51Z",
+  "note": "PLAN_sports_capital_v3 \u00a75a: version 3 + non-empty effective_utc is NECESSARY but NOT SUFFICIENT \u2014 the runner additionally requires the CYCLE_REGISTRY.json row of SPORTS-PAPERTRADE-CAPITAL-V3 to record go_phrase_state starting with OWNER_GO_TYPED_LIVE. Absent/malformed either side resolves v2 (CURRENT law) byte-for-byte.",
+  "open_cap_cents": 50000,
+  "stake_law": "stake_cents = (equity_cents + 50) // 100 (1% of equity, half-up to the cent); equity < 100c => BLOCKED_INSUFFICIENT_EQUITY",
+  "version": 3
+ },
+ "competition_law": {
+  "soccer_fifa_world_cup_group": [
+   {
+    "bet_eligible": true,
+    "evidence": "WC 2030 group stage: 90-min results, draws stand, no ET; neutral-venue law applies (host-nation exception); window tightened at fixture release",
+    "stage": "GROUP_90MIN",
+    "window": {
+     "from": "2030-05-01",
+     "to": "2030-07-14"
+    }
+   },
+   {
+    "bet_eligible": false,
+    "evidence": "WC knockout rounds: ET + penalties possible; B1 full-time target diverges from 90-min 1X2; fail-closed per owner law",
+    "stage": "KNOCKOUT_ET_POSSIBLE",
+    "window": {
+     "from": "2030-07-15",
+     "to": "2030-07-31"
+    }
+   }
+  ],
+  "soccer_fifa_world_cup_qualifiers": [
+   {
+    "bet_eligible": true,
+    "evidence": "ordinary WC qualifying group/league matches: 90-min home/away, draws stand; confederation windows tightened at schedule release",
+    "stage": "QUALIFIER_GROUP_90MIN",
+    "window": {
+     "from": "2027-01-01",
+     "to": "2029-10-31"
+    }
+   },
+   {
+    "bet_eligible": false,
+    "evidence": "confederation playoff finals + inter-confederation playoffs: ET possible; fail-closed",
+    "stage": "PLAYOFF_ET_POSSIBLE",
+    "window": {
+     "from": "2029-11-01",
+     "to": "2030-03-31"
+    }
+   }
+  ],
+  "soccer_uefa_euro_group": [
+   {
+    "bet_eligible": true,
+    "evidence": "Euro 2028 June 9 - July 9 (openfootball skeleton pinned 88d150a6c); groups first; 90-min, draws stand",
+    "stage": "GROUP_90MIN",
+    "window": {
+     "from": "2028-05-01",
+     "to": "2028-06-25"
+    }
+   },
+   {
+    "bet_eligible": false,
+    "evidence": "Euro knockout: ET + pens possible; fail-closed",
+    "stage": "KNOCKOUT_ET_POSSIBLE",
+    "window": {
+     "from": "2028-06-26",
+     "to": "2028-07-31"
+    }
+   }
+  ],
+  "soccer_uefa_euro_qualifiers": [
+   {
+    "bet_eligible": true,
+    "evidence": "Euro 2028 qualifying league phase: 90-min home/away, draws stand",
+    "stage": "QUALIFIER_GROUP_90MIN",
+    "window": {
+     "from": "2027-01-01",
+     "to": "2027-12-31"
+    }
+   },
+   {
+    "bet_eligible": false,
+    "evidence": "Euro qualifying playoffs: ET possible; fail-closed",
+    "stage": "PLAYOFF_ET_POSSIBLE",
+    "window": {
+     "from": "2028-03-01",
+     "to": "2028-03-31"
+    }
+   }
+  ],
+  "soccer_uefa_nations_league": [
+   {
+    "bet_eligible": true,
+    "evidence": "UEFA Nations League 2026-27 league phase (matchdays Sep-Nov 2026): home-and-away double headers, regulation 90-minute results, draws stand \u2014 no extra time and no neutral venues, so B1 full-time target == Pinnacle 1X2 (90-min) semantics and neutral=False (HCA on the listed home side) is correct.",
+    "stage": "LEAGUE_PHASE_HOME_AWAY",
+    "window": {
+     "from": "2026-09-01",
+     "to": "2026-11-30"
+    }
+   },
+   {
+    "bet_eligible": false,
+    "evidence": "UNL knockout stage (quarter-final ties and March/June Final Four): single decisive matches where extra time and penalties are possible \u2014 B1 target (90/120-min full-time, shootout=draw) diverges from the bookmaker's 90-minute h2h settlement; also single-venue finals may be neutral. Fail-closed NOT_RUN per the owner's same-result law.",
+    "stage": "KNOCKOUT_ET_POSSIBLE",
+    "window": {
+     "from": "2027-03-01",
+     "to": "2027-06-30"
+    }
+   }
+  ]
+ },
+ "competition_law_note": "Stage/venue law (owner 2026-10-07 expansion instruction item 4): a soccer match is BET-ELIGIBLE only when the B1 target semantics and the bookmaker h2h settlement semantics are the SAME regulation result. The frozen B1 target is 3-way FULL-TIME 90/120-min with shootouts never flipping it (soccer_b1_replay.make_target), while Pinnacle soccer 1X2 settles on 90 minutes \u2014 so any match where extra time is possible is NOT_RUN_STAGE_LAW. Venue law: the frozen adapter passes neutral=False (HCA applies to the listed home side), so only competitions whose format guarantees true home-and-away in the window are eligible; anything else is NOT_RUN. A kickoff date with no covering law window is UNKNOWN -> NOT_RUN (fail-closed; never guessed).",
+ "feature_gates": {
+  "ai_authority_active": false,
+  "law": "owner 2026-10-20: production gates stay OFF until typed GO; sandbox-only flips for testing",
+  "pm_cutover_active": false
+ },
+ "markets": "h2h",
+ "nba_refresh_lookback_days": 14,
+ "nba_refresh_lookback_note": "PAPERDESK-FIXALL-NCAA-V1 W1.3 root-cause fix: the post-GO payload refresh previously walked back 0 days, so the corpus never contained a FINAL game and the pinned engine cold-started every team at R0=1500 (all 14 live NBA forecasts carried the pure-HCA constant p=0.640065). The refresh now fetches completed game-days for the lookback window before any forecast; the decide path additionally blocks a zero-variance forecast batch (BLOCKED_CONSTANT_FORECAST).",
  "schema": "sports_papertrade_exec_config@2",
+ "settlement_refund_results": [
+  "VOID",
+  "PUSH",
+  "CANCELLED",
+  "POSTPONED_NO_RESCHEDULE"
+ ],
+ "soccer_sport_keys_note": "The Odds API sport keys for soccer fixtures; the list starts with soccer_uefa_nations_league per the dispatch pin and grows only by an explicit config commit. All odds/event calls flow through the paper core OddsClient (quota caps 4 credits/day + 120/month, journal every call, HALT_KEY on 401/403). 2026-10-07 source survey (sports_snapshot.json sha256 fe60ea5b0e60faec, get_sports 0-credit): the ONLY active men's-international soccer key on this source is soccer_uefa_nations_league \u2014 no World-Cup-qualifier, continental-cup, or international-friendly key exists (active or inactive); club keys are out of scope by owner law and structurally fail the corpus crosswalk.",
  "sport_keys": {
   "NBA": "basketball_nba",
-  "WNBA": "basketball_wnba",
   "SOCCER": [
    "soccer_uefa_nations_league",
    "soccer_fifa_world_cup_group",
@@ -10,142 +158,11 @@
    "soccer_fifa_world_cup_qualifiers",
    "soccer_uefa_euro_qualifiers"
   ],
+  "WNBA": "basketball_wnba",
   "WSL": "wsl_polymarket_gamma"
  },
- "soccer_sport_keys_note": "The Odds API sport keys for soccer fixtures; the list starts with soccer_uefa_nations_league per the dispatch pin and grows only by an explicit config commit. All odds/event calls flow through the paper core OddsClient (quota caps 4 credits/day + 120/month, journal every call, HALT_KEY on 401/403). 2026-10-07 source survey (sports_snapshot.json sha256 fe60ea5b0e60faec, get_sports 0-credit): the ONLY active men's-international soccer key on this source is soccer_uefa_nations_league \u2014 no World-Cup-qualifier, continental-cup, or international-friendly key exists (active or inactive); club keys are out of scope by owner law and structurally fail the corpus crosswalk.",
- "bookmaker": "pinnacle",
- "markets": "h2h",
- "anchor_law": {
-  "NBA": "T0-6h10m exclusive (T0 = earliest tip of the league's run-day batch)",
-  "WNBA": "T0-6h10m exclusive (same batch law)",
-  "SOCCER": "kickoff-6h strict per match"
- },
- "settlement_refund_results": [
-  "VOID",
-  "PUSH",
-  "CANCELLED",
-  "POSTPONED_NO_RESCHEDULE"
- ],
- "competition_law_note": "Stage/venue law (owner 2026-10-07 expansion instruction item 4): a soccer match is BET-ELIGIBLE only when the B1 target semantics and the bookmaker h2h settlement semantics are the SAME regulation result. The frozen B1 target is 3-way FULL-TIME 90/120-min with shootouts never flipping it (soccer_b1_replay.make_target), while Pinnacle soccer 1X2 settles on 90 minutes \u2014 so any match where extra time is possible is NOT_RUN_STAGE_LAW. Venue law: the frozen adapter passes neutral=False (HCA applies to the listed home side), so only competitions whose format guarantees true home-and-away in the window are eligible; anything else is NOT_RUN. A kickoff date with no covering law window is UNKNOWN -> NOT_RUN (fail-closed; never guessed).",
- "competition_law": {
-  "soccer_uefa_nations_league": [
-   {
-    "window": {
-     "from": "2026-09-01",
-     "to": "2026-11-30"
-    },
-    "stage": "LEAGUE_PHASE_HOME_AWAY",
-    "bet_eligible": true,
-    "evidence": "UEFA Nations League 2026-27 league phase (matchdays Sep-Nov 2026): home-and-away double headers, regulation 90-minute results, draws stand \u2014 no extra time and no neutral venues, so B1 full-time target == Pinnacle 1X2 (90-min) semantics and neutral=False (HCA on the listed home side) is correct."
-   },
-   {
-    "window": {
-     "from": "2027-03-01",
-     "to": "2027-06-30"
-    },
-    "stage": "KNOCKOUT_ET_POSSIBLE",
-    "bet_eligible": false,
-    "evidence": "UNL knockout stage (quarter-final ties and March/June Final Four): single decisive matches where extra time and penalties are possible \u2014 B1 target (90/120-min full-time, shootout=draw) diverges from the bookmaker's 90-minute h2h settlement; also single-venue finals may be neutral. Fail-closed NOT_RUN per the owner's same-result law."
-   }
-  ],
-  "soccer_fifa_world_cup_group": [
-   {
-    "window": {
-     "from": "2030-05-01",
-     "to": "2030-07-14"
-    },
-    "stage": "GROUP_90MIN",
-    "bet_eligible": true,
-    "evidence": "WC 2030 group stage: 90-min results, draws stand, no ET; neutral-venue law applies (host-nation exception); window tightened at fixture release"
-   },
-   {
-    "window": {
-     "from": "2030-07-15",
-     "to": "2030-07-31"
-    },
-    "stage": "KNOCKOUT_ET_POSSIBLE",
-    "bet_eligible": false,
-    "evidence": "WC knockout rounds: ET + penalties possible; B1 full-time target diverges from 90-min 1X2; fail-closed per owner law"
-   }
-  ],
-  "soccer_uefa_euro_group": [
-   {
-    "window": {
-     "from": "2028-05-01",
-     "to": "2028-06-25"
-    },
-    "stage": "GROUP_90MIN",
-    "bet_eligible": true,
-    "evidence": "Euro 2028 June 9 - July 9 (openfootball skeleton pinned 88d150a6c); groups first; 90-min, draws stand"
-   },
-   {
-    "window": {
-     "from": "2028-06-26",
-     "to": "2028-07-31"
-    },
-    "stage": "KNOCKOUT_ET_POSSIBLE",
-    "bet_eligible": false,
-    "evidence": "Euro knockout: ET + pens possible; fail-closed"
-   }
-  ],
-  "soccer_fifa_world_cup_qualifiers": [
-   {
-    "window": {
-     "from": "2027-01-01",
-     "to": "2029-10-31"
-    },
-    "stage": "QUALIFIER_GROUP_90MIN",
-    "bet_eligible": true,
-    "evidence": "ordinary WC qualifying group/league matches: 90-min home/away, draws stand; confederation windows tightened at schedule release"
-   },
-   {
-    "window": {
-     "from": "2029-11-01",
-     "to": "2030-03-31"
-    },
-    "stage": "PLAYOFF_ET_POSSIBLE",
-    "bet_eligible": false,
-    "evidence": "confederation playoff finals + inter-confederation playoffs: ET possible; fail-closed"
-   }
-  ],
-  "soccer_uefa_euro_qualifiers": [
-   {
-    "window": {
-     "from": "2027-01-01",
-     "to": "2027-12-31"
-    },
-    "stage": "QUALIFIER_GROUP_90MIN",
-    "bet_eligible": true,
-    "evidence": "Euro 2028 qualifying league phase: 90-min home/away, draws stand"
-   },
-   {
-    "window": {
-     "from": "2028-03-01",
-     "to": "2028-03-31"
-    },
-    "stage": "PLAYOFF_ET_POSSIBLE",
-    "bet_eligible": false,
-    "evidence": "Euro qualifying playoffs: ET possible; fail-closed"
-   }
-  ]
- },
- "capital_law": {
-  "version": 3,
-  "effective_utc": "2026-10-10T12:43:51Z",
-  "note": "PLAN_sports_capital_v3 \u00a75a: version 3 + non-empty effective_utc is NECESSARY but NOT SUFFICIENT \u2014 the runner additionally requires the CYCLE_REGISTRY.json row of SPORTS-PAPERTRADE-CAPITAL-V3 to record go_phrase_state starting with OWNER_GO_TYPED_LIVE. Absent/malformed either side resolves v2 (CURRENT law) byte-for-byte.",
-  "stake_law": "stake_cents = (equity_cents + 50) // 100 (1% of equity, half-up to the cent); equity < 100c => BLOCKED_INSUFFICIENT_EQUITY",
-  "open_cap_cents": 50000,
-  "availability_bound": "open_exposure_after <= 50000 AND open_exposure_after <= equity_cents, checked in evaluate_match AND in-lock (flock, tail reload)"
- },
- "nba_refresh_lookback_days": 14,
- "nba_refresh_lookback_note": "PAPERDESK-FIXALL-NCAA-V1 W1.3 root-cause fix: the post-GO payload refresh previously walked back 0 days, so the corpus never contained a FINAL game and the pinned engine cold-started every team at R0=1500 (all 14 live NBA forecasts carried the pure-HCA constant p=0.640065). The refresh now fetches completed game-days for the lookback window before any forecast; the decide path additionally blocks a zero-variance forecast batch (BLOCKED_CONSTANT_FORECAST).",
- "wsl_fixture_substrate": "/Users/hoangminhlong/.my-quantitative-data/sports-papertrade-exec-v1/data/wsl_fixture_substrate.jsonl",
  "wsl_corpus_path": "/Users/hoangminhlong/.my-quantitative-data/sports-papertrade-exec-v1/data/wsl_substrate_corpus.jsonl",
- "wsl_provenance_ledger": "/Users/hoangminhlong/.my-quantitative-data/wsl-winprob-paper-prep-v1/ledger/paper_ledger.jsonl",
+ "wsl_fixture_substrate": "/Users/hoangminhlong/.my-quantitative-data/sports-papertrade-exec-v1/data/wsl_fixture_substrate.jsonl",
  "wsl_lane_note": "WSL league lane (plan \u00a74): FORECAST via byte-pinned frozen engine 109c3ec1\u2026 cross-checked READ-ONLY against the provenance ledger dd8a501f\u2026; quote = Polymarket ONLY (three YES of one event, NO(Home) never Away, snapshot strictly pre-anchor) via byte-pinned polymarket_source 4b27ab17\u2026; BET_PAPER additionally gated IN-LOCK by the WSL cycle's OWN phrase OWNER_GO_TYPED_LIVE (ordering law \u00a77). Substrate/corpus refreshed by the controller as results land; forecast refusals are retryable report-entries, never terminal.",
- "feature_gates": {
-  "pm_cutover_active": false,
-  "ai_authority_active": false,
-  "law": "owner 2026-10-20: production gates stay OFF until typed GO; sandbox-only flips for testing"
- }
+ "wsl_provenance_ledger": "/Users/hoangminhlong/.my-quantitative-data/wsl-winprob-paper-prep-v1/ledger/paper_ledger.jsonl"
 }

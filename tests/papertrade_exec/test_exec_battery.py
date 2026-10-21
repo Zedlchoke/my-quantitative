@@ -1420,6 +1420,32 @@ def test_soccer_dashboard_counts_crosswalk_miss(env, capcli):
     assert summary["not_run_by_cause"].get("identity_crosswalk", 0) == 1
 
 
+
+def _v2_opinion_from_pending(env, verdict, reason=None):
+    """The production v2 rhythm: decide pass 1 writes the PENDING queue
+    (the runner owns the candidate hash); the producer binds the opinion
+    to EXACTLY that hash; decide pass 2 consumes it."""
+    from research.papertrade_exec import ai_gate_v2 as G
+    pending = G._load_pending(env["data"])
+    assert pending, "decide pass 1 must record the PENDING queue"
+    written = []
+    for mid, entry in pending.items():
+        G.record_opinion(env["data"], {
+            "match_id": mid,
+            "candidate_hash": entry["candidate_hash"],
+            "verdict": verdict,
+            "reason_codes": reason or [f"R-{verdict}"],
+            "summary": "reviewed with captured sources",
+            "sources": [{"url": "https://example.com/wire",
+                         "fetched_at_utc": "2026-10-08T09:00:00Z",
+                         "excerpt": "headline"}],
+            "model_id": "battery-model", "provider": "battery",
+            "prompt_version": "AI_PROMPT_V2",
+            "prompt_sha256": "a" * 64,
+            "created_at_utc": "2026-10-08T09:00:00Z"})
+        written.append(mid)
+    return written
+
 def test_pm_cutover_ai_gate_sandbox_chain(env, capcli, monkeypatch):
     """Round-17 DoD rehearsal: the production CLI chain with BOTH gates ON
     (sandbox-only flip; the committed config stays OFF) — PM seam quote ->
@@ -1456,14 +1482,15 @@ def test_pm_cutover_ai_gate_sandbox_chain(env, capcli, monkeypatch):
     assert qt["stake_walk_cents"] == 1000       # 1% of the 100000c genesis
     assert qt["odds"]["HOME"] == round(1 / 0.40, 6)   # executable VWAP law
 
-    # --- AI ABSTAIN (no opinion on file) => candidate demoted, never placed
+    # --- W4.4 silence law: NO valid hash-locked opinion inside the window
+    # => PENDING_AI — the candidate stays UNDECIDED (never demoted, never
+    # killed); the queue carries the candidate hash for the producer.
     code, d = capcli(env, "decide", "--league", "WNBA", "--date", WNBA_DAY)
     assert code == EXIT_OK and len(d["journaled"]) == 1
-    assert d["journaled"][0]["status"] == "NOT_PLACED_AI_GATE"
-    dec = rows_of(env, "DECISION")[0]
-    assert dec["ai_gate"]["action"] == "ABSTAIN"
-    assert dec["stake_cents"] == 0 and dec["chosen_leg"] is None
-    assert dec["candidate_chosen_leg"] == "HOME"    # evidence kept
+    assert d["journaled"][0]["status"] == "PENDING_AI"
+    from research.papertrade_exec import ai_gate_v2 as G
+    pending = G._load_pending(env["data"])
+    assert "401918299" in pending and pending["401918299"]["candidate_hash"]
     assert rows_of(env, "DECISION", "BET_PAPER") == []
 
 
@@ -1485,21 +1512,18 @@ def test_pm_cutover_ai_keep_veto_scenarios(env, capcli, monkeypatch):
     probe_file = env["data"] / "pm_probe.json"
     probe_file.write_text(json.dumps(probe))
     monkeypatch.setenv("PAPERTRADE_PM_PROBE_JSON", str(probe_file))
-    opinion = env["data"] / "ai_opinion.json"
-    opinion.write_text(json.dumps({"401918299": {
-        "status": "COMPLETED", "verdict": "nil",
-        "recommendedAction": "KEEP", "proposedLeg": "None",
-        "deadlineUTC": "2026-10-09T17:00:00Z",
-        "completedAtUTC": "2026-10-09T16:00:00Z"}}))
-    monkeypatch.setenv("PAPERTRADE_AI_OPINION_JSON", str(opinion))
     capcli(env, "forecast", "--league", "WNBA", "--date", WNBA_DAY)
     capcli(env, "quote", "--league", "WNBA", "--date", WNBA_DAY)
+    # decide pass 1 => PENDING + hash; producer binds an ALLOW opinion to
+    # EXACTLY that hash; decide pass 2 places.
+    capcli(env, "decide", "--league", "WNBA", "--date", WNBA_DAY)
+    _v2_opinion_from_pending(env, "ALLOW")
     code, d = capcli(env, "decide", "--league", "WNBA", "--date", WNBA_DAY)
     assert code == EXIT_OK
     assert d["journaled"][0]["status"] == "BET_PAPER"
     dec = rows_of(env, "DECISION", "BET_PAPER")[0]
     assert dec["ai_gate"]["decision"] == "PLACE"
-    assert dec["ai_gate"]["gates_failed"] == []
+    assert dec["ai_gate"]["opinion_verdict"] == "ALLOW"
     # frozen numbers untouched by the AI (it supplied NO numbers)
     assert dec["p_frozen"]["HOME"] == 0.707
     assert dec["odds_frozen"]["HOME"] == round(1 / 0.40, 6)
@@ -1525,19 +1549,15 @@ def test_pm_cutover_ai_veto_refusal(env, capcli, monkeypatch):
         "all_present": True, "event_id": "PM-EV-W1",
         "market_id": "PM-MK-W1"}}))
     monkeypatch.setenv("PAPERTRADE_PM_PROBE_JSON", str(probe_file))
-    opinion = env["data"] / "ai_opinion.json"
-    opinion.write_text(json.dumps({"401918299": {
-        "status": "COMPLETED", "verdict": "VETO",
-        "recommendedAction": "None", "proposedLeg": "None",
-        "deadlineUTC": "2026-10-09T17:00:00Z",
-        "completedAtUTC": "2026-10-09T16:00:00Z"}}))
-    monkeypatch.setenv("PAPERTRADE_AI_OPINION_JSON", str(opinion))
     capcli(env, "forecast", "--league", "WNBA", "--date", WNBA_DAY)
     capcli(env, "quote", "--league", "WNBA", "--date", WNBA_DAY)
+    capcli(env, "decide", "--league", "WNBA", "--date", WNBA_DAY)
+    _v2_opinion_from_pending(env, "VETO", reason=["INJURY_RISK"])
     code, d = capcli(env, "decide", "--league", "WNBA", "--date", WNBA_DAY)
     assert code == EXIT_OK
-    assert d["journaled"][0]["status"] == "NOT_PLACED_AI_GATE"
-    dec = rows_of(env, "DECISION", "NOT_PLACED_AI_GATE")[0]
-    assert dec["ai_gate"]["action"] == "VETO"
+    assert d["journaled"][0]["status"] == "NOT_PLACED_AI_VETO"
+    dec = rows_of(env, "DECISION", "NOT_PLACED_AI_VETO")[0]
+    assert dec["ai_gate"]["opinion_verdict"] == "VETO"
+    assert dec["ai_gate"]["hypothetical_stake_cents"] == 1000
     assert dec["stake_cents"] == 0 and dec["chosen_leg"] is None
     assert rows_of(env, "DECISION", "BET_PAPER") == []

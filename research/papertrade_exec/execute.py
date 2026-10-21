@@ -1933,10 +1933,10 @@ def fresh_quote_available(led, match_id: str, after_utc: str) -> bool:
 
 def ai_boundary_review(candidate: dict, gates_ctx: dict,
                        flags: dict) -> dict:
-    """THE single AI execution boundary (owner law): runs ONLY when
-    ai_authority_active; the AI opinion NEVER supplies prices/probabilities —
-    it grades the frozen candidate via decision_pipeline.evaluate_ai_gate.
-    Flag OFF => {'action': 'DISABLED'} and live behavior is unchanged."""
+    """LEGACY SANDBOX EVALUATOR — UNWIRED (W4.1, PAPERDESK-FIXALL-NCAA-V1):
+    the decide path now runs apply_ai_gate_v2 (hash-locked ALLOW|VETO).
+    This legacy evaluator is retained for the sandbox battery/display only
+    and is called from NO decide path."""
     if not flags.get("ai_authority_active"):
         return {"action": "DISABLED", "why": "ai_authority OFF (pre-GO)"}
     from .decision_pipeline import evaluate_ai_gate
@@ -1961,7 +1961,10 @@ def ai_boundary_review(candidate: dict, gates_ctx: dict,
 
 
 def _map_ai_opinion(op: dict) -> dict:
-    """Normalize one ai_review opinion record to the runner gate vocabulary
+    """LEGACY SANDBOX MAPPING — UNWIRED (W4.1): the v2 gate reads
+    schema-validated ALLOW|VETO opinions from ai_gate_v2; this legacy
+    mapper is retained for the sandbox battery only.
+    Normalize one ai_review opinion record to the runner gate vocabulary
     KEEP | VETO | SWITCH | ABSTAIN. Fail-closed: anything that is not an
     unambiguous, COMPLETED, pre-deadline actionable opinion is ABSTAIN (owner
     law: ABSTAIN / error / missing evidence / post-deadline => NOT placed).
@@ -1999,7 +2002,9 @@ def _map_ai_opinion(op: dict) -> dict:
 
 
 def load_ai_opinion(args, match_id: str) -> dict:
-    """Latest ai_review opinion for the match (opinions dir), normalized.
+    """LEGACY SANDBOX READER — UNWIRED (W4.1): the v2 gate reads
+    hash-locked opinions via ai_gate_v2.load_opinion_for.
+    Latest ai_review opinion for the match (opinions dir), normalized.
     Sandbox seam `args.ai_opinion` (dict) or PAPERTRADE_AI_OPINION_JSON
     ({match_id: record}) is rehearsal-only and refused in real mode.
     Missing/unreadable opinion => ABSTAIN (never an order)."""
@@ -2034,7 +2039,9 @@ def load_ai_opinion(args, match_id: str) -> dict:
 
 def ai_gate_context(dec: dict, quote_row: dict, *, led, core,
                     capital_law: int) -> dict:
-    """Frozen-snapshot context for the AI boundary — ledger numbers ONLY.
+    """LEGACY SANDBOX CONTEXT — UNWIRED (W4.1): kept for the sandbox
+    battery; the decide path no longer calls it.
+    Frozen-snapshot context for the AI boundary — ledger numbers ONLY.
     depth_walked: PM-cutover quotes carry per-leg book walks; pre-cutover
     pinned-source quotes stand in (the frozen fee/odds law)."""
     odds = quote_row.get("odds") or {}
@@ -2063,6 +2070,67 @@ def ai_gate_context(dec: dict, quote_row: dict, *, led, core,
                           is not None for leg in legs} if pm_walk else
                          {leg: leg in odds for leg in legs}),
     }
+
+
+def apply_ai_gate_v2(args, led, f, dec: dict, fc_row, quote_row,
+                     now: str) -> dict | None:
+    """THE single AI authority boundary, v2 (owner law; W4). Runs ONLY when
+    ai_authority_active and only on a BET_PAPER candidate. Returns:
+      * None                 — gate says proceed (ALLOW); dec carries the
+                               ai_gate evidence block;
+      * a terminal DECISION  — VETO / NO_VERDICT (caller appends + skips);
+      * the string "PENDING" — no valid verdict inside the review window:
+                               the candidate stays UNDECIDED (re-reviewed
+                               next cadence pass until anchor-30min); the
+                               silence of the AI layer never kills a bet
+                               inside the window (owner QĐ2).
+    The AI NEVER supplies numbers; opinions are hash-locked to the exact
+    candidate (price/EV/model change => new hash => stale review void)."""
+    from research.papertrade_exec import ai_gate_v2 as G
+    data_root = Path(args.data_root)
+    chash = G.candidate_hash_for(dec, fc_row, quote_row)
+    anchor = (fc_row or {}).get("anchor_utc") or ""
+    op, why = G.load_opinion_for(data_root, f.match_id, chash)
+    if op is not None:
+        if op["verdict"] == "VETO":
+            G.clear_pending(data_root, f.match_id, "AI_VETO")
+            row = {"type": "DECISION", "league": f.league,
+                   "match_id": f.match_id, "competition": f.competition,
+                   "home": f.home, "away": f.away,
+                   "kickoff_utc": f.kickoff_utc, "decided_at_utc": now,
+                   "anchor_utc": anchor,
+                   "status": "NOT_PLACED_AI_VETO",
+                   "reason": ("AI VETO (hash-locked opinion): " +
+                              "; ".join(op.get("reason_codes") or []) +
+                              f" | {op.get('summary', '')[:160]}"),
+                   "ai_gate": {**G.ai_gate_block(op, why, "VETO", chash),
+                               "hypothetical_leg": dec.get("chosen_leg"),
+                               "hypothetical_stake_cents":
+                                   dec.get("stake_cents"),
+                               "hypothetical_decimal_odds":
+                                   ((quote_row or {}).get("odds") or {})
+                                   .get(dec.get("chosen_leg"))},
+                   "stake_cents": 0, "chosen_leg": None}
+            return row
+        dec["ai_gate"] = G.ai_gate_block(op, why, "PLACE", chash)
+        G.clear_pending(data_root, f.match_id, "AI_ALLOW")
+        return None
+    # no valid opinion:
+    if anchor and not G.review_deadline_passed(anchor, now):
+        G.pending_marker(data_root, f.match_id, chash, anchor, why)
+        return "PENDING"
+    G.clear_pending(data_root, f.match_id, "AI_NO_VERDICT")
+    row = {"type": "DECISION", "league": f.league,
+           "match_id": f.match_id, "competition": f.competition,
+           "home": f.home, "away": f.away, "kickoff_utc": f.kickoff_utc,
+           "decided_at_utc": now, "anchor_utc": anchor,
+           "status": "NOT_PLACED_AI_NO_VERDICT",
+           "reason": (f"no valid hash-locked AI verdict by the review "
+                      f"deadline (anchor-30m): {why} — not placed "
+                      "(W4.4 owner law)"),
+           "ai_gate": G.ai_gate_block(None, why, "NO_VERDICT", chash),
+           "stake_cents": 0, "chosen_leg": None}
+    return row
 
 
 def cmd_decide(args) -> dict:
@@ -2203,37 +2271,34 @@ def cmd_decide(args) -> dict:
                               "status": row["status"],
                               "reason": row["reason"][:120]})
             continue
-        # THE single AI execution boundary (owner law): AFTER the
+        # THE single AI execution boundary, v2 (owner law, W4): AFTER the
         # deterministic gates, BEFORE the append. Flag OFF => DISABLED and
-        # live behavior byte-identical to the pre-AI runner. Flag ON: an
-        # opinion that is not a fully-gated KEEP/SWITCH demotes the
-        # candidate to a terminal NOT_PLACED_AI_GATE journal — the AI never
-        # supplies numbers, only the graded action travels.
+        # live behavior byte-identical to the pre-AI runner. Flag ON: the
+        # candidate is hash-locked to an ALLOW/VETO opinion; no valid
+        # opinion inside the review window => the candidate stays
+        # UNDECIDED (PENDING_AI, retried each pass) — the AI layer's
+        # silence never kills a bet inside the window; past the window =>
+        # NOT_PLACED_AI_NO_VERDICT. SWITCH/CHALLENGE/ALTERNATIVE do not
+        # exist in this path (sandbox-only legacy, unwired).
         flags = papertrade_flags(args)
         if flags["ai_authority_active"] and dec.get("status") == "BET_PAPER":
-            op = load_ai_opinion(args, f.match_id)
-            ai = ai_boundary_review(
-                candidate={"ai_action": op["action"],
-                           "ai_proposed_leg": op.get("proposed_leg")},
-                gates_ctx=ai_gate_context(dec, qt.get(f.match_id) or {},
-                                          led=led, core=core,
-                                          capital_law=capital_law),
-                flags=flags)
-            dec["ai_gate"] = {
-                "action": op["action"], "proposed_leg": op.get("proposed_leg"),
-                "opinion_why": op.get("why", ""),
-                "opinion_file": op.get("opinion_file"),
-                "opinion_sha256": op.get("opinion_sha256"),
-                "decision": ai.get("decision"),
-                "reason": str(ai.get("reason", ""))[:240],
-                "gates_failed": [g["gate"] for g in (ai.get("gates") or [])
-                                 if not g.get("pass")],
-            }
-            if ai.get("decision") != "PLACE":
-                dec["candidate_chosen_leg"] = dec.get("chosen_leg")
-                dec["status"] = "NOT_PLACED_AI_GATE"
-                dec["stake_cents"] = 0
-                dec["chosen_leg"] = None
+            outcome = apply_ai_gate_v2(args, led, f, dec, fc_row,
+                                       qt.get(f.match_id), now)
+            if outcome == "PENDING":
+                journaled.append({"match_id": f.match_id,
+                                  "status": "PENDING_AI",
+                                  "reason": "no valid hash-locked opinion "
+                                            "yet; review window open (W4.4)"})
+                continue
+            if outcome is not None:            # terminal VETO / NO_VERDICT
+                led.append_decision(
+                    outcome, recheck=risk.in_lock_recheck(
+                        led, now, go_ok, capital_law=capital_law),
+                    capital_law=capital_law)
+                journaled.append({"match_id": f.match_id,
+                                  "status": outcome["status"],
+                                  "reason": outcome["reason"][:120]})
+                continue
         led.append_decision(
             dec, recheck=risk.in_lock_recheck(led, now, go_ok,
                                               capital_law=capital_law),
@@ -2579,7 +2644,26 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("key-check")
     p.add_argument("--key-path", default=None)
     p.set_defaults(fn=lambda a: _emit(cmd_key_check(a)))
+
+    p = sub.add_parser("ai-evidence")
+    p.add_argument("--league", required=True)
+    p.add_argument("--match-id", required=True)
+    p.add_argument("--home", required=True)
+    p.add_argument("--away", required=True)
+    p.set_defaults(fn=lambda a: _emit(cmd_ai_evidence(a)))
     return ap
+
+
+def cmd_ai_evidence(args) -> dict:
+    """W4.3: the ONE research collector (read-only public GETs, allow-
+    listed) — the JS producer shells out to THIS so both sides share one
+    evidence implementation. Citations (url + fetched_at + excerpt) are
+    journaled under <data-root>/ai_review/evidence/ and returned."""
+    from research.papertrade_exec import ai_research
+    journal = Path(args.data_root) / "ai_review" / "evidence"
+    return ai_research.collect_evidence(
+        league=args.league, match_id=args.match_id, home=args.home,
+        away=args.away, journal_dir=journal)
 
 
 def _emit(obj: dict) -> int:

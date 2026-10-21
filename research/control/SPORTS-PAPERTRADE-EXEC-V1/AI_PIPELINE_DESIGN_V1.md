@@ -14,9 +14,16 @@
 Both default FALSE. Pre-GO: pipeline returns NOT_RUN_CUTOVER_PENDING /
 ADVISORY_ONLY respectively. Implementation: research/papertrade_exec/
 decision_pipeline.py (state machine + gate evaluator, tested).
-Runner wiring: the cadence calls decision_pipeline.run() when
-pm_cutover_active; the AI gate is mandatory when ai_authority_active.
-Until both are active the existing pinned decide path runs unchanged.
+Runner wiring (ERRATUM W4, PAPERDESK-FIXALL-NCAA-V1 2026-10-21 — this
+paragraph previously described a decision_pipeline.run() that never
+existed): there IS no decision_pipeline.run(). The decide path is
+execute.cmd_decide; when ai_authority_active it runs the v2 authority
+gate execute.apply_ai_gate_v2 (hash-locked ALLOW|VETO opinions via
+ai_gate_v2.py, PENDING_AI silence law, NOT_PLACED_AI_NO_VERDICT at
+anchor-30m) — for EVERY league including WSL (wired inside
+wsl_lane.cmd_decide). decision_pipeline.py remains the sandbox
+gate-evaluator + candidate-hash reference; ai_gate.js / paper_policy.js
+are legacy sandbox/display mirrors, unwired from authority.
 
 ## What is BUILT vs DESIGNED
 BUILT: decision_pipeline.py (state machine + deterministic gate evaluator

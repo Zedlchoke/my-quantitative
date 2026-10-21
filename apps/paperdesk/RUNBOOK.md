@@ -229,3 +229,46 @@ PaperDesk.app/Contents/MacOS/PaperDesk --self-check-ledger <ledger.jsonl>
   table (matches, BET/NO_EDGE/NO_QUOTE/other, PnL, CLV), (4) per-league
   health cards (last forecast/quote/decide ok/blocked, upcoming window
   count, provider-credit quota, lane flags incl. WSL STALE_CORPUS).
+
+## 11. PAPERDESK-FIXALL-NCAA-V1 — the single AI authority gate (W4, 2026-10-21)
+
+- **One gate, every league (W4.1):** `execute.apply_ai_gate_v2` runs in the
+  decide path (flag ON only; OFF = byte-identical DISABLED) — the standard
+  path AND the WSL lane (`wsl_lane.cmd_decide` calls the same gate; the
+  old WSL early-return escape is gone). The legacy evaluators
+  (`ai_boundary_review` / `load_ai_opinion` / `ai_gate_context` /
+  `ai_gate.js` / `paper_policy.js`) are LEGACY-UNWIRED sandbox/display
+  code — no decide path consults them (battery-enforced).
+- **Two verdicts only (W4.3):** opinions are STRICT
+  `{verdict: ALLOW|VETO, reason_codes, summary, sources[]}`; SWITCH /
+  CHALLENGE / ALTERNATIVE / ABSTAIN / garbage are INVALID — stored under
+  `.invalid/` for the scorecard, never actionable. ALLOW with zero
+  captured sources is invalid (insufficient evidence is a refusal).
+- **Hash-locked (W4.2):** an opinion binds to `candidate_hash`
+  (fixture+forecast+p+quote-snapshot+anchor+stake+leg+market law); any
+  number change => new hash => the old review is void.
+- **Real research (W4.3):** `execute ai-evidence` is THE collector
+  (read-only allow-listed ESPN news 48h + scoreboard status; citations =
+  url + fetched_at + excerpt, journaled under `ai_review/evidence/`); the
+  JS producer shells out to the same collector — one implementation.
+- **Silence law (W4.4, owner QĐ2):** no valid verdict inside the window ⇒
+  PENDING_AI — the candidate stays UNDECIDED and is re-reviewed each
+  cadence pass until anchor−30min; past it ⇒ terminal
+  `NOT_PLACED_AI_NO_VERDICT` + incident. Pending >30min ⇒
+  `AI_PROVIDER_DOWN` owner alarm (bets wait; none killed). The pending
+  queue is visible on the dashboard (desk block `ai_pending`).
+- **Model via config (W4.6):** `config.json ai_provider` (provider,
+  endpoint, model_id, fallbacks, Keychain key ref); the prompt is FROZEN
+  (`research/papertrade_exec/AI_PROMPT_V2.md`, version + sha recorded in
+  every opinion). The free OpenRouter chain stays the sandbox default;
+  a paid model is a config change, not a code change.
+- **Scorecard (W4.5):** `ai_scorecard.compute_scorecard` — weekly job
+  (RUNBOOK §12): ALLOW-placed realized vs VETO hypothetical (the gate
+  freezes stake/leg/odds at VETO time), net value of the AI layer, and a
+  SUGGEST-ONLY demotion proposal after ≥100 scored reviews.
+- **Production flag stays `ai_authority_active: false`** until the owner
+  types the separate AI-authority GO (AI readiness note in the control
+  dir; W4.7 battery: allow places, veto blocks, garbage invalid,
+  provider-down ⇒ pending ⇒ no-verdict at deadline, WSL through the gate,
+  hash change ⇒ re-review — all in `test_fixall_w4.py` + the rewritten
+  CLI chain tests).
