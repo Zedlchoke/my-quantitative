@@ -152,3 +152,80 @@ PaperDesk.app/Contents/MacOS/PaperDesk --self-check-ledger <ledger.jsonl>
   `research/control/PAPERDESK-FIXALL-NCAA-V1/evidence/W0_ACCEPTANCE_REPLAY_2026-10-21.json`
   (both live-stuck NBA bets settle via the normal path on a byte-copy
   ledger, chain OK, production untouched).
+
+## 9. PAPERDESK-FIXALL-NCAA-V1 — quota/decision-path laws (W1, 2026-10-21)
+
+- **Inactive sport keys (W1.1):** a registered soccer key whose
+  `competition_law` has no window covering the requested date polls /events
+  at most ONCE per UTC day (state `data/soccer_key_poll.json`). The 404ing
+  `soccer_fifa_world_cup_group` key drops from ~230-280 calls/day to ≤1.
+- **Provider-credit meter (W1.2):** every credit call runs through
+  `quota_guard.GuardedClient` — provider-unit daily/monthly caps
+  (4/day + 120/month, basketball /odds = 2 credits measured), a
+  `data/provider_quota_ledger.jsonl` journal of the provider meter
+  (x-requests-used/remaining), and `QUOTA_CREDIT_DRIFT` reporting when the
+  meter moves more than expected. Pinned bytes untouched.
+- **Constant forecast (W1.3):** root cause measured — refresh lookback 0 ⇒
+  zero FINAL rows ⇒ R0=1500 cold start ⇒ pure-HCA p=0.640065 for every
+  match (all 14 live NBA forecasts). Fix: refresh now walks back
+  `nba_refresh_lookback_days` (config, 14); decide path permanently blocks
+  a zero-variance batch (`BLOCKED_CONSTANT_FORECAST`, whole batch, high
+  incident). NBA stays paused per owner QĐ1 until the root cause + block
+  are on the production runner.
+- **Quote collision (W1.4):** one snapshot must never price two fixtures —
+  identical non-trivial `payload_sha256`, or (PM-family rows only) exact
+  float equality of the full odds vector ⇒ `NOT_RUN_QUOTE_COLLISION`
+  terminal on BOTH the standard and the WSL decide path. Coarse bookmaker
+  prices (1.85/2.05) legitimately repeat and are never a collision.
+- **EV outlier quarantine (W1.5):** EV_net > 100% (`laws.
+  EV_OUTLIER_THRESHOLD`) ⇒ mandatory second-source PM cross-check;
+  second source agrees ⇒ `NOT_PLACED_EV_OUTLIER` terminal; disagrees ⇒
+  `QUARANTINED_EV_OUTLIER` (non-terminal — re-entry ONLY against a quote
+  captured after the quarantine; 3 quarantines ⇒ terminal). The 5% gate is
+  untouched.
+- **One constant law source (W1.6):** `research/papertrade_exec/laws.py`
+  is the single source for EV threshold, drawdown pause, fees, outlier
+  threshold, stake-law constants, anchor leads; the JS mirrors consume the
+  GENERATED `apps/paperdesk/main/laws_generated.js`
+  (`python research/papertrade_exec/build_laws_js.py`; parity-tested).
+- **Incident hygiene (W1.7):** identical repeating failures collapse into
+  ONE incident + counter + first/last (+ close-out when quiet);
+  `DASHBOARD_REBUILT` moved to the metrics plane
+  (`ops/state/metrics.jsonl`); the pause flag's first observation after a
+  (re)start is silent unless the service started ALREADY paused (the 30
+  RESUMED vs 4 PAUSED noise was one spurious row per process start);
+  startup fail-fasts on missing required pin files (the 2026-10-09
+  446-row TICK_ERROR storm). Crash-loop 2026-10-19 root cause: app
+  relaunch churn (36 app boots, launchd bootouts, e2e lifecycle testing) —
+  NOT a Python crash loop (2 uncaught exceptions total, all stops
+  graceful).
+
+## 10. PAPERDESK-FIXALL-NCAA-V1 — speed + one surface + visibility (W2, 2026-10-21)
+
+- **Incremental ledger (W2.1):** the ops supervisor verifies the whole
+  chain ONCE per process (`ops_service.VerifiedLedgerView`), then pays only
+  for appended rows (prev-sha linkage) with an hourly full re-verify and an
+  immediate full re-verify on shrink/parse anomaly — any inconsistency is
+  TAMPER, fail-closed. The Electron app got the same law (`ledger.js`):
+  first read full-hash, afterwards read+verify only appended bytes; a chain
+  failure is NEVER cached. Old-path == new-path parity is battery-tested.
+- **Parallel leagues (W2.2):** cadence chains run concurrently per league
+  (worker pool ≤ 4); the settle pass always runs first in the tick. The
+  pinned append refuses a stale tail by law; concurrent chains converge via
+  an idempotent retry with backoff (`CADENCE_TAIL_DRIFT_RETRY`). The
+  restart battery also exposed a nondeterministic in-process relaunch
+  refusal (GC-timed lock release) — `run_forever` now releases the
+  single-instance flock explicitly.
+- **One surface (W2.3):** the Electron app is the ONLY rendering surface.
+  The live_dashboard HTML page is REMOVED; `127.0.0.1:8791/` returns a
+  JSON note and `/api/state` remains the state API (same builder, same
+  ledger — no parallel number sources).
+- **Four desk blocks (W2.4):** the dashboard (Electron + the same state
+  API) now shows: (1) STUCK / DEAD-LETTER queue (from `stuck_state.json` +
+  `settle_last_why.json`), (2) CLOSING LINE VALUE — captured at settle time
+  into the append-only `ops/state/clv_records.jsonl` (law: the closing
+  price is the bet's own league quote nearest kickoff; `clv = bet/close − 1`;
+  no pre-tip quote ⇒ NO_CLOSE_PRICE, never inferred), (3) the per-league
+  table (matches, BET/NO_EDGE/NO_QUOTE/other, PnL, CLV), (4) per-league
+  health cards (last forecast/quote/decide ok/blocked, upcoming window
+  count, provider-credit quota, lane flags incl. WSL STALE_CORPUS).

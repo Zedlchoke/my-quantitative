@@ -2,10 +2,10 @@
 
 Binds 127.0.0.1 ONLY (never a public interface). Every /api/state request
 re-reads the ledger from disk, verifies the hash chain, and refuses to render
-financials when the chain is tampered (fail-closed alarm instead). The page is
-an interactive single file (client auto-refresh 8 s ≤ the 10 s law); SANDBOX
-and REAL are visually distinct and derived from the GENESIS row's `sandbox`
-flag — a sandbox ledger can never render as REAL. Key bytes never appear here.
+financials when the chain is tampered (fail-closed alarm instead). The HTML page was REMOVED (W2.3, PAPERDESK-FIXALL-NCAA-V1): the Electron
+app is the ONE rendering surface; this server is a state-API read only
+(same builder, same ledger). SANDBOX/REAL derives from the GENESIS row's
+`sandbox` flag; key bytes never appear here.
 """
 from __future__ import annotations
 
@@ -18,219 +18,6 @@ from pathlib import Path
 AUTO_REFRESH_SECONDS = 8
 HEARTBEAT_STALE_S = 180          # LIVE if heartbeat younger than this
 
-_REFRESH_HTML = '''<!doctype html>
-<html><head><meta charset="utf-8">
-<title>SPORTS-PAPERTRADE-EXEC-V1 — live paper desk</title>
-<style>
- :root{--bg:#0e1116;--card:#161c24;--ink:#e6edf3;--mut:#8b98a5;--ok:#3fb950;
- --warn:#d29922;--bad:#f85149;--acc:#58a6ff;}
- body{background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,
- "Segoe UI",Roboto,sans-serif;margin:0;padding:18px;}
- h1{font-size:19px;margin:0 0 2px;} h2{font-size:15px;margin:18px 0 6px;
- color:var(--acc);} .sub{color:var(--mut);font-size:12px;}
- .grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));}
- .card{background:var(--card);border:1px solid #232b36;border-radius:10px;
- padding:10px 12px;} .k{color:var(--mut);font-size:11px;text-transform:
- uppercase;letter-spacing:.04em;} .v{font-size:19px;font-weight:650;}
- .pill{display:inline-block;padding:1px 9px;border-radius:999px;font-size:11px;
- font-weight:700;} .pill.ok{background:#12351c;color:var(--ok);}
- .pill.warn{background:#3a2b0a;color:var(--warn);} .pill.bad{background:#3d1214;
- color:var(--bad);} .pill.real{background:#0d2a52;color:#79b8ff;}
- .pill.sb{background:#3a2b0a;color:var(--warn);}
- table{width:100%;border-collapse:collapse;font-size:12.5px;}
- th{color:var(--mut);text-align:left;font-weight:600;border-bottom:1px solid
- #232b36;padding:4px 6px;} td{border-bottom:1px solid #1c232d;padding:4px 6px;
- vertical-align:top;} tr:hover td{background:#1a2130;}
- .num{text-align:right;font-variant-numeric:tabular-nums;}
- select,input{background:#0e1116;color:var(--ink);border:1px solid #232b36;
- border-radius:6px;padding:3px 6px;}
- .banner{border-radius:10px;padding:8px 12px;margin:10px 0;font-weight:700;}
- .banner.sbx{background:#3a2b0a;color:var(--warn);} .banner.tamper{
- background:#3d1214;color:var(--bad);} .banner.real{background:#0d2a52;
- color:#79b8ff;} .muted{color:var(--mut);} code{color:#9ecbff;font-size:12px;}
- .foot{margin-top:16px;color:var(--mut);font-size:11px;}
-</style></head><body>
-<h1>SPORTS-PAPERTRADE-EXEC-V1 · paper desk</h1>
-<div class="sub" id="sub">loading…</div>
-<div id="mode"></div><div id="alarms"></div>
-<div class="grid" id="wallet"></div>
-<h2>Cadence &amp; service</h2><div class="grid" id="svc"></div>
-<h2>Odds quota <span class="sub">(frozen 4/day · 120/month)</span></h2>
-<div class="grid" id="quota"></div>
-<h2>Matches
- <span class="sub">— filter:</span>
- <select id="fLeague"><option>ALL</option></select>
- <select id="fStatus"><option>ALL</option><option>OPEN</option>
- <option>BET_PAPER</option><option>SETTLED</option><option>NO_BET</option>
- <option>NOT_RUN</option></select>
- <span class="sub" id="count"></span></h2>
-<table id="matches"><thead><tr>
-<th>League</th><th>Match</th><th>Kickoff (UTC)</th><th>Forecast p</th>
-<th>Quote (pinnacle)</th><th>EV_net by leg</th><th>Decision</th>
-<th>Stake</th><th>Result / PnL</th></tr></thead><tbody></tbody></table>
-<h2>Upcoming windows (anchor deadlines)</h2>
-<table id="upcoming"><thead><tr><th>League</th><th>Match</th>
-<th>Anchor (UTC)</th><th>Countdown</th><th>Eligible now</th><th>Note</th>
-</tr></thead><tbody></tbody></table>
-<h2>WSL (shared wallet · CAPITAL-V3 §4)</h2>
-<table id="wsl"><thead><tr><th>Match</th><th>Kickoff (UTC)</th>
-<th>Forecast p×3</th><th>PM book (best/vwap · fee · depth)</th>
-<th>Decision</th><th>Stake</th><th>Result / PnL</th></tr></thead>
-<tbody></tbody></table>
-<h2>Incidents (tail)</h2><table id="incidents"><thead><tr><th>ts</th>
-<th>kind</th><th>detail</th></tr></thead><tbody></tbody></table>
-<div class="foot" id="foot"></div>
-<script>
-const $=id=>document.getElementById(id);
-const AUTO_REFRESH_SECONDS=8;   // <= the 10s refresh law
-const HEARTBEAT_STALE_S=180;     // same threshold as the server
-const money=c=>(c/100).toLocaleString("en-US",{style:"currency",currency:"USD"});
-function esc(s){return String(s??"").replace(/[&<>"]/g,
- c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
-function pill(txt,cls){return `<span class="pill ${cls}">${esc(txt)}</span>`;}
-function card(k,v,sub){return `<div class="card"><div class="k">${esc(k)}</div>
- <div class="v">${v}</div>${sub?`<div class="sub">${sub}</div>`:""}</div>`;}
-function ago(ts){if(!ts)return"—";const s=(Date.now()-Date.parse(ts))/1e3;
- if(s<90)return Math.round(s)+"s ago";if(s<5400)return Math.round(s/60)+"m ago";
- return Math.round(s/3600)+"h ago";}
-function cd(ts){const s=(Date.parse(ts)-Date.now())/1e3;
- if(s<=0)return "PASSED";const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),
- m=Math.floor(s%3600/60);return (d?d+"d ":"")+h+"h "+m+"m";}
-function statusClass(st){if(st==="BET_PAPER")return"warn";
- if(st==="NO_EDGE")return"ok";if(st&&st.startsWith("BLOCKED"))return"bad";
- return"warn";}
-async function tick(){
- try{const r=await fetch("/api/state",{cache:"no-store"});
-  if(!r.ok)throw new Error("http "+r.status);
-  render(await r.json());}
- catch(e){$("sub").textContent="state fetch FAILED: "+e.message+
-  " — retrying";}
-}
-function render(S){
- const svc=S.service||{};
- $("sub").innerHTML=`generated <code>${esc(S.generated_at_utc)}</code> · `+
-  `ledger <code>${esc(S.ledger.path)}</code> · `+
-  `auto-refresh ${AUTO_REFRESH_SECONDS}s`;
- $("mode").innerHTML = S.mode==="SANDBOX"
-  ? `<div class="banner sbx">SANDBOX — rehearsal ledger (NOT the real paper
-     wallet)</div>`
-  : `<div class="banner real">${pill("REAL PAPER LEDGER","real")} — virtual
-     money only; this is NOT a real-money account</div>`;
- $("alarms").innerHTML = S.chain.ok ? "" :
-  `<div class="banner tamper">CHAIN TAMPER DETECTED — financials withheld:
-   ${esc((S.chain.errors||[]).join(" | "))}</div>`;
- const w=S.wallet||{}, q=S.quota||{};
- const alarm = !S.chain.ok;
- $("wallet").innerHTML = alarm ? "" :
-  card("Equity", money(w.equity_cents),
-       `peak ${money(w.peak_cents)} · drawdown
-        ${(100*(w.drawdown_frac||0)).toFixed(2)}%`)+
-  card("Open exposure", `${money(w.open_exposure_cents)} / ${money(w.open_exposure_cap_cents)}`,
-       `${w.open_count||0} open bet(s)`)+
-  card("Realized PnL", money(w.total_pnl_cents||0),
-       `WNBA ${money((w.sport_pnl_cents||{}).WNBA||0)} · NBA
-        ${money((w.sport_pnl_cents||{}).NBA||0)} · SOCCER
-        ${money((w.sport_pnl_cents||{}).SOCCER||0)}`)+
-  card("Outcomes", `${(w.outcomes||{}).WIN||0}W /
-        ${(w.outcomes||{}).LOSE||0}L / ${(w.outcomes||{}).REFUND||0}R`,
-       `${w.settled_count||0} settled · paused: ${w.paused?"YES":"no"}`);
- const svcStatus = svc.heartbeat_age_s==null ? pill("NO HEARTBEAT","bad")
-  : svc.heartbeat_age_s<HEARTBEAT_STALE_S ? pill("LIVE","ok")
-  : pill("STALE ("+Math.round(svc.heartbeat_age_s/60)+"m)","warn");
- $("svc").innerHTML =
-  card("Service", svcStatus, `pid ${esc(svc.pid)} · tick ${ago(svc.last_tick_utc)}`)+
-  card("Last cadence", ago(svc.last_cadence_tick_utc),
-       svc.last_cadence_result?esc(JSON.stringify(svc.last_cadence_result).slice(0,150)):"")+
-  card("Last settle", ago(svc.last_settle_tick_utc),
-       `tick latency ${svc.last_tick_ms??"—"} ms · ticks ${esc(svc.tick_count)}`)+
-  card("Static rebuild", ago(svc.last_dashboard_rebuild_utc),
-       `srv latency ${esc(S.serve_latency_ms)} ms`);
- $("quota").innerHTML=
-  card("Today", `${q.used_today??"—"}/4 credits`,
-       q.halted?pill("HALTED: "+(q.halt_reason||""),"bad"):"")+
-  card("Month", `${q.used_month??"—"}/120 credits`,
-       `provider remaining: ${esc(q.remaining_last??"—")}`)+
-  card("Journal tail", (q.journal_tail||[]).length+" entries",
-       esc((q.journal_tail||[]).slice(-1).map(j=>
-        `${j.endpoint} cost=${j.cost_credits} @${j.ts_utc}`).join("")||"—"));
- const fsel=$("fLeague"), keep=fsel.value;
- const leagues=[...new Set((S.matches||[]).map(m=>m.league))];
- fsel.innerHTML=`<option>ALL</option>`+
-  leagues.map(l=>`<option>${esc(l)}</option>`).join("");
- if(leagues.includes(keep))fsel.value=keep;
- const fl=fsel.value, fst=$("fStatus").value;
- const rows=(S.matches||[]).filter(m=>
-   (fl==="ALL"||m.league===fl) &&
-   (fst==="ALL" ||
-    (fst==="OPEN"?m.is_open:fst==="SETTLED"?!!m.settlement:
-     fst==="NO_BET"?["NO_EDGE","NO_QUOTE","NO_FORECAST","STALE_PRICE",
-       "CROSSWALK_MISS","QUOTA_SKIP"].includes(m.decision?.status):
-     m.decision?.status===fst)));
- $("count").textContent=`${rows.length}/${(S.matches||[]).length} shown`;
- $("matches").querySelector("tbody").innerHTML = alarm ? "" : rows.map(m=>{
-  const d=m.decision||{};
-  const st=d.status||"—";
-  return `<tr><td>${esc(m.league)}</td>
-  <td>${esc(m.home)} v ${esc(m.away)}<div class="sub">${esc(m.competition||"")}
-   · id ${esc(m.match_id)}</div></td>
-  <td>${esc(m.kickoff_utc||"")}</td>
-  <td>${m.forecast?Object.entries(m.forecast.p).map(([k,v])=>
-    `${k} ${(100*v).toFixed(1)}%`).join("<br>"):"—"}</td>
-  <td>${m.quote?Object.entries(m.quote.odds).map(([k,v])=>
-    `${k} ${v}`).join("<br>"):st==="NO_QUOTE"?
-    `<span class="muted">no qualifying quote</span>`:"—"}</td>
-  <td>${d.ev_net_by_leg?Object.entries(d.ev_net_by_leg).map(([k,v])=>
-    `${k} ${(100*v).toFixed(1)}%`).join("<br>"):"—"}</td>
-  <td>${pill(st,statusClass(st))}${d.chosen_leg?` · ${esc(d.chosen_leg)}`:""}
-   <div class="sub">${esc(d.reason||"")}</div></td>
-  <td class="num">${d.stake_cents?money(d.stake_cents):"—"}</td>
-  <td>${m.settlement?`${esc(m.settlement.outcome_for_leg)}
-    <b>${money(m.settlement.pnl_cents)}</b><div class="sub">${ago(
-    m.settlement.settled_at_utc)} · ${esc(m.settlement.source_ref||"").slice(0,90)}</div>`
-   :(m.is_open?pill("OPEN","warn"):"")}</td></tr>`;}).join("") ||
-  `<tr><td colspan="9" class="muted">no matches</td></tr>`;
- $("upcoming").querySelector("tbody").innerHTML=(S.upcoming||[]).map(u=>
-  `<tr><td>${esc(u.league)}</td><td>${esc(u.home)} v ${esc(u.away)}</td>
-  <td>${esc(u.anchor_utc)}</td><td>${cd(u.anchor_utc)}</td>
-  <td>${u.eligible_now?pill("ELIGIBLE","ok"):pill("not yet","warn")}</td>
-  <td class="sub">${esc(u.note||"")}</td></tr>`).join("") ||
-  `<tr><td colspan="6" class="muted">no upcoming fixtures in rolling
-   horizon</td></tr>`;
- $("wsl").querySelector("tbody").innerHTML = (S.chain.ok ? (S.wsl||[]) : [])
-  .map(m=>{const d=m.decision||{};const q=m.quote||{};
-   const pm=q.pm_outcomes?Object.entries(q.pm_outcomes).map(([l,o])=>
-    `${l}: ${o.best_ask}/${o.vwap_ask} · fee ${o.fee_total_usdc?.toFixed(3)} · `+
-    `${o.filled_shares?.toFixed(2)}sh${o.budget_short_usdc>0?" · SHORT":""}`
-   ).join("<br>"):"—";
-   return `<tr><td>${esc(m.home)} v ${esc(m.away)}<div class="sub">`+
-    `${esc(m.competition||"")} · ${esc(m.match_id)}</div></td>`+
-    `<td>${esc(m.kickoff_utc||"")}</td>`+
-    `<td>${m.forecast?Object.entries(m.forecast.p).map(([k,v])=>
-      `${k} ${(100*v).toFixed(1)}%`).join("<br>"):"—"}</td>`+
-    `<td>${pm}</td>`+
-    `<td>${pill(d.status||"—",statusClass(d.status))}`+
-    `${d.chosen_leg?` · ${esc(d.chosen_leg)}`:""}`+
-    `<div class="sub">${esc(d.reason||"")}</div>`+
-    `${d.stake_law?`<div class="sub">${esc(d.stake_law)} @ eq `+
-     `${esc(d.equity_at_decision_cents??"—")}c</div>`:""}</td>`+
-    `<td class="num">${d.stake_cents?money(d.stake_cents):"—"}</td>`+
-    `<td>${m.settlement?`${esc(m.settlement.outcome_for_leg)} `+
-     `<b>${money(m.settlement.pnl_cents)}</b>`:(m.is_open?pill("OPEN","warn"):"")}`+
-    `</td></tr>`;}).join("") ||
-  `<tr><td colspan="7" class="muted">no WSL rows in the shared ledger</td></tr>`;
- $("incidents").querySelector("tbody").innerHTML=(S.incidents_tail||[])
-  .slice().reverse().map(i=>`<tr><td>${esc(i.ts_utc)}</td>
-  <td>${pill(i.kind,(i.kind||"").includes("SETTLE")?"ok":(i.kind||"").includes("BLOCK")?"bad":"warn")}
-  </td><td class="sub">${esc(i.detail||"")}</td></tr>`).join("");
- $("foot").innerHTML=`Chain ${S.chain.ok?pill("VERIFIED","ok"):
-  pill("TAMPERED","bad")} · ${S.ledger.rows_count} rows · genesis
-  ${esc(S.ledger.genesis_at||"—")} · key fingerprint
-  ${esc(S.key_fingerprint||"—")} · bind 127.0.0.1 only ·
-  PAPER (virtual) money · laws: PLAN_sports_papertrade_v1 +
-  ERRATUM_CAPITAL_LAW_V2 + ERRATUM_EXEC_5`;
-}
-setInterval(tick,AUTO_REFRESH_SECONDS*1000);tick();
-</script></body></html>'''
 
 
 def enrich_matches(rows: list[dict]) -> list[dict]:
@@ -315,6 +102,7 @@ def build_state(*, core, ledger_path: str | Path, data_root: Path,
                 sandbox: bool, key_fingerprint: str | None,
                 heartbeat: dict | None, incidents: list[dict],
                 upcoming: list[dict], capital_law: int = 2,
+                desk: dict | None = None,
                 serve_latency_ms=None) -> dict:
     """Fresh state: re-read + verify the chain FIRST; fail closed on tamper by
     withholding financials (the client renders the alarm banner)."""
@@ -389,6 +177,32 @@ def build_state(*, core, ledger_path: str | Path, data_root: Path,
     # NOT_RUN reason, stake, PnL) — same chain-verified rows as above; the
     # WSL standalone provenance ledger is NEVER rendered as bets.
     state["wsl"] = [m for m in state["matches"] if m.get("league") == "WSL"]
+    # W2.4 block 3: the per-league table (one place that shows which league
+    # is alive and which is dead, and why) + the W2.4 desk blocks fed by
+    # ops_service (stuck queue, CLV plane, per-lane health).
+    table: dict = {}
+    for m in state["matches"]:
+        slot = table.setdefault(m.get("league") or "?", {
+            "matches": 0, "decisions": {}, "pnl_cents": 0})
+        slot["matches"] += 1
+        d = m.get("decision") or {}
+        st = d.get("status")
+        if st:
+            slot["decisions"][st] = slot["decisions"].get(st, 0) + 1
+        s = m.get("settlement")
+        if s:
+            slot["pnl_cents"] += s.get("pnl_cents") or 0
+    clv_by_league = ((desk or {}).get("clv") or {}).get("by_league") or {}
+    for league, slot in table.items():
+        slot["clv_avg_frac"] = (clv_by_league.get(league) or {})\
+            .get("clv_avg_frac")
+        slot["clv_n"] = (clv_by_league.get(league) or {}).get("n", 0)
+    state["desk"] = {
+        "stuck": (desk or {}).get("stuck") or [],
+        "clv": (desk or {}).get("clv") or {"by_league": {}, "tail": []},
+        "health": (desk or {}).get("health") or {"leagues": {}},
+        "league_table": table,
+    }
     qpath = Path(data_root) / "data" / "quota_state.json"
     if qpath.exists():
         state["quota"] = json.loads(qpath.read_text())
@@ -416,7 +230,15 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/":
-            self._send(200, _REFRESH_HTML.encode("utf-8"), "text/html; charset=utf-8")
+            # W2.3 (PAPERDESK-FIXALL-NCAA-V1): ONE rendering surface — the
+            # Electron app. This endpoint is a READ of the same state API
+            # only; the old parallel HTML page is gone (two surfaces
+            # building numbers differently was an audit finding).
+            self._send(200, json.dumps({
+                "surface": "PaperDesk (Electron) is the ONLY rendering "
+                           "surface; this endpoint serves the same state "
+                           "JSON at /api/state",
+                "api": "/api/state"}).encode(), "application/json")
             return
         if self.path == "/api/state":
             try:

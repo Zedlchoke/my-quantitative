@@ -108,6 +108,108 @@ def _atomic_write(path: Path, obj) -> None:
     os.replace(tmp, path)
 
 
+class VerifiedLedgerView:
+    """W2.1: the whole chain is verified ONCE at construction; afterwards a
+    tick pays only for the APPENDED rows (prev-sha linkage verified against
+    the trusted tail), with a sparse full re-verify (hourly) and an
+    immediate full re-verify whenever the file shrinks or any incremental
+    link fails (fail-closed — any inconsistency is a TAMPER, never a
+    guess). Hash-chain semantics are byte-identical to the pinned
+    verify_chain; the parity test proves old-path == new-path state."""
+
+    FULL_REVERIFY_S = 3600
+
+    def __init__(self, core, path: Path):
+        self._core = core
+        self.path = Path(path)
+        self._sha_hex = core.ledger.sha256_hex
+        self._canon = core.ledger.canonical_json
+        self._led = core.ledger.PaperLedger(self.path).load()
+        ok, errs = self._led.verify_chain()
+        if not ok:
+            raise BlockError("BLOCKED_TAMPER",
+                             f"chain verify failed: {errs[:3]}",
+                             execute.EXIT_BLOCKED_TAMPER)
+        self._tail_sha = (self._led.rows[-1]["row_sha256"] if self._led.rows
+                          else "0" * 64)
+        self._verified_rows = len(self._led.rows)
+        self._last_full = time.time()
+        try:
+            st = self.path.stat()
+            self._size = st.st_size
+        except OSError:
+            self._size = 0
+
+    def state(self):
+        """The verified PaperLedger (incrementally refreshed)."""
+        self._refresh()
+        return self._led
+
+    def _verify_new_rows(self, new_rows: list[dict]) -> tuple[bool, str]:
+        prev = self._tail_sha
+        for i, r in enumerate(new_rows, 1):
+            if r.get("prev_row_sha256") != prev:
+                return False, f"appended row {i}: prev mismatch"
+            expect = self._sha_hex(self._canon(
+                {k: v for k, v in r.items() if k != "row_sha256"}))
+            if r.get("row_sha256") != expect:
+                return False, f"appended row {i}: hash mismatch"
+            prev = r.get("row_sha256", prev)
+        return True, ""
+
+    def _refresh(self) -> None:
+        try:
+            size = self.path.stat().st_size
+        except OSError:
+            size = 0
+        if size < self._size or size == 0:
+            self._full_reverify()          # truncation/rewrite: full path
+            return
+        if size == self._size:
+            if time.time() - self._last_full > self.FULL_REVERIFY_S:
+                self._full_reverify()
+            return
+        with open(self.path, "rb") as f:
+            f.seek(self._size)
+            raw = f.read()
+        new_rows = []
+        for line in raw.decode("utf-8", "replace").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                new_rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                self._full_reverify()      # partially-written tail: full
+                return
+        ok, why = self._verify_new_rows(new_rows)
+        if not ok:
+            raise BlockError("BLOCKED_TAMPER",
+                             f"incremental chain verify failed: {why}",
+                             execute.EXIT_BLOCKED_TAMPER)
+        self._led.rows.extend(new_rows)
+        self._tail_sha = new_rows[-1]["row_sha256"] if new_rows \
+            else self._tail_sha
+        self._verified_rows = len(self._led.rows)
+        self._size = size
+
+    def _full_reverify(self) -> None:
+        self._led = self._core.ledger.PaperLedger(self.path).load()
+        ok, errs = self._led.verify_chain()
+        if not ok:
+            raise BlockError("BLOCKED_TAMPER",
+                             f"chain verify failed: {errs[:3]}",
+                             execute.EXIT_BLOCKED_TAMPER)
+        self._tail_sha = (self._led.rows[-1]["row_sha256"]
+                          if self._led.rows else "0" * 64)
+        self._verified_rows = len(self._led.rows)
+        self._last_full = time.time()
+        try:
+            self._size = self.path.stat().st_size
+        except OSError:
+            self._size = 0
+
+
 class OpsService:
     def __init__(self, *, data_root: Path, sandbox: bool,
                  tick_seconds: int = TICK_SECONDS_DEFAULT,
@@ -144,6 +246,7 @@ class OpsService:
         self.last_settle = None
         self.last_rebuild = None
         self._stuck_cache: list[dict] = []   # W0.3 dashboard feed
+        self._upcoming_cache: list[dict] = []  # W2.4 health feed
 
     # ------------------------------------------------------------- plumbing --
     def reconcile_missed_windows(self) -> int:
@@ -351,15 +454,17 @@ class OpsService:
 
     def _ledger_state(self):
         """(core, led) on a VERIFIED chain; raises BlockError TAMPER other-
-        wise (fail-closed — settle and cadence stop for this tick)."""
+        wise (fail-closed — settle and cadence stop for this tick).
+        W2.1: the full chain verify runs ONCE per process; afterwards the
+        view verifies only appended rows (hourly full re-verify; any
+        inconsistency is TAMPER)."""
         ns = self._runner_args("dashboard")
         core = execute.load_pinned_core(roots={})
-        led = core.ledger.PaperLedger(execute.ledger_path_for(ns)).load()
-        ok, errs = led.verify_chain()
-        if not ok:
-            raise BlockError("BLOCKED_TAMPER",
-                             f"chain verify failed: {errs[:3]}",
-                             execute.EXIT_BLOCKED_TAMPER)
+        if getattr(self, "_ledger_view", None) is None or \
+                str(self._ledger_view.path) != str(execute.ledger_path_for(ns)):
+            self._ledger_view = VerifiedLedgerView(
+                core, execute.ledger_path_for(ns))
+        led = self._ledger_view.state()
         return core, led, execute.ledger_path_for(ns)
 
     # ----------------------------------------------------------------- settle --
@@ -619,6 +724,8 @@ class OpsService:
                 # W0.3: the settled bets' ghost keep-open reasons are gone
                 # the moment the settle lands.
                 self._prune_settle_why(settled_ids)
+                # W2.4 block 2: CLV capture at settle time.
+                self._record_clv(led, settled_ids)
             for s in report.get("settled", []):
                 out["settled"] += 1
                 self.incident("SETTLE_DONE",
@@ -704,6 +811,123 @@ class OpsService:
             settleable.setdefault(mid, v)
         return settleable, inconclusive + ineligible
 
+    def _record_clv(self, led, settled_ids: list[str]) -> None:
+        """W2.4 block 2 — Closing Line Value, captured as an AMENDMENT plane
+        (append-only ops state; ledger rows are NEVER edited). Law: the
+        closing price of a bet is its OWN league's quote row nearest the
+        kickoff (the last quote at or before the tip — pre-cutover that is
+        the pinned Pinnacle/PM snapshot nearest kickoff, post-cutover the PM
+        book); clv_frac = bet_decimal / close_decimal - 1 (positive = the
+        bet beat the close). A bet with no pre-tip quote records an honest
+        NO_CLOSE_PRICE entry — never an inferred CLV."""
+        rec_path = self.state_dir / "clv_records.jsonl"
+        have: set = set()
+        if rec_path.exists():
+            for l in rec_path.read_text().splitlines():
+                try:
+                    have.add(json.loads(l).get("match_id"))
+                except json.JSONDecodeError:
+                    continue
+        want = set(settled_ids) - have
+        if not want:
+            return
+        by_mid: dict = {}
+        for r in led.rows:
+            if r.get("type") == "DECISION" and r.get("match_id") in want:
+                by_mid[r["match_id"]] = r
+        for mid in sorted(want):
+            dec = by_mid.get(mid)
+            if not dec:
+                continue
+            leg = dec.get("chosen_leg")
+            bet_odds = (dec.get("odds_frozen") or {}).get(leg)
+            ko = str(dec.get("kickoff_utc") or "")
+            quotes = [q for q in led.rows
+                      if q.get("type") == "MARKET_QUOTE"
+                      and q.get("match_id") == mid
+                      and str(q.get("fetch_ts_utc") or "") <= ko]
+            rec = {"ts_utc": now_utc(), "match_id": mid,
+                   "league": dec.get("league"), "leg": leg,
+                   "bet_decimal": bet_odds}
+            if not quotes or not leg or not bet_odds:
+                rec.update({"status": "NO_CLOSE_PRICE",
+                            "why": "no pre-tip quote row (CLV never "
+                                   "inferred)"})
+            else:
+                close = max(quotes, key=lambda q: str(q.get("fetch_ts_utc")))
+                close_odds = (close.get("odds") or {}).get(leg)
+                if not close_odds:
+                    rec.update({"status": "NO_CLOSE_PRICE",
+                                "why": f"closing quote lacks {leg}"})
+                else:
+                    rec.update({
+                        "status": "OK",
+                        "close_decimal": close_odds,
+                        "clv_frac": float(bet_odds) / float(close_odds) - 1.0,
+                        "close_source": close.get("bookmaker"),
+                        "close_fetch_ts_utc": close.get("fetch_ts_utc"),
+                        "law": "clv = bet_decimal/close_decimal - 1 "
+                               "(+ = beat the close)"})
+            with open(rec_path, "a") as f:
+                f.write(json.dumps(rec, sort_keys=True, default=str) + "\n")
+
+    def _clv_summary(self) -> dict:
+        """Per-league CLV aggregates + record tail for the dashboard."""
+        p = self.state_dir / "clv_records.jsonl"
+        if not p.exists():
+            return {"by_league": {}, "tail": []}
+        recs = []
+        for l in p.read_text().splitlines():
+            try:
+                recs.append(json.loads(l))
+            except json.JSONDecodeError:
+                continue
+        by_league: dict = {}
+        for r in recs:
+            if r.get("status") != "OK" or r.get("clv_frac") is None:
+                continue
+            slot = by_league.setdefault(r.get("league") or "?",
+                                        {"n": 0, "clv_frac_sum": 0.0})
+            slot["n"] += 1
+            slot["clv_frac_sum"] += r["clv_frac"]
+        for slot in by_league.values():
+            slot["clv_avg_frac"] = slot["clv_frac_sum"] / slot["n"]
+            del slot["clv_frac_sum"]
+        return {"by_league": by_league, "tail": recs[-25:]}
+
+    def _mark_lane_step(self, league: str, step: str, ok: bool) -> None:
+        """W2.4 block 4: per-lane health state (last ok/blocked per step)."""
+        p = self.state_dir / "league_health_state.json"
+        st = self._load_json(p, {})
+        slot = st.setdefault(league, {})
+        slot[f"last_{step}_{'ok' if ok else 'blocked'}_utc"] = now_utc()
+        _atomic_write(p, st)
+
+    def _league_health(self) -> dict:
+        health = self._load_json(
+            self.state_dir / "league_health_state.json", {})
+        wsl = self._load_json(
+            self.state_dir / "wsl_settle_health.json", {})
+        prov = self._load_json(
+            self.data_root / "data" / "provider_quota_state.json", {})
+        internal = self._load_json(
+            self.data_root / "data" / "quota_state.json", {})
+        for league, slot in health.items():
+            slot["upcoming_in_window"] = sum(
+                1 for u in (self._upcoming_cache or [])
+                if u.get("league") == league)
+            slot["open_lane_flags"] = {
+                "wsl_settle_health": (wsl.get("bets") or [])
+                if league == "WSL" else None,
+                "stuck": [s for s in (self._stuck_cache or [])
+                          if s.get("league") == league] or None,
+            }
+        return {"leagues": health,
+                "quota_internal": {k: internal.get(k) for k in
+                                   ("used_today", "used_month", "halted",
+                                    "halt_reason") if k in internal},
+                "quota_provider": prov}
+
     # ---------------------------------------------------------------- cadence --
     @staticmethod
     def window_eligible(f: dict, league: str, now_dt: datetime,
@@ -726,6 +950,11 @@ class OpsService:
         upcoming = []
         cache_path = self.state_dir / "plan_cache.json"
         cache = self._load_json(cache_path, {})
+        # W2.2: the THROTTLE and plan-cache decisions stay single-threaded
+        # here; only the network-heavy _run_chain runs concurrently per
+        # league so one slow source cannot stall the other leagues (the
+        # settle pass always ran first in the same tick — priority kept).
+        due_tasks: list[tuple[str, str, list]] = []
         for league in _cadence_leagues():
             league_notes = []
             for d in dates:
@@ -771,10 +1000,26 @@ class OpsService:
                     league_notes.append({"date": d, "action": "THROTTLED",
                                          "eligible": len(eligible)})
                     continue
-                actions = self._run_chain(league, d, eligible)
-                league_notes.append({"date": d, "action": actions,
-                                     "eligible": len(eligible)})
+                due_tasks.append((league, d, eligible))
             summary[league] = league_notes
+        if due_tasks:
+            from concurrent.futures import ThreadPoolExecutor
+            max_workers = min(len(due_tasks), 4)
+            with ThreadPoolExecutor(max_workers=max_workers) as ex:
+                futures = {
+                    ex.submit(self._run_chain, league, d, eligible):
+                        (league, d)
+                    for league, d, eligible in due_tasks}
+                for fut, (league, d) in futures.items():
+                    try:
+                        actions = fut.result()
+                    except Exception as e:        # never kill the tick
+                        actions = {"error": f"{type(e).__name__}: {e}"[:200]}
+                        self.incident("CADENCE_CHAIN_ERROR",
+                                      f"{league} {d}: {actions['error']}",
+                                      league=league)
+                    summary.setdefault(league, []).append(
+                        {"date": d, "action": actions})
         self.last_cadence = (now_utc(), summary)
         self._upcoming_cache = sorted(
             upcoming, key=lambda u: u["anchor_utc"])[:25]
@@ -799,6 +1044,30 @@ class OpsService:
         actions = {}
         forecast_ran = {"ok": False}
         quote_ran = {"ok": False}
+
+        def _cmd_retry_tail_drift(name: str, ns):
+            """W2.2: chains run concurrently per league; the pinned append
+            refuses a STALE tail (append-only, never rebase). A refusal is
+            retried with backoff — every cmd_* reloads the ledger fresh and
+            the forecast/quote/decide idempotency laws make each retry
+            exact (already-written rows are skipped), so concurrent chains
+            converge instead of corrupting."""
+            delays = (0.05, 0.1, 0.2, 0.4)
+            for attempt, delay in enumerate((0.0,) + delays):
+                if delay:
+                    time.sleep(delay)
+                try:
+                    return getattr(execute, f"cmd_{name}")(ns)
+                except Exception as e:
+                    if attempt < len(delays) and "tail drift" in str(e):
+                        if attempt == 0:
+                            self.incident(
+                                "CADENCE_TAIL_DRIFT_RETRY",
+                                f"{league} {date} {name}: concurrent append "
+                                f"refused a stale tail — retrying fresh "
+                                f"({type(e).__name__})", league=league)
+                        continue
+                    raise
 
         def _needs_forecast() -> bool:
             for f in eligible:
@@ -831,16 +1100,18 @@ class OpsService:
                 continue
             try:
                 ns = self._runner_args(name, league=league, date=date)
-                report = getattr(execute, f"cmd_{name}")(ns)
+                report = _cmd_retry_tail_drift(name, ns)
                 actions[name] = report
                 if flag is not None:
                     flag["ok"] = True
+                self._mark_lane_step(league, name, True)   # W2.4 health
                 self.incident(f"CADENCE_{name.upper()}_OK",
                               f"{league} {date}: "
                               f"{json.dumps(report, default=str)[:300]}",
                               league=league)
             except BlockError as be:
                 actions[name] = {"blocked": be.code, "detail": be.detail}
+                self._mark_lane_step(league, name, False)  # W2.4 health
                 self.incident(f"CADENCE_{name.upper()}_BLOCKED",
                               f"{league} {date}: {be.code}: {be.detail}",
                               league=league)
@@ -1003,6 +1274,14 @@ class OpsService:
             if self._srv:
                 self._srv.shutdown()
             self.incident("SERVICE_STOP", f"pid={os.getpid()}")
+            # W2.2-side fix (found by the restart battery): the single-
+            # instance lock is released EXPLICITLY — a GC-timed release
+            # made an in-process relaunch refuse nondeterministically.
+            try:
+                fcntl.flock(fh, fcntl.LOCK_UN)
+                fh.close()
+            except OSError:
+                pass
 
     # ------------------------------------------------------------------ state --
     def state_fn(self) -> dict:
@@ -1035,6 +1314,9 @@ class OpsService:
             data_root=self.data_root, sandbox=self.sandbox,
             key_fingerprint=fp, heartbeat=hb, incidents=inc_lines,
             upcoming=upcoming, capital_law=capital_law,
+            desk={"stuck": self._stuck_cache,
+                  "clv": self._clv_summary(),
+                  "health": self._league_health()},
             serve_latency_ms=int((time.time() - t0) * 1000))
 
 

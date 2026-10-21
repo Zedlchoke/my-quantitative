@@ -177,10 +177,105 @@ function viewDashboard() {
         <span class="vv">EV_net ≥ 5% (c=0.02) — pinned</span></div>
     </div>
   </div>
+  ${deskBlocksHtml()}
   <div class="card"><div class="sec-title">RECENT RUNNER INCIDENTS
     (ops journal)</div>
     ${incidentsHtml()}
   </div>`;
+}
+
+// W2.4 (PAPERDESK-FIXALL-NCAA-V1): four desk blocks served by the SAME
+// state API the runner builds (S.health.live.desk): (1) the stuck bet
+// queue, (2) the CLV plane, (3) the per-league table, (4) per-lane health.
+function deskBlocksHtml() {
+  const desk = (S.health.live && S.health.live.desk) || null;
+  if (!desk) {
+    return '<div class="card" style="margin-bottom:12px"><div class="sec-title">'
+      + 'DESK BLOCKS</div><div class="dim">Runner state unavailable '
+      + '(stuck queue / CLV / league health need the live state API)'
+      + '</div></div>';
+  }
+  const stuck = desk.stuck || [];
+  const stuckHtml = stuck.length ? stuck.map(b => {
+    const cls = b.dead_letter ? 'red' : 'orange';
+    const age = (b.stuck_age_h_latest || b.stuck_age_h_at_first || 0);
+    return `<div class="kv"><span class="kk">${esc(b.match_id)}
+      <span class="dim">${esc(b.league || '')} · ${esc(b.home || '')}
+      v ${esc(b.away || '')}</span></span>
+      <span class="vv ${cls}">${b.dead_letter ? 'DEAD-LETTER' : 'STUCK'}
+      ${Number(age).toFixed(1)}h</span></div>
+      <div class="dim" style="margin:-4px 0 6px">${esc(b.why || '')}</div>`;
+  }).join('') : '<div class="dim green">No stuck open bets</div>';
+
+  const clv = (desk.clv && desk.clv.by_league) || {};
+  const clvHtml = Object.keys(clv).length
+    ? Object.keys(clv).sort().map(l =>
+      `<div class="kv"><span class="kk">${esc(l)} (n=${clv[l].n})</span>
+       <span class="vv ${(clv[l].clv_avg_frac || 0) >= 0 ? 'green' : 'red'}"
+        >${pct(clv[l].clv_avg_frac)} CLV</span></div>`).join('')
+    : '<div class="dim">No CLV captured yet (recorded at settle time '
+      + 'against the pre-tip quote nearest kickoff)</div>';
+
+  const table = desk.league_table || {};
+  const tableHtml = Object.keys(table).length
+    ? `<table style="width:100%"><thead><tr>
+       <th>League</th><th>Matches</th><th>BET</th><th>NO_EDGE</th>
+       <th>NO_QUOTE</th><th>NOT_RUN/other</th><th>PnL</th><th>CLV</th>
+       </tr></thead><tbody>${Object.keys(table).sort().map(l => {
+        const t = table[l]; const d = t.decisions || {};
+        const other = Object.keys(d).filter(k =>
+          !['BET_PAPER', 'NO_EDGE', 'NO_QUOTE'].includes(k))
+          .reduce((a, k) => a + d[k], 0);
+        return `<tr><td>${esc(l)}</td><td>${t.matches}</td>
+          <td>${d.BET_PAPER || 0}</td><td>${d.NO_EDGE || 0}</td>
+          <td>${d.NO_QUOTE || 0}</td><td>${other}</td>
+          <td class="${t.pnl_cents >= 0 ? 'green' : 'red'}"
+           >${money(t.pnl_cents)}</td>
+          <td>${t.clv_n ? pct(t.clv_avg_frac) + ' (n=' + t.clv_n + ')'
+            : '—'}</td></tr>`;
+      }).join('')}</tbody></table>`
+    : '<div class="dim">No matches yet</div>';
+
+  const health = (desk.health && desk.health.leagues) || {};
+  const healthHtml = Object.keys(health).length
+    ? Object.keys(health).sort().map(l => {
+      const h = health[l] || {};
+      const step = (k) => h['last_' + k + '_ok_utc']
+        ? `<span class="green">ok ${esc(h['last_' + k + '_ok_utc']
+          .slice(11, 19))}Z</span>`
+        : (h['last_' + k + '_blocked_utc']
+          ? `<span class="orange">blocked</span>` : '<span class="dim">—'
+            + '</span>');
+      const flags = [];
+      if ((h.open_lane_flags || {}).stuck)
+        flags.push(h.open_lane_flags.stuck.length + ' stuck');
+      if (l === 'WSL' && ((h.open_lane_flags || {}).wsl_settle_health
+        || []).some(b => b.status === 'STALE_CORPUS'))
+        flags.push('STALE_CORPUS');
+      return `<div class="kv"><span class="kk">${esc(l)}</span>
+        <span class="vv">forecast ${step('forecast')} · quote
+        ${step('quote')} · decide ${step('decide')} · upcoming
+        ${h.upcoming_in_window || 0}${flags.length
+          ? ' · <span class="orange">' + esc(flags.join(', ')) + '</span>'
+          : ''}</span></div>`;
+    }).join('')
+    : '<div class="dim">No lane health yet</div>';
+  const quota = (desk.health || {}).quota_provider || {};
+  const provLine = quota.credits_day != null
+    ? `<div class="kv"><span class="kk">provider credits today</span>
+       <span class="vv">${esc(quota.credits_day)}/4 · month
+       ${esc(quota.credits_month ?? '—')}/120</span></div>` : '';
+
+  return `<div class="grid2" style="margin-bottom:12px">
+    <div class="card"><div class="sec-title">STUCK / DEAD-LETTER QUEUE
+      (W2.4)</div>${stuckHtml}</div>
+    <div class="card"><div class="sec-title">CLOSING LINE VALUE (CLV)
+      (W2.4)</div>${clvHtml}${provLine}</div>
+  </div>
+  <div class="card" style="margin-bottom:12px"><div class="sec-title">
+    PER-LEAGUE TABLE (W2.4)</div>${tableHtml}</div>
+  <div class="card" style="margin-bottom:12px"><div class="sec-title">
+    LEAGUE HEALTH (W2.4)</div>${healthHtml}</div>`;
 }
 
 function cadenceText(c) {

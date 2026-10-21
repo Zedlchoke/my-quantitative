@@ -30,6 +30,15 @@ function statusBucket(status) {
   return 'OTHER';
 }
 
+// W2.1 (PAPERDESK-FIXALL-NCAA-V1): incremental read. The full file is
+// hashed on the FIRST read; afterwards only the APPENDED bytes are read and
+// hash-verified against the trusted tail (same law as the Python
+// VerifiedLedgerView: any link/hash failure, parse failure, or size shrink
+// => immediate full re-parse; a chain failure is NEVER cached). The
+// projections are rebuilt in memory from the verified rows; the ledger
+// FILE stays the only history authority.
+let _incrCache = null;   // { path, size, mtimeMs, tailSha, rows }
+
 function parseLedger(path) {
   const snap = {
     rows: [], chain: { ok: false, errors: [], verified_rows: 0 },
@@ -42,6 +51,43 @@ function parseLedger(path) {
     return snap;
   }
   snap.mtime = stat.mtimeMs; snap.size = stat.size;
+
+  const cache = _incrCache && _incrCache.path === path ? _incrCache : null;
+  if (cache && stat.size === cache.size) {
+    // byte-identical to the VERIFIED snapshot: reuse (no disk read)
+    return projectRows(snap, cache.rows, cache.chain);
+  }
+  if (cache && stat.size > cache.size) {
+    try {
+      const fd = fs.openSync(path, 'r');
+      const buf = Buffer.alloc(stat.size - cache.size);
+      fs.readSync(fd, buf, 0, buf.length, cache.size);
+      fs.closeSync(fd);
+      const lines = buf.toString('utf8').split('\n')
+        .filter(l => l.trim().length);
+      const newRows = [];
+      let prev = cache.tailSha;
+      for (let i = 0; i < lines.length; i++) {
+        const row = jsonParseTyped(lines[i]);
+        if (row.prev_row_sha256 !== prev)
+          throw new Error(`appended row ${i}: prev_row_sha256 mismatch`);
+        if (!row.row_sha256)
+          throw new Error(`appended row ${i}: missing row_sha256`);
+        if (row.row_sha256 !== rowSha256(row))
+          throw new Error(`appended row ${i}: row_sha256 mismatch`);
+        prev = row.row_sha256;
+        newRows.push(row);
+      }
+      const rows = cache.rows.concat(newRows);
+      const chain = { ok: true, errors: [], verified_rows: rows.length };
+      _incrCache = { path, size: stat.size, mtimeMs: stat.mtimeMs,
+        tailSha: prev, rows, chain };
+      return projectRows(snap, rows, chain);
+    } catch (e) {
+      // fall through to the full parse (fail-closed re-verify)
+    }
+  }
+
   let raw;
   try { raw = fs.readFileSync(path, 'utf8'); } catch (e) {
     snap.parseError = 'unreadable';
@@ -52,7 +98,8 @@ function parseLedger(path) {
   for (let i = 0; i < lines.length; i++) {
     try { rows.push(jsonParseTyped(lines[i])); } catch (e) {
       snap.parseError = `unparseable JSON at line ${i + 1}`;
-      snap.chain.errors = [`line ${i + 1}: parse failure`];
+      snap.chain = { ok: false, errors: [`line ${i + 1}: parse failure`],
+        verified_rows: 0 };
       snap.rows = rows;
       return snap;
     }
@@ -71,10 +118,21 @@ function parseLedger(path) {
     }
     prev = row.row_sha256 || prev;
   });
-  snap.chain = errors.length
+  const chain = errors.length
     ? { ok: false, errors: errors.slice(0, 10), verified_rows: 0 }
     : { ok: true, errors: [], verified_rows: rows.length };
+  if (chain.ok) {
+    // only a VERIFIED chain is cached (a failure is never reused)
+    _incrCache = { path, size: stat.size, mtimeMs: stat.mtimeMs,
+      tailSha: rows.length ? rows[rows.length - 1].row_sha256
+        : '0'.repeat(64), rows, chain };
+  }
+  return projectRows(snap, rows, chain);
+}
 
+function projectRows(snap, rows, chain) {
+  snap.rows = rows;
+  snap.chain = chain;
   snap.genesis = rows.find(r => r.type === 'GENESIS') || null;
   snap.isSandbox = !!(snap.genesis && snap.genesis.sandbox);
   if (!snap.chain.ok) return snap;        // withhold everything else

@@ -488,8 +488,12 @@ def test_live_server_binds_localhost_and_serves(env):
         with urllib.request.urlopen(
                 f"http://127.0.0.1:{port}/", timeout=5) as r:
             html = r.read().decode()
-        assert "paper desk" in html and "SANDBOX" in html
-        assert "AUTO_REFRESH_SECONDS=8" in html       # 8s <= 10s refresh law
+        # W2.3 (PAPERDESK-FIXALL-NCAA-V1): the Electron app is the ONE
+        # rendering surface; "/" now serves the surface note JSON and the
+        # state lives at /api/state only.
+        note = json.loads(html)
+        assert note.get("api") == "/api/state"
+        assert "Electron" in note.get("surface", "")
         with urllib.request.urlopen(
                 f"http://127.0.0.1:{port}/api/state", timeout=5) as r:
             state = json.loads(r.read())
