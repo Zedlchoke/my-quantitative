@@ -1508,7 +1508,8 @@ class OpsService:
             summary = ai_producer.produce_for_pending(
                 self.data_root,
                 worktree_root=Path(__file__).resolve().parents[2],
-                sandbox=self.sandbox)
+                sandbox=self.sandbox,
+                gamma_urls_by_mid=self._gamma_urls_for_pending())
             if summary["written"] or summary["invalid"] or \
                     summary["provider_failed"]:
                 self.incident("AI_PRODUCER_PASS",
@@ -1516,6 +1517,27 @@ class OpsService:
         except Exception as e:
             self.incident("AI_PRODUCER_ERROR",
                           f"{type(e).__name__}: {e}")
+
+    def _gamma_urls_for_pending(self) -> dict:
+        """F5 (owner plan 2026-10-22): the match's Polymarket GAMMA event
+        URL, threaded from the ledger's MARKET_QUOTE rows (event_id) into
+        the evidence collector. Read-only best-effort over the in-memory
+        ledger view; any absence is simply no URL (the collector journals
+        the skip honestly)."""
+        try:
+            _core, led, _lp = self._ledger_state()
+            out: dict = {}
+            for r in led.rows:
+                if r.get("type") != "MARKET_QUOTE":
+                    continue
+                mid = str(r.get("match_id") or "")
+                eid = r.get("event_id") or                     (r.get("quote") or {}).get("event_id")
+                if mid and eid:
+                    out[mid] = ("https://gamma-api.polymarket.com/events"
+                                f"?id={eid}")
+            return out
+        except Exception:
+            return {}
 
     def _ai_pending_view(self) -> list[dict]:
         from research.papertrade_exec import ai_gate_v2 as G

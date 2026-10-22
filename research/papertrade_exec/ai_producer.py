@@ -1290,7 +1290,8 @@ def produce_for_pending(data_root: Path, *, worktree_root: Path,
                         sandbox: bool = False,
                         min_retry_minutes: int = PROVIDER_RETRY_MIN_MINUTES,
                         tavily_transport=None, page_transport=None,
-                        fr_over: dict | None = None
+                        fr_over: dict | None = None,
+                        gamma_urls_by_mid: dict | None = None
                         ) -> dict:
     """Produce v2 opinions for the PENDING_AI queue through the
     strongest-first slot cascade. Returns a summary; per-entry outcomes
@@ -1438,7 +1439,8 @@ def produce_for_pending(data_root: Path, *, worktree_root: Path,
             away=_ctx.get("away") or "",
             journal_dir=G.ai_review_dir(data_root, sandbox) / "evidence",
             kickoff_utc=_ctx.get("kickoff_utc"),
-            team_ids=_ctx.get("team_ids"))
+            team_ids=_ctx.get("team_ids"),
+            gamma_event_url=(gamma_urls_by_mid or {}).get(mid))
         payload = _build_user_payload(entry, research)
         research_by_mid[mid] = research
         if fresearch.get("enabled") and not fresearch.get("shadow"):
@@ -1661,7 +1663,8 @@ def produce_for_pending(data_root: Path, *, worktree_root: Path,
                     journal_dir=G.ai_review_dir(data_root, sandbox) /
                     "evidence",
                     kickoff_utc=_ctx.get("kickoff_utc"),
-                    team_ids=_ctx.get("team_ids"))
+                    team_ids=_ctx.get("team_ids"),
+                    gamma_event_url=(gamma_urls_by_mid or {}).get(mid))
             try:
                 prompt_v3 = prompt_v3 or _frozen_prompt(worktree_root,
                                                         "AI_PROMPT_V3")

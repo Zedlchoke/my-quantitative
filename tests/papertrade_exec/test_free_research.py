@@ -693,13 +693,15 @@ def test_telemetry_and_research_split(env, monkeypatch, cfg, tmp_path):
 # ------------------------------------------------------------------ R5 ----
 
 def test_shadow_plane_isolation_real_path_stays_v2(env, monkeypatch, cfg):
+    """ERRATUM 2026-10-22: production default shadow=false since the owner's
+    activation GO; this test sets the flag explicitly to exercise the plane."""
     """R5 delivered default: the REAL opinion is produced by the V2
     base-packet path (legacy str transport, V2 prompt/sha); the shadow
     opinion lives ONLY under shadow/opinions_v3 with the V3 sha; the
     comparison pairs them."""
     chash = _mark_pending(env["data"])
     _base_evidence(monkeypatch)
-    _wire_cfg(monkeypatch, cfg, models=[HEAD])
+    _wire_cfg(monkeypatch, cfg, models=[HEAD], fr={"shadow": True})
     real_calls = []
 
     def transport(model, system, payload):
@@ -743,7 +745,7 @@ def test_shadow_never_consumed_by_the_gate(env, monkeypatch, cfg):
     the gate reads opinions_v2 only."""
     chash = _mark_pending(env["data"])
     _base_evidence(monkeypatch)
-    _wire_cfg(monkeypatch, cfg, models=[HEAD])
+    _wire_cfg(monkeypatch, cfg, models=[HEAD], fr={"shadow": True})
     transport = _research_transport([
         json.dumps(_verdict())])
     P.produce_for_pending(env["data"], worktree_root=REPO,
@@ -757,9 +759,10 @@ def test_shadow_never_consumed_by_the_gate(env, monkeypatch, cfg):
 
 
 def test_shadow_comparison_readiness_rule(env, monkeypatch, cfg):
+    """ERRATUM 2026-10-22: shadow flag set explicitly (production default false)."""
     chash = _mark_pending(env["data"])
     _base_evidence(monkeypatch)
-    _wire_cfg(monkeypatch, cfg, models=[HEAD])
+    _wire_cfg(monkeypatch, cfg, models=[HEAD], fr={"shadow": True})
     transport = _research_transport([
         json.dumps(_verdict())])
     P.produce_for_pending(env["data"], worktree_root=REPO,
