@@ -161,14 +161,16 @@ def load_opinion_for(data_root: Path, match_id: str,
         return None, why
     op = dict(op)
     op["verdict"] = str(op["verdict"]).strip().upper()   # L1: canonical
-    # U0/M1 prompt-hash consumption gate: the opinion's prompt sha must
-    # equal the REGISTERED sha (digest-blanked formula) — a stale/re-hashed
-    # prompt voids the opinion.
+    # U0/M1 prompt-hash consumption gate (version-aware since R3): the
+    # opinion's prompt sha must equal the REGISTERED sha OF ITS OWN
+    # prompt_version (digest-blanked formula) — a stale/re-hashed prompt
+    # voids the opinion; an unknown version fails closed.
     try:
         from research.papertrade_exec.ai_producer import \
             registered_prompt_sha
         reg_sha, _, _ = registered_prompt_sha(
-            Path(__file__).resolve().parents[1].parent)
+            Path(__file__).resolve().parents[1].parent,
+            version=str(op.get("prompt_version") or "AI_PROMPT_V2"))
     except Exception:
         return None, "registered prompt sha unmeasurable — fail-closed"
     if str(op.get("prompt_sha256") or "") != reg_sha:

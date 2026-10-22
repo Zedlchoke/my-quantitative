@@ -296,13 +296,43 @@ function deskBlocksHtml() {
         </span></div>
        <div class="dim">computed ${esc(sc.computed_at_utc)}</div></div>`
     : '';
+  const fr = sc.ai_research || {};
+  const frCost = (side) => ((fr.research_cost || {})[side] || {});
+  const frGroup = (g, side) => g && g.verdicts
+    ? `<div class="kv"><span class="kk">passes / verdicts / vetoes</span>
+       <span class="vv">${esc(g.passes ?? 0)} / ${esc(g.verdicts)} /
+        ${esc(g.vetoes)}</span></div>
+       <div class="kv"><span class="kk">veto rate</span>
+        <span class="vv">${g.veto_rate == null ? '—'
+          : esc((g.veto_rate * 100).toFixed(1)) + '%'}</span></div>
+       <div class="kv"><span class="kk">RUMOR_UNCORROBORATED</span>
+        <span class="vv">${esc(g.rumor_uncorroborated ?? 0)}</span></div>
+       <div class="kv"><span class="kk">blocked set, hypothetical PnL
+        (scored ${esc(g.blocked_scored ?? 0)})</span>
+        <span class="vv ${(g.blocked_hypothetical_pnl_cents || 0) >= 0
+          ? 'green' : 'red'}">${money(
+            g.blocked_hypothetical_pnl_cents || 0)}</span></div>
+       <div class="kv"><span class="kk">Tavily / pages / provider s</span>
+        <span class="vv">${esc(frCost(side).tavily_calls ?? 0)} /
+        ${esc(g.page_fetches ?? 0)} /
+        ${esc(frCost(side).provider_seconds ?? 0)}</span></div>`
+    : '<div class="dim">no verdicts yet</div>';
+  const aiResearchHtml = fr.schema
+    ? `<div class="card" style="margin-bottom:12px"><div class="sec-title">
+       AI RESEARCH (free-research, weekly)</div>
+       <div class="kv"><span class="kk">base_only — V2 real path</span>
+       </div>${frGroup(fr.real, 'real')}
+       <div class="kv"><span class="kk">researched — V3 tools (shadow
+        until owner GO)</span></div>${frGroup(fr.shadow, 'shadow')}</div>`
+    : '';
   const quota = (desk.health || {}).quota_provider || {};
   const provLine = quota.credits_day != null
     ? `<div class="kv"><span class="kk">provider credits today</span>
        <span class="vv">${esc(quota.credits_day)}/4 · month
        ${esc(quota.credits_month ?? '—')}/120</span></div>` : '';
 
-  return `${ncaaLabelHtml}${scorecardHtml}<div class="grid2"
+  return `${ncaaLabelHtml}${scorecardHtml}${aiResearchHtml}
+    <div class="grid2"
     style="margin-bottom:12px">
     <div class="card"><div class="sec-title">STUCK / DEAD-LETTER QUEUE
       (W2.4)</div>${stuckHtml}</div>

@@ -1300,7 +1300,9 @@ class OpsService:
             core, led, _lp = self._ledger_state()
             sc = ai_scorecard.compute_scorecard(
                 ledger_rows=led.rows,
-                opinions_dir=self.data_root / "ai_review" / "opinions_v2")
+                opinions_dir=self.data_root / "ai_review" / "opinions_v2",
+                telemetry_path=self.data_root / "ai_review" /
+                "telemetry.jsonl")
             sc["computed_at_epoch"] = _t.time()
             sc["computed_at_utc"] = now_utc()
             _atomic_write(p, sc)

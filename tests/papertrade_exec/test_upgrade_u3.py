@@ -150,7 +150,8 @@ def _produce(env, monkeypatch, *, transport, models, balance_transport=None,
     return P.produce_for_pending(
         env["data"], worktree_root=REPO, provider_transport=transport,
         balance_transport=balance_transport,
-        sandbox=sandbox, min_retry_minutes=min_retry_minutes)
+        sandbox=sandbox, min_retry_minutes=min_retry_minutes,
+        fr_over={"enabled": False})   # free-research battery is its own file
 
 
 def _load_cfg():
@@ -183,14 +184,21 @@ def _load_pending_until(slot):
 
 def test_config_is_the_strongest_first_chain(cfg):
     """QD4 config-first: model_id head + fallback order verbatim + the two
-    U3 knobs. Slugs are NOT verified against the live models list here
-    (PENDING, no network budget) — a dead slug dies as CONFIG_BROKEN at
-    runtime (see the 404 test below)."""
+    U3 knobs. ERRATUM (R0b, owner orders 2026-10-22): #1 the HEAD stage
+    became deepseek/deepseek-v4.1-flash-1017 (per-stage reasoning effort
+    max); #2 the chain is DeepSeek-ONLY — ONE fallback
+    deepseek/deepseek-v4.1-flash (no plain deepseek-v4.1 slug exists on
+    the live OpenRouter list; the desk pinned the live flash variant).
+    The whole multi-vendor chain was removed by order #2. Slugs are NOT
+    verified against the live models list here; a dead slug dies as
+    CONFIG_BROKEN at runtime (see the 404 test below)."""
     prov = cfg["ai_provider"]
-    assert prov["model_id"] == ANTHROPIC_HEAD
-    assert prov["fallback_models"] == OWNER_ORDER
+    assert prov["model_id"] == "deepseek/deepseek-v4.1-flash-1017"
+    assert prov["fallback_models"] == ["deepseek/deepseek-v4.1-flash"]
     assert prov["max_budget_seconds"] == 600
     assert prov["low_balance_usd"] == 10.0
+    assert prov["reasoning_effort_by_model"] == \
+        {"deepseek/deepseek-v4.1-flash-1017": "max"}
 
 
 def test_producer_walks_config_order_strongest_first(env, monkeypatch, cfg):

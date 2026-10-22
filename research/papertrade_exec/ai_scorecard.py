@@ -41,6 +41,119 @@ DOWNGRADE_MIN_SCORED = 100          # veto_scored_actual gate (suggest-only)
 
 _VOID_RESULTS = ("VOID", "PUSH", "CANCELLED", "POSTPONED_NO_RESCHEDULE")
 
+RUMOR_CODE = "RUMOR_UNCORROBORATED"
+
+
+def compute_research_split(*, telemetry_path: Path | None = None,
+                           opinions_dir: Path | None = None,
+                           shadow_opinions_dir: Path | None = None,
+                           ledger_rows: list[dict] | None = None,
+                           results_by_mid: dict | None = None) -> dict:
+    """R4 (owner order 2026-10-22): does FREE research pay? Splits the
+    scoring passes recorded in ai_review/telemetry.jsonl (real plane) and
+    ai_review/shadow/telemetry.jsonl (shadow plane) into base_only vs
+    researched, and reports per group: veto rate, the BLOCKED set's
+    hypothetical PnL under the frozen settle law, RUMOR_UNCORROBORATED
+    counted separately, and the research cost (Tavily calls, page
+    fetches, provider time). Read-only; a missing telemetry file yields
+    an honest zero group, never a guess."""
+    opinions: dict = {}
+    for d in (opinions_dir, shadow_opinions_dir):
+        if not d:
+            continue
+        d = Path(d)
+        for f in sorted(d.glob("*.json")):
+            try:
+                op = json.loads(f.read_text())
+            except (json.JSONDecodeError, OSError):
+                continue
+            if isinstance(op, dict) and op.get("candidate_hash"):
+                opinions[(str(op.get("match_id")),
+                          str(op.get("candidate_hash")))] = op
+    gate_hypo: dict = {}
+    for r in (ledger_rows or []):
+        if r.get("type") != "DECISION":
+            continue
+        g = r.get("ai_gate") or {}
+        ch = g.get("candidate_hash")
+        if ch and g.get("hypothetical_leg") and \
+                g.get("hypothetical_stake_cents") and \
+                g.get("hypothetical_decimal_odds"):
+            gate_hypo[str(ch)] = g
+    groups: dict = {"base_only": _grp_slot(), "researched": _grp_slot()}
+    if telemetry_path:
+        try:
+            lines = Path(telemetry_path).read_text().splitlines()
+        except OSError:
+            lines = []
+        for line in lines:
+            try:
+                t = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            grp = groups.get(str(t.get("research_depth") or ""))
+            if grp is None:
+                continue
+            grp["passes"] += 1
+            grp["tavily_calls"] += int(t.get("tavily_calls") or 0)
+            grp["page_fetches"] += int(t.get("pages") or 0)
+            grp["provider_seconds"] += float(t.get("elapsed_s") or 0.0)
+            outcome = str(t.get("outcome") or "")
+            if outcome in ("ALLOW", "VETO"):
+                grp["verdicts"] += 1
+                if outcome == "VETO":
+                    grp["vetoes"] += 1
+                op = opinions.get((str(t.get("match_id")),
+                                   str(t.get("candidate_hash"))))
+                codes = [str(c).upper() for c in
+                         ((op or {}).get("reason_codes") or [])]
+                if RUMOR_CODE in codes:
+                    grp["rumor_uncorroborated"] += 1
+                if outcome == "VETO":
+                    g = gate_hypo.get(str(t.get("candidate_hash")))
+                    res = (results_by_mid or {}).get(
+                        str(t.get("match_id")))
+                    if g and res:
+                        grp["blocked_hypothetical_pnl_cents"] += _result_pnl(
+                            int(g["hypothetical_stake_cents"]),
+                            float(g["hypothetical_decimal_odds"]),
+                            str(res), str(g["hypothetical_leg"]),
+                            str(res))
+                        grp["blocked_scored"] += 1
+    for grp in groups.values():
+        grp["veto_rate"] = (grp["vetoes"] / grp["verdicts"]) \
+            if grp["verdicts"] else None
+    return {
+        "schema": "ai_research_split@1",
+        "note": ("base_only = the V2 base-packet path; researched = the "
+                 "V3 tool-calling path (real plane telemetry lines, "
+                 "shadow plane telemetry lines marked plane=shadow). "
+                 "blocked hypothetical PnL under the frozen settle law; "
+                 "unscored blocks (no result) excluded."),
+        "real": groups["base_only"],
+        "shadow": groups["researched"],
+        "research_cost": {
+            "real": {"tavily_calls": groups["base_only"]["tavily_calls"],
+                     "page_fetches":
+                         groups["base_only"]["page_fetches"],
+                     "provider_seconds": round(
+                         groups["base_only"]["provider_seconds"], 1)},
+            "shadow": {"tavily_calls":
+                       groups["researched"]["tavily_calls"],
+                       "page_fetches":
+                       groups["researched"]["page_fetches"],
+                       "provider_seconds": round(
+                           groups["researched"]["provider_seconds"], 1)},
+        },
+    }
+
+
+def _grp_slot() -> dict:
+    return {"passes": 0, "verdicts": 0, "vetoes": 0, "veto_rate": None,
+            "rumor_uncorroborated": 0, "blocked_scored": 0,
+            "blocked_hypothetical_pnl_cents": 0, "tavily_calls": 0,
+            "page_fetches": 0, "provider_seconds": 0.0}
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -96,7 +209,8 @@ def _load_gate_events(path: Path | None) -> dict:
 def compute_scorecard(*, ledger_rows: list[dict], opinions_dir: Path,
                       min_scored_for_downgrade: int = DOWNGRADE_MIN_SCORED,
                       results_by_mid: dict | None = None,
-                      gate_events_path: Path | None = None) -> dict:
+                      gate_events_path: Path | None = None,
+                      telemetry_path: Path | None = None) -> dict:
     """Compute the AI-layer scorecard under the U2 truth laws. Read-only;
     never writes the ledger; suggests, never acts."""
     opinions_dir = Path(opinions_dir)
@@ -290,6 +404,14 @@ def compute_scorecard(*, ledger_rows: list[dict], opinions_dir: Path,
                 if reason_total else None,
         },
     }
+
+    # --- FREE-RESEARCH split (R4, owner order 2026-10-22) ------------------
+    out["ai_research"] = compute_research_split(
+        telemetry_path=telemetry_path,
+        opinions_dir=opinions_dir,
+        shadow_opinions_dir=opinions_dir.parent / "shadow" / "opinions_v3",
+        ledger_rows=ledger_rows,
+        results_by_mid=results_by_mid)
 
     # --- downgrade proposal (suggest-only; U2 denominator law) --------------
     if veto_scored_actual >= min_scored_for_downgrade:
