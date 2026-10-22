@@ -191,10 +191,10 @@ def test_balance_clock_management_key_credits_fallback(monkeypatch):
     def fake_urlopen(req, timeout=None):
         gets["n"] += 1
         url = getattr(req, "full_url", "")
-        if url.endswith("/key") and gets["n"] == 1:
-            import urllib.error
-            raise urllib.error.HTTPError(url, 401, "Unauthorized",
-                                         {}, None)
+        if url.endswith("/key"):
+            # live finding: a MANAGEMENT key gets 200 with null limit
+            return R({"data": {"is_management_key": True,
+                               "limit": None, "limit_remaining": None}})
         if url.endswith("/credits"):
             return R({"data": {"total_credits": 10, "total_usage": 0}})
         return R({"data": {"limit": None, "limit_remaining": None}})
@@ -208,14 +208,16 @@ def test_balance_clock_management_key_credits_fallback(monkeypatch):
     def fake_urlopen_none(req, timeout=None):
         url = getattr(req, "full_url", "")
         if url.endswith("/key"):
-            import urllib.error
-            raise urllib.error.HTTPError(url, 401, "Unauthorized",
-                                         {}, None)
-        return R({"data": {}})                   # credits shape unreadable
+            # plain inference key, unlimited: /credits must NOT be read
+            # (key-scoped view would fabricate a number) -> honest None
+            return R({"data": {"is_management_key": False,
+                               "limit": None, "limit_remaining": None}})
+        raise AssertionError("credits must not be dialed for an "
+                             "inference key")
 
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen_none)
     assert P.check_balance("https://openrouter.ai/api/v1/chat/completions",
-                           "mgmt-key") is None
+                           "infer-key") is None
 
 
 def test_config_carries_balance_key_ref(cfg):
