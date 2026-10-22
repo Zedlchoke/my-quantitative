@@ -29,8 +29,9 @@
      đúng interpreter production `apps/paperdesk/main/runner.js:13`):
      **HTTP 200, 5 kết quả, latency 2.44 s** — khóa SỐNG.
    - Nhật ký nguyên văn (cả 3 lần, gồm cả lỗi):
-     `evidence/ai_free_research/r0_tavily_smoke_20261022T012646Z.json` và
-     `r0_tavily_smoke_20261022T012958Z.json` (lần 200).
+     `evidence/ai_free_research/r0_tavily_smoke_20261022T012646Z.json`
+     (lỗi SSL), `…T013055Z.json` (401 do khóa rỗng), và
+     `…T013201Z.json` (lần 200).
 4. **Hạn mức gói dev tại thời điểm xây** (tài liệu Tavily,
    docs.tavily.com/documentation/api-credits, đọc 2026-10-22):
    - Khuôn khóa `tvly-dev-` = gói dev; tài liệu gọi bậc miễn phí là
