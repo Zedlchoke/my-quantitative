@@ -167,6 +167,64 @@ def test_reasoning_effort_rides_the_body_of_its_stage_only(monkeypatch):
     assert "reasoning" not in captured["body"]
 
 
+# ------------------------------------------------------------------ R0c ----
+
+def test_balance_clock_management_key_credits_fallback(monkeypatch):
+    """R0c: the management key is refused by /key (401) -> the transport
+    derives limit_remaining from /credits (total_credits - total_usage).
+    An unreadable answer stays None — never a fabricated number."""
+    gets = {"n": 0}
+
+    class R:
+        def __init__(self, payload):
+            self._p = json.dumps(payload).encode()
+
+        def read(self):
+            return self._p
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        gets["n"] += 1
+        url = getattr(req, "full_url", "")
+        if url.endswith("/key") and gets["n"] == 1:
+            import urllib.error
+            raise urllib.error.HTTPError(url, 401, "Unauthorized",
+                                         {}, None)
+        if url.endswith("/credits"):
+            return R({"data": {"total_credits": 10, "total_usage": 0}})
+        return R({"data": {"limit": None, "limit_remaining": None}})
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    bal = P.check_balance("https://openrouter.ai/api/v1/chat/completions",
+                          "mgmt-key")
+    assert gets["n"] == 2
+    assert bal == 10.0
+
+    def fake_urlopen_none(req, timeout=None):
+        url = getattr(req, "full_url", "")
+        if url.endswith("/key"):
+            import urllib.error
+            raise urllib.error.HTTPError(url, 401, "Unauthorized",
+                                         {}, None)
+        return R({"data": {}})                   # credits shape unreadable
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen_none)
+    assert P.check_balance("https://openrouter.ai/api/v1/chat/completions",
+                           "mgmt-key") is None
+
+
+def test_config_carries_balance_key_ref(cfg):
+    prov = cfg["ai_provider"]
+    assert prov["balance_key_ref"] == \
+        "com.myquant.paperdesk / openrouter-management-key"
+    assert "balance clock ONLY" in prov["balance_key_note"]
+
+
 # ------------------------------------------------------------------ R1 ----
 
 @pytest.mark.parametrize("url,kind", [

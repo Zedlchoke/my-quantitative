@@ -605,22 +605,31 @@ def key_endpoint_for(endpoint: str) -> str:
 
 
 def _default_balance_transport(url: str, key: str) -> dict:
-    """GET the key endpoint ONLY. R0b live finding (2026-10-22): the
-    owner's OpenRouter key is ACCOUNT-LEVEL (limit=null,
-    limit_remaining=null) — the /credits endpoint reachable with it is
-    key-scoped provisioning data (total_credits=0), NOT the account
-    balance, so no reachable endpoint reports the USD the owner topped
-    up. The honest return is an unlimited-key envelope -> check_balance
-    yields None: the clock never holds and never revives a 402 hold by
-    itself. Fabricating a number here would HOLD every paid slot
-    forever (negative "balance") — worse than blind. See the workstream
-    handover: revival of 402 holds is an owner action until a
-    provisioning key with credits scope is supplied."""
-    req = urllib.request.Request(
-        url, method="GET",
-        headers={"Authorization": f"Bearer {key}"})
-    with urllib.request.urlopen(req, timeout=15) as r:
-        return json.loads(r.read().decode("utf-8"))
+    """Balance-clock transport. With the INFERENCE key it GETs the /key
+    endpoint (limit_remaining). With the OWNER'S MANAGEMENT key (config
+    `ai_provider.balance_key_ref`, law: balance clock ONLY) /key refuses
+    (401/403) — the fallback then GETs <base>/credits and derives
+    limit_remaining = total_credits − total_usage. R0c live check
+    (2026-10-22): total_credits 10, total_usage 0 → 10.00 USD. Any
+    unreadable answer stays None — NEVER a fabricated number."""
+    def _get(u: str) -> dict:
+        req = urllib.request.Request(
+            u, method="GET",
+            headers={"Authorization": f"Bearer {key}"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return json.loads(r.read().decode("utf-8"))
+    try:
+        return _get(url)
+    except urllib.error.HTTPError as e:
+        if e.code not in (401, 403):
+            raise
+    # management-key path: /key refused -> account credits
+    base = url.rsplit("/key", 1)[0]
+    credits = _get(base + "/credits").get("data") or {}
+    tc, tu = credits.get("total_credits"), credits.get("total_usage")
+    if isinstance(tc, (int, float)) and isinstance(tu, (int, float)):
+        return {"data": {"limit_remaining": float(tc) - float(tu)}}
+    return {}                                    # unmeasurable -> None
 
 
 def check_balance(endpoint: str, key: str, *,
@@ -1320,11 +1329,24 @@ def produce_for_pending(data_root: Path, *, worktree_root: Path,
             key = (keychain_reader or keychain_key)(key_ref)
         except Exception:
             key = None                              # honest degrade below
+    # R0c (owner order 2026-10-22): the balance clock may use a DEDICATED
+    # management key (config ai_provider.balance_key_ref) — balance-clock
+    # reads ONLY; never key administration. A vanished balance key
+    # degrades honestly to the chat key (whose view may be None).
+    balance_key_ref = str(prov.get("balance_key_ref") or "")
+    balance_key = None
+    if balance_key_ref:
+        try:
+            balance_key = (keychain_reader or keychain_key)(balance_key_ref)
+        except Exception:
+            balance_key = None
+    clock_key = balance_key if balance_key is not None else key
     balance = None
     if balance_transport is not None or provider_transport is None:
-        balance = check_balance(endpoint, key or "",
+        balance = check_balance(endpoint, clock_key or "",
                                 transport=balance_transport) \
-            if key is not None or balance_transport is not None else None
+            if clock_key is not None or balance_transport is not None \
+            else None
     cascade_changed = False
     if balance is not None:
         if balance < low_balance:
@@ -1459,7 +1481,7 @@ def produce_for_pending(data_root: Path, *, worktree_root: Path,
                     sandbox=sandbox, now_dt=_now_dt(),
                     balance_transport=balance_transport,
                     low_balance_usd=low_balance, endpoint=endpoint,
-                    key=key, check_balance_on_402=balance_transport
+                    key=clock_key, check_balance_on_402=balance_transport
                     is not None or provider_transport is None)
                 if trig == TRIGGER_KEY_ALARM:
                     break                        # ALL slots down now
