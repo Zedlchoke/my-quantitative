@@ -1,0 +1,80 @@
+{
+  "verifier": "fresh-context",
+  "utc": "2026-10-08T09:36:29Z",
+  "head_verified": "958aaa65b6446d87a61f240543bc0817fbba751b",
+  "items": [
+    {
+      "id": 1,
+      "name": "GIT: worktree HEAD/branch/clean, commit paths, root registry-only, no push",
+      "verdict": "PASS",
+      "evidence": "git -C <worktree> rev-parse HEAD => 958aaa65b6446d87a61f240543bc0817fbba751b; branch => orca/spt-exec-v1-integration; status --porcelain => empty (clean). git show --stat 958aaa65 => exactly 7 files: ERRATUM_EXEC_5_LIVE_SERVICE.md, ops_launchd/OpenPaperDeskLive.command, ops_launchd/com.myquant.sptexec.ops.plist, research/papertrade_exec/{live_dashboard,ops_service,results_fetch}.py, tests/papertrade_exec/test_ops_live_service.py (1846 insertions, no other paths). Root main: b046e153 touches only plans/CYCLE_REGISTRY.{json,events.jsonl}; root HEAD has advanced to 2dc84ba9 (see F-2) touching only plans/ACTIVE_CYCLES.json. rev-list --left-right --count origin/main...main => '0 91' (origin 0 ahead: nothing pushed). No remote ops performed by verifier."
+    },
+    {
+      "id": 2,
+      "name": "REGISTRY: cycle head + LIVE_SERVICE_ACTIVE phase + D-4 drift recorded",
+      "verdict": "PASS",
+      "evidence": "researchctl cycle list => 'SPORTS-PAPERTRADE-EXEC-V1 ACTIVE_LIGHT 0/0 958aaa6 orca/spt-exec-v1-integration'. plans/CYCLE_REGISTRY.json phase contains 'GO_CONSUMED CAPTURE_ACTIVE LIVE_SERVICE_ACTIVE'. go_phrase_state field still 'REGISTERED_NOT_CONSUMED'; phase text carries DRIFT NOTE citing journal 2026-10-07T11:19:08Z + GO_TOKEN.json and ERRATUM_EXEC_5 D-4 ('## D-4 - Registry drift noted (no manual edit)', CAS-only policy). Root git status clean (registry files match HEAD, no hand edit); registry deltas arrived only via commits b046e153 (CYCLE_REGISTRY.*) and 2dc84ba9 (ACTIVE_CYCLES.json projection)."
+    },
+    {
+      "id": 3,
+      "name": "LEDGER: pinned-core verify_chain, 11 rows, equity 100800, exposure 0, 2 SETTLEMENTs",
+      "verdict": "PASS",
+      "evidence": "Pinned-core one-liner => (True, [], 11, 100800, 0) exactly as expected. Row 9 SETTLEMENT: match_id 401918297, result HOME, outcome_for_leg WIN, pnl_cents 395, settled_at_utc 2026-10-08T09:21:04Z, source_ref 'espn_scoreboard wnba_nba path=wnba event=401918297 completed=true detail=Final/OT home=ATL:101 away=NY:98 fetched_at=2026-10-08T09:21:03Z'. Row 10 SETTLEMENT: match_id 401918298, HOME WIN +405, settled 2026-10-08T09:21:04Z, source_ref '...event=401918298 completed=true detail=Final home=GS:83 away=LV:81 fetched_at=2026-10-08T09:21:04Z'. Exactly 2 SETTLEMENT rows; both source_refs contain espn_scoreboard + event id + fetched_at. Live-round contamination excluded: ops/state/incidents.jsonl first row SERVICE_START ts 2026-10-08T09:21:03Z; max non-SETTLEMENT row timestamp is DECISION NO_QUOTE 2026-10-08T00:11:17Z (pre-service by ~9h); no row of any type after 00:11:18Z except the two SETTLEMENTs. NOTE: dispatch's literal window ('no row between 2026-10-07T11:17:07Z and the settlements except SETTLEMENTs') contains two pre-existing rows from prior recorded rounds - see F-1."
+    },
+    {
+      "id": 4,
+      "name": "EVIDENCE: results json + sha256-pinned ESPN snapshots + live cross-check",
+      "verdict": "PASS",
+      "evidence": "ops/results/wnba_2026-10-07.json => {401918297: {result HOME, source_ref ...ATL:101 away=NY:98 fetched_at 09:21:03Z}}; wnba_2026-10-08.json => {401918298: HOME, GS:83 LV:81, fetched_at 09:21:04Z}. ops/results/evidence/ has 4 espn_wnba_* .json + .meta.json pairs; shasum -a 256 of each body equals meta.evidence_sha256 for all 4 (8218053a..., 7cb81cb5... x2 bodies shared for 20261006/20261008 pair and 20261007 pair respectively). Live read-only cross-check curl ESPN scoreboard?dates=20261007: 401918297 Final completed=True ATL 101 - NY 98; 401918298 Final completed=True GS 83 - LV 81 — identical to stored evidence and ledger."
+    },
+    {
+      "id": 5,
+      "name": "IDEMPOTENCY: test exists + pinned core refuses duplicate settlement",
+      "verdict": "PASS",
+      "evidence": "tests/papertrade_exec/test_ops_live_service.py:193 test_settle_final_score_settles_once_idempotent exists and passes; asserts settled==1 then a FRESH supervisor instance settle_pass() => settled==0 attempted==0 with still exactly 1 SETTLEMENT. Pinned core: ledger.py:145 settled_decision_refs(); risk.py:177-178 'if decision_row[row_sha256] in ledger.settled_decision_refs(): raise ValueError(\"decision already settled; duplicate settlement ...\")'. No ops_service real-mode run performed by verifier (read-only proof only)."
+    },
+    {
+      "id": 6,
+      "name": "SERVICE: launchd running, healthz, api/state, 127.0.0.1-only bind, durable plist",
+      "verdict": "PASS",
+      "evidence": "launchctl print gui/501/com.myquant.sptexec.ops => 'state = running', 'pid = 10973'. curl healthz => {\"ok\": true}. curl api/state => mode REAL, chain.ok true, ledger.rows_count 11, wallet.equity_cents 100800, wallet.open_count 0, wallet.open_exposure_cents 0, service.pid 10973 last_tick_utc 2026-10-08T09:31:29Z. lsof -nP -iTCP:8791 -sTCP:LISTEN => single line 'Python 10973 ... TCP 127.0.0.1:8791 (LISTEN)' (no *:8791). ~/Library/LaunchAgents/com.myquant.sptexec.ops.plist byte-identical (diff) to repo copy; contains <key>RunAtLoad</key><true/> and <key>KeepAlive</key><true/>. Restart observed: incidents SERVICE_START pid=10638, current pid=10973 (KeepAlive restart), service healthy."
+    },
+    {
+      "id": 7,
+      "name": "TESTS: 67 passed (51 + 16 new ops adversarial)",
+      "verdict": "PASS",
+      "evidence": "pytest tests/papertrade_exec/ -q => '67 passed in 13.33s', exit 0. 16 test functions counted in test_ops_live_service.py; required categories all present by name: DST fall-back/spring-forward (test_dst_fall_back_and_spring_forward_anchors_and_windows), quota fail-closed (test_settle_soccer_quota_error_fail_closed), crash/restart (test_restart_resumes_and_journals_cleanly), settle idempotency (test_settle_final_score_settles_once_idempotent), concurrent supervisor single-instance (test_concurrent_supervisor_single_instance), non-FINAL keeps OPEN (test_settle_nonfinal_score_keeps_open), identity mismatch fail-closed (test_settle_identity_mismatch_fail_closed), tampered ledger fail-closed (test_settle_tampered_ledger_fail_closed), stale heartbeat (test_dashboard_state_stale_and_missing_heartbeat), live HTTP binds 127.0.0.1 (test_live_server_binds_localhost_and_serves)."
+    },
+    {
+      "id": 8,
+      "name": "KEY/QUOTA HYGIENE: no key bytes; quota spend unchanged; no /odds after 00:11:18Z",
+      "verdict": "PASS",
+      "evidence": "grep apiKey|api_key|odds_api_key across ops_service.py, live_dashboard.py, results_fetch.py, test_ops_live_service.py => 0 hits; plist/command files => 0 hits. Key access only via key_path parameters and core.odds_client.read_key_fingerprint() (dashboard shows fingerprint 2f08a3d2a61b, never bytes). quota_state.json => date 2026-10-08, used_today 1, used_month 5, halted false. quota_journal.jsonl: 9 rows dated 2026-10-08; exactly 1 credit-spending call (cost_credits 1, /v4/sports/soccer_uefa_nations_league/odds, ts 2026-10-08T00:11:18Z); 0 credit-spending or /odds calls after 00:11:18Z (later rows are cost_credits 0 /v4/sports listing probes at 09:24Z). Settle audit spent ZERO credits (ESPN free endpoints only)."
+    },
+    {
+      "id": 9,
+      "name": "SAFETY LAWS: 127.0.0.1 bind, GENESIS-derived mode, tamper withholds financials, PAPER-only",
+      "verdict": "PASS",
+      "evidence": "live_dashboard.py:374 'ThreadingHTTPServer((\"127.0.0.1\", port), handler)' - loopback only (corroborated by lsof). :271 'mode = \"SANDBOX\" if bool(genesis.get(\"sandbox\")) or sandbox else \"REAL\"' - mode derived from GENESIS sandbox flag (ledger GENESIS has sandbox=false, wallet_cents 100000 virtual cents; consistent with observed mode REAL per dispatch expectation). :114 + :263-267 tamper alarm banner and state_fn withholding financials; enforced by passing test_dashboard_state_tamper_withholds_financials. Payment-pathway scan (purchase|payment|checkout|stripe|paypal|deposit|withdraw|real money|credit card) over the 4 new code files + plist + command => only hit is dashboard banner 'paper money only; this is NOT a real-money account'. No real-money code anywhere."
+    },
+    {
+      "id": 10,
+      "name": "FAIL-CLOSED: non-FINAL never maps to result; postponed/cancelled only from explicit status; soccer stage gate",
+      "verdict": "PASS",
+      "evidence": "results_fetch.py:140 'if st.get(\"completed\") is True:' gates ESPN mapping; :233 'if ev.get(\"completed\") is not True: ... kept OPEN' for Odds-API path; :177 why='source not FINAL (state=...)'; :162/:169 postponed/cancelled recognized ONLY from state=='postponed'/state=='cancelled' explicit strings. ops_service.py:226-238 'SOCCER: stage law FIRST (fail-closed for knockout/unknown)' - execute.soccer_stage_law(competition, kickoff_date) per row; non-eligible rows => inconclusive with 'stage law fail-closed'; empty eligible set returns ({}, ineligible) before any quota spend. Enforced by passing tests test_settle_nonfinal_score_keeps_open and test_settle_identity_mismatch_fail_closed."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "LOW",
+      "detail": "Dispatch item 3's literal no-new-rows window ('no row with recorded/decided timestamp between 2026-10-07T11:17:07Z and the settlements except the two SETTLEMENTs') is not literally satisfiable: the ledger contains row 7 FORECAST (soccer UNL match 8a1174de..., recorded_at 2026-10-07T12:37:58Z, from the EXEC-SOCCER-EXPANSION round, commit 8b29bd3e) and row 8 DECISION NO_QUOTE (decided_at 2026-10-08T00:11:17Z, whose quota /odds spend of 1 credit at 00:11:18Z the dispatch itself treats as known in item 8). Both predate SERVICE_START 2026-10-08T09:21:03Z recorded in ops/state/incidents.jsonl, so the MATERIAL claim - the live-service round created only the 2 SETTLEMENT rows and no forecast/quote rows - is proven (no non-SETTLEMENT row after 00:11:17Z). Dispatch wording is stale relative to the ledger's recorded history; no integrity issue found in the ledger itself."
+    },
+    {
+      "id": "F-2",
+      "severity": "LOW",
+      "detail": "Root main HEAD is 2dc84ba9 ('Registry: ACTIVE_CYCLES projection sync after SPORTS-PAPERTRADE-EXEC-V1 LIVE_SERVICE_ACTIVE CAS update'), one commit beyond the dispatch-expected b046e153. It touches only plans/ACTIVE_CYCLES.json (registry projection file), is a proper git commit (working tree clean; no hand edit to registry files observed), and post-dates b046e153 which touched only plans/CYCLE_REGISTRY.{json,events.jsonl}. Nothing pushed (origin/main 0 ahead / main 91 ahead). Dispatch expectation was stale, not a boundary violation; noted for the record."
+    }
+  ],
+  "overall": "PASS_WITH_FINDINGS"
+}

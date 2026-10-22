@@ -1,0 +1,69 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "EXEC-RUNNER",
+  "cycle_id": "SPORTS-PAPERTRADE-EXEC-V1",
+  "role": "quant-implementer",
+  "lane": "exec-runner",
+  "dispatch_sha": "8e5c8f81aeecab13539d1d771d49c739100d5306",
+  "actual_start_sha": "8e5c8f81aeecab13539d1d771d49c739100d5306",
+  "commit_sha": "95efcf65297b2c6a10ad7e6cde24fb85bcbc7c3d",
+  "changed_paths": [
+    "research/papertrade_exec/__init__.py",
+    "research/papertrade_exec/execute.py",
+    "research/papertrade_exec/adapters.py",
+    "research/papertrade_exec/pins.json",
+    "research/papertrade_exec/config.json",
+    "research/papertrade_exec/PINS.md",
+    "tests/papertrade_exec/test_exec_battery.py",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/REHEARSAL_REPORT.md",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/rehearsal/rehearsal_runs.json",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/rehearsal/rehearsal_row_census.json",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/rehearsal/rehearsal_results_sandbox.json"
+  ],
+  "tests": [
+    {
+      "suite": "tests/papertrade_exec/test_exec_battery.py",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/papertrade_exec/test_exec_battery.py -q",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "note": "offline, deterministic, tmp-path sandboxes only; ~6-12s; run at c560f99a and re-run at 95efcf65297b (28/28 both)"
+    }
+  ],
+  "authority_claims": [
+    "Production runner research/papertrade_exec/execute.py wires NBA + WNBA-2026 + SOCCER end-to-end: plan (read-only real fixtures + anchors + eligibility), forecast (gated, anchor-refusing T0-6h10m exclusive batch / soccer ko-6h strict, idempotent), quote (quota-guarded core OddsClient post-GO; labeled synthetic capture in sandbox; QuotaSkip journaled as rows), decide (crosswalk 1:1 fail-closed, core EV/risk law, in-lock append_decision + in_lock_recheck), run-day (three-league chain, hard-refusal isolation), settle (refund on CANCELLED/POSTPONED_NO_RESCHEDULE), dashboard (core dashboard.build, SANDBOX banner), verify-pins (byte pins blocking, HEAD check on --expect-head), key-check (BLOCKED_KEY).",
+    "exec_go_state implemented IN THIS PACKAGE (not the sibling go_gate path): GO_TOKEN.json in research/control/SPORTS-PAPERTRADE-EXEC-V1/ with go_phrase_typed_by_owner == 'GO SPORTS PAPERTRADE EXEC V1 RUN ALL' verbatim AND this cycle's registry phase containing GO_CONSUMED; every mutation refuses BLOCKED_NO_GO (exit 3) pre-GO; retired lane phrases accepted nowhere (test-enforced).",
+    "Read-only imports are byte-pinned (research/papertrade_exec/pins.json + PINS.md): paper core (sports-papertrade-v1 worktree, 7 files sha-pinned), wnba26 (ledger + Lane B's landed predict.py 5fc6459c...), NBA scored harness (arms/game_universe/real_loader at the scored terminal a76dadb1 == dispatch), soccer (Lane C's landed replay.py 22553f6b... + crosswalk seed), data pins WNBA schedule 0ed97faf... and NBA payload composite 3d527b3c... (recipe re-derived 208/208 at verify-pins) and soccer corpus df35268f.... Mismatch => BLOCKED_PIN_DRIFT (exit 7) / BLOCKED_PIN_DRIFT_ENTRY.",
+    "Zero real paper rows, zero real probabilities, zero market odds stored pre-GO: sandbox rehearsal FORECAST/MARKET_QUOTE rows are mode=SYNTHETIC with source_ref SYNTHETIC_ADAPTER_*; the only GO fabrication in the entire cycle is the clearly-labeled SANDBOX control copy under ~/.my-quantitative-data/sports-papertrade-exec-v1/sandbox/control; the REAL control dir has no GO_TOKEN and the REAL registry phase is untouched (REGISTERED (planned)).",
+    "Engine wiring verified by contract tests without persisting anything: WNBA wnba26_predict (accepts dispatch name predict_matches too) replays B1-WNBA over 344 completed 2026 rows -> 401918299 p_home in (0,1) deterministic + 64-hex state_digest; SOCCER soccer_b1_replay replays the pinned corpus through the fail-closed seed crosswalk -> three-way p sums to 1, deterministic; NBA scored-harness Stream/ArmConfig(B1_STAR)/sigmoid/Game replay verified on SYNTHETIC inputs incl. the 2026->2027 season-boundary revert."
+  ],
+  "known_limitations": [
+    "BLOCKED_NBA_CORPUS_BIND (disclosed, fail-closed): the NBA scored cycle gates its real completed-game corpus (unmasked outcomes) behind an outcome-bind token with namespace REAL minted only by ITS postgo owner-GO check for ITS retired-unconsumed phrase. This cycle's GO cannot mint it, so a real-mode NBA forecast refuses rather than improvising; WNBA/SOCCER are unaffected (per-league isolation in run-day). Post-GO NBA forecasting needs an explicit owner decision (erratum or token authorization).",
+    "Lane B and Lane C landed their entry files WHILE this lane was building (transient import error observed and adapted); their bytes are pinned as of 2026-10-07 ~16:03 local. If they iterate further, drift surfaces as BLOCKED_PIN_DRIFT_ENTRY (probe) / BLOCKED_PIN_DRIFT (real mode) and requires a deliberate re-pin.",
+    "Worktree HEADs of sibling sources advanced past the dispatch values (paper_core a752553f->8105e878, wnba26 d6ed119e->4620..., soccer 24e5745f->1ca5cd7d) — advisory only; the binding identity is the byte pins, all verified OK at rehearsal time.",
+    "Sandbox rehearsal soccer fixtures are labeled SYNTHETIC events (real soccer fixtures only exist post-GO via the 0-credit The Odds API events endpoint through the core client, quota-guarded); the real events->fixtures mapping path is implemented (soccer_fixtures_from_events) but live capture was NOT exercised ($0 boundary, no network used at any point).",
+    "The real capture branch of quote (post-GO) maps an h2h odds payload to MARKET_QUOTE rows for the day's fixtures; that payload-mapping code is only reachable post-GO and was rehearsed in its synthetic-label equivalent, not against a live payload."
+  ],
+  "incidents": [
+    {
+      "when": "2026-10-07 during battery development",
+      "what": "Lane B's predict.py landed mid-run with entry name wnba26_predict instead of the dispatch-contract name predict_matches; first import attempt failed with AttributeError mid-battery.",
+      "resolution": "Adapter now accepts both entry names; bytes pinned (5fc6459c...); disclosed in REHEARSAL_REPORT.md §6. No data risk: nothing was stored (pure in-memory contract test)."
+    },
+    {
+      "when": "2026-10-07 first rehearsal pass",
+      "what": "Settle driver picked BET rows without league/date scoping, so only 1 of 2 intended settlements matched the NBA 2026-10-21 filter (SETTLEMENT count 1).",
+      "resolution": "Sandbox ledger wiped (append-only ledger rebuilt fresh), driver re-scoped to NBA/2026-10-21 bets, full rehearsal re-recorded: SETTLEMENT 2 (WIN +382 cents, POSTPONED refund 0). Raw first-pass artifacts were overwritten by the clean rerun; both runs are summarized in the report."
+    }
+  ],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "research/papertrade_exec/execute.py (runner CLI; pre-GO refusals are law)",
+    "research/papertrade_exec/adapters.py (league fixture pipelines + lazy pinned engines + labeled synthetic fallbacks)",
+    "research/papertrade_exec/pins.json + PINS.md (byte-level pin law)",
+    "research/papertrade_exec/config.json (pinned sport keys incl. soccer_uefa_nations_league; anchor laws; refund results)",
+    "tests/papertrade_exec/test_exec_battery.py (28 tests: success path + 24-case adversarial matrix)",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/REHEARSAL_REPORT.md (+ rehearsal/rehearsal_runs.json, rehearsal_row_census.json, rehearsal_results_sandbox.json)"
+  ]
+}

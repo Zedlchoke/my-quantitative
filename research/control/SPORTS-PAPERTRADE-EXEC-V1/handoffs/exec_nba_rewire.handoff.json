@@ -1,0 +1,82 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "EXEC-NBA-REWIRE",
+  "cycle_id": "SPORTS-PAPERTRADE-EXEC-V1",
+  "role": "quant-implementer",
+  "lane": "exec-nba-rewire",
+  "dispatch_sha": "bc391b0c5133a0ab8a0d1ca9e78c0da306fc4ebe",
+  "actual_start_sha": "bc391b0c5133a0ab8a0d1ca9e78c0da306fc4ebe",
+  "commit_sha": "01e8bc1abc596fdc78ed1cc9de433787810765b2",
+  "changed_paths": [
+    "research/papertrade_exec/__init__.py",
+    "research/papertrade_exec/adapters.py",
+    "research/papertrade_exec/execute.py",
+    "research/papertrade_exec/pins.json",
+    "research/papertrade_exec/PINS.md",
+    "tests/papertrade_exec/test_exec_battery.py",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/REHEARSAL_REPORT.md",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/ERRATUM_NBA_REWIRE.md",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/rehearsal/exec_nba_rewire_rehearsal.json",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/handoffs/exec_nba_rewire.handoff.json"
+  ],
+  "tests": [
+    {
+      "suite": "tests/papertrade_exec/test_exec_battery.py (EXEC worktree)",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/papertrade_exec/test_exec_battery.py -q",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "note": "28 pre-rewire + 8 NBA additions (outcome-leak tip>anchor and tip==anchor, payload tamper fail-closed, nba26 pin drift BLOCKED pre-corpus, refresh pre-GO refusal + post-GO manifest chain on fake fetch, stale-after-anchor, 8-row window success chain, real-mode exit 3); offline, deterministic, tmp-path sandboxes; 36/36 at the commit bytes"
+    },
+    {
+      "suite": "tests/papertrade_wnba26 (sibling worktree wnba-2026-remainder-v1/integration, read-only)",
+      "command": "cd <wt> && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/papertrade_wnba26 -q",
+      "passed": 79,
+      "failed": 0,
+      "skipped": 0,
+      "note": "git status clean after the run"
+    },
+    {
+      "suite": "tests/papertrade_soccer (sibling worktree soccer-intl-winprob-prospective-prep-v1/integration, read-only)",
+      "command": "cd <wt> && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/papertrade_soccer -q",
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0,
+      "note": "git status clean after the run"
+    },
+    {
+      "suite": "tests/papertrade_nba (sibling worktree nba-winprob-prospective-prep-v1/integration, read-only)",
+      "command": "cd <wt> && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/papertrade_nba -q",
+      "passed": 81,
+      "failed": 0,
+      "skipped": 0,
+      "note": "git status clean after the run"
+    }
+  ],
+  "authority_claims": [
+    "NBA engine path REWIRED to the lawful prospective PIT path of NBA-WINPROB-PROSPECTIVE-PREP-V1 (Lane D, read-only): research/papertrade_nba/loader.py sha256 2679be80f1fb7f7d9862f76b65e546708aac3df6654fa7e8d866aedecd6461c8 + predict.py sha256 57f0c810f8cd1a12d78bcb68881ca49b6d8bdb16a4a0f61a11dfcc7987c6d81c, byte-pinned as package `nba26` (dispatch_head '65ebefc4 (content) / 82542aa8 (final)'), lazy-imported by adapters.nba_engine_predict with entry-drift check BEFORE any corpus touch; probe_engine NBA now reports WIRED_ENGINE_READY / BLOCKED_NBA_ENTRY / BLOCKED_PIN_DRIFT_ENTRY.",
+    "NEW DATA CONTRACT: the path reads ONLY the frozen ESPN per-date payloads ~/.my-quantitative-data/nba-winprob-prospective-prep-v1/espn_schedule_2026_27/ (composite 3d527b3c..., 208 files, re-verified 208/208 at verify-pins) and NEVER the scored cycle's bind corpus; load_completed = FINAL with tip STRICTLY < asof anchor (tip == anchor excluded), load_upcoming = SCHEDULED tip >= from; frozen B1_STAR law quoted (K=32/HCA=100/gamma=0.75), warm-up R0=1500 carried pre-registration; carried disclosure VERBATIM: pooled OOS F1-F5 2022-2026 LL 0.639953, Brier 0.223545, n=6,605; calibration slope 0.8107 BELOW [0.85,1.15] — overconfidence sign; NO recalibration on viewed OOS.",
+    "OLD PATH DEAD, NOT DELETED: adapters.nba_real_corpus_read kept as marked-DEAD/UNREACHABLE history (BLOCKED_NBA_CORPUS_BIND — the scored cycle's outcome-bind token is mintable only by ITS postgo gate; this cycle's GO cannot mint it; disclosed, never worked around); nba_engine_replay_synthetic retained for the battery's synthetic-inputs history test; nba_harness pins annotated RETAINED-FOR-BATTERY-ONLY. Full story: ERRATUM_NBA_REWIRE.md.",
+    "POST-GO INCREMENTAL REFRESH (code + manifest plumbing, NOT executed pre-GO): nba_refresh_game_days (pure) + espn_fetch_scoreboard (network, post-GO only, same $0 no-auth ESPN endpoint lineage as the frozen 208) + nba_incremental_refresh (refuses BLOCKED_NO_GO without go_ok even behind the gate; refuses a corpus that does not verify BEFORE refreshing; writes bytes + .meta in the frozen format and appends self-hashed REFRESH_MANIFEST.jsonl records chaining prev_composite -> new_composite anchored at the frozen pin); verify_pins NBA branch now uses nba_payload_verdict: composite == frozen pin OR the fully-chained manifest extension; bytes-vs-meta mismatch, missing meta, unrecorded bytes, chain break all fail closed (BLOCKED_NBA_PAYLOAD_TAMPER / BLOCKED_PIN_DRIFT).",
+    "NBA SUCCESS-PATH REHEARSAL on a pristine sandbox copy (rehearsal/exec_nba_rewire_rehearsal.json): opening window 2026-10-20/21 (UTC tip dates) = 8 REAL fixtures, batch anchor 2026-10-20T12:50:00Z (T0-6h10m, T0=19:00:00Z), completed=0 => every rating at R0=1500 (lawfully correct opening-night state), all eight p_home = 0.640065 = 1/(1+10^(-100/400)) IN-MEMORY ONLY, state_digest f2d59f35befbb1ffbbb6302fbac62804d51a39cab618ccc836b122f92722c8c5, deterministic; full chain forecast->quote->decide->(duplicate decide no-op)->settle->dashboard exit 0 in SANDBOX with census GENESIS 1 / FORECAST 8 / MARKET_QUOTE 8 / DECISION 8 (2 BET_PAPER + 6 NO_EDGE) / SETTLEMENT 2 (WIN +382c, REFUND 0c) and the SANDBOX banner + chain_ok true.",
+    "ZERO REAL PAPER ROWS / ZERO REAL PROBABILITIES / ZERO REAL ODDS pre-GO: every persisted rehearsal row is mode=SYNTHETIC with model_version_sha=SYNTHETIC_ADAPTER_NOT_ENGINE and synthetic p; odds SYNTHETIC_BOOK (rehearsal), key_fingerprint sandbox-synthetic-00; engine probabilities exist in-memory only during the proof; no network used by any rehearsal or test; the post-GO refresh was NOT executed (frozen snapshot is the only lawful PRE-GO corpus state).",
+    "Multi-day NBA batch window added via --to-date on plan/forecast/quote/decide (fixtures whose UTC TIP date lies in [--date, --to-date]); single-day behavior byte-compatible with the pre-rewire law (file-scoped scoreboard day); all 28 pre-existing battery tests pass unmodified in semantics.",
+    "A7 F1 prose fix applied to REHEARSAL_REPORT.md row 13: SANDBOX run reports go to <data-root>/sandbox/; the one file under <data-root>/runs/ is the REAL-mode pre-GO refusal artifact (BLOCKED_NO_GO JSON, zero rows) — evidence of the gate, not a data violation. WNBA/soccer rehearsal sections kept intact."
+  ],
+  "known_limitations": [
+    "The post-GO refresh extends the payload corpus WITHOUT advancing the pins.json composite (frozen pin stays as history by design); verification accepts the manifest-chained extension — a controller wanting a fresh byte pin post-refresh can re-pin deliberately (BLOCKED_PIN_DRIFT otherwise never fires on a lawful chain).",
+    "espn_fetch_scoreboard is implemented but untested against the live endpoint (by law: $0/no-network rehearsal); its first post-GO use is the first live exercise.",
+    "nba_engine_predict computes predictions for ALL upcoming-from-anchor rows (season-wide, ~1206) and drafts are filtered to the batch; the season-wide state_digest (f2d59f35...) therefore covers all 30 teams at R0 pre-season and differs from Lane D's 16-team window digest (a298b3e1...) — same law, different table scope, both deterministic.",
+    "The scored cycle's BLOCKED_NBA_CORPUS_BIND history remains documented (ERRATUM + REHEARSAL_REPORT §6) — the old code path is dead but retained; removing it later is a deliberate cleanup, not this lane's call."
+  ],
+  "incidents": [],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/ERRATUM_NBA_REWIRE.md",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/REHEARSAL_REPORT.md (NBA rewired + §7 NBA success-path rehearsal; F1 wording fix)",
+    "research/control/SPORTS-PAPERTRADE-EXEC-V1/rehearsal/exec_nba_rewire_rehearsal.json",
+    "research/papertrade_exec/pins.json + PINS.md (nba26 package: loader 2679be80, predict 57f0c810; nba_harness RETAINED-FOR-BATTERY-ONLY; refresh-manifest contract on the NBA data pin)",
+    "tests/papertrade_exec/test_exec_battery.py (36/36)"
+  ]
+}
