@@ -618,18 +618,28 @@ def _default_balance_transport(url: str, key: str) -> dict:
             headers={"Authorization": f"Bearer {key}"})
         with urllib.request.urlopen(req, timeout=15) as r:
             return json.loads(r.read().decode("utf-8"))
+    env = None
     try:
-        return _get(url)
+        env = _get(url)
     except urllib.error.HTTPError as e:
         if e.code not in (401, 403):
             raise
-    # management-key path: /key refused -> account credits
-    base = url.rsplit("/key", 1)[0]
-    credits = _get(base + "/credits").get("data") or {}
-    tc, tu = credits.get("total_credits"), credits.get("total_usage")
-    if isinstance(tc, (int, float)) and isinstance(tu, (int, float)):
-        return {"data": {"limit_remaining": float(tc) - float(tu)}}
-    return {}                                    # unmeasurable -> None
+    data = (env or {}).get("data")
+    # R0c live finding: a MANAGEMENT key gets HTTP 200 on /key with
+    # limit_remaining=null — the account USD lives at /credits. For a
+    # plain inference key the /credits view is key-scoped (misleading),
+    # so the fallback runs ONLY for management/provisioning keys; any
+    # other unreadable answer stays None — NEVER a fabricated number.
+    is_mgmt = isinstance(data, dict) and bool(
+        data.get("is_management_key") or data.get("is_provisioning_key"))
+    if data is None or (is_mgmt and data.get("limit_remaining") is None):
+        base = url.rsplit("/key", 1)[0]
+        credits = _get(base + "/credits").get("data") or {}
+        tc, tu = credits.get("total_credits"), credits.get("total_usage")
+        if isinstance(tc, (int, float)) and isinstance(tu, (int, float)):
+            return {"data": {"limit_remaining": float(tc) - float(tu)}}
+        return {}                                # unmeasurable -> None
+    return env
 
 
 def check_balance(endpoint: str, key: str, *,
