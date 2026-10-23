@@ -1,4 +1,4 @@
-# G1–G7 production adoption — in progress
+# G1–G7 production adoption — STOPPED, NOT ACCEPTED
 
 Owner GO: 2026-10-23 09:49 ICT. Integration was limited to the previously audited G1–G7 tree; no engine, HCA/prior, EV/stake/anchor, prompt, or G7-ii change.
 
@@ -50,4 +50,8 @@ NBA 24/10 has not entered its 24-hour lookahead window yet (expected around 15:5
 
 ## Step 5 — Fresh A7 and coordinator review
 
-**PENDING.** Fresh independent A7 review of the adopted code and the first real WSL artifacts is required; NBA acceptance evidence is still NOT_RUN. No G1–G7 acceptance verdict is claimed here.
+The adoption evidence was committed as `25882fad8a31a5432f5f4fc5a848d302864a3e23` (documentation/artifacts only; runtime code remains the exact `d62d22d3` implementation). Fresh-context independent A7 audited this exact commit and confirmed **BUG / FAIL acceptance** in the new real WSL packets: the producer ignores the quote's known top-level event identity, the collector reads the wrong WSL PM field layout and drops DRAW, and WSL returns before producing any team_block. The Gamma skip journal records the caller symptom; it does not establish a provider outage or an absent event identity. These are proven WSL data omissions, separate from the still-NOT_RUN NBA checks.
+
+Under the original prompt's A7-BUG stop condition, adoption acceptance work stopped and automation `paperdesk-g1-g7-adoption-evidence` was set to **PAUSED**. No feature fix, law change, or additional production restart was performed. PID 15385 remained healthy on the adopted SHA at the last check. There was no startup/collector-load failure requiring rollback. The actual WSL slate had already produced two paper decisions (M47 DRAW and M46 AWAY); those append-only records were preserved. NBA Gamma/context/PDF/rest acceptance and coordinator reconciliation remain **NOT_RUN**. No G1–G7 acceptance verdict is claimed.
+
+Formal independent report and structured handoff: `a7_adoption/A7_ADOPTION_VERDICT_2026-10-23.md` (SHA-256 `10b539ae9cb6b7ff62b66f899ac61b576a2544a3905d3c2c4f168f9b3fddfa2f`), `a7_adoption/audit_checks.json`, and `a7_adoption/handoff.json`. A7 confirmed the implementation/helper/prompt identity, saved G2 probes, all 28 copied raw-file manifest hashes and the root battery log. It classified three HIGH schema/context BUGs and the official-page shell as a MED acceptance gap. The current adoption order authorizes no additional feature changes; owner disposition is required for remediation after this stop.
