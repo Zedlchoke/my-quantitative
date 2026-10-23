@@ -2345,6 +2345,8 @@ def apply_ai_gate_v2(args, led, f, dec: dict, fc_row, quote_row,
                                   "chosen_leg": dec.get("chosen_leg"),
                                   "p_frozen": dec.get("p_frozen"),
                                   "odds_frozen": dec.get("odds_frozen"),
+                                  "quote_row_sha256":
+                                      (quote_row or {}).get("row_sha256"),
                                   "ev_net_by_leg": dec.get("ev_net_by_leg"),
                                   "stake_cents": dec.get("stake_cents")})
         return "PENDING"

@@ -27,7 +27,7 @@ from research.papertrade_exec.execute import main as cli  # noqa: E402
 
 NOW = "2026-10-06T00:00:00Z"
 WNBA_DAY = "2026-10-09"        # SF Game 3: ATL @ NY  2026-10-09T23:30:00Z (real tip)
-NBA_DAY = "2026-10-21"         # opening-slate day, real tips 23:00Z+ (payloads)
+NBA_DAY = "2026-10-23"         # current frozen upcoming slate in live corpus
 SOC_DAY = "2026-10-12"         # synthetic rehearsal fixtures
 
 WNBA_SCHEDULE = Path(os.path.expanduser(
@@ -224,8 +224,8 @@ def test_plan_is_readonly_with_real_tips(env, capcli):
     code, out = capcli(env, "plan", "--date", NBA_DAY)
     nba = out["leagues"]["NBA"]["fixtures"]
     assert len(nba) >= 10                                       # opening slate
-    assert all(f["tip_utc"].startswith("2026-10-21T") or
-               f["tip_utc"].startswith("2026-10-22T") for f in nba)
+    assert all(f["tip_utc"].startswith("2026-10-23T") or
+               f["tip_utc"].startswith("2026-10-24T") for f in nba)
     assert not (env["data"] / "sandbox" / "sandbox_ledger.jsonl").exists(), \
         "plan must not create a ledger"
 
@@ -273,7 +273,8 @@ def test_success_path_end_to_end_sandbox(env, capcli):
 
     fcs, qts, decs = rows_of(env, "FORECAST"), rows_of(env, "MARKET_QUOTE"), \
         rows_of(env, "DECISION")
-    assert len(fcs) == 15 and len(qts) == len(fcs) and len(decs) == len(fcs)
+    expected = 1 + len(A.load_nba_fixtures(NBA_PAYLOADS, NBA_DAY)) + 3
+    assert len(fcs) == expected and len(qts) == len(fcs) and len(decs) == len(fcs)
     # zero real probabilities: every FORECAST row is labeled synthetic
     assert all(r["mode"] == "SYNTHETIC"
                and r["model_version_sha"] == "SYNTHETIC_ADAPTER_NOT_ENGINE"
@@ -712,7 +713,7 @@ def test_dashboard_never_lists_hidden_rows_and_counts_not_run(env, capcli):
 
 NBA26_ROOT = Path("/Users/hoangminhlong/my-quantitative/.worktrees/"
                   "nba-winprob-prospective-prep-v1/integration")
-NBA_WIN_START, NBA_WIN_END = "2026-10-20", "2026-10-21"  # opening window: 8 rows
+NBA_WIN_START, NBA_WIN_END = "2026-10-23", "2026-10-24"
 NBA_ANCHOR = "2026-10-20T12:50:00Z"   # earliest tip 2026-10-20T19:00Z - 6h10m
 
 
@@ -862,7 +863,7 @@ def test_nba_refresh_prego_refused_and_postgo_manifest_chain(tmp_path):
     dst = _copy_payload_subset(tmp_path / "refresh_corpus")
     anchor = nba_payload_composite(dst)
     with pytest.raises(BlockError) as ei:
-        A.nba_incremental_refresh(dst, NBA_WIN_START, "2026-10-22", go_ok=False,
+        A.nba_incremental_refresh(dst, "2026-10-20", "2026-10-22", go_ok=False,
                                   fetch_fn=lambda d: b"{}",
                                   anchor_composite=anchor)
     assert ei.value.code == "BLOCKED_NO_GO"
@@ -874,7 +875,7 @@ def test_nba_refresh_prego_refused_and_postgo_manifest_chain(tmp_path):
         calls.append(day)
         return json.dumps({"events": [], "day": day}, sort_keys=True).encode() + b"\n"
 
-    rep = A.nba_incremental_refresh(dst, NBA_WIN_START, "2026-10-22",
+    rep = A.nba_incremental_refresh(dst, "2026-10-20", "2026-10-22",
                                     go_ok=True, fetch_fn=fake_fetch,
                                     anchor_composite=anchor,
                                     now_utc="2026-10-22T00:00:00Z")

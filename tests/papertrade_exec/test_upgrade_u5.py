@@ -263,15 +263,14 @@ def test_f2_unresolvable_ref_is_an_honest_zero(monkeypatch):
     assert any("never invented" in q for q in out["queries"])
 
 
-def test_injuries_skipped_without_slug_or_team_ids(monkeypatch):
+def test_injuries_skipped_without_verified_competition_or_team_ids(monkeypatch):
     calls: list = []
     monkeypatch.setattr(AR, "_get_json", _stub_get_json(calls))
     out = AR.collect_evidence(league="SOCCER", match_id="701",
                               home="Arsenal", away="Chelsea",
                               kickoff_utc=KICK_TOMORROW,
                               team_ids={"home": "1", "away": "2"})
-    notes = " ".join(out.get("injuries_notes", []))
-    assert "no league slug" in notes
+    assert "no verified ESPN path for competition" in out["why"]
     assert not [u for u in calls if "/injuries" in u]
     out2 = AR.collect_evidence(league="NBA", match_id="401777",
                                home="Oklahoma City Thunder",

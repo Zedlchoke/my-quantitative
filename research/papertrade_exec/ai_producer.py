@@ -724,11 +724,51 @@ def _build_user_payload(entry: dict, research: dict) -> str:
                             "switch legs")},
         "candidate_hash": entry.get("candidate_hash"),
         "anchor_utc": entry.get("anchor_utc"),
+        "market_block": research.get("market_block"),
+        "team_block": research.get("team_block"),
         "captured_sources": research.get("sources") or [],
         "evidence_note": ("These are the ONLY lawful citations; citing "
                           "anything else is fabrication and your verdict "
                           "will be discarded."),
     }, indent=1)
+
+
+def _candidate_quote(market_quotes_by_mid: dict | None, mid: str,
+                     ctx: dict) -> dict | None:
+    """Select a ledger quote whose exact prices created this candidate."""
+    rows = (market_quotes_by_mid or {}).get(mid) or []
+    if isinstance(rows, dict):
+        rows = [rows]
+    matches = [q for q in rows if q.get("odds") == ctx.get("odds_frozen")]
+    frozen_sha = ctx.get("quote_row_sha256")
+    if frozen_sha:
+        return next((q for q in matches
+                     if q.get("row_sha256") == frozen_sha), None)
+    # Older pending markers have no quote reference. An ambiguous price must
+    # not silently attach Gamma/depth from a different market snapshot.
+    return matches[0] if len(matches) == 1 else None
+
+
+def _gamma_url_from_quote(quote: dict | None) -> str | None:
+    event_id = ((quote or {}).get("pm_crosswalk") or {}).get("pm_event_id")
+    if isinstance(event_id, str) and event_id.isdecimal():
+        return f"https://gamma-api.polymarket.com/events?id={event_id}"
+    return None
+
+
+def _collect_candidate_evidence(entry: dict, mid: str, data_root: Path,
+                                sandbox: bool,
+                                market_quotes_by_mid: dict | None) -> dict:
+    ctx = entry.get("context") or {}
+    quote = _candidate_quote(market_quotes_by_mid, mid, ctx)
+    return ai_research.collect_evidence(
+        league=ctx.get("league") or "", match_id=mid,
+        home=ctx.get("home") or "", away=ctx.get("away") or "",
+        competition=ctx.get("competition"),
+        journal_dir=G.ai_review_dir(data_root, sandbox) / "evidence",
+        kickoff_utc=ctx.get("kickoff_utc"),
+        team_ids=ctx.get("team_ids"), market_quote=quote,
+        gamma_event_url=_gamma_url_from_quote(quote))
 
 
 # ------------------------------------------------- free-research loop (R2) --
@@ -1291,7 +1331,7 @@ def produce_for_pending(data_root: Path, *, worktree_root: Path,
                         min_retry_minutes: int = PROVIDER_RETRY_MIN_MINUTES,
                         tavily_transport=None, page_transport=None,
                         fr_over: dict | None = None,
-                        gamma_urls_by_mid: dict | None = None
+                        market_quotes_by_mid: dict | None = None
                         ) -> dict:
     """Produce v2 opinions for the PENDING_AI queue through the
     strongest-first slot cascade. Returns a summary; per-entry outcomes
@@ -1431,16 +1471,8 @@ def produce_for_pending(data_root: Path, *, worktree_root: Path,
         # thread both so the collector fetches the MATCH-date board and the
         # roster/injuries layers activate. Absent values stay honestly
         # absent (the collector looks ids up on the kickoff board itself).
-        _ctx = entry.get("context") or {}
-        research = ai_research.collect_evidence(
-            league=_ctx.get("league") or "",
-            match_id=mid,
-            home=_ctx.get("home") or "",
-            away=_ctx.get("away") or "",
-            journal_dir=G.ai_review_dir(data_root, sandbox) / "evidence",
-            kickoff_utc=_ctx.get("kickoff_utc"),
-            team_ids=_ctx.get("team_ids"),
-            gamma_event_url=(gamma_urls_by_mid or {}).get(mid))
+        research = _collect_candidate_evidence(
+            entry, mid, data_root, sandbox, market_quotes_by_mid)
         payload = _build_user_payload(entry, research)
         research_by_mid[mid] = research
         if fresearch.get("enabled") and not fresearch.get("shadow"):
@@ -1656,15 +1688,8 @@ def produce_for_pending(data_root: Path, *, worktree_root: Path,
                 if not (G.ai_review_dir(data_root, sandbox) /
                         "opinions_v2" / f"{mid}_{chash}.json").exists():
                     continue
-                _ctx = entry.get("context") or {}
-                research = ai_research.collect_evidence(
-                    league=_ctx.get("league") or "", match_id=mid,
-                    home=_ctx.get("home") or "", away=_ctx.get("away") or "",
-                    journal_dir=G.ai_review_dir(data_root, sandbox) /
-                    "evidence",
-                    kickoff_utc=_ctx.get("kickoff_utc"),
-                    team_ids=_ctx.get("team_ids"),
-                    gamma_event_url=(gamma_urls_by_mid or {}).get(mid))
+                research = _collect_candidate_evidence(
+                    entry, mid, data_root, sandbox, market_quotes_by_mid)
             try:
                 prompt_v3 = prompt_v3 or _frozen_prompt(worktree_root,
                                                         "AI_PROMPT_V3")

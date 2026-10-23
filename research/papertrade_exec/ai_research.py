@@ -28,43 +28,69 @@ SOURCES (allow-list, read-only public GETs, no keys):
     ?season= param 0; core athletes 404; teams endpoint 0 — all live-
     checked 2026-10-22). The removal is journaled in every collection;
     the news filter runs on team names only;
-  * F5: WSL self-captures exactly two extra hosts: the match's Polymarket
+  * F5: WSL self-captures the match's Polymarket
     GAMMA event page (https://gamma-api.polymarket.com/events?id=…,
     threaded by the caller from the ledger MARKET_QUOTE event_id) and the
     official league page (https://wslfootball.com/fixtures/). No other
-    host is fetchable; every self-capture is journaled verbatim-shaped
-    and a failure is an honest zero.
+    host is fetchable through that transport; every self-capture is
+    journaled verbatim-shaped and a failure is an honest zero;
+  * G7-i: NBA official injury PDFs are fetched only from the pinned NBA
+    index and PDF hosts, with source URL, issue time, and hash journaled.
 Everything else is refused by the allow-list — the model cannot invent
 URLs into the citation record (the gate drops uncited claims).
 
-All transport goes through _get_json/_get_text (tests stub them; no real
-network in the battery). The closed allow-list law is unchanged: the
-model may only cite captured URLs — enforced upstream by the U0 filter.
+JSON and F5 page transport goes through _get_json/_get_text. G7-i uses
+bounded requests to its two official NBA hosts (tests stub them; no real
+network in the battery). The model may only cite captured URLs, enforced
+upstream by the U0 filter.
 """
 from __future__ import annotations
 
+import hashlib
+import html
 import json
+import re
+import subprocess
+import tempfile
+import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ESPN_SITE_API = "https://site.web.api.espn.com/apis/site/v2/sports"
 ESPN_SITE_BOARD = "https://site.api.espn.com/apis/site/v2/sports"
 ESPN_CORE_API = "https://sports.core.api.espn.com/v2"
 
 SPORT_PATH = {"NBA": "basketball/nba", "WNBA": "basketball/wnba",
-              "SOCCER": "soccer", "WSL": "soccer/eng.w.1",
+              "WSL": "soccer/eng.w.1",
               "NCAA-M": "basketball/mens-college-basketball",
               "NCAA-W": "basketball/womens-college-basketball"}
+SOCCER_PATH_BY_COMPETITION = {
+    "soccer_uefa_nations_league": "soccer/uefa.nations",
+    "soccer_fifa_world_cup_group": "soccer/fifa.world",
+    "soccer_uefa_euro_group": "soccer/uefa.euro",
+    "soccer_fifa_world_cup_qualifiers": "soccer/fifa.worldq.uefa",
+    "soccer_uefa_euro_qualifiers": "soccer/uefa.euroq",
+}
+
+
+def _sport_path(league: str, competition: str | None = None) -> str | None:
+    if league == "SOCCER":
+        return SOCCER_PATH_BY_COMPETITION.get(competition or "")
+    return SPORT_PATH.get(league)
 NEWS_WINDOW_H = 48
 
 # F5 (owner plan 2026-10-22): the ONLY hosts the collector may self-capture
 # beyond its internally-constructed ESPN endpoints — the match's Polymarket
-# GAMMA event page and the official WSL league page. Exactly +2 hosts.
+# GAMMA event page and the official WSL league page. G7-i uses a separate
+# bounded transport for the official NBA index and PDF hosts.
 GAMMA_HOST = "gamma-api.polymarket.com"
 _OFFICIAL_PAGE_BY_LEAGUE = {"WSL": "https://wslfootball.com/fixtures/"}
 _EXTRA_ALLOWED_HOSTS = {GAMMA_HOST, "wslfootball.com"}
+NBA_OFFICIAL_INDEX_HOST = "official.nba.com"
+NBA_OFFICIAL_PDF_HOST = "ak-static.cms.nba.com"
 _PAGE_MAX_BYTES = 3_000_000
 
 ROSTER_REMOVAL_NOTE = (
@@ -74,9 +100,10 @@ ROSTER_REMOVAL_NOTE = (
 
 # U5 wiring (integrator): scoreboard boards are cached per (path, day) for
 # the process lifetime — the team-id lookup and the status fetch share ONE
-# GET per board (the evidence journal records which). Errors are cached as
-# None so a failing board is not re-dialed.
+# GET per board (the evidence journal records which). Failures expire after
+# BOARD_ERROR_TTL_S so a later candidate can retry.
 _BOARD_CACHE: dict = {}
+BOARD_ERROR_TTL_S = 120
 
 
 def _get_json(url: str, timeout: int = 15) -> dict:
@@ -214,38 +241,57 @@ def _board_days(kickoff_utc) -> tuple[list[str], str | None]:
     return ordered, et.strftime("%Y-%m-%d")
 
 
-def _board_payload(path: str, day: str) -> dict | None:
-    """Cached scoreboard GET (one fetch per (path, day) per process; a
-    failed fetch is cached as None and never re-dialed)."""
+def _board_payload(path: str, day: str, queries: list | None = None) -> dict | None:
+    """Good boards live for the process; failed GETs expire after 120s."""
     key = (path, str(day))
-    if key in _BOARD_CACHE:
-        return _BOARD_CACHE[key]
-    payload = None
+    now = time.monotonic()
+    old = _BOARD_CACHE.get(key)
+    if old is not None:
+        if old["payload"] is not None:
+            if queries is not None:
+                queries.append(f"board {path} dates={day} good cached")
+            return old["payload"]
+        age = now - old["at"]
+        if age < BOARD_ERROR_TTL_S:
+            if queries is not None:
+                queries.append(f"board {path} dates={day} failed cached "
+                               f"age_s={age:.1f} (0 sources)")
+            return None
+    url = f"{ESPN_SITE_BOARD}/{path}/scoreboard?dates={day}"
+    attempt = "retry" if old is not None else "first"
     try:
-        payload = _get_json(
-            f"{ESPN_SITE_BOARD}/{path}/scoreboard?dates={day}")
-    except Exception:
-        payload = None
-    _BOARD_CACHE[key] = payload
+        payload = _get_json(url)
+        if not isinstance(payload, dict):
+            raise ValueError("board payload is not an object")
+        error = None
+    except Exception as e:
+        payload, error = None, f"{type(e).__name__}: {str(e)[:100]}"
+    _BOARD_CACHE[key] = {"payload": payload, "at": now, "error": error}
+    if queries is not None:
+        queries.append(f"board {url} {attempt} " +
+                       ("OK" if payload is not None else
+                        f"ERROR {error} (0 sources)"))
     return payload
 
 
 def lookup_team_ids(*, league: str, match_id: str,
                     kickoff_utc: str | None = None,
                     home: str | None = None,
-                    away: str | None = None) -> dict | None:
+                    away: str | None = None,
+                    competition: str | None = None,
+                    queries: list | None = None) -> dict | None:
     """U5 wiring + F1/F4: ESPN team ids for one fixture, resolved on the
     F4 board days by EVENT ID when the match id is an ESPN id, otherwise
     by BOTH TEAM NAMES (FD-* lane ids are never ESPN ids). Returns
     {'home': id, 'away': id} or None (unknown league, unparsable
     kickoff, event absent, or the board carrying no resolvable
     competitor pair) — ids are NEVER invented."""
-    path = SPORT_PATH.get(league)
+    path = _sport_path(league, competition)
     days, _et = _board_days(kickoff_utc)
     if not path or not days:
         return None
     for day in days:
-        board = _board_payload(path, day)
+        board = _board_payload(path, day, queries)
         if not isinstance(board, dict):
             continue
         ev, _how = _find_event(board, match_id, home, away)
@@ -315,12 +361,29 @@ def _resolve_injury_item(item: dict, queries: list,
     excerpt = short or " — ".join(x for x in (name, stext, dtext) if x)
     if not excerpt:
         return None
-    pub = str(item.get("lastUpdate") or item.get("date") or "")[:19]
+    raw_pub = str(item.get("lastUpdate") or item.get("date") or "").strip()
+    pub, age_days = "", None
+    if raw_pub:
+        try:
+            parsed = datetime.fromisoformat(raw_pub.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            parsed = parsed.astimezone(timezone.utc)
+            pub = parsed.strftime("%Y-%m-%dT%H:%M:%SZ")
+            age_days = round((fetched_at - parsed).total_seconds() / 86400, 1)
+        except ValueError:
+            queries.append(f"injury published_utc unparsable: {raw_pub[:60]} "
+                           "(timestamp empty; citation retained)")
+    else:
+        queries.append("injury published_utc absent (timestamp empty; "
+                       "citation retained)")
     return {
         "url": url,
         "fetched_at_utc": fetched_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "excerpt": excerpt[:280],
-        "published_utc": (pub + "Z") if pub else "",
+        "published_utc": pub,
+        "age_days": age_days,
+        "stale": age_days is not None and age_days > 21,
         "kind": "injuries"}
 
 
@@ -418,10 +481,269 @@ def _league_official_source(league: str, home: str, away: str,
         return []
 
 
+def _context_fetch(url: str, out: dict, label: str) -> dict | None:
+    """Fetch a structured ESPN source and retain its raw payload in journal."""
+    at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        payload = _get_json(url)
+        if not isinstance(payload, dict):
+            raise ValueError("ESPN payload is not an object")
+        out.setdefault("context_fetches", []).append(
+            {"label": label, "url": url, "fetched_at_utc": at,
+             "payload": payload})
+        out["queries"].append(f"{label} {url} OK")
+        return payload
+    except Exception as e:
+        out["queries"].append(
+            f"{label} {url} ERROR {type(e).__name__}: {str(e)[:100]} "
+            "(0 sources, never invented)")
+        return None
+
+
+def _official_pdf_sections(text: str, home: str, away: str) -> dict:
+    """Select only the matching official matchup and its two named teams."""
+    flat = re.sub(r"\s+", " ", text)
+    # The official PDF uses its own abbreviations (e.g. WAS vs ESPN WSH),
+    # so identify the fixture by the ordered pair of full team names within
+    # one matchup block, never by an invented abbreviation crosswalk.
+    for marker in re.finditer(r"\b[A-Z]{2,4}@[A-Z]{2,4}\b", flat):
+        rest = flat[marker.end():]
+        next_match = re.search(r"\b[A-Z]{2,4}@[A-Z]{2,4}\b", rest)
+        block = rest[:next_match.start()] if next_match else rest
+        away_hit = re.search(rf"\b{re.escape(away)}\b", block)
+        home_hit = re.search(rf"\b{re.escape(home)}\b", block)
+        if not away_hit or not home_hit or away_hit.start() >= home_hit.start():
+            continue
+        away_text = block[away_hit.end():home_hit.start()].strip()
+        home_text = block[home_hit.end():].strip()
+        if away_text and home_text:
+            return {"AWAY": away_text[:1500], "HOME": home_text[:1500]}
+    return {}
+
+
+def _official_injury_sources(home: str, away: str, kickoff_utc: str | None,
+                             fetched_at: datetime, queries: list,
+                             journal_dir: Path | None) -> list:
+    """G7-i: latest linked NBA PDF, native PDFKit, two-team excerpts only."""
+    try:
+        if not kickoff_utc:
+            raise ValueError("kickoff absent")
+        kickoff = datetime.fromisoformat(kickoff_utc.replace("Z", "+00:00"))
+        season_start = kickoff.year if kickoff.month >= 7 else kickoff.year - 1
+        index = (f"https://{NBA_OFFICIAL_INDEX_HOST}/nba-injury-report-"
+                 f"{season_start}-{str(season_start + 1)[-2:]}-season/")
+        req = urllib.request.Request(index, headers={"User-Agent":
+                                                     "PaperDesk-research/1"})
+        with urllib.request.urlopen(req, timeout=15) as response:
+            if urllib.parse.urlsplit(response.geturl()).hostname != \
+                    NBA_OFFICIAL_INDEX_HOST:
+                raise ValueError("official index redirect outside host")
+            page = response.read(1_000_001)
+        if len(page) > 1_000_000:
+            raise ValueError("official index too large")
+        links = [html.unescape(link) for link in re.findall(
+            r'href=["\']([^"\']*Injury-Report_[^"\']*\.pdf)["\']',
+            page.decode("utf-8", "replace"), re.I)]
+        et = ZoneInfo("America/New_York")
+        candidates = []
+        for link in links:
+            parsed = urllib.parse.urlsplit(link)
+            if parsed.scheme != "https" or parsed.hostname != \
+                    NBA_OFFICIAL_PDF_HOST:
+                continue
+            found = re.search(r"Injury-Report_(\d{4}-\d{2}-\d{2})_"
+                              r"(\d{2})_(\d{2})(AM|PM)\.pdf$", parsed.path)
+            if not found:
+                continue
+            dt = datetime.strptime(" ".join(found.groups()),
+                                   "%Y-%m-%d %I %M %p").replace(tzinfo=et)
+            if dt <= fetched_at.astimezone(et):
+                candidates.append((dt, link))
+        if not candidates:
+            raise ValueError("no linked report issued before collection")
+        issued, pdf_url = max(candidates)
+        req = urllib.request.Request(pdf_url, headers={
+            "User-Agent": "PaperDesk-research/1", "Referer": index})
+        with urllib.request.urlopen(req, timeout=20) as response:
+            if urllib.parse.urlsplit(response.geturl()).hostname != \
+                    NBA_OFFICIAL_PDF_HOST:
+                raise ValueError("official PDF redirect outside host")
+            raw = response.read(3_000_001)
+        if len(raw) > 3_000_000 or not raw.startswith(b"%PDF-"):
+            raise ValueError("official PDF size/signature invalid")
+        digest = hashlib.sha256(raw).hexdigest()
+        with tempfile.NamedTemporaryFile(suffix=".pdf") as temp:
+            temp.write(raw)
+            temp.flush()
+            helper = Path(__file__).with_name("nba_injury_pdf.js")
+            result = subprocess.run(
+                ["osascript", "-l", "JavaScript", str(helper), temp.name],
+                capture_output=True, text=True, timeout=25, check=True)
+        sections = _official_pdf_sections(result.stdout, home, away)
+        if not sections:
+            raise ValueError("matching two-team section absent in latest PDF")
+        if journal_dir is not None:
+            journal_dir = Path(journal_dir)
+            journal_dir.mkdir(parents=True, exist_ok=True)
+            (journal_dir / f"official_injury_{digest}.pdf").write_bytes(raw)
+        queries.append(f"official_injury_report {index} -> {pdf_url} "
+                       f"issued={issued.isoformat()} sha256={digest} "
+                       "team_sections=2")
+        return [{"url": pdf_url, "fetched_at_utc": fetched_at.strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"),
+                 "published_utc": issued.astimezone(timezone.utc).strftime(
+                     "%Y-%m-%dT%H:%M:%SZ"),
+                 "pdf_sha256": digest, "team": home if side == "HOME" else away,
+                 "excerpt": excerpt, "kind": "official_injury_report"}
+                for side, excerpt in sections.items()]
+    except Exception as e:
+        queries.append(f"official_injury_report ERROR {type(e).__name__}: "
+                       f"{str(e)[:160]} (0 sources, never invented)")
+        return []
+
+
+def _nba_context(out: dict, match_id: str, kickoff_utc: str | None,
+                 home_id: str | None, away_id: str | None,
+                 quote: dict, fetched_at: datetime) -> None:
+    """G6: copied PM numbers plus verified NBA summary/standings/schedule."""
+    legs = (quote.get("pm_walk") or {}).get("legs") or {}
+    odds = quote.get("odds") or {}
+    out["market_block"] = {
+        "pm_quote_row_sha256": quote.get("row_sha256"),
+        "pm_quote_fetched_at_utc": quote.get("fetch_ts_utc"),
+        "pm_legs": {side: {"decimal_odds": odds.get(side),
+                            "best_ask": (legs.get(side) or {}).get("best_ask"),
+                            "vwap_ask": (legs.get(side) or {}).get("vwap_ask"),
+                            "depth_ok": (legs.get(side) or {}).get("depth_ok"),
+                            "fee_cents": (legs.get(side) or {}).get("fee_cents")}
+                    for side in ("HOME", "AWAY")}}
+    if not all(odds.get(side) is not None and legs.get(side)
+               for side in ("HOME", "AWAY")):
+        out["queries"].append("G6 PM quote incomplete for one or both legs "
+                              "(missing fields retained as null)")
+    if out["league"] != "NBA":
+        out["queries"].append("G6 ESPN structured context not verified for "
+                              f"league {out['league']} (0 ESPN fields)")
+        return
+    if not str(match_id).isdecimal():
+        out["queries"].append("G6 NBA summary skipped: non-ESPN match id")
+        return
+    base = f"{ESPN_SITE_BOARD}/basketball/nba"
+    summary_url = f"{base}/summary?event={match_id}"
+    summary = _context_fetch(summary_url, out, "G6 summary")
+    if summary:
+        espn = {}
+        pred = summary.get("predictor") or {}
+        h, a = pred.get("homeTeam") or {}, pred.get("awayTeam") or {}
+        if (home_id and away_id and str(h.get("id")) == str(home_id)
+                and str(a.get("id")) == str(away_id)):
+            try:
+                espn["predictor_home_pct"] = float(h["gameProjection"])
+                espn["predictor_away_pct"] = float(a["gameProjection"])
+            except (KeyError, ValueError, TypeError):
+                out["queries"].append("G6 predictor missing numeric projection")
+        else:
+            out["queries"].append("G6 predictor team IDs absent/mismatch; "
+                                  "projection omitted")
+        picks = summary.get("pickcenter") or []
+        if picks and isinstance(picks[0], dict):
+            pick = picks[0]
+            for key in ("details", "spread", "overUnder"):
+                if pick.get(key) is not None:
+                    espn[key] = pick[key]
+            for side in ("home", "away"):
+                team_odds = pick.get(f"{side}TeamOdds") or {}
+                if team_odds.get("moneyLine") is not None:
+                    espn[f"{side}_moneyline"] = team_odds["moneyLine"]
+        out["market_block"]["espn"] = espn
+        out["market_block"]["espn_url"] = summary_url
+        out["market_block"]["espn_fetched_at_utc"] = \
+            out["context_fetches"][-1]["fetched_at_utc"]
+        missing = {"predictor_home_pct", "predictor_away_pct", "details",
+                   "spread", "overUnder", "home_moneyline", "away_moneyline"} \
+            - set(espn)
+        if missing:
+            out["queries"].append(f"G6 summary missing {sorted(missing)}")
+
+    if not (home_id and away_id and kickoff_utc):
+        out["queries"].append("G6 team_block skipped: missing team IDs or "
+                              "kickoff (0 verified team rows)")
+        return
+    try:
+        kickoff = datetime.fromisoformat(kickoff_utc.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        out["queries"].append("G6 team_block skipped: invalid kickoff")
+        return
+    season = kickoff.year + (1 if kickoff.month >= 7 else 0)
+    standings_url = (f"{ESPN_SITE_BOARD.replace('/site/v2/', '/v2/')}/"
+                     f"basketball/nba/standings?season={season}")
+    standings = _context_fetch(standings_url, out, "G6 standings")
+    out["team_block"] = {}
+    for side, tid in (("HOME", home_id), ("AWAY", away_id)):
+        block = {"team_id": str(tid), "standings": None,
+                 "last_five": [], "rest_days": None,
+                 "back_to_back": None}
+        if standings:
+            for group in standings.get("children") or []:
+                entries = (group.get("standings") or {}).get("entries") or []
+                for e in entries:
+                    if str((e.get("team") or {}).get("id")) != str(tid):
+                        continue
+                    stats = {s.get("name"): s.get("value") for s in
+                             e.get("stats") or []}
+                    block["standings"] = {
+                        "conference": group.get("name"),
+                        "wins": stats.get("wins"), "losses": stats.get("losses"),
+                        "conference_position": stats.get("playoffSeed")}
+                    break
+            if block["standings"] is None:
+                out["queries"].append(f"G6 standings team {tid} absent")
+        schedule_url = f"{base}/teams/{tid}/schedule?season={season}"
+        schedule = _context_fetch(schedule_url, out, f"G6 schedule {side}")
+        if schedule:
+            finals = []
+            for ev in schedule.get("events") or []:
+                try:
+                    dt = datetime.fromisoformat(str(ev["date"])
+                                               .replace("Z", "+00:00"))
+                    comp = (ev.get("competitions") or [{}])[0]
+                    if not (dt < fetched_at and dt < kickoff and
+                            ((comp.get("status") or {}).get("type") or {})
+                            .get("completed") is True):
+                        continue
+                    by_side = {c.get("homeAway"): c for c in
+                               comp.get("competitors") or []}
+                    own = next(c for c in by_side.values() if
+                               str((c.get("team") or {}).get("id")) == str(tid))
+                    opp = by_side["away" if own["homeAway"] == "home" else
+                                  "home"]
+                    score = int(own["score"]["value"])
+                    opp_score = int(opp["score"]["value"])
+                    finals.append((dt, {"event_id": str(ev["id"]),
+                                         "played_at_utc": ev["date"],
+                                         "result": "W" if score > opp_score
+                                         else "L", "score": score,
+                                         "opponent_score": opp_score}))
+                except (KeyError, TypeError, ValueError, StopIteration):
+                    continue
+            finals.sort(key=lambda x: x[0], reverse=True)
+            block["last_five"] = [game for _, game in finals[:5]]
+            if finals:
+                et = ZoneInfo("America/New_York")
+                gap = (kickoff.astimezone(et).date() -
+                       finals[0][0].astimezone(et).date()).days
+                block["rest_days"] = max(0, gap - 1)
+                block["back_to_back"] = gap == 1
+            else:
+                out["queries"].append(f"G6 schedule {side} has no final "
+                                      "before produce; rest unknown")
+        out["team_block"][side] = block
 def collect_evidence(*, league: str, match_id: str, home: str, away: str,
                      journal_dir: Path | None = None,
                      kickoff_utc: str | None = None,
                      team_ids=None,
+                     competition: str | None = None,
+                     market_quote: dict | None = None,
                      gamma_event_url: str | None = None) -> dict:
     """Gather allow-listed evidence for one fixture. Returns
     {queries: [...], sources: [{url, fetched_at_utc, excerpt,
@@ -440,10 +762,24 @@ def collect_evidence(*, league: str, match_id: str, home: str, away: str,
     """
     fetched_at = datetime.now(timezone.utc)
     out: dict = {"league": league, "match_id": match_id,
+                 "collector_sha256": hashlib.sha256(
+                     Path(__file__).read_bytes()).hexdigest(),
                  "queries": [], "sources": []}
-    path = SPORT_PATH.get(league)
+    path = _sport_path(league, competition)
     if not path:
-        out["why"] = f"no research path for league {league}"
+        out["why"] = (f"no verified ESPN path for competition "
+                      f"{competition or '<missing>'}" if league == "SOCCER"
+                      else f"no research path for league {league}")
+        out["queries"].append(out["why"] + " (0 ESPN sources)")
+        if market_quote is not None:
+            _nba_context(out, match_id, kickoff_utc, None, None,
+                         market_quote, fetched_at)
+        if journal_dir is not None:
+            journal_dir = Path(journal_dir)
+            journal_dir.mkdir(parents=True, exist_ok=True)
+            stamp = fetched_at.strftime("%Y%m%dT%H%M%SZ")
+            (journal_dir / f"evidence_{match_id}_{stamp}.json").write_text(
+                json.dumps(out, indent=1, sort_keys=True))
         return out
 
     # F3: the roster layer is REMOVED (law in ROSTER_REMOVAL_NOTE) — the
@@ -457,7 +793,9 @@ def collect_evidence(*, league: str, match_id: str, home: str, away: str,
     if not home_id or not away_id:
         looked = lookup_team_ids(league=league, match_id=match_id,
                                  kickoff_utc=kickoff_utc,
-                                 home=home or None, away=away or None)
+                                 home=home or None, away=away or None,
+                                 competition=competition,
+                                 queries=out["queries"])
         if looked:
             home_id = looked.get("home") or home_id
             away_id = looked.get("away") or away_id
@@ -513,7 +851,7 @@ def collect_evidence(*, league: str, match_id: str, home: str, away: str,
         board_url = (f"{ESPN_SITE_BOARD}/{path}/scoreboard?dates={day}")
         found_day = False
         try:
-            board = _board_payload(path, day)   # cached; None on error
+            board = _board_payload(path, day, out["queries"])
             if board is None:
                 raise OSError("board fetch failed (cached)")
             ev, how = _find_event(board, match_id, home or None,
@@ -580,6 +918,17 @@ def collect_evidence(*, league: str, match_id: str, home: str, away: str,
     out["sources"].extend(_league_official_source(league, home, away,
                                                   out["queries"],
                                                   fetched_at))
+    if league == "NBA" and market_quote is not None:
+        out["sources"].extend(_official_injury_sources(
+            home, away, kickoff_utc, fetched_at, out["queries"],
+            journal_dir))
+
+    if market_quote is not None:
+        _nba_context(out, match_id, kickoff_utc, home_id, away_id,
+                     market_quote, fetched_at)
+    else:
+        out["queries"].append("G6 market quote unavailable for candidate "
+                              "(0 copied PM fields)")
 
     if journal_dir is not None:
         journal_dir = Path(journal_dir)
