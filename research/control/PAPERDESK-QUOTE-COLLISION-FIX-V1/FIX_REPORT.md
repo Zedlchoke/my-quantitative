@@ -31,4 +31,11 @@ Production files changed: execute.py, wsl_lane.py. Test files changed: test_fixa
 
 Current ledger identity audit: **10 of 46 quotes lack required source identity**; see SOURCE_IDENTITY_COMPLETENESS.json. Under the owner's fail-closed rule a full-ledger candidate comparison remains blocked by those legacy rows. The four cited pairs themselves have complete distinct identities, but pair regressions do not claim a full-ledger production pass. No historical identity was guessed, completed, or discarded. Owner must see this limitation before any separate adoption decision.
 
-Independent A7 pending: rerun four historical pairs and synthetic negatives on committed HEAD, inspect full-ledger limitation and invariants/scope, write A7_REPORT.md and A7_HANDOFF.json. Auditor never repairs code. Stop after audit and owner report.
+## Independent A7 and owner stop
+
+A7 audited target `dbdf4c6794af50c25762b2251b6130b066bd91f8`; audit artifacts committed at `dc0f49c8e28f327f3d19036e173c89d96c0a5695`. Verdict **BUG_REFUSE: 1 HIGH, 1 MEDIUM**. A7 independently reran 38 targeted tests (all passed, 1.15s), the four historical pairs, and its own probes; full battery green does not cover the defects below.
+
+- HIGH F1: explicit token/outcome IDs are ignored. Same event and same token under different semantic labels HOME versus YES incorrectly returns CLEAR; different tokens under the same label can incorrectly collide. W1.4 therefore does not yet enforce the real source identity law.
+- MEDIUM F2: a peer with missing identity plus another shared identifier returns collision before the missing-identity diagnostic. It remains financially fail closed, but the reason/status must be QUOTE_IDENTITY_MISSING.
+
+A7 independently confirmed all four pair classifications and the full-ledger 10/46 missing-identity block. V3, FORECAST and scope invariants passed independently. Exact probes and findings are in A7_REPORT.md; structured handoff in A7_HANDOFF.json. No producer repair was made after the independent audit. Cycle BLOCKED; STOP at owner report, with no merge, adoption, production restart or push. Further repair and fresh A7 require the owner's next instruction.
