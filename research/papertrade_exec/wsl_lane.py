@@ -894,17 +894,6 @@ def cmd_decide(args) -> dict:
                             fc_rows[-1].get("model_version_sha"),
                         "source_ref": fc_rows[-1].get("source_ref")}
             qrow = qt_rows[-1]
-            quote = {"odds": qrow["odds"],
-                     "fetch_ts_utc": qrow["fetch_ts_utc"],
-                     "source_last_update_utc":
-                         qrow["source_last_update_utc"],
-                     "bookmaker": qrow["bookmaker"],
-                     "market": qrow["market"],
-                     "commence_time_utc": qrow["commence_time_utc"],
-                     "payload_sha256": qrow["payload_sha256"]}
-            stake = core.stake_for_decision(led.equity_cents())
-            recheck = make_in_lock_recheck(view, core, registry, go_ok=True,
-                                           walked_stake_cents=stake)
             # W1.4 parity: one odds snapshot must never price two fixtures.
             collide = _exec.quote_collision(led, fx["match_id"], qrow)
             if collide["status"] != "CLEAR":
@@ -916,6 +905,17 @@ def cmd_decide(args) -> dict:
                                   "status": row.get("status"),
                                   "reason": (row.get("reason") or "")[:160]})
                 continue
+            quote = {"odds": qrow["odds"],
+                     "fetch_ts_utc": qrow["fetch_ts_utc"],
+                     "source_last_update_utc":
+                         qrow["source_last_update_utc"],
+                     "bookmaker": qrow["bookmaker"],
+                     "market": qrow["market"],
+                     "commence_time_utc": qrow["commence_time_utc"],
+                     "payload_sha256": qrow["payload_sha256"]}
+            stake = core.stake_for_decision(led.equity_cents())
+            recheck = make_in_lock_recheck(view, core, registry, go_ok=True,
+                                           walked_stake_cents=stake)
             dec = core.risk.evaluate_match(
                 view, league=LEAGUE, match_id=fx["match_id"],
                 competition=fx.get("competition") or "WSL_LEAGUE",
