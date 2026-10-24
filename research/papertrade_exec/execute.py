@@ -1983,39 +1983,58 @@ def _pm_family(quote_row: dict | None) -> bool:
 
 
 def _quote_source_identity(row: dict) -> tuple[dict, list[str]]:
-    """Read explicit source IDs only; prices never supply identity."""
-    walk = row.get("pm_walk") or {}
-    outcomes = row.get("pm_outcomes") or {}
+    """Explicit token/outcome IDs take precedence over recorded leg labels."""
+    walk = row.get("pm_walk") if isinstance(row.get("pm_walk"), dict) else {}
+    outcomes = row.get("pm_outcomes") if isinstance(row.get("pm_outcomes"), dict) else {}
     book = str(row.get("bookmaker") or "").strip().casefold()
     if book and _pm_family(row):
         book = "polymarket"
     payload = str(row.get("payload_sha256") or "").strip().lower()
-    markets = {str(v).strip() for v in
-               [row.get("market_id"), walk.get("market_id")] if v is not None
-               and str(v).strip()}
-    markets.update(str(v["market_id"]).strip() for v in outcomes.values()
-                   if isinstance(v, dict) and v.get("market_id"))
+    payload_valid = len(payload) == 64 and not set(payload) - set("0123456789abcdef") and payload != "0" * 64
+    market_ids = {str(v).strip() for v in
+                  [row.get("market_id"), walk.get("market_id")]
+                  if v is not None and str(v).strip()}
+    market_ids.update(str(v["market_id"]).strip() for v in outcomes.values()
+                      if isinstance(v, dict) and str(v.get("market_id") or "").strip())
     events = {str(v).strip() for v in [row.get("pm_event_id"),
               row.get("event_id"), walk.get("event_id"),
               (row.get("pm_crosswalk") or {}).get("pm_event_id")]
               if v is not None and str(v).strip()}
-    legs = set(outcomes) or set(walk.get("legs") or {})
+    leg_rows = dict(walk["legs"]) if isinstance(walk.get("legs"), dict) else {}
+    for label, metadata in outcomes.items():
+        prior = leg_rows.get(label) if isinstance(leg_rows.get(label), dict) else {}
+        leg_rows[label] = {**prior, **metadata} if isinstance(metadata, dict) else metadata
+    leg_ids, fallback = set(), []
+    for label, metadata in leg_rows.items():
+        metadata = metadata if isinstance(metadata, dict) else {}
+        explicit = set()
+        for namespace, keys in (("token", ("token_id_yes", "token_id", "tokenId", "tokenID")),
+                                ("outcome", ("outcome_id", "outcomeId", "outcomeID"))):
+            explicit.update(namespace + ":" + str(metadata[k]).strip()
+                            for k in keys if metadata.get(k) is not None
+                            and str(metadata[k]).strip())
+        if explicit:
+            leg_ids.update(explicit)
+        elif str(label).strip():
+            leg_ids.add("semantic:" + str(label))
+            fallback.append(str(label))
     missing = []
-    if len(payload) != 64 or set(payload) - set("0123456789abcdef") or payload == "0" * 64:
+    if not payload_valid:
         missing.append("payload_sha256")
     if not book:
         missing.append("bookmaker")
-    if not markets or (outcomes and any(not isinstance(v, dict) or
-                       not v.get("market_id") for v in outcomes.values())):
+    if not market_ids or (outcomes and any(not isinstance(v, dict) or
+                         not str(v.get("market_id") or "").strip() for v in outcomes.values())):
         missing.append("market_id")
     if len(events) != 1:
         missing.append("pm_event_id" if not events else "pm_event_id_conflict")
-    if not legs or not all(str(leg).strip() for leg in legs) or \
-            set(row.get("odds") or {}) - legs:
+    if not leg_ids or set(row.get("odds") or {}) - set(leg_rows):
         missing.append("leg_identity")
-    return {"payload_sha256": payload, "bookmaker": book,
-            "markets": {(book, m) for m in markets},
-            "event_legs": {(e, str(leg)) for e in events for leg in legs}}, missing
+    return {"payload_sha256": payload if payload_valid else None,
+            "bookmaker": book, "market_ids": market_ids, "events": events,
+            "markets": {(book, m) for m in market_ids},
+            "event_legs": {(e, leg) for e in events for leg in leg_ids},
+            "semantic_fallback_labels": sorted(fallback)}, missing
 
 
 def _quote_vwap_vector(row: dict) -> dict:
@@ -2029,24 +2048,48 @@ def _quote_vwap_vector(row: dict) -> dict:
 
 
 def quote_collision(led, match_id: str, quote_row: dict | None) -> dict:
-    """W1.4: source reuse blocks; equal prices only produce a note.
-
-    Compare every other fixture, including other leagues. Incomplete source
-    identity on either quote fails closed. Historical quotes are never edited.
-    """
-    result = {"status": "CLEAR", "price_twin_match_ids": []}
-    if quote_row is None:  # The existing risk gate owns the no-quote case.
+    """W1.4 round 2: validate first; disclose excluded incomplete history."""
+    result = {"status": "CLEAR", "price_twin_match_ids": [],
+              "incomplete_peers_skipped_count": 0, "incomplete_peers_skipped": [],
+              "leg_identity_fallbacks": []}
+    if quote_row is None:  # Existing risk gate owns the no-quote case.
         return result
+
+    def record_fallback(row, identity):
+        if identity["semantic_fallback_labels"]:
+            result["leg_identity_fallbacks"].append({
+                "match_id": str(row.get("match_id")),
+                "row_sha256": row.get("row_sha256"),
+                "labels": identity["semantic_fallback_labels"]})
+
     identity, missing = _quote_source_identity(quote_row)
+    record_fallback(quote_row, identity)
     if missing:
         return {**result, "status": "QUOTE_IDENTITY_MISSING",
                 "reason": f"QUOTE_IDENTITY_MISSING: fixture {match_id}: {', '.join(missing)} (W1.4); fail-closed"}
-    peers = [r for r in led.rows if r.get("type") == "MARKET_QUOTE"
-             and str(r.get("match_id")) != str(match_id)]
-    incomplete = []
-    for row in peers:
+    incomplete_matches, collisions = [], []
+    for row in led.rows:
+        if row.get("type") != "MARKET_QUOTE" or str(row.get("match_id")) == str(match_id):
+            continue
         other, absent = _quote_source_identity(row)
         peer = str(row.get("match_id"))
+        if absent:
+            # An incomplete peer is relevant only on an available strong ID.
+            # Market/event matches here do not need the absent bookmaker/leg.
+            strong = []
+            if identity["payload_sha256"] and identity["payload_sha256"] == other["payload_sha256"]:
+                strong.append("payload_sha256=" + identity["payload_sha256"])
+            if identity["market_ids"] & other["market_ids"]:
+                strong.append("market_id=" + repr(sorted(identity["market_ids"] & other["market_ids"])))
+            if identity["events"] & other["events"]:
+                strong.append("pm_event_id=" + repr(sorted(identity["events"] & other["events"])))
+            detail = {"match_id": peer, "row_sha256": row.get("row_sha256"), "missing": absent}
+            if strong:
+                incomplete_matches.append({**detail, "strong_matches": strong})
+            else:
+                result["incomplete_peers_skipped"].append(detail)
+            continue
+        record_fallback(row, other)
         duplicate = []
         if identity["payload_sha256"] == other["payload_sha256"]:
             duplicate.append("payload_sha256=" + identity["payload_sha256"])
@@ -2057,30 +2100,44 @@ def quote_collision(led, match_id: str, quote_row: dict | None) -> dict:
         if common_legs:
             duplicate.append("(pm_event_id, leg_identity)=" + repr(sorted(common_legs)))
         if duplicate:
-            return {**result, "status": "NOT_RUN_QUOTE_COLLISION",
-                    "match_id": peer, "reason": "source identity reused by fixture " + peer +
-                    ": " + "; ".join(duplicate) + " (W1.4); fail-closed"}
-        if absent:
-            incomplete.append((peer, absent))
-            continue
+            collisions.append((peer, duplicate))
         odds = quote_row.get("odds") or {}
         if (odds and odds == (row.get("odds") or {})) or \
                 (_quote_vwap_vector(quote_row) and
                  _quote_vwap_vector(quote_row) == _quote_vwap_vector(row)):
             result["price_twin_match_ids"].append(peer)
-    if incomplete:
-        return {**result, "status": "QUOTE_IDENTITY_MISSING",
-                "reason": "QUOTE_IDENTITY_MISSING: compared fixtures " + repr(incomplete) +
-                          " (W1.4); fail-closed"}
+    result["incomplete_peers_skipped_count"] = len(result["incomplete_peers_skipped"])
     result["price_twin_match_ids"] = sorted(set(result["price_twin_match_ids"]))
+    # Missing-identity diagnostics take precedence, independent of ledger order.
+    if incomplete_matches:
+        return {**result, "status": "QUOTE_IDENTITY_MISSING",
+                "reason": "QUOTE_IDENTITY_MISSING: relevant incomplete peers " +
+                          repr(incomplete_matches) + " (W1.4); fail-closed"}
+    if collisions:
+        peer, duplicate = collisions[0]
+        return {**result, "status": "NOT_RUN_QUOTE_COLLISION", "match_id": peer,
+                "reason": "source identity reused by fixture " + peer + ": " +
+                          "; ".join(duplicate) + " (W1.4); fail-closed"}
     return result
 
 
 def note_price_twins(decision: dict, check: dict) -> dict:
-    """Nonblocking W1.4 metadata survives every terminal decision path."""
+    """Persist nonblocking identity disclosures on every decision path."""
+    observations = list(decision.get("quote_observations") or [])
     if check.get("price_twin_match_ids"):
-        decision["quote_observations"] = [{"code": "PRICE_TWIN_OBSERVED",
-            "match_ids": check["price_twin_match_ids"]}]
+        observations.append({"code": "PRICE_TWIN_OBSERVED",
+                             "match_ids": check["price_twin_match_ids"]})
+    if check.get("incomplete_peers_skipped_count"):
+        observations.append({"code": "INCOMPLETE_PEERS_SKIPPED",
+                             "count": check["incomplete_peers_skipped_count"],
+                             "peers": check["incomplete_peers_skipped"]})
+    if check.get("leg_identity_fallbacks"):
+        observations.append({"code": "LEG_IDENTITY_SEMANTIC_FALLBACK",
+                             "quotes": check["leg_identity_fallbacks"]})
+    if observations:
+        # The gate may return the same decision object; do not duplicate notes.
+        decision["quote_observations"] = [o for i, o in enumerate(observations)
+                                           if o not in observations[:i]]
     return decision
 
 
@@ -2561,6 +2618,7 @@ def cmd_decide(args) -> dict:
                    "status": collide["status"],
                    "reason": collide["reason"],
                    "stake_cents": 0, "chosen_leg": None}
+            note_price_twins(row, collide)
             led.append_decision(row)
             journaled.append({"match_id": f.match_id,
                               "status": row["status"],

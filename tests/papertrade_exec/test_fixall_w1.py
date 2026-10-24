@@ -238,7 +238,9 @@ def test_quote_collision_unit(env):
            "bookmaker": "polymarket", "odds": {"HOME": 2.0, "AWAY": 1.9},
            **identity_fields("m2")}
     check = execute.quote_collision(led, "m2", row)
-    assert check == {"status": "CLEAR", "price_twin_match_ids": ["m1"]}
+    assert check["status"] == "CLEAR"
+    assert check["price_twin_match_ids"] == ["m1"]
+    assert check["leg_identity_fallbacks"]
     row["payload_sha256"] = identity_fields("m1")["payload_sha256"]
     check = execute.quote_collision(led, "m2", row)
     assert check["status"] == "NOT_RUN_QUOTE_COLLISION"

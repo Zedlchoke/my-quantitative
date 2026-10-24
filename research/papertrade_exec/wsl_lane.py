@@ -910,6 +910,7 @@ def cmd_decide(args) -> dict:
             if collide["status"] != "CLEAR":
                 row = terminal_journal(
                     fx, collide["status"], collide["reason"], now)
+                _exec.note_price_twins(row, collide)
                 row = led.append_decision(row)
                 journaled.append({"match_id": fx["match_id"],
                                   "status": row.get("status"),
