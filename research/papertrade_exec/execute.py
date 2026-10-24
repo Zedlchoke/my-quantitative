@@ -1982,37 +1982,106 @@ def _pm_family(quote_row: dict | None) -> bool:
             or str(row.get("source_ref", "")).startswith("PM_CLOB"))
 
 
-def quote_collision(led, match_id: str, quote_row: dict | None) -> str | None:
-    """W1.4: the SAME quote snapshot must never serve two fixtures (runtime
-    evidence: WSL M39 DRAW odds == M42 DRAW odds and M38 == M41 identical to
-    15 decimal places — one PM snapshot reused across matches). Two arms:
-      (a) identical non-trivial payload_sha256 (the snapshot bytes reused
-          verbatim — precise for every bookmaker);
-      (b) for PM book-walk rows only, EXACT float equality of the full odds
-          vector (long VWAP floats that match to the last digit are one
-          snapshot; coarse bookmaker prices like 1.85/2.05 legitimately
-          repeat across fixtures and are NEVER a collision).
-    Returns the earlier colliding match_id, or None."""
-    if not quote_row:
-        return None
-    league = quote_row.get("league")
-    sig_sha = str(quote_row.get("payload_sha256") or "")
-    sig_sha_real = bool(sig_sha) and sig_sha != "0" * 64
-    pm = _pm_family(quote_row)
-    odds_exact = {k: float(v)
-                  for k, v in (quote_row.get("odds") or {}).items()}
-    for r in led.rows:
-        if r.get("type") != "MARKET_QUOTE" or \
-                r.get("match_id") == match_id or r.get("league") != league:
+def _quote_source_identity(row: dict) -> tuple[dict, list[str]]:
+    """Read explicit source IDs only; prices never supply identity."""
+    walk = row.get("pm_walk") or {}
+    outcomes = row.get("pm_outcomes") or {}
+    book = str(row.get("bookmaker") or "").strip().casefold()
+    if book and _pm_family(row):
+        book = "polymarket"
+    payload = str(row.get("payload_sha256") or "").strip().lower()
+    markets = {str(v).strip() for v in
+               [row.get("market_id"), walk.get("market_id")] if v is not None
+               and str(v).strip()}
+    markets.update(str(v["market_id"]).strip() for v in outcomes.values()
+                   if isinstance(v, dict) and v.get("market_id"))
+    events = {str(v).strip() for v in [row.get("pm_event_id"),
+              row.get("event_id"), walk.get("event_id"),
+              (row.get("pm_crosswalk") or {}).get("pm_event_id")]
+              if v is not None and str(v).strip()}
+    legs = set(outcomes) or set(walk.get("legs") or {})
+    missing = []
+    if len(payload) != 64 or set(payload) - set("0123456789abcdef") or payload == "0" * 64:
+        missing.append("payload_sha256")
+    if not book:
+        missing.append("bookmaker")
+    if not markets or (outcomes and any(not isinstance(v, dict) or
+                       not v.get("market_id") for v in outcomes.values())):
+        missing.append("market_id")
+    if len(events) != 1:
+        missing.append("pm_event_id" if not events else "pm_event_id_conflict")
+    if not legs or not all(str(leg).strip() for leg in legs) or \
+            set(row.get("odds") or {}) - legs:
+        missing.append("leg_identity")
+    return {"payload_sha256": payload, "bookmaker": book,
+            "markets": {(book, m) for m in markets},
+            "event_legs": {(e, str(leg)) for e in events for leg in legs}}, missing
+
+
+def _quote_vwap_vector(row: dict) -> dict:
+    legs = (row.get("pm_walk") or {}).get("legs") or row.get("pm_outcomes") or {}
+    if not legs or set(legs) != set(row.get("odds") or {}):
+        return {}
+    if any(not isinstance(v, dict) or v.get("vwap_ask") is None
+           for v in legs.values()):
+        return {}
+    return {leg: value["vwap_ask"] for leg, value in legs.items()}
+
+
+def quote_collision(led, match_id: str, quote_row: dict | None) -> dict:
+    """W1.4: source reuse blocks; equal prices only produce a note.
+
+    Compare every other fixture, including other leagues. Incomplete source
+    identity on either quote fails closed. Historical quotes are never edited.
+    """
+    result = {"status": "CLEAR", "price_twin_match_ids": []}
+    if quote_row is None:  # The existing risk gate owns the no-quote case.
+        return result
+    identity, missing = _quote_source_identity(quote_row)
+    if missing:
+        return {**result, "status": "QUOTE_IDENTITY_MISSING",
+                "reason": f"QUOTE_IDENTITY_MISSING: fixture {match_id}: {', '.join(missing)} (W1.4); fail-closed"}
+    peers = [r for r in led.rows if r.get("type") == "MARKET_QUOTE"
+             and str(r.get("match_id")) != str(match_id)]
+    incomplete = []
+    for row in peers:
+        other, absent = _quote_source_identity(row)
+        peer = str(row.get("match_id"))
+        duplicate = []
+        if identity["payload_sha256"] == other["payload_sha256"]:
+            duplicate.append("payload_sha256=" + identity["payload_sha256"])
+        common_markets = identity["markets"] & other["markets"]
+        if common_markets:
+            duplicate.append("(bookmaker, market_id)=" + repr(sorted(common_markets)))
+        common_legs = identity["event_legs"] & other["event_legs"]
+        if common_legs:
+            duplicate.append("(pm_event_id, leg_identity)=" + repr(sorted(common_legs)))
+        if duplicate:
+            return {**result, "status": "NOT_RUN_QUOTE_COLLISION",
+                    "match_id": peer, "reason": "source identity reused by fixture " + peer +
+                    ": " + "; ".join(duplicate) + " (W1.4); fail-closed"}
+        if absent:
+            incomplete.append((peer, absent))
             continue
-        r_sha = str(r.get("payload_sha256") or "")
-        if sig_sha_real and r_sha == sig_sha:
-            return r.get("match_id")
-        if pm and _pm_family(r) and odds_exact and \
-                {k: float(v) for k, v in (r.get("odds") or {}).items()} == \
-                odds_exact:
-            return r.get("match_id")
-    return None
+        odds = quote_row.get("odds") or {}
+        if (odds and odds == (row.get("odds") or {})) or \
+                (_quote_vwap_vector(quote_row) and
+                 _quote_vwap_vector(quote_row) == _quote_vwap_vector(row)):
+            result["price_twin_match_ids"].append(peer)
+    if incomplete:
+        return {**result, "status": "QUOTE_IDENTITY_MISSING",
+                "reason": "QUOTE_IDENTITY_MISSING: compared fixtures " + repr(incomplete) +
+                          " (W1.4); fail-closed"}
+    result["price_twin_match_ids"] = sorted(set(result["price_twin_match_ids"]))
+    return result
+
+
+def note_price_twins(decision: dict, check: dict) -> dict:
+    """Nonblocking W1.4 metadata survives every terminal decision path."""
+    if check.get("price_twin_match_ids"):
+        decision["quote_observations"] = [{"code": "PRICE_TWIN_OBSERVED",
+            "match_ids": check["price_twin_match_ids"]}]
+    return decision
 
 
 def pm_ev_crosscheck(args, fixture, p_frozen: dict, chosen_leg: str) -> dict:
@@ -2484,15 +2553,13 @@ def cmd_decide(args) -> dict:
             qt = {**qt, f.match_id: q_row_fresh}
         # W1.4: one odds snapshot must never serve two fixtures.
         collide = quote_collision(led, f.match_id, qt.get(f.match_id))
-        if collide is not None:
+        if collide["status"] != "CLEAR":
             row = {"type": "DECISION", "league": f.league,
                    "match_id": f.match_id, "competition": f.competition,
                    "home": f.home, "away": f.away,
                    "kickoff_utc": f.kickoff_utc, "decided_at_utc": now,
-                   "status": "NOT_RUN_QUOTE_COLLISION",
-                   "reason": (f"quote odds signature identical to {collide} "
-                              "— one snapshot cannot price two fixtures "
-                              "(W1.4); fail-closed"),
+                   "status": collide["status"],
+                   "reason": collide["reason"],
                    "stake_cents": 0, "chosen_leg": None}
             led.append_decision(row)
             journaled.append({"match_id": f.match_id,
@@ -2504,6 +2571,7 @@ def cmd_decide(args) -> dict:
             home=f.home, away=f.away, kickoff_utc=f.kickoff_utc, now_utc=now,
             forecast=fc_row, quote=qt.get(f.match_id),
             crosswalk_ok=ok, go_ok=go_ok, capital_law=capital_law)
+        note_price_twins(dec, collide)
         if league == "SOCCER" and dec.get("status") in ("BET_PAPER", "NO_EDGE"):
             # Decision cites the exact B1R row it was grounded in (map pin +
             # control reference travel with the row — switch law).
@@ -2520,6 +2588,7 @@ def cmd_decide(args) -> dict:
                 laws.EV_OUTLIER_THRESHOLD:
             row, kind = ev_outlier_disposition(
                 args, led, f, dec, qt.get(f.match_id), now)
+            note_price_twins(row, collide)
             led.append_decision(
                 row, recheck=risk.in_lock_recheck(led, now, go_ok,
                                                   capital_law=capital_law),
@@ -2548,6 +2617,7 @@ def cmd_decide(args) -> dict:
                                             "yet; review window open (W4.4)"})
                 continue
             if outcome is not None:            # terminal VETO / NO_VERDICT
+                note_price_twins(outcome, collide)
                 led.append_decision(
                     outcome, recheck=risk.in_lock_recheck(
                         led, now, go_ok, capital_law=capital_law),
