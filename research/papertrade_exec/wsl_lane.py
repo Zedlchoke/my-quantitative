@@ -894,6 +894,17 @@ def cmd_decide(args) -> dict:
                             fc_rows[-1].get("model_version_sha"),
                         "source_ref": fc_rows[-1].get("source_ref")}
             qrow = qt_rows[-1]
+            # W1.4 parity: one odds snapshot must never price two fixtures.
+            collide = _exec.quote_collision(led, fx["match_id"], qrow)
+            if collide["status"] != "CLEAR":
+                row = terminal_journal(
+                    fx, collide["status"], collide["reason"], now)
+                _exec.note_price_twins(row, collide)
+                row = led.append_decision(row)
+                journaled.append({"match_id": fx["match_id"],
+                                  "status": row.get("status"),
+                                  "reason": (row.get("reason") or "")[:160]})
+                continue
             quote = {"odds": qrow["odds"],
                      "fetch_ts_utc": qrow["fetch_ts_utc"],
                      "source_last_update_utc":
@@ -905,19 +916,6 @@ def cmd_decide(args) -> dict:
             stake = core.stake_for_decision(led.equity_cents())
             recheck = make_in_lock_recheck(view, core, registry, go_ok=True,
                                            walked_stake_cents=stake)
-            # W1.4 parity: one odds snapshot must never price two fixtures.
-            collide = _exec.quote_collision(led, fx["match_id"], qrow)
-            if collide is not None:
-                row = terminal_journal(
-                    fx, "NOT_RUN_QUOTE_COLLISION",
-                    f"quote odds signature identical to {collide} — one "
-                    "snapshot cannot price two fixtures (W1.4); fail-closed",
-                    now)
-                row = led.append_decision(row)
-                journaled.append({"match_id": fx["match_id"],
-                                  "status": row.get("status"),
-                                  "reason": (row.get("reason") or "")[:160]})
-                continue
             dec = core.risk.evaluate_match(
                 view, league=LEAGUE, match_id=fx["match_id"],
                 competition=fx.get("competition") or "WSL_LEAGUE",
@@ -925,6 +923,7 @@ def cmd_decide(args) -> dict:
                 kickoff_utc=fx["kickoff_utc"], now_utc=now,
                 forecast=forecast, quote=quote, crosswalk_ok=True,
                 go_ok=True, capital_law=3)
+            _exec.note_price_twins(dec, collide)
             # W1.5 parity: EV outlier quarantine (the live M39 loss came
             # from this lane at EV +196.68%).
             if dec.get("status") == "BET_PAPER" and max(
@@ -937,6 +936,7 @@ def cmd_decide(args) -> dict:
                     kickoff_utc = fx["kickoff_utc"]
                 row, _kind = _exec.ev_outlier_disposition(
                     args, led, _Fx(), dec, qrow, now)
+                _exec.note_price_twins(row, collide)
                 row = led.append_decision(row, recheck=recheck,
                                           capital_law=3)
                 journaled.append({"match_id": fx["match_id"],
@@ -964,6 +964,7 @@ def cmd_decide(args) -> dict:
                                                 "opinion yet; window open"})
                     continue
                 if outcome is not None:
+                    _exec.note_price_twins(outcome, collide)
                     row = led.append_decision(outcome, recheck=recheck,
                                               capital_law=3)
                     journaled.append({"match_id": fx["match_id"],

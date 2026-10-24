@@ -38,6 +38,7 @@ from research.papertrade_exec import laws                         # noqa: E402
 from research.papertrade_exec import quota_guard                  # noqa: E402
 from research.papertrade_exec import results_fetch as RF          # noqa: E402
 from research.papertrade_exec.ops_service import OpsService       # noqa: E402
+from tests.papertrade_exec.quote_identity_fixtures import identity_fields
 
 env = _ops.env
 incidents = _ops.incidents
@@ -59,7 +60,7 @@ def _sandbox_ledger(env):
 
 
 def _seed_chain(led, match_id="m1", *, odds=None, kickoff="2026-10-08T19:00:00Z",
-                p=None, bookmaker="pinnacle"):
+                p=None, bookmaker="pinnacle", payload_sha256=None):
     outcomes = ["HOME", "AWAY"]
     odds = odds or {"HOME": 2.0, "AWAY": 1.9}
     p = p or {"HOME": 0.55, "AWAY": 0.45}
@@ -75,7 +76,9 @@ def _seed_chain(led, match_id="m1", *, odds=None, kickoff="2026-10-08T19:00:00Z"
                 "bookmaker": bookmaker, "market": "h2h",
                 "fetch_ts_utc": "2026-10-08T02:00:00Z",
                 "source_last_update_utc": "2026-10-08T01:00:00Z",
-                "commence_time_utc": kickoff, "payload_sha256": "0" * 64,
+                "commence_time_utc": kickoff,
+                **dict(identity_fields(match_id), payload_sha256=payload_sha256 or
+                       identity_fields(match_id)["payload_sha256"]),
                 "key_fingerprint": None, "mode": "REAL",
                 "source_ref": "TEST"})
 
@@ -228,48 +231,29 @@ def test_decide_blocks_constant_batch(env):
 # ------------------------------------------------------------------ W1.4 ----
 
 def test_quote_collision_unit(env):
+    from tests.papertrade_exec.quote_identity_fixtures import identity_fields
     led = _sandbox_ledger(env)
-    # PM book-walk arm: EXACT float equality of the full odds vector — the
-    # 15-digit runtime evidence pair (M39 == M42) collides...
-    _seed_chain(led, "m1", odds={"HOME": 5.647962497524461, "AWAY": 1.2})
-    pm_rows = [r for r in led.rows if r.get("type") == "MARKET_QUOTE"]
-    for r in pm_rows:
-        r["bookmaker"] = "polymarket"          # WSL/PM family rows
-    row2 = {"type": "MARKET_QUOTE", "league": "NBA", "match_id": "m2",
-            "bookmaker": "polymarket",
-            "odds": {"HOME": 5.647962497524461, "AWAY": 1.2}}
-    assert execute.quote_collision(led, "m2", row2) == "m1"
-    # ...while a genuinely different PM snapshot does not
-    row3 = {"type": "MARKET_QUOTE", "league": "NBA", "match_id": "m2",
-            "bookmaker": "polymarket",
-            "odds": {"HOME": 5.647962497524462, "AWAY": 1.2}}
-    assert execute.quote_collision(led, "m2", row3) is None
-    # snapshot-bytes arm: identical payload_sha256 collides for ANY bookmaker
-    row4 = {"type": "MARKET_QUOTE", "league": "NBA", "match_id": "m2",
-            "bookmaker": "pinnacle", "payload_sha256": "a" * 64,
-            "odds": {"HOME": 3.1, "AWAY": 1.4}}
-    assert execute.quote_collision(led, "m2", row4) is None
-    led.append(dict(row4, match_id="m1"))
-    assert execute.quote_collision(led, "m2", row4) == "m1"
-    # coarse bookmaker prices legitimately repeat — NEVER a collision
-    _ops.sandbox_ledger_path(env).unlink()
-    led2 = _sandbox_ledger(env)
-    _seed_chain(led2, "m1", odds={"HOME": 1.85, "AWAY": 2.05})
-    _seed_chain(led2, "m2", odds={"HOME": 1.85, "AWAY": 2.05},
-                kickoff="2026-10-08T22:00:00Z")
-    assert execute.quote_collision(
-        led2, "m2",
-        next(r for r in led2.rows if r.get("match_id") == "m2"
-             and r.get("type") == "MARKET_QUOTE")) is None
+    _seed_chain(led, "m1", bookmaker="polymarket")
+    row = {"type": "MARKET_QUOTE", "league": "NBA", "match_id": "m2",
+           "bookmaker": "polymarket", "odds": {"HOME": 2.0, "AWAY": 1.9},
+           **identity_fields("m2")}
+    check = execute.quote_collision(led, "m2", row)
+    assert check["status"] == "CLEAR"
+    assert check["price_twin_match_ids"] == ["m1"]
+    assert check["leg_identity_fallbacks"]
+    row["payload_sha256"] = identity_fields("m1")["payload_sha256"]
+    check = execute.quote_collision(led, "m2", row)
+    assert check["status"] == "NOT_RUN_QUOTE_COLLISION"
+    assert "payload_sha256=" in check["reason"]
 
 
 def test_decide_refuses_colliding_quote(env):
     led = _sandbox_ledger(env)
     _seed_chain(led, "m1", odds={"HOME": 5.647962497524461, "AWAY": 1.2},
-                p={"HOME": 0.61, "AWAY": 0.39}, bookmaker="polymarket")
+                p={"HOME": 0.61, "AWAY": 0.39}, bookmaker="polymarket", payload_sha256="a" * 64)
     _seed_chain(led, "m2", odds={"HOME": 5.647962497524461, "AWAY": 1.2},
                 kickoff="2026-10-08T22:00:00Z",
-                p={"HOME": 0.44, "AWAY": 0.56}, bookmaker="polymarket")
+                p={"HOME": 0.44, "AWAY": 0.56}, bookmaker="polymarket", payload_sha256="a" * 64)
     fx2 = A.Fixture(league="NBA", match_id="m2", home="San Antonio Spurs",
                     away="Oklahoma City Thunder",
                     kickoff_utc="2026-10-08T22:00:00Z", competition="NBA",
@@ -360,7 +344,7 @@ def test_decide_quarantine_reentry_requires_fresh_quote(env):
                 "fetch_ts_utc": "2026-10-08T09:30:00Z",
                 "source_last_update_utc": "2026-10-08T09:00:00Z",
                 "commence_time_utc": FX.kickoff_utc,
-                "payload_sha256": "1" * 64, "key_fingerprint": None,
+                **identity_fields("m1-fresh"), "key_fingerprint": None,
                 "mode": "REAL", "source_ref": "TEST-FRESH"})
     out = _run_decide(env, led, evaluate=evaluate)
     assert out["journaled"][0]["status"] == "BET_PAPER"

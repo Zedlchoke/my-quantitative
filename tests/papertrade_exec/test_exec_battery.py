@@ -51,10 +51,21 @@ SOCCER_ROOT = Path("/Users/hoangminhlong/my-quantitative/.worktrees/"
 # ------------------------------------------------------------------- helpers --
 
 @pytest.fixture()
-def env(tmp_path):
+def env(tmp_path, monkeypatch):
     """Pristine sandbox env: data root, sandbox control dir + GO-consumed
     registry copy (the ONLY fabricated GO in the battery — sandbox copies
     only; the real control dir is never touched)."""
+    # Old synthetic quote generation predates source IDs. Supply explicit
+    # fixture IDs only inside this sandbox fixture; production emitters and
+    # the W1.4 predicate are exercised unchanged.
+    from tests.papertrade_exec.quote_identity_fixtures import identity_fields
+    ledger_class = _core().ledger.PaperLedger
+    original_append = ledger_class.append
+    def append_with_test_identity(self, row, *args, **kwargs):
+        if row.get("type") == "MARKET_QUOTE" and row.get("mode") == "SYNTHETIC":
+            row = {**row, **identity_fields(row["match_id"])}
+        return original_append(self, row, *args, **kwargs)
+    monkeypatch.setattr(ledger_class, "append", append_with_test_identity)
     data = tmp_path / "sandbox-data"
     ctrl = data / "sandbox" / "control"
     ctrl.mkdir(parents=True)

@@ -15,6 +15,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.papertrade_exec.quote_identity_fixtures import identity_fields
+
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 
@@ -172,7 +174,7 @@ def _inject_quote(env_, fx, odds=None) -> dict:
         "odds": odds or A.synthetic_odds(fx.match_id, p),
         "fetch_ts_utc": NOW, "source_last_update_utc": NOW,
         "commence_time_utc": fx.kickoff_utc,
-        "payload_sha256": hashlib.sha256(fx.match_id.encode()).hexdigest(),
+        **identity_fields(fx.match_id),
         "key_fingerprint": "sandbox-synthetic-00", "mode": "SYNTHETIC",
         "source_ref": "SYNTHETIC_ODDS_REHEARSAL (battery)",
     }
