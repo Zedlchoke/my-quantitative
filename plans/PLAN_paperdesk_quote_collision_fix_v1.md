@@ -7,3 +7,7 @@ Two distinct fixtures collide on equal nonempty payload_sha256, equal (bookmaker
 Freeze historical quote/decision evidence and current FORECAST prefix before edits. Replay four historical refusals descriptively without modifying ledger. Mandatory negatives: reused payload, market, event+leg and missing identity. Price twins reach EV and AI through existing stubs. Full PaperDesk battery alone with heavy lock free; independent A7 reruns historical and synthetic cases on committed HEAD. V3 registered digest must remain c2c4fd464f0413a054d94cb2f555f1e9325ed3b78111142b551026f3e2a0c890; FORECAST bytes unchanged. No W1.5, EV, AI/VETO, stake, selection, or other production change.
 
 Stop after green battery, independent A7, and owner report (commits, changed files, four-case classification, tests, invariants). No merge, adoption, production restart, or historical ledger write. Budget 0/0; no scored experiment; S1 sealed.
+
+## Owner base adjudication
+
+Owner selected fixall d62d22d3b732aa82b8e4763d775150bc2f9931a5 after requested spt base proved to lack W1.4/W1.5/V3. Original bootstrap chain preserved on orca/paperdesk-quote-collision-fix-v1-bootstrap-evidence; exact requested branch recreated from approved fixall and evidence cherry-picked. No merge or existing commit rewrite. All code scope checks use approved fixall as baseline.
