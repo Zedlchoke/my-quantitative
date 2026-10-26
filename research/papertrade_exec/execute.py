@@ -50,6 +50,11 @@ from research.papertrade_exec import (  # noqa: E402
     BlockError, load_pins, nba_payload_composite, sha256_file, verify_pins)
 from research.papertrade_exec import laws                            # noqa: E402
 from research.papertrade_exec import adapters as A                    # noqa: E402
+from research.papertrade_exec import d2_invariant as D2               # noqa: E402
+# SPEC D2 (2026-10-26): moi diem ghi DECISION cua desk di qua
+# D2.d2_append_decision — BET_PAPER thieu opinion binding hop le bi tu
+# choi ghi (fail-closed). Flag d2_gate_invariant_active OFF = passthrough
+# nguyen byte (luat feature-gate W4).
 
 PINNED_ROOTS = {
     "paper_core_root": Path("/Users/hoangminhlong/my-quantitative/.worktrees/"
@@ -1081,7 +1086,8 @@ def cmd_forecast(args) -> dict:
                 or f.match_id in draft_by_mid or f.match_id in written \
                 or f.match_id in journaled_miss:
             continue
-        led.append_decision(miss_decision(f, m, now))
+        D2.d2_append_decision(led, miss_decision(f, m, now),
+                              data_root=args.data_root, args=args)
         journaled_miss.append(f.match_id)
     emitted_b1r = []
     if league == "SOCCER":
@@ -1365,11 +1371,19 @@ def now_of(args) -> str:
 
 CUTOVER_GO_PHRASE = "GO SPORTS PAPERTRADE EXEC V1 POLYMARKET CUTOVER"
 AI_AUTHORITY_GO_PHRASE = "GO SPORTS PAPERTRADE EXEC V1 AI AUTHORITY"
+# SPEC D2 (SPEC_D2_GATE_INVARIANT_2026-10-26.md): the no-BET_PAPER-without-
+# binding invariant gets its OWN typed GO (spec §8.4: one separate owner
+# press; never bundled with a build). Flag default OFF = byte-identical
+# pre-D2 behavior.
+D2_GATE_INVARIANT_GO_PHRASE = "GO SPORTS PAPERTRADE EXEC V1 D2 GATE INVARIANT"
 GO_TOKEN_FILES = {"pm_cutover_active": "GO_TOKEN_CUTOVER.json",
-                  "ai_authority_active": "GO_TOKEN_AI_AUTHORITY.json"}
+                  "ai_authority_active": "GO_TOKEN_AI_AUTHORITY.json",
+                  "d2_gate_invariant_active": "GO_TOKEN_D2_GATE_INVARIANT.json"}
 GO_REGISTRY_MARKERS = {"pm_cutover_active": "EXEC_CUTOVER_GO_CONSUMED",
                        "ai_authority_active":
-                           "EXEC_AI_AUTHORITY_GO_CONSUMED"}
+                           "EXEC_AI_AUTHORITY_GO_CONSUMED",
+                       "d2_gate_invariant_active":
+                           "EXEC_D2_GATE_INVARIANT_GO_CONSUMED"}
 
 
 def _owner_go_state(key: str, *, sandbox: bool,
@@ -1390,7 +1404,8 @@ def _owner_go_state(key: str, *, sandbox: bool,
     except (FileNotFoundError, json.JSONDecodeError):
         return False, f"GO token absent/malformed: {token_path.name}"
     phrase = {"pm_cutover_active": CUTOVER_GO_PHRASE,
-              "ai_authority_active": AI_AUTHORITY_GO_PHRASE}[key]
+              "ai_authority_active": AI_AUTHORITY_GO_PHRASE,
+              "d2_gate_invariant_active": D2_GATE_INVARIANT_GO_PHRASE}[key]
     for f in ("go_phrase_typed_by_owner", "typed_at_utc", "transcribed_by",
               "registry_consumption_note"):
         if not tok.get(f):
@@ -1430,7 +1445,8 @@ def papertrade_flags(args) -> dict:
     sandbox = bool(getattr(args, "sandbox", False))
     out = {}
     if sandbox:
-        fg = {"pm_cutover_active": False, "ai_authority_active": False}
+        fg = {"pm_cutover_active": False, "ai_authority_active": False,
+              "d2_gate_invariant_active": False}
         ctrl = getattr(args, "sandbox_control_dir", None)
         if ctrl:
             try:
@@ -1439,7 +1455,8 @@ def papertrade_flags(args) -> dict:
                 fg.update({k: bool(sf.get(k)) for k in fg})
             except (FileNotFoundError, json.JSONDecodeError):
                 pass                      # default pre-GO rehearsal state
-    for key in ("pm_cutover_active", "ai_authority_active"):
+    for key in ("pm_cutover_active", "ai_authority_active",
+                "d2_gate_invariant_active"):
         cfg_on = bool(fg.get(key, False))
         go_on, why = _owner_go_state(
             key, sandbox=sandbox,
@@ -1727,7 +1744,8 @@ def cmd_quote(args) -> dict:
         led.append(r)
         written.append(r["match_id"])
     for j in plan_w["journal"]:
-        led.append_decision(j, recheck=in_lock_recheck_for(led, args, now))
+        D2.d2_append_decision(led, j, data_root=args.data_root, args=args,
+                              recheck=in_lock_recheck_for(led, args, now))
         journaled.append(j["match_id"])
     return {"league": league, "date": args.date, "captured_bytes": len(body),
             "written": written,
@@ -1906,7 +1924,7 @@ def journal_quota_skip(led, fixtures, now: str, why: str, existing: dict,
                "kickoff_utc": f.kickoff_utc, "decided_at_utc": now,
                "status": "QUOTA_SKIP", "reason": why,
                "stake_cents": 0, "chosen_leg": None}
-        led.append_decision(row)
+        D2.d2_append_decision(led, row)      # D2: non-place passthrough
         journaled.append(f.match_id)
     return journaled
 
@@ -2421,7 +2439,8 @@ def cmd_decide(args) -> dict:
             cls = soccer_stage_law(f.competition, f.kickoff_utc[:10])
             if not cls["bet_eligible"]:
                 row = stage_law_decision(f, cls, now)
-                led.append_decision(row)
+                D2.d2_append_decision(led, row, data_root=args.data_root,
+                                      args=args)
                 journaled.append({"match_id": f.match_id,
                                   "status": row["status"],
                                   "reason": row["reason"][:120]})
@@ -2438,9 +2457,10 @@ def cmd_decide(args) -> dict:
             fc_row, b1r_why = soccer_b1r_forecast(led, f, now)
             if fc_row is None:
                 row = no_b1r_decision(f, b1r_why, now)
-                led.append_decision(
-                    row, recheck=in_lock_recheck_for(led, args, now,
-                                                     capital_law=capital_law))
+                D2.d2_append_decision(
+                    led, row, data_root=args.data_root, args=args,
+                    recheck=in_lock_recheck_for(led, args, now,
+                                                capital_law=capital_law))
                 journaled.append({"match_id": f.match_id,
                                   "status": row["status"],
                                   "reason": row["reason"][:120]})
@@ -2494,7 +2514,8 @@ def cmd_decide(args) -> dict:
                               "— one snapshot cannot price two fixtures "
                               "(W1.4); fail-closed"),
                    "stake_cents": 0, "chosen_leg": None}
-            led.append_decision(row)
+            D2.d2_append_decision(led, row, data_root=args.data_root,
+                                  args=args)
             journaled.append({"match_id": f.match_id,
                               "status": row["status"],
                               "reason": row["reason"][:120]})
@@ -2520,9 +2541,10 @@ def cmd_decide(args) -> dict:
                 laws.EV_OUTLIER_THRESHOLD:
             row, kind = ev_outlier_disposition(
                 args, led, f, dec, qt.get(f.match_id), now)
-            led.append_decision(
-                row, recheck=risk.in_lock_recheck(led, now, go_ok,
-                                                  capital_law=capital_law),
+            D2.d2_append_decision(
+                led, row, data_root=args.data_root, args=args,
+                recheck=risk.in_lock_recheck(led, now, go_ok,
+                                             capital_law=capital_law),
                 capital_law=capital_law)
             journaled.append({"match_id": f.match_id,
                               "status": row["status"],
@@ -2548,20 +2570,30 @@ def cmd_decide(args) -> dict:
                                             "yet; review window open (W4.4)"})
                 continue
             if outcome is not None:            # terminal VETO / NO_VERDICT
-                led.append_decision(
-                    outcome, recheck=risk.in_lock_recheck(
+                D2.d2_append_decision(
+                    led, outcome, data_root=args.data_root, args=args,
+                    recheck=risk.in_lock_recheck(
                         led, now, go_ok, capital_law=capital_law),
                     capital_law=capital_law)
                 journaled.append({"match_id": f.match_id,
                                   "status": outcome["status"],
                                   "reason": outcome["reason"][:120]})
                 continue
-        led.append_decision(
-            dec, recheck=risk.in_lock_recheck(led, now, go_ok,
-                                              capital_law=capital_law),
+        # SPEC D2 (2026-10-26): THE append-point invariant — a BET_PAPER
+        # without a valid production ALLOW binding is REFUSED here (the
+        # M48 escape is impossible once the flag is ON). fc_row/quote_row
+        # ride along so a refusal re-marks PENDING_AI with the true
+        # candidate hash for the producer.
+        _d2row = D2.d2_append_decision(
+            led, dec, data_root=args.data_root, args=args,
+            fc_row=fc_row, quote_row=qt.get(f.match_id),
+            recheck=risk.in_lock_recheck(led, now, go_ok,
+                                         capital_law=capital_law),
             capital_law=capital_law)
-        journaled.append({"match_id": f.match_id, "status": dec["status"],
-                          "reason": dec.get("reason", "")[:120]})
+        journaled.append({"match_id": f.match_id,
+                          "status": _d2row.get("status", dec["status"]),
+                          "reason": _d2row.get("reason",
+                                               dec.get("reason", ""))[:120]})
     return {"league": league, "date": args.date, "now_utc": now,
             "journaled": journaled, "skipped": skipped}
 
