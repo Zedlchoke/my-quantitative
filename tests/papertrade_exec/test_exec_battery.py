@@ -219,7 +219,9 @@ def test_forecast_reports_wiring_status(env, capcli):
     assert fc["mode"] == "SYNTHETIC"
 
 
-def test_plan_is_readonly_with_real_tips(env, capcli):
+def test_plan_is_readonly_with_real_tips(env, capcli, nba_pre_snapshot,
+                                         monkeypatch):
+    monkeypatch.setitem(execute.PINNED_DATA, "nba_payloads", nba_pre_snapshot)
     code, out = capcli(env, "plan", "--date", WNBA_DAY)
     assert code == EXIT_OK
     fx = out["leagues"]["WNBA"]["fixtures"]
@@ -264,7 +266,9 @@ def test_nba_engine_replay_via_scored_harness_synthetic_inputs(env):
     assert res2[0]["p_home"] == p, "engine replay must be deterministic"
 
 
-def test_success_path_end_to_end_sandbox(env, capcli):
+def test_success_path_end_to_end_sandbox(env, capcli, nba_pre_snapshot,
+                                         monkeypatch):
+    monkeypatch.setitem(execute.PINNED_DATA, "nba_payloads", nba_pre_snapshot)
     # --- WNBA (real fixture, synthetic p/odds) -------------------------------
     assert capcli(env, "forecast", "--league", "WNBA", "--date", WNBA_DAY)[0] == EXIT_OK
     code, q = capcli(env, "quote", "--league", "WNBA", "--date", WNBA_DAY)
@@ -284,7 +288,7 @@ def test_success_path_end_to_end_sandbox(env, capcli):
 
     fcs, qts, decs = rows_of(env, "FORECAST"), rows_of(env, "MARKET_QUOTE"), \
         rows_of(env, "DECISION")
-    expected = 1 + len(A.load_nba_fixtures(NBA_PAYLOADS, NBA_DAY)) + 3
+    expected = 1 + len(A.load_nba_fixtures(nba_pre_snapshot, NBA_DAY)) + 3
     assert len(fcs) == expected and len(qts) == len(fcs) and len(decs) == len(fcs)
     # zero real probabilities: every FORECAST row is labeled synthetic
     assert all(r["mode"] == "SYNTHETIC"
@@ -306,7 +310,9 @@ def test_success_path_end_to_end_sandbox(env, capcli):
     assert gen["type"] == "GENESIS" and gen["sandbox"] is True
 
 
-def test_settle_win_and_postpone_refund_then_dashboard_sandbox_banner(env, capcli):
+def test_settle_win_and_postpone_refund_then_dashboard_sandbox_banner(
+        env, capcli, nba_pre_snapshot, monkeypatch):
+    monkeypatch.setitem(execute.PINNED_DATA, "nba_payloads", nba_pre_snapshot)
     capcli(env, "forecast", "--league", "NBA", "--date", NBA_DAY)
     capcli(env, "quote", "--league", "NBA", "--date", NBA_DAY)
     capcli(env, "decide", "--league", "NBA", "--date", NBA_DAY)
@@ -756,22 +762,57 @@ def _reseal_meta(payload: Path) -> None:
                     + hashlib.sha256(payload.read_bytes()).hexdigest() + "\n")
 
 
-def test_nba_prospective_engine_success_opening_window(env):
+@pytest.fixture(scope="module")
+def nba_pre_snapshot(tmp_path_factory) -> Path:
+    """B4(a) re-fixture (A7 FIXTURE_ONLY ruling, 2026-10-26): a PINNED copy
+    of the frozen ESPN corpus with the 2026-10-23/24 opening-window slates
+    restored to their PRE-kickoff state — the corpus state these tests were
+    written against. The live refresh chain has since lawfully flipped
+    those games to 'post' (they have been played), and the loader excludes
+    non-'pre' games, so the window tests went empty. Event identity (ids,
+    teams, tips, dates) stays VERBATIM from the real ESPN payloads; only
+    the status state is restored and completed scores are stripped (the
+    loader is outcome-masked and never reads scores). Earlier dates keep
+    their real 'post' state so the completed-games corpus is unchanged."""
+    dst = tmp_path_factory.mktemp("nba_pre_snapshot")
+    for f in NBA_PAYLOADS.iterdir():
+        if f.name.startswith("scoreboard_") and \
+                f.suffix in (".json", ".meta"):
+            shutil.copy2(f, dst / f.name)
+    for day in ("20261023", "20261024"):
+        p = dst / f"scoreboard_{day}.json"
+        data = json.loads(p.read_text())
+        for ev in data.get("events", []):
+            ev["status"]["type"]["state"] = "pre"
+            ev["status"]["type"]["completed"] = False
+            for c in ev["competitions"][0]["competitors"]:
+                c.pop("score", None)
+        p.write_text(json.dumps(data))
+        _reseal_meta(p)
+    return dst
+
+
+def test_nba_prospective_engine_success_opening_window(env, nba_pre_snapshot):
     """EXEC-NBA-REWIRE success path: the REAL engine (Lane D loader+predict,
     pinned nba26 bytes, frozen ESPN payloads ONLY — never the scored bind
     corpus) over the opening window. AGE-INDEPENDENT since the W1.3 fix:
     the corpus lawfully ages through the refresh-manifest chain (completed
     games ARE the point of the refresh), so counts/anchor derive from the
-    corpus at run time. IN-MEMORY ONLY: nothing is persisted by this test."""
-    fx = A.load_nba_fixtures_window(NBA_PAYLOADS, NBA_WIN_START, NBA_WIN_END)
+    corpus at run time. IN-MEMORY ONLY: nothing is persisted by this test.
+    B4(a) re-fixture: reads the PINNED pre-kickoff snapshot (see
+    nba_pre_snapshot) and verifies against THAT corpus's composite — the
+    same law, pinned to a stable corpus state instead of the live one."""
+    fx = A.load_nba_fixtures_window(nba_pre_snapshot, NBA_WIN_START,
+                                    NBA_WIN_END)
     assert len(fx) >= 1                      # the window keeps >=1 scheduled
     anchor, _ = execute.batch_anchor(fx, "NBA")
     predict_path = A.nba_engine_available(NBA26_ROOT)
     assert predict_path is not None
     wiring = execute.probe_engine("NBA", execute.PINNED_ROOTS)
     assert wiring["entry_status"] == "WIRED_ENGINE_READY", wiring
-    res = A.nba_engine_predict(NBA_PAYLOADS, anchor, anchor,
-                               expected_composite_sha=_nba_pins_composite(),
+    snap_composite = execute.nba_payload_composite(nba_pre_snapshot)
+    res = A.nba_engine_predict(nba_pre_snapshot, anchor, anchor,
+                               expected_composite_sha=snap_composite,
                                predict_path=predict_path)
     by = {r["match_id"]: r for r in res}
     window = [by[f.match_id] for f in fx]
@@ -787,8 +828,8 @@ def test_nba_prospective_engine_success_opening_window(env):
             # correct cold-start state; the W1.3 refresh guarantees this
             # branch is NOT the production steady state any more)
             assert abs(r["p_home"] - r0_p) < 1e-9
-    res2 = A.nba_engine_predict(NBA_PAYLOADS, anchor, anchor,
-                                expected_composite_sha=_nba_pins_composite(),
+    res2 = A.nba_engine_predict(nba_pre_snapshot, anchor, anchor,
+                                expected_composite_sha=snap_composite,
                                 predict_path=predict_path)
     assert res2 == res, "engine path must be deterministic"
 
@@ -840,10 +881,13 @@ def test_nba_adapter_refuses_tampered_payload_dir(tmp_path):
     assert ei.value.code == "BLOCKED_NBA_PAYLOAD_TAMPER"
 
 
-def test_nba_adapter_pin_drift_blocked(tmp_path):
+def test_nba_adapter_pin_drift_blocked(tmp_path, nba_pre_snapshot,
+                                        monkeypatch):
     """nba26 entry bytes drifted from the pins -> BLOCKED_PIN_DRIFT_ENTRY in
     the wiring probe; real-mode compute_forecasts refuses BLOCKED_PIN_DRIFT
-    BEFORE any corpus touch (refresh can never run on a drifted entry)."""
+    BEFORE any corpus touch (refresh can never run on a drifted entry).
+    B4(a) re-fixture: fixtures come from the pinned pre-kickoff snapshot."""
+    monkeypatch.setitem(execute.PINNED_DATA, "nba_payloads", nba_pre_snapshot)
     pkg = tmp_path / "wt" / "research" / "papertrade_nba"
     shutil.copytree(NBA26_ROOT / "research" / "papertrade_nba", pkg,
                     ignore=shutil.ignore_patterns("__pycache__"))
@@ -853,7 +897,7 @@ def test_nba_adapter_pin_drift_blocked(tmp_path):
     roots["nba26_root"] = pkg.parents[1]          # .../wt (holds research/papertrade_nba)
     wiring = execute.probe_engine("NBA", roots)
     assert wiring["entry_status"] == "BLOCKED_PIN_DRIFT_ENTRY", wiring
-    fx = A.load_nba_fixtures_window(NBA_PAYLOADS, NBA_WIN_START, NBA_WIN_END)
+    fx = A.load_nba_fixtures_window(nba_pre_snapshot, NBA_WIN_START, NBA_WIN_END)
     args = argparse.Namespace(sandbox=False, to_date=None,
                               paper_core_root=None, wnba26_root=None,
                               nba_harness_root=None,
@@ -908,11 +952,14 @@ def test_nba_refresh_prego_refused_and_postgo_manifest_chain(tmp_path):
     assert "manifest" in verdict2["why"]
 
 
-def test_nba_window_forecast_stale_after_anchor(env, capcli):
+def test_nba_window_forecast_stale_after_anchor(env, capcli, nba_pre_snapshot,
+                                                monkeypatch):
     """The batch anchor (earliest tip minus 6h10m, exclusive) is a hard
     deadline: at it the whole command refuses. The anchor derives from the
-    corpus at run time (age-independent after the W1.3 refresh law)."""
-    fx = A.load_nba_fixtures_window(NBA_PAYLOADS, NBA_WIN_START, NBA_WIN_END)
+    corpus at run time (age-independent after the W1.3 refresh law).
+    B4(a) re-fixture: pinned pre-kickoff snapshot corpus."""
+    monkeypatch.setitem(execute.PINNED_DATA, "nba_payloads", nba_pre_snapshot)
+    fx = A.load_nba_fixtures_window(nba_pre_snapshot, NBA_WIN_START, NBA_WIN_END)
     anchor, _ = execute.batch_anchor(fx, "NBA")
     from datetime import datetime as _dt, timedelta as _td, timezone as _tz
     a_dt = _dt.strptime(anchor, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=_tz.utc)
@@ -927,11 +974,14 @@ def test_nba_window_forecast_stale_after_anchor(env, capcli):
     assert rows_of(env, "FORECAST") == []
 
 
-def test_nba_window_success_chain_sandbox(env, capcli):
+def test_nba_window_success_chain_sandbox(env, capcli, nba_pre_snapshot,
+                                          monkeypatch):
     """Full chain forecast -> quote -> decide on the 8-row real opening
     window, SANDBOX, outcome-masked: fixture identity REAL (frozen payloads),
-    persisted p/odds SYNTHETIC and labeled; duplicate decide is a no-op."""
-    fx = A.load_nba_fixtures_window(NBA_PAYLOADS, NBA_WIN_START,
+    persisted p/odds SYNTHETIC and labeled; duplicate decide is a no-op.
+    B4(a) re-fixture: pinned pre-kickoff snapshot corpus."""
+    monkeypatch.setitem(execute.PINNED_DATA, "nba_payloads", nba_pre_snapshot)
+    fx = A.load_nba_fixtures_window(nba_pre_snapshot, NBA_WIN_START,
                                     NBA_WIN_END)
     n = len(fx)
     assert n >= 1                          # age-independent window size
