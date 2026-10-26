@@ -196,7 +196,11 @@ def test_config_is_the_strongest_first_chain(cfg):
     assert prov["model_id"] == "deepseek/deepseek-v4.1-flash-1017"
     assert prov["fallback_models"] == ["deepseek/deepseek-v4.1-flash"]
     assert prov["max_budget_seconds"] == 600
-    assert prov["low_balance_usd"] == 10.0
+    # B4 expectation sync (owner floor order 2026-10-26, commit 591c1707):
+    # the 10-USD key self-locked at floor 10.0; the owner lowered it to 0.0
+    # ("run until the money truly runs out"). Model-chain asserts above are
+    # untouched.
+    assert prov["low_balance_usd"] == 0.0
     assert prov["reasoning_effort_by_model"] == \
         {"deepseek/deepseek-v4.1-flash-1017": "max"}
 
