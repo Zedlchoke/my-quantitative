@@ -22,7 +22,7 @@ class Led:
  def append_decision(self,row,**kw):self.rows.append(row);return row
 
 
-def run_caller(candidate, forbidden_downstream=True):
+def run_caller(candidate, forbidden_downstream=True, *, data_root):
     led=Led([{'type':'FORECAST','league':'WSL','match_id':'candidate','p':{'HOME':.55},'recorded_at_utc':'2026-10-24T00:00:00Z'},candidate])
     evaluate=Mock(return_value={'type':'DECISION','match_id':'candidate','status':'NO_EDGE','stake_cents':0})
     stake=Mock(return_value=500)
@@ -30,7 +30,9 @@ def run_caller(candidate, forbidden_downstream=True):
         evaluate.side_effect=AssertionError('EV must not precede incomplete-candidate refusal')
         stake.side_effect=AssertionError('Stake must not precede incomplete-candidate refusal')
     core=N(ledger=N(PaperLedger=lambda p:led),stake_for_decision=stake,risk=N(evaluate_match=evaluate))
-    args=N(date='2026-10-24',wsl_registry='unused')
+    # B4 fixture (A7 FIXTURE_ONLY ruling): the D2 wrapper reads args.data_root
+    # at the call site — the test's own tmp data root, no fabricated value.
+    args=N(date='2026-10-24',wsl_registry='unused',data_root=str(data_root))
     with patch.object(W,'now_of',return_value='2026-10-24T01:00:00Z'),patch.object(W,'core_of',return_value=core),patch.object(W,'register_wsl_league_law'),patch.object(W,'ledger_path_of',return_value=Path('unused')),patch.object(W,'fixtures_for_day',return_value=[fx]),patch.object(W,'make_in_lock_recheck',return_value=lambda x:x) as recheck,patch.object(E,'papertrade_flags',return_value={'ai_authority_active':False}):
         result=W.cmd_decide(args)
         if forbidden_downstream: recheck.assert_not_called()
@@ -38,12 +40,12 @@ def run_caller(candidate, forbidden_downstream=True):
 
 
 @pytest.mark.parametrize('field',['bookmaker','payload_sha256','event_id','market_id','leg_identity'])
-def test_wsl_real_caller_missing_candidate_is_terminal(field):
+def test_wsl_real_caller_missing_candidate_is_terminal(field,tmp_path):
     candidate=copy.deepcopy(q)
     if field=='market_id': candidate['pm_outcomes']['HOME'].pop('market_id')
     elif field=='leg_identity': candidate.pop('pm_outcomes')
     else: candidate.pop(field)
-    led,result,evaluate,stake=run_caller(candidate)
+    led,result,evaluate,stake=run_caller(candidate,data_root=tmp_path)
     decisions=[r for r in led.rows if r.get('type')=='DECISION']
     assert len(decisions)==1
     dec=decisions[0]
@@ -55,8 +57,8 @@ def test_wsl_real_caller_missing_candidate_is_terminal(field):
     assert candidate==led.rows[1]  # The quote is not repaired or rewritten.
 
 
-def test_wsl_complete_candidate_reaches_same_downstream_path():
-    led,result,evaluate,stake=run_caller(copy.deepcopy(q),False)
+def test_wsl_complete_candidate_reaches_same_downstream_path(tmp_path):
+    led,result,evaluate,stake=run_caller(copy.deepcopy(q),False,data_root=tmp_path)
     evaluate.assert_called_once();stake.assert_called_once()
     assert result['journaled'][0]['status']=='NO_EDGE'
     assert len([r for r in led.rows if r.get('type')=='DECISION'])==1
