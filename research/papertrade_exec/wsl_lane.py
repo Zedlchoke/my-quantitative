@@ -830,8 +830,11 @@ def cmd_quote(args) -> dict:
             fx, p, stake_cents=stake, fetch_ts_utc=now, events=events,
             books_provider=provider)
         if terminal is not None:
-            led.append_decision(terminal_journal(fx, terminal["status"],
-                                                 terminal["reason"], now))
+            from research.papertrade_exec import d2_invariant as _D2
+            _D2.d2_append_decision(
+                led, terminal_journal(fx, terminal["status"],
+                                      terminal["reason"], now),
+                data_root=args.data_root, args=args)
             journaled.append({"match_id": fx["match_id"],
                               "status": terminal["status"]})
             continue
@@ -900,7 +903,8 @@ def cmd_decide(args) -> dict:
                 row = terminal_journal(
                     fx, collide["status"], collide["reason"], now)
                 _exec.note_price_twins(row, collide)
-                row = led.append_decision(row)
+                row = _exec.D2.d2_append_decision(
+                    led, row, data_root=args.data_root, args=args)
                 journaled.append({"match_id": fx["match_id"],
                                   "status": row.get("status"),
                                   "reason": (row.get("reason") or "")[:160]})
@@ -937,8 +941,9 @@ def cmd_decide(args) -> dict:
                 row, _kind = _exec.ev_outlier_disposition(
                     args, led, _Fx(), dec, qrow, now)
                 _exec.note_price_twins(row, collide)
-                row = led.append_decision(row, recheck=recheck,
-                                          capital_law=3)
+                row = _exec.D2.d2_append_decision(
+                    led, row, data_root=args.data_root, args=args,
+                    recheck=recheck, capital_law=3)
                 journaled.append({"match_id": fx["match_id"],
                                   "status": row.get("status"),
                                   "reason": (row.get("reason") or "")[:160]})
@@ -965,8 +970,9 @@ def cmd_decide(args) -> dict:
                     continue
                 if outcome is not None:
                     _exec.note_price_twins(outcome, collide)
-                    row = led.append_decision(outcome, recheck=recheck,
-                                              capital_law=3)
+                    row = _exec.D2.d2_append_decision(
+                        led, outcome, data_root=args.data_root, args=args,
+                        recheck=recheck, capital_law=3)
                     journaled.append({"match_id": fx["match_id"],
                                       "status": row.get("status"),
                                       "reason": (row.get("reason")
@@ -976,7 +982,15 @@ def cmd_decide(args) -> dict:
                 dec["forecast_row_sha256"] = fc_rows[-1]["row_sha256"]
                 dec["quote_row_sha256"] = qrow["row_sha256"]
                 dec["wsl_phrase_gate"] = "checked in-lock (see reason)"
-            row = led.append_decision(dec, recheck=recheck, capital_law=3)
+            # SPEC D2 (2026-10-26): THE in-lock WSL append point — the
+            # exact road M48 took (ai_gate null). With the D2 flag ON, a
+            # BET_PAPER without a valid production ALLOW binding is
+            # refused HERE; fc/quote rows ride along so a refusal
+            # re-marks PENDING_AI with the true candidate hash.
+            row = _exec.D2.d2_append_decision(
+                led, dec, data_root=args.data_root, args=args,
+                fc_row=fc_rows[-1], quote_row=qrow,
+                recheck=recheck, capital_law=3)
         journaled.append({"match_id": fx["match_id"],
                           "status": row.get("status"),
                           "reason": (row.get("reason") or "")[:160]})
