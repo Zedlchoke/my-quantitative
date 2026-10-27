@@ -340,12 +340,50 @@ def test_d2_wiring_every_append_site_wrapped():
         assert "D2.d2_append_decision(" in src, f"wrapper missing in {rel}"
 
 
-def test_d2_flag_defaults_off_both_planes():
-    """The D2 flag is OFF unless config+typed-GO both hold (W4 gate law);
-    absent config key => False on the real plane, sandbox default False."""
-    args = argparse.Namespace(sandbox=False)
+def test_d2_flag_defaults_off_both_planes(tmp_path, monkeypatch):
+    """The D2 flag is OFF unless config+typed-GO both hold (W4 gate law).
+
+    Post-GO guard (A7 FIXTURE_ONLY ruling 2026-10-27,
+    a7/A7_PROMOTE_ADOPTION_RULING_2026-10-27.md): the production root now
+    carries the owner's REAL D2 GO plane (token + registry marker +
+    config key, effective since T0 2026-10-26T14:21:39Z), so the old
+    bare real-plane assertion would read the live plane — forbidden
+    (expectation must never chase whatever the disk returns). Instead the
+    guard builds its OWN planes through the sanctioned seams and checks
+    BOTH directions, fail-closed by construction:
+      1. real plane CLEAN (tmp control/registry, no token) -> OFF
+      2. real plane clean + config key ABSENT -> OFF
+      3. sandbox plane default (pre-GO rehearsal state) -> OFF
+      4. real plane with a COMPLETE tmp GO plane (token 4 fields, phrase
+         verbatim + registry marker + config key true) -> ON
+    Production files are only ever READ (registry copy), never written."""
+    # 1. clean real plane: no token anywhere -> fail-closed OFF
+    args = argparse.Namespace(
+        sandbox=False, sandbox_control_dir=str(tmp_path),
+        sandbox_registry=str(tmp_path / "CYCLE_REGISTRY.json"))
     assert execute.papertrade_flags(args).get(
         "d2_gate_invariant_active") is False
+    # 2. same clean plane with the config key REMOVED -> still OFF
+    cfg = execute.load_config()
+    fg = dict(cfg.get("feature_gates") or {})
+    fg.pop("d2_gate_invariant_active", None)
+    monkeypatch.setattr(execute, "load_config",
+                        lambda: {**cfg, "feature_gates": fg})
+    assert execute.papertrade_flags(args).get(
+        "d2_gate_invariant_active") is False
+    monkeypatch.undo()
+    # 3. sandbox plane defaults to the PRE-GO state -> OFF
     args2 = argparse.Namespace(sandbox=True)
     assert execute.papertrade_flags(args2).get(
         "d2_gate_invariant_active") is False
+    # 4. complete GO plane in tmp (both keys hold) -> ON, per the gate law
+    (tmp_path / "GO_TOKEN_D2_GATE_INVARIANT.json").write_text(json.dumps({
+        "go_phrase_typed_by_owner":
+            "GO SPORTS PAPERTRADE EXEC V1 D2 GATE INVARIANT",
+        "typed_at_utc": "2026-10-26T14:19:43Z",
+        "transcribed_by": "post-GO guard test (tmp plane)",
+        "registry_consumption_note": "tmp plane only; never production"}))
+    reg = json.loads((REPO / "plans" / "CYCLE_REGISTRY.json").read_text())
+    (tmp_path / "CYCLE_REGISTRY.json").write_text(json.dumps(reg))
+    assert execute.papertrade_flags(args).get(
+        "d2_gate_invariant_active") is True
