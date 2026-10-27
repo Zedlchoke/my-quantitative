@@ -864,6 +864,17 @@ def run_research_loop(*, data_root: Path, entry: dict, mid: str,
         if budget_s and (time.monotonic() - t0) >= budget_s:
             tele["outcome"] = "budget_exhausted"
             break
+        # BUGFIX 2026-10-26 (production, pre-existing): promote expired
+        # COOLDOWNs HERE, on the V3 research path itself. Before this,
+        # _promote_expired lived only on the legacy branch the research
+        # path `continue`s around, so a 5xx/timeout 10-min cooldown stuck
+        # FOREVER (state persists on disk across restarts; the balance
+        # revive only covers HTTP_402 holds) — deepseek slots sat
+        # COOLDOWN-expired since 07:03/07:09Z 2026-10-26 and every pass
+        # returned all_slots_down. Law unchanged: expired -> HALF_OPEN,
+        # the next REAL call is the trial; indefinite (until=None) holds
+        # are never promoted by clock.
+        _promote_expired(data_root, cascade, sandbox=sandbox)
         slot_model = _first_available(cascade, skip=tried)
         if slot_model is None:
             tele["outcome"] = tele.get("outcome") or "all_slots_down"
