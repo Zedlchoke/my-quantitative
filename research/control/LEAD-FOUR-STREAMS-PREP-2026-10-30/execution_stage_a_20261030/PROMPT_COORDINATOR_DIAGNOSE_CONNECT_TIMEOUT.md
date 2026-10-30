@@ -1,0 +1,7 @@
+# Prompt coordinator — chẩn đoán Stage A chỉ đọc
+Chưa rõ nguyên nhân hết thời gian bắt tay TWS. Chỉ soát hồ sơ và code, không kết nối lại.
+Nguồn chính: STAGE_A_RESULT.json, RUNTIME_STDOUT_02.log, RUNTIME_RELEASE_PACKET_02.json, OUTPUT_MANIFEST.json, LOCK_AFTER_RUNTIME.json trong thư mục này. Lượt đầu: RUNTIME_STDOUT.log và ATTEMPT_01_LEAD_STOP_ADDENDUM.json; không gọi đó là lỗi broker.
+Helper thực thi tại worktree đã đăng ký, commit bd43e106b071d175b560c2145e6948c7c46e7252. Code và fixtures dưới research/control/A2-INDEX-DATA-PREP-V1/probe/. Handoff dưới handoffs/probe.json. Không có handoff hợp lệ từ subagent helper; lead hoàn thiện code riêng, không phát lại PASS thay agent.
+Đối chiếu đồng hồ, quiet/resource observations, điểm chờ EClient.connect, cơ chế timeout/cleanup, phiên bản SDK và whitelist legacy/protobuf. Kiểm offline với fake transport nếu cần, trong namespace audit mới; không gọi socket/broker, không sửa helper, TWS, registry, lane cũ, không log tài khoản đầy đủ. Không chạy lại probe, không đổi namespace để né trạng thái chặn.
+Không coi owner UI confirmation là API handshake đã thành công. Không đoán do Read-Only, quyền dữ liệu hay TWS chưa phản hồi khi chưa có chứng cứ. Bằng chứng thiếu ghi NOT_RUN/BLOCKED.
+Kết quả cần: file verdict ký mới ghi người/role audit, thời điểm thực đo, phạm vi, nguồn/hash, nguyên nhân nếu chứng minh được và bước kiểm tiếp theo nhỏ nhất. Mọi thay đổi code được đề xuất để lead xử lý; không tự sửa hoặc cho phép chạy lại. Không thay verdict cũ.
