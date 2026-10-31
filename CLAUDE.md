@@ -9,12 +9,12 @@ gates and reproduction all reconcile.
 1. Read the applicable plan in full before changing files. All plans live in
    `plans/`; resolve the live plan per asset through `plans/CYCLE_REGISTRY.json`
    (the ONLY writable cycle authority), not filename guesses:
-   - crypto live: `plans/PLAN_crypto_ng1.md` (CRYPTO-NG1; V17 and earlier are
-     TERMINAL historical evidence)
-   - stocks live: `plans/PLAN_stocks_ng1.md` (STOCKS-NG1; V13 and earlier are
-     TERMINAL historical evidence)
-   - forex live: `plans/PLAN_forex_ng1.md` (FOREX-NG1; V9 and earlier are
-     TERMINAL historical evidence)
+   - Current owner direction 2026-10-31: preserve PaperDesk; non-PaperDesk
+     research archived and maintenance-paused through the canonical registry.
+   - New options research is bootstrap/data-feasibility only; read
+     `plans/PLAN_options_data_feasibility_v1_DRAFT.txt` in full. It is not a
+     registered executable cycle. No strategy/scoring/deployment is authorized
+     by the draft. Historical crypto/stocks/FX plans are archival evidence.
 2. Read `NOTES.md` and `research/wayfinder/MAP.md` when the task touches research.
 3. Run `/repo-intake`. Re-measure the checkout; historical plan snapshots are
    evidence, not current truth.

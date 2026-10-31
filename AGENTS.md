@@ -2,6 +2,16 @@
 
 Compact router. NOT a manual: read the applicable plan in full before work.
 
+## Current owner direction — 2026-10-31
+
+Preserve PaperDesk and its pinned backend/forecasting dependencies. Other
+research was archived by explicit owner instruction; do not auto-resume it.
+New options project: USD 1,000, paper/demo first, flexible US/crypto/FX options.
+Read `plans/PLAN_options_data_feasibility_v1_DRAFT.txt` for bootstrap scope.
+It is unregistered and does not authorize scoring, deployment or real orders.
+Removed historical artifacts resolve through the external archive identified
+in `README.md`; retained governance/ledger history stays authoritative.
+
 ## Mission invariant
 
 Evidence-first quantitative research factory. A profitable number is not a
