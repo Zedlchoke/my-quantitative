@@ -47,6 +47,10 @@ from research.papertrade_exec import results_fetch as RF           # noqa: E402
 
 TICK_SECONDS_DEFAULT = 30
 CADENCE_THROTTLE_S = 900           # min spacing per (league, date) attempt
+# Owner order via coordinator 2026-11-06 (QUYET_DINH_BO_SUNG_CAP_2026-11-06.md
+# sha b11e2172…): WSL alone drops to a ~30-min cadence — ≤50 req/day of the
+# shared 200/day Polymarket cap; every other league keeps the 900s default.
+WSL_CADENCE_THROTTLE_S = 1800
 ESPN_SETTLE_THROTTLE_S = 1800      # free source; keep it polite anyway
 SOCCER_SETTLE_THROTTLE_S = RF.SOCCER_RETRY_MIN_SECONDS
 DASHBOARD_MAX_AGE_S = 300
@@ -1044,7 +1048,9 @@ class OpsService:
             league_notes = []
             for d in dates:
                 key = f"cadence:{league}:{d}"
-                fresh = self._throttle_ok(key, CADENCE_THROTTLE_S)
+                fresh = self._throttle_ok(key, CADENCE_THROTTLE_S
+                                          if league != "WSL" else
+                                          WSL_CADENCE_THROTTLE_S)
                 report = None
                 if fresh:
                     ns = self._runner_args("plan", date=d, league=league)
